@@ -4,20 +4,26 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword,
   setPersistence, browserLocalPersistence, signOut
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import {
+  getDatabase, ref, get, child
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-/** Firebase config (perbaiki storageBucket) */
+/** Firebase config */
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
   authDomain: "avsecbwx-4229c.firebaseapp.com",
   projectId: "avsecbwx-4229c",
   appId: "1:1029406629258:web:53e8f09585cd77823efc73",
-  storageBucket: "avsecbwx-4229c.appspot.com",   // ✅ perbaikan
+  storageBucket: "avsecbwx-4229c.appspot.com",
   messagingSenderId: "1029406629258",
   measurementId: "G-P37F88HGFE",
+  // Tambahkan URL RTDB agar pasti tepat
+  databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
 };
 
-const app = initializeApp(firebaseConfig);
+const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db   = getDatabase(app);
 
 // Sesi persisten
 (async () => {
@@ -27,18 +33,18 @@ const auth = getAuth(app);
 
 /** ELEMENTS */
 const $ = (q) => document.querySelector(q);
-const welcome   = $("#welcome");
-const login     = $("#login");
-const goLoginBtn= $("#goLoginBtn");
-const backBtn   = $("#backBtn");
-const form      = $("#loginForm");
-const emailEl   = $("#email");
-const passEl    = $("#password");
-const loginBtn  = $("#loginBtn");
-const errBox    = $("#errBox");
-const okBox     = $("#okBox");
-const yearEl    = $("#year");
-const logoEl    = $("#appLogo");
+const welcome    = $("#welcome");
+const login      = $("#login");
+const goLoginBtn = $("#goLoginBtn");
+const backBtn    = $("#backBtn");
+const form       = $("#loginForm");
+const emailEl    = $("#email");
+const passEl     = $("#password");
+const loginBtn   = $("#loginBtn");
+const errBox     = $("#errBox");
+const okBox      = $("#okBox");
+const yearEl     = $("#year");
+const logoEl     = $("#appLogo");
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
 /** LOGO */
@@ -84,11 +90,38 @@ for (const b of document.querySelectorAll(".btn")){
   }, {passive:true});
 }
 
-/** Helper nama */
+/** Helper nama (fallback) */
 function resolveDisplayName(user){
   if (user?.displayName && user.displayName.trim()) return user.displayName.trim();
   if (user?.email) return user.email.split("@")[0];
   return "Pengguna";
+}
+
+/** Ambil profil dari RTDB (name, spec, role, isAdmin) */
+async function fetchProfile(user){
+  try{
+    const root = ref(db);
+    const snaps = await Promise.all([
+      get(child(root, `users/${user.uid}/name`)),
+      get(child(root, `users/${user.uid}/spec`)),
+      get(child(root, `users/${user.uid}/role`)),
+      get(child(root, `users/${user.uid}/isAdmin`)),
+    ]);
+    const [nameSnap, specSnap, roleSnap, isAdminSnap] = snaps;
+    const name = nameSnap.exists() ? String(nameSnap.val()).trim()
+               : (user.displayName?.trim() || (user.email?.split("@")[0] ?? "Pengguna"));
+    const spec = specSnap.exists() ? String(specSnap.val()).trim() : "";
+    const role = roleSnap.exists() ? String(roleSnap.val()).trim()
+               : (isAdminSnap.exists() && isAdminSnap.val() ? "admin" : "user");
+    const isAdmin = isAdminSnap.exists() ? !!isAdminSnap.val() : role === "admin";
+    return { name, spec, role, isAdmin };
+  }catch(e){
+    console.warn("RTDB fetch error:", e?.message || e);
+    return {
+      name: resolveDisplayName(user),
+      spec: "", role: "user", isAdmin: false
+    };
+  }
 }
 
 /** LOGIN */
@@ -102,7 +135,7 @@ form?.addEventListener("submit", async (e)=>{
   disableForm(true);
   try{
     const cred = await signInWithEmailAndPassword(auth, email, pass);
-    await notifyKodularAndGoHome("success", cred.user);   // ✅ await
+    await notifyKodularAndGoHome("success", cred.user);
   }catch(e){
     const map = {
       "auth/invalid-email":"Format email tidak valid.",
@@ -118,24 +151,27 @@ form?.addEventListener("submit", async (e)=>{
 });
 
 /** AUTO-SKIP jika sudah login */
-onAuthStateChanged(auth, async (user)=>{   // ✅ async
+onAuthStateChanged(auth, async (user)=>{
   if (user){
-    await notifyKodularAndGoHome("already_signed_in", user); // ✅ await
+    await notifyKodularAndGoHome("already_signed_in", user);
   }else{
     show(welcome);
   }
 });
 
-/** Kirim ke Kodular + nama */
+/** Kirim ke Kodular + profil lengkap */
 async function notifyKodularAndGoHome(status, user){
-  const name = resolveDisplayName(user);
+  const prof = await fetchProfile(user);
 
   const payload = JSON.stringify({
     event: "auth",
     status,
     uid: user.uid,
     email: user.email || null,
-    name,                 // ✅ kirim nama
+    name: prof.name,       // from RTDB or displayName/email
+    spec: prof.spec,       // basic | junior | senior
+    role: prof.role,       // "admin" | "user"
+    isAdmin: prof.isAdmin, // boolean
     ts: Date.now()
   });
 
