@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Daftar Akun Avsec Bwx App</title>
+  <title>Daftar Akun + Upload Foto</title>
   <style>
     :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --accent-2:#16a34a; --danger:#ef4444; }
     * { box-sizing: border-box; font-family: system-ui, sans-serif; }
@@ -123,7 +123,8 @@
       <label for="password">Kata Sandi</label>
       <input type="password" id="password" placeholder="Minimal 6 karakter" minlength="6" required />
 
-      <button id="submitBtn" type="submit">Daftar</button>
+      <button id="submitBtn" type="submit" disabled>Daftar</button>
+      <div class="hint">Tombol Daftar aktif setelah foto berhasil diupload & disimpan.</div>
     </form>
 
     <div id="msgBox" class="msg"></div>
@@ -134,12 +135,12 @@
   <div id="modalBack" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <h3 id="modalTitle">Unggah Foto</h3>
-      <p>Pilih gambar (maks 5 MB). Unggahan dilakukan setelah menekan <b>Daftar</b>.</p>
+      <p>Pilih gambar (maks 5 MB). Begitu dipilih, proses upload akan berjalan dan progress terlihat di bawah.</p>
       <input id="file" type="file" accept="image/*" />
       <div class="preview"><img id="previewImg" alt="Preview" /></div>
       <div class="bar"><div id="fill" class="fill"></div></div>
       <div class="actions">
-        <button id="saveFile" type="button">Simpan Pilihan</button>
+        <button id="saveFile" type="button" disabled>Simpan Pilihan</button>
         <button id="cancelFile" type="button" class="btn-ghost">Batal</button>
       </div>
       <div id="modalMsg" class="msg" style="margin-top:10px"></div>
@@ -151,7 +152,10 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+      getAuth, signInAnonymously, onAuthStateChanged,
+      linkWithCredential, EmailAuthProvider, updateProfile, deleteUser
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
     import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
@@ -167,7 +171,7 @@
       databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
     };
 
-    const ADMIN_CODE = "BWX-ADMIN-N45P"; // ganti sesuai kebutuhan
+    const ADMIN_CODE = "BWX-ADMIN-2025"; // ganti sesuai kebutuhan
 
     const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -204,8 +208,9 @@
 
     const overlay = $("#overlay");
 
-    let selectedFile = null;      // file dipilih (wajib)
-    let selectedThumbURL = "";    // objectURL preview
+    let uploadedPhotoURL = null;   // URL hasil upload (wajib ada sebelum daftar)
+    let currentUID = null;         // UID anonymous (sebelum link)
+    let uploading = false;
 
     const showMsg=(t,type="error")=>{ msgBox.textContent=t; msgBox.className="msg "+type; msgBox.style.display="block"; };
     const showModalMsg=(t,type="error")=>{ modalMsg.textContent=t; modalMsg.className="msg "+type; modalMsg.style.display="block"; };
@@ -217,52 +222,118 @@
       if (!wantAdmin) adminCodeEl.value = "";
     });
 
-    // ===== Popup upload =====
-    openUpload.addEventListener("click", ()=>{
+    // ===== Auth watcher (ambil UID anonymous) =====
+    onAuthStateChanged(auth, (user)=>{
+      currentUID = user?.uid || null;
+    });
+
+    // ===== Buka popup upload: login anonymous jika perlu =====
+    openUpload.addEventListener("click", async ()=>{
       modalMsg.style.display="none";
-      previewBox.style.display = selectedFile ? "block" : "none";
-      if (selectedFile && selectedThumbURL) previewImg.src = selectedThumbURL;
+      previewBox.style.display = "none";
       fill.style.width = "0%";
       fileEl.value = "";
+      saveFile.disabled = true;
+      uploadedPhotoURL = null;
+
+      // login anon kalau belum ada user
+      try {
+        if (!auth.currentUser) await signInAnonymously(auth);
+      } catch (e) {
+        showMsg("Gagal menyiapkan sesi upload: " + (e.message || e), "error");
+        return;
+      }
+
       modalBack.classList.add("show");
       modalBack.setAttribute("aria-hidden","false");
     });
+
     cancelFile.addEventListener("click", ()=>{
+      if (uploading) return; // cegah tutup saat upload
       modalBack.classList.remove("show");
       modalBack.setAttribute("aria-hidden","true");
     });
 
-    fileEl.addEventListener("change", ()=>{
-      const f = fileEl.files?.[0];
+    // ===== Saat pilih file: langsung upload dengan progress di popup =====
+    fileEl.addEventListener("change", async ()=>{
       modalMsg.style.display="none";
-      if (!f) { previewBox.style.display="none"; return; }
+      const f = fileEl.files?.[0];
+      if (!f) { previewBox.style.display="none"; saveFile.disabled = true; return; }
       if (!/^image\//.test(f.type)) { showModalMsg("File harus gambar.", "error"); fileEl.value=""; return; }
       const max = 5 * 1024 * 1024;
       if (f.size > max) { showModalMsg("Ukuran maksimal 5 MB.", "error"); fileEl.value=""; return; }
-      selectedFile = f;
-      if (selectedThumbURL) URL.revokeObjectURL(selectedThumbURL);
-      selectedThumbURL = URL.createObjectURL(f);
-      previewImg.src = selectedThumbURL;
+
+      // tampilkan preview
       previewBox.style.display = "block";
+      const objURL = URL.createObjectURL(f);
+      previewImg.src = objURL;
+
+      // mulai upload
+      if (!auth.currentUser) {
+        showModalMsg("Sesi upload belum siap. Cobalah buka ulang popup.", "error");
+        URL.revokeObjectURL(objURL);
+        return;
+      }
+
+      uploading = true;
+      saveFile.disabled = true;
+      uploadedPhotoURL = null;
+      fill.style.width = "0%";
+
+      const safeName = f.name.replace(/[^\w.\-]+/g, "_");
+      const path = `user_uploads/${auth.currentUser.uid}/${Date.now()}-${safeName}`;
+      const storageRef = sRef(stg, path);
+      const task = uploadBytesResumable(storageRef, f, { contentType: f.type });
+
+      await new Promise((resolve, reject)=>{
+        task.on("state_changed",
+          (snap)=>{
+            const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+            fill.style.width = pct + "%";
+          },
+          (err)=>reject(err),
+          ()=>resolve()
+        );
+      }).then(async ()=>{
+        uploadedPhotoURL = await getDownloadURL(storageRef);
+        saveFile.disabled = false;                  // ✅ bisa disimpan
+        showModalMsg("Upload selesai. Klik 'Simpan Pilihan'.", "success");
+      }).catch((e)=>{
+        showModalMsg("Gagal upload: " + (e.message || e), "error");
+        saveFile.disabled = true;
+        uploadedPhotoURL = null;
+      }).finally(()=>{
+        uploading = false;
+        URL.revokeObjectURL(objURL);
+      });
     });
 
+    // ===== Simpan pilihan (set chip & enable tombol daftar) =====
     saveFile.addEventListener("click", ()=>{
-      if (!selectedFile) { showModalMsg("Belum ada file dipilih.", "error"); return; }
-      fileNameEl.textContent = selectedFile.name;
-      if (selectedThumbURL) { thumb.src = selectedThumbURL; fileChip.classList.add("has-thumb"); }
+      if (!uploadedPhotoURL) { showModalMsg("Belum ada foto yang berhasil diupload.", "error"); return; }
+      // tampilkan chip ringkas di form
+      const url = new URL(uploadedPhotoURL);
+      const last = url.pathname.split("/").pop() || "foto";
+      const nameShown = decodeURIComponent(last).split("?")[0];
+      fileNameEl.textContent = nameShown;
+      thumb.src = uploadedPhotoURL;
+      fileChip.classList.add("has-thumb");
       fileChip.style.display = "inline-flex";
+
+      submitBtn.disabled = false;           // ✅ form siap dikirim
       modalBack.classList.remove("show");
       modalBack.setAttribute("aria-hidden","true");
     });
 
+    // Hapus file yang dipilih (bukan menghapus di storage, hanya reset pilihan)
     clearFileBtn.addEventListener("click", ()=>{
-      selectedFile = null;
-      if (selectedThumbURL) { URL.revokeObjectURL(selectedThumbURL); selectedThumbURL=""; }
+      uploadedPhotoURL = null;
       fileChip.style.display = "none";
       fileChip.classList.remove("has-thumb");
+      submitBtn.disabled = true;            // butuh upload ulang
     });
 
-    // ===== Validasi & Submit =====
+    // ===== Validasi & Submit (pakai URL yang sudah diupload) =====
     form.addEventListener("submit", async (e)=>{
       e.preventDefault(); msgBox.style.display="none";
 
@@ -281,9 +352,9 @@
       if (words.length > 2) return showMsg("Nama lengkap maksimal 2 kata.");
       if (!spec) return showMsg("Silakan pilih spesifikasi.");
 
-      // Foto wajib
-      if (!selectedFile) {
-        showMsg("Foto profil wajib diunggah.");
+      // Foto wajib sudah harus ada URL-nya
+      if (!uploadedPhotoURL) {
+        showMsg("Foto profil wajib diunggah dan disimpan terlebih dahulu.");
         modalBack.classList.add("show");
         modalBack.setAttribute("aria-hidden","false");
         return;
@@ -301,50 +372,31 @@
       }
 
       nama = formatNama(nama);
-
       submitBtn.disabled = true;
       overlay.classList.add("show");
 
       let cred = null;
-      let photoURL = null;
 
       try {
-        // === 1) BUAT AKUN DULU (agar bisa akses Storage (rules per-UID)) ===
-        cred = await createUserWithEmailAndPassword(auth, email, pass);
+        // === Link akun anonymous → email+password (UID tetap) ===
+        const credential = EmailAuthProvider.credential(email, pass);
+        // jika somehow belum anonymous (mis: user close/open), lakukan anonym dulu
+        if (!auth.currentUser) await signInAnonymously(auth);
+        cred = await linkWithCredential(auth.currentUser, credential);
 
-        // === 2) UPLOAD FOTO — SELESAIKAN DULU BARU SIMPAN DATA ===
-        const safeName = selectedFile.name.replace(/[^\w.\-]+/g, "_");
-        const path = `user_uploads/${cred.user.uid}/${Date.now()}-${safeName}`;
-        const storageRef = sRef(stg, path);
-        const task = uploadBytesResumable(storageRef, selectedFile, { contentType: selectedFile.type });
-
-        await new Promise((resolve, reject) => {
-          task.on(
-            "state_changed",
-            (snap) => {
-              const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-              fill.style.width = pct + "%";
-            },
-            (err) => reject(err),
-            () => resolve()
-          );
-        });
-
-        photoURL = await getDownloadURL(storageRef);
-
-        // === 3) SIMPAN DATA KE FIREBASE (Auth & RTDB) SETELAH UPLOAD SELESAI ===
-        await updateProfile(cred.user, { displayName: nama, photoURL });
+        // === Simpan profil ke Auth & RTDB (pakai uploadedPhotoURL) ===
+        await updateProfile(cred.user, { displayName: nama, photoURL: uploadedPhotoURL });
         await set(ref(db, `users/${cred.user.uid}`), {
           name: nama,
-          spec: spec,                    // basic | junior | senior
+          spec: spec,
           role: isAdmin ? "admin" : "user",
           isAdmin: isAdmin,
           email: cred.user.email,
-          photoURL: photoURL,
+          photoURL: uploadedPhotoURL,
           createdAt: Date.now()
         });
 
-        // === 4) KIRIM PAYLOAD KE KODULAR ===
+        // === Kirim payload ke Kodular ===
         const payload = JSON.stringify({
           event: "register",
           status: "success",
@@ -354,7 +406,7 @@
           spec: spec,
           role: isAdmin ? "admin" : "user",
           isAdmin: isAdmin,
-          photoURL: photoURL,
+          photoURL: uploadedPhotoURL,
           ts: Date.now()
         });
         if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
@@ -363,8 +415,8 @@
         setTimeout(()=>{ window.location.href = "index.html"; }, 1200);
 
       } catch (err) {
-        // Jika upload/simpan gagal setelah akun dibuat, opsional hapus akun agar tidak ada akun "yatim"
-        try { if (cred?.user) await deleteUser(cred.user); } catch(_) {}
+        // Jika link gagal dan user masih anonymous, opsional hapus user supaya tidak nyangkut
+        try { if (auth.currentUser && auth.currentUser.isAnonymous) await deleteUser(auth.currentUser); } catch(_) {}
         const map = {
           "auth/email-already-in-use": "Email sudah terdaftar.",
           "auth/invalid-email": "Format email tidak valid.",
