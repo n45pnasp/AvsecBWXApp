@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Daftar Akun Avsec BWX App</title>
+  <title>Daftar Akun Avsec App</title>
   <style>
     :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --accent-2:#16a34a; --danger:#ef4444; }
     * { box-sizing: border-box; font-family: system-ui, sans-serif; }
@@ -40,36 +40,39 @@
     .success { background:#14532d; color:#bbf7d0; }
     .small { text-align:center; font-size:12px; color:var(--muted); margin-top:8px; }
     .small a { color:#a7f3d0; text-decoration:none; }
+    .hidden { display:none; }
 
-    /* Modal (popup) ala Google Form upload */
-    .modal-backdrop {
-      position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); z-index:50;
-    }
+    /* Modal (popup) – hanya ukuran yang disesuaikan, warna tetap */
+    .modal-backdrop { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); z-index:50; }
     .modal-backdrop.show { display:grid; }
     .modal {
-      width:min(92vw,420px); background:rgba(17,24,39,.98); border:1px solid rgba(148,163,184,.25);
-      border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.45);
+      width:min(92vw, 360px);  /* lebih kecil agar pas di HP */
+      background:rgba(17,24,39,.98);
+      border:1px solid rgba(148,163,184,.25);
+      border-radius:14px;
+      padding:14px;
+      box-shadow:0 10px 30px rgba(0,0,0,.45);
       animation:pop .2s ease-out both;
     }
-    .modal h3 { margin:0 0 6px; font-size:18px; }
-    .modal p  { margin:0 0 10px; color:var(--muted); font-size:13px; }
+    .modal h3 { margin:0 0 6px; font-size:16px; }
+    .modal p  { margin:0 0 10px; color:var(--muted); font-size:12px; }
     .modal input[type=file] {
-      width:100%; padding:10px; border-radius:10px; border:1px dashed rgba(148,163,184,.35); background:#0b1220;
+      width:100%; padding:10px; border-radius:10px; border:1px dashed rgba(148,163,184,.35); background:#0b1220; color:var(--text);
     }
-    .modal .actions { display:flex; gap:8px; margin-top:12px; }
+    .modal .actions { display:flex; gap:8px; margin-top:10px; }
     .bar{height:8px;background:#0b1220;border:1px solid rgba(148,163,184,.25);border-radius:8px;overflow:hidden;margin-top:10px}
     .fill{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#16a34a)}
     .preview { margin-top:10px; display:none; }
-    .preview img { max-width:100%; border-radius:12px; border:1px solid rgba(148,163,184,.15); }
+    .preview img { max-width:100%; max-height:42vh; object-fit:contain; border-radius:12px; border:1px solid rgba(148,163,184,.15); }
 
-    .overlay {
-      position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:60;
+    @media (min-width: 768px){
+      .modal { width:min(80vw, 380px); } /* sedikit lega di desktop */
     }
+
+    /* Overlay proses (spinner) */
+    .overlay { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:60; }
     .overlay.show { display:grid; }
-    .spinner {
-      width:54px; height:54px; border:5px solid rgba(255,255,255,.25); border-top-color:#22c55e; border-radius:50%;
-      animation:spin 1s linear infinite;
-    }
+    .spinner { width:54px; height:54px; border:5px solid rgba(255,255,255,.25); border-top-color:#22c55e; border-radius:50%; animation:spin 1s linear infinite; }
 
     @keyframes pop { from{opacity:.0; transform:translateY(6px) scale(.98)} to{opacity:1; transform:none} }
     @keyframes spin { to{ transform:rotate(360deg) } }
@@ -127,7 +130,7 @@
     <div class="small">Sudah punya akun? <a href="index.html">Masuk</a></div>
   </div>
 
-  <!-- Modal upload ala Google Form -->
+  <!-- Modal upload -->
   <div id="modalBack" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <h3 id="modalTitle">Unggah Foto</h3>
@@ -143,7 +146,7 @@
     </div>
   </div>
 
-  <!-- Overlay proses (register+upload) -->
+  <!-- Overlay proses -->
   <div id="overlay" class="overlay"><div class="spinner"></div></div>
 
   <script type="module">
@@ -201,8 +204,8 @@
 
     const overlay = $("#overlay");
 
-    let selectedFile = null;      // File yang dipilih di modal (belum diupload)
-    let selectedThumbURL = "";    // ObjectURL untuk preview/thumbnail
+    let selectedFile = null;      // file yang dipilih (belum diupload)
+    let selectedThumbURL = "";    // objectURL untuk preview
 
     const showMsg=(t,type="error")=>{ msgBox.textContent=t; msgBox.className="msg "+type; msgBox.style.display="block"; };
     const showModalMsg=(t,type="error")=>{ modalMsg.textContent=t; modalMsg.className="msg "+type; modalMsg.style.display="block"; };
@@ -245,7 +248,6 @@
 
     saveFile.addEventListener("click", ()=>{
       if (!selectedFile) { showModalMsg("Belum ada file dipilih.", "error"); return; }
-      // tampilkan chip ringkas di form
       fileNameEl.textContent = selectedFile.name;
       if (selectedThumbURL) { thumb.src = selectedThumbURL; fileChip.classList.add("has-thumb"); }
       fileChip.style.display = "inline-flex";
@@ -285,7 +287,6 @@
         if (!adminCode) return showMsg("Kode Admin wajib diisi untuk membuat akun Admin.");
         if (adminCode !== ADMIN_CODE) {
           showMsg("Kode Admin salah. Akun akan dibuat sebagai Non-Admin.", "error");
-          // lanjut tapi set Non-Admin
         } else {
           isAdmin = true;
         }
@@ -304,37 +305,41 @@
         // 2) Set displayName
         await updateProfile(cred.user, { displayName: nama });
 
-        // 3) Jika ada file terpilih → upload ke Storage (setelah user ada)
+        // 3) Upload foto (kalau ada) — diperbaiki: bungkus UploadTask jadi Promise
         if (selectedFile) {
           const safeName = selectedFile.name.replace(/[^\w.\-]+/g, "_");
           const path = `user_uploads/${cred.user.uid}/${Date.now()}-${safeName}`;
           const storageRef = sRef(stg, path);
           const task = uploadBytesResumable(storageRef, selectedFile, { contentType: selectedFile.type });
 
-          // progress bar di modal (biar kelihatan kalau masih terbuka)
-          task.on("state_changed", (snap)=>{
-            const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-            fill.style.width = pct + "%";
+          await new Promise((resolve, reject) => {
+            task.on(
+              "state_changed",
+              (snap) => {
+                const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+                fill.style.width = pct + "%";
+              },
+              (err) => reject(err),
+              () => resolve()
+            );
           });
 
-          await task;
           photoURL = await getDownloadURL(storageRef);
-
           try { await updateProfile(cred.user, { photoURL }); } catch(_) {}
         }
 
-        // 4) Simpan profil ke RTDB
+        // 4) Simpan profil ke Realtime Database
         await set(ref(db, `users/${cred.user.uid}`), {
           name: nama,
           spec: spec,                    // basic | junior | senior
           role: isAdmin ? "admin" : "user",
           isAdmin: isAdmin,
           email: cred.user.email,
-          photoURL: photoURL || null,    // simpan URL foto kalau ada
+          photoURL: photoURL || null,
           createdAt: Date.now()
         });
 
-        // 5) Beri tahu Kodular
+        // 5) Kirim payload ke Kodular (opsional)
         const payload = JSON.stringify({
           event: "register",
           status: "success",
@@ -344,14 +349,12 @@
           spec: spec,
           role: isAdmin ? "admin" : "user",
           isAdmin: isAdmin,
-          photoURL: photoURL,            // bisa null jika tidak upload
+          photoURL: photoURL,
           ts: Date.now()
         });
         if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
 
         showMsg(`Pendaftaran berhasil! Selamat datang, ${nama} [${spec}] ${isAdmin ? "(Admin)" : ""}.`, "success");
-
-        // 6) Pindah ke halaman login
         setTimeout(()=>{ window.location.href = "index.html"; }, 1200);
       } catch (err) {
         const map = {
