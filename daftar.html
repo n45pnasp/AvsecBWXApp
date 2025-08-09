@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Daftar Akun App</title>
+  <title>Daftar Akun</title>
   <style>
     :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --accent-2:#16a34a; }
     * { box-sizing: border-box; font-family: system-ui, sans-serif; }
@@ -13,13 +13,13 @@
     }
     .card { background:rgba(17,24,39,.85); border:1px solid rgba(148,163,184,.15); border-radius:18px; padding:24px; max-width:380px; width:100%; }
     h1 { margin:0 0 8px; font-size:26px; text-align:center; }
-    p { margin:0 0 18px; font-size:14px; color:var(--muted); text-align:center; }
+    p  { margin:0 0 18px; font-size:14px; color:var(--muted); text-align:center; }
     label { font-size:14px; color:var(--muted); display:block; margin-bottom:4px; }
-    input {
+    input, select {
       width:100%; padding:12px; border-radius:10px; border:1px solid rgba(148,163,184,.25);
       background:#0b1220; color:var(--text); font-size:14px; margin-bottom:14px;
     }
-    input:focus { border-color:var(--accent); outline:none; }
+    input:focus, select:focus { border-color:var(--accent); outline:none; }
     button {
       width:100%; padding:12px; border-radius:10px; border:none;
       background:var(--accent); color:#052e16; font-weight:600; cursor:pointer;
@@ -36,11 +36,19 @@
 <body>
   <div class="card">
     <h1>Daftar</h1>
-    <p>Buat akun baru dengan nama lengkap, email, dan kata sandi.</p>
+    <p>Buat akun baru dengan <b>nama lengkap (2 kata)</b>, spesifikasi, email, dan kata sandi.</p>
 
     <form id="registerForm" novalidate>
-      <label for="nama">Nama Lengkap</label>
+      <label for="nama">Nama Lengkap (2 kata)</label>
       <input type="text" id="nama" placeholder="Contoh: Budi Santoso" required />
+
+      <label for="spec">Spesifikasi</label>
+      <select id="spec" required>
+        <option value="" disabled selected>Pilih spesifikasi</option>
+        <option value="basic">Basic</option>
+        <option value="junior">Junior</option>
+        <option value="senior">Senior</option>
+      </select>
 
       <label for="email">Email</label>
       <input type="email" id="email" placeholder="nama@domain.com" required />
@@ -58,8 +66,9 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-    // Konfigurasi Firebase (diperbaiki storageBucket)
+    // KONFIG FIREBASE (sudah diisi, ganti databaseURL jika beda)
     const firebaseConfig = {
       apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
       authDomain: "avsecbwx-4229c.firebaseapp.com",
@@ -67,83 +76,82 @@
       storageBucket: "avsecbwx-4229c.appspot.com",
       messagingSenderId: "1029406629258",
       appId: "1:1029406629258:web:53e8f09585cd77823efc73",
-      measurementId: "G-P37F88HGFE"
+      measurementId: "G-P37F88HGFE",
+      databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com/"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db   = getDatabase(app);
 
     const form = document.getElementById("registerForm");
     const namaEl = document.getElementById("nama");
+    const specEl = document.getElementById("spec");
     const emailEl = document.getElementById("email");
     const passEl = document.getElementById("password");
     const msgBox = document.getElementById("msgBox");
     const submitBtn = document.getElementById("submitBtn");
 
-    function showMsg(text, type="error") {
-      msgBox.textContent = text;
-      msgBox.className = "msg " + type;
-      msgBox.style.display = "block";
-    }
-
-    function formatNama(nama) {
-      return nama
-        .trim()
-        .split(/\s+/)
-        .map(k => k.charAt(0).toUpperCase() + k.slice(1).toLowerCase())
-        .join(" ");
-    }
+    const showMsg = (t, type="error") => { msgBox.textContent=t; msgBox.className="msg "+type; msgBox.style.display="block"; };
+    const formatNama = (s)=> s.trim().split(/\s+/).map(k=>k[0]?.toUpperCase()+k.slice(1).toLowerCase()).join(" ");
 
     form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      msgBox.style.display = "none";
+      e.preventDefault(); msgBox.style.display="none";
 
-      let nama = namaEl.value;
+      let nama = namaEl.value.trim();
+      const spec = specEl.value;
       const email = emailEl.value.trim();
-      const pass = passEl.value;
+      const pass  = passEl.value;
 
-      // Validasi nama: huruf semua bahasa + spasi/titik/apostrof/hyphen, minimal 2 kata
-      const onlyLetters = /^[\p{L}\s.'-]+$/u.test(nama.trim());
-      const words = nama.trim().split(/\s+/);
-      if (!onlyLetters) {
-        showMsg("Nama hanya boleh huruf dan spasi (boleh titik, apostrof, dan tanda hubung).", "error");
-        return;
-      }
-      if (words.length < 2) {
-        showMsg("Nama lengkap harus minimal 2 kata.", "error");
-        return;
-      }
+      // Validasi nama: huruf semua bahasa + spasi/titik/apostrof/hyphen, HARUS 2 kata
+      const onlyLetters = /^[\p{L}\s.'-]+$/u.test(nama);
+      const words = nama.split(/\s+/).filter(Boolean);
+
+      if (!onlyLetters) return showMsg("Nama hanya boleh huruf dan spasi (boleh titik, apostrof, tanda hubung).");
+      if (words.length < 2) return showMsg("Nama lengkap minimal 2 kata.");
+      if (words.length > 2) return showMsg("Nama lengkap maksimal 2 kata.");
+      if (!spec) return showMsg("Silakan pilih spesifikasi.");
+
+      // Format kapitalisasi
       nama = formatNama(nama);
 
       submitBtn.disabled = true;
       try {
+        // Buat user
         const cred = await createUserWithEmailAndPassword(auth, email, pass);
+
+        // Set displayName di Auth
         await updateProfile(cred.user, { displayName: nama });
 
-        // Kirim info ke Kodular (opsional)
+        // Simpan profil ke Realtime Database
+        await set(ref(db, `users/${cred.user.uid}`), {
+          name: nama,
+          spec: spec,           // basic | junior | senior
+          email: cred.user.email,
+          createdAt: Date.now()
+        });
+
+        // Beri tahu Kodular (opsional)
         const payload = JSON.stringify({
           event: "register",
           status: "success",
           uid: cred.user.uid,
           email: cred.user.email,
           name: nama,
+          spec: spec,
           ts: Date.now()
         });
-        if (window.AppInventor?.setWebViewString) {
-          window.AppInventor.setWebViewString(payload);
-        }
+        if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
 
-        showMsg("Pendaftaran berhasil! Selamat datang, " + nama + ".", "success");
-
-        // Redirect ke login
-        setTimeout(() => { window.location.href = "index.html"; }, 1200);
+        showMsg(`Pendaftaran berhasil! Selamat datang, ${nama} (${spec}).`, "success");
+        setTimeout(()=>{ window.location.href = "index.html"; }, 1200);
       } catch (err) {
         const map = {
           "auth/email-already-in-use": "Email sudah terdaftar.",
           "auth/invalid-email": "Format email tidak valid.",
           "auth/weak-password": "Kata sandi minimal 6 karakter."
         };
-        showMsg(map[err.code] || "Gagal daftar: " + err.message, "error");
+        showMsg(map[err.code] || "Gagal daftar: " + err.message);
       } finally {
         submitBtn.disabled = false;
       }
