@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Daftar Akun + Upload Foto</title>
+  <title>Daftar Akun Avsec BWX App</title>
   <style>
     :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --accent-2:#16a34a; --danger:#ef4444; }
     * { box-sizing: border-box; font-family: system-ui, sans-serif; }
@@ -40,16 +40,17 @@
     .modal .actions { display:flex; gap:8px; margin-top:10px; }
     .bar{height:8px;background:#0b1220;border:1px solid rgba(148,163,184,.25);border-radius:8px;overflow:hidden;margin-top:10px}
     .fill{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#16a34a)}
+    .fill.indet{ animation:indet 1.2s linear infinite; }
     .preview { margin-top:10px; display:none; }
     .preview img { max-width:100%; max-height:42vh; object-fit:contain; border-radius:12px; border:1px solid rgba(148,163,184,.15); }
+    @keyframes pop { from{opacity:.0; transform:translateY(6px) scale(.98)} to{opacity:1; transform:none} }
+    @keyframes indet { 0%{width:5%} 50%{width:85%} 100%{width:5%} }
     @media (min-width: 768px){ .modal { width:min(80vw, 380px); } }
 
     /* Overlay proses */
     .overlay { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:60; }
     .overlay.show { display:grid; }
     .spinner { width:54px; height:54px; border:5px solid rgba(255,255,255,.25); border-top-color:#22c55e; border-radius:50%; animation:spin 1s linear infinite; }
-
-    @keyframes pop { from{opacity:.0; transform:translateY(6px) scale(.98)} to{opacity:1; transform:none} }
     @keyframes spin { to{ transform:rotate(360deg) } }
   </style>
 </head>
@@ -110,10 +111,19 @@
   <div id="modalBack" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <h3 id="modalTitle">Unggah Foto</h3>
-      <p>Pilih gambar (maks 5 MB). Begitu dipilih, proses upload akan berjalan dan progress terlihat di bawah.</p>
-      <input id="file" type="file" accept="image/*" />
+      <p>Pilih gambar (maks 5 MB). Setelah dipilih, upload akan berjalan dan progress terlihat di bawah.</p>
+
+      <!-- Form upload langsung ke GAS -->
+      <form id="uploadForm" method="post" enctype="multipart/form-data" target="uploadFrame">
+        <input id="file" name="file" type="file" accept="image/*" />
+        <!-- optional: kirim folderId Drive kalau perlu -->
+        <!-- <input type="hidden" name="folderId" value="PASTE_FOLDER_ID"> -->
+      </form>
+      <iframe id="uploadFrame" name="uploadFrame" style="display:none;"></iframe>
+
       <div class="preview"><img id="previewImg" alt="Preview" /></div>
       <div class="bar"><div id="fill" class="fill"></div></div>
+
       <div class="actions">
         <button id="saveFile" type="button" disabled>Simpan Pilihan</button>
         <button id="cancelFile" type="button" class="btn-ghost">Batal</button>
@@ -132,26 +142,26 @@
       linkWithCredential, EmailAuthProvider, updateProfile, deleteUser
     } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-    import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
-    // ====== KONFIG FIREBASE ======
+    // ====== KONFIG FIREBASE (AUTH + RTDB SAJA) ======
     const firebaseConfig = {
       apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
       authDomain: "avsecbwx-4229c.firebaseapp.com",
       projectId: "avsecbwx-4229c",
-      storageBucket: "avsecbwx-4229c.appspot.com",
       messagingSenderId: "1029406629258",
       appId: "1:1029406629258:web:53e8f09585cd77823efc73",
       measurementId: "G-P37F88HGFE",
       databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
     };
 
-    const ADMIN_CODE = "BWX-ADMIN"; // ganti sesuai kebutuhan
+    // ====== URL GAS WEB APP (GANTI DENGAN PUNYAMU) ======
+    const GAS_UPLOAD_URL = "https://script.google.com/macros/s/PASTE_DEPLOYMENT_ID/exec"; // ← ganti
+
+    const ADMIN_CODE = "BWX-ADMIN"; // ganti jika perlu
 
     const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getDatabase(app);
-    const stg  = getStorage(app);
 
     // EL
     const $ = (q)=>document.querySelector(q);
@@ -173,6 +183,7 @@
     const thumb = $("#thumb");
 
     const modalBack = $("#modalBack");
+    const uploadForm = $("#uploadForm");
     const fileEl = $("#file");
     const saveFile = $("#saveFile");
     const cancelFile = $("#cancelFile");
@@ -180,11 +191,12 @@
     const previewBox = document.querySelector(".preview");
     const previewImg = $("#previewImg");
     const fill = $("#fill");
+    const uploadFrame = $("#uploadFrame");
 
     const overlay = $("#overlay");
 
     let uploadedPhotoURL = null;   // URL hasil upload (wajib)
-    let currentUID = null;         // UID (anon) untuk path Storage
+    let currentUID = null;         // UID anonymous untuk link nanti
     let uploading = false;
 
     const showMsg=(t,type="error")=>{ msgBox.textContent=t; msgBox.className="msg "+type; msgBox.style.display="block"; };
@@ -197,42 +209,65 @@
       if (!wantAdmin) adminCodeEl.value = "";
     });
 
-    // ===== Pantau user (ambil UID jika ada) =====
     onAuthStateChanged(auth, (user)=>{ currentUID = user?.uid || null; });
 
-    // ===== Buka popup upload → pastikan login anonymous & simpan UID =====
+    // === Buka popup upload: login anonymous dulu (untuk UID konsisten) ===
     openUpload.addEventListener("click", async ()=>{
       modalMsg.style.display="none";
       previewBox.style.display = "none";
+      fill.classList.remove("indet");
       fill.style.width = "0%";
       fileEl.value = "";
       saveFile.disabled = true;
       uploadedPhotoURL = null;
 
+      // siapkan auth anon
       try {
-        let user = auth.currentUser;
-        if (!user) {
-          const res = await signInAnonymously(auth);
-          user = res.user;
-        }
-        currentUID = user.uid; // ✅ pakai currentUID untuk path Storage
+        if (!auth.currentUser) await signInAnonymously(auth);
+        currentUID = auth.currentUser.uid;
       } catch (e) {
         showMsg("Gagal menyiapkan sesi upload: " + (e.message || e), "error");
         return;
       }
 
+      // set action GAS (bisa kirim UID supaya file dinamai rapi)
+      uploadForm.action = GAS_UPLOAD_URL + "?uid=" + encodeURIComponent(currentUID);
       modalBack.classList.add("show");
       modalBack.setAttribute("aria-hidden","false");
     });
 
     cancelFile.addEventListener("click", ()=>{
-      if (uploading) return; // cegah tutup saat upload
+      if (uploading) return;
       modalBack.classList.remove("show");
       modalBack.setAttribute("aria-hidden","true");
     });
 
-    // ===== Pilih file → langsung upload (progress di popup) =====
-    fileEl.addEventListener("change", async ()=>{
+    // === Terima hasil dari GAS via postMessage (dari iframe) ===
+    window.addEventListener("message", (ev)=>{
+      // Opsional: batasi origin jika kamu mau
+      // if (!String(ev.origin).includes("script.google.com")) return;
+
+      try{
+        const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
+        if (data && data.event === "upload_done") {
+          uploading = false;
+          fill.classList.remove("indet");
+          fill.style.width = "100%";
+          if (data.ok && data.photoURL) {
+            uploadedPhotoURL = data.photoURL;
+            saveFile.disabled = false;
+            showModalMsg("Upload selesai. Klik 'Simpan Pilihan'.", "success");
+          } else {
+            uploadedPhotoURL = null;
+            saveFile.disabled = true;
+            showModalMsg(data.error || "Upload gagal.", "error");
+          }
+        }
+      }catch(_){}
+    });
+
+    // === Saat pilih file → submit form ke iframe (tanpa CORS), progress indeterminate ===
+    fileEl.addEventListener("change", ()=>{
       modalMsg.style.display="none";
       const f = fileEl.files?.[0];
       if (!f) { previewBox.style.display="none"; saveFile.disabled = true; return; }
@@ -245,69 +280,49 @@
       const objURL = URL.createObjectURL(f);
       previewImg.src = objURL;
 
-      if (!currentUID) {
-        showModalMsg("Sesi upload belum siap. Cobalah buka ulang popup.", "error");
-        URL.revokeObjectURL(objURL);
-        return;
-      }
-
+      // mulai upload (indeterminate progress)
       uploading = true;
       saveFile.disabled = true;
       uploadedPhotoURL = null;
-      fill.style.width = "0%";
-
-      const safeName = f.name.replace(/[^\w.\-]+/g, "_");
-      const path = `user_uploads/${currentUID}/${Date.now()}-${safeName}`;
-      const storageRef = sRef(stg, path);
-      const task = uploadBytesResumable(storageRef, f, { contentType: f.type });
-
-      await new Promise((resolve, reject)=>{
-        task.on("state_changed",
-          (snap)=>{
-            const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-            fill.style.width = pct + "%";
-          },
-          (err)=>reject(err),
-          ()=>resolve()
-        );
-      }).then(async ()=>{
-        uploadedPhotoURL = await getDownloadURL(storageRef);
-        saveFile.disabled = false;              // ✅ boleh simpan pilihan
-        showModalMsg("Upload selesai. Klik 'Simpan Pilihan'.", "success");
-      }).catch((e)=>{
-        showModalMsg("Gagal upload: " + (e.message || e), "error");
-        saveFile.disabled = true;
-        uploadedPhotoURL = null;
-      }).finally(()=>{
-        uploading = false;
-        URL.revokeObjectURL(objURL);
-      });
+      fill.classList.add("indet");
+      try {
+        uploadForm.submit(); // ← upload ke GAS via iframe
+      } catch (e) {
+        fill.classList.remove("indet");
+        showModalMsg("Gagal mulai upload: " + (e.message || e), "error");
+      } finally {
+        // cleanup preview URL
+        setTimeout(()=> URL.revokeObjectURL(objURL), 1500);
+      }
     });
 
-    // ===== Simpan pilihan (tampil chip + enable Daftar) =====
+    // === Simpan pilihan (tampilkan chip, aktifkan tombol daftar) ===
+    const fileChip = $("#fileChip");
+    const fileNameEl = $("#fileName");
+    const thumb = $("#thumb");
     saveFile.addEventListener("click", ()=>{
       if (!uploadedPhotoURL) { showModalMsg("Belum ada foto yang berhasil diupload.", "error"); return; }
-      const url = new URL(uploadedPhotoURL);
-      const last = url.pathname.split("/").pop() || "foto";
-      const nameShown = decodeURIComponent(last).split("?")[0];
-      fileNameEl.textContent = nameShown;
+      try{
+        const u = new URL(uploadedPhotoURL);
+        const last = decodeURIComponent(u.searchParams.get("id") || "").split("/").pop() || "foto";
+        fileNameEl.textContent = last || "foto";
+      }catch{ fileNameEl.textContent = "foto"; }
       thumb.src = uploadedPhotoURL;
       fileChip.classList.add("has-thumb");
       fileChip.style.display = "inline-flex";
-      submitBtn.disabled = false;           // ✅ form siap daftar
+      document.getElementById("submitBtn").disabled = false;
       modalBack.classList.remove("show");
       modalBack.setAttribute("aria-hidden","true");
     });
 
-    // Reset chip (tidak menghapus file di storage, hanya reset pilihan)
     clearFileBtn.addEventListener("click", ()=>{
       uploadedPhotoURL = null;
       fileChip.style.display = "none";
       fileChip.classList.remove("has-thumb");
-      submitBtn.disabled = true;
+      document.getElementById("submitBtn").disabled = true;
     });
 
-    // ===== Submit daftar (link anon → email/pass, simpan profil) =====
+    // === Submit pendaftaran: link anon → email/pass; simpan ke RTDB ===
     form.addEventListener("submit", async (e)=>{
       e.preventDefault(); msgBox.style.display="none";
 
@@ -324,20 +339,21 @@
       if (words.length < 2) return showMsg("Nama lengkap minimal 2 kata.");
       if (words.length > 2) return showMsg("Nama lengkap maksimal 2 kata.");
       if (!spec) return showMsg("Silakan pilih spesifikasi.");
-      if (!uploadedPhotoURL) { showMsg("Foto profil wajib diunggah & disimpan dulu."); return; }
+      if (!uploadedPhotoURL) return showMsg("Foto profil wajib diunggah & disimpan dulu.");
 
       let isAdmin = false;
       if (roleReq === "admin") {
         if (!adminCode) return showMsg("Kode Admin wajib diisi untuk membuat akun Admin.");
-        if (adminCode !== ADMIN_CODE) showMsg("Kode Admin salah. Akun akan dibuat sebagai Non-Admin.");
+        if (adminCode !== "BWX-ADMIN") showMsg("Kode Admin salah. Akun akan dibuat sebagai Non-Admin.");
         else isAdmin = true;
       }
 
       nama = formatNama(nama);
-      submitBtn.disabled = true; overlay.classList.add("show");
+      document.getElementById("submitBtn").disabled = true;
+      overlay.classList.add("show");
 
       try {
-        if (!auth.currentUser) { const res = await signInAnonymously(auth); currentUID = res.user.uid; }
+        if (!auth.currentUser) await signInAnonymously(auth);
         const credential = EmailAuthProvider.credential(email, pass);
         const cred = await linkWithCredential(auth.currentUser, credential); // UID tetap
 
@@ -364,7 +380,8 @@
         };
         showMsg(map[err.code] || ("Gagal daftar: " + (err.message || err)));
       } finally {
-        submitBtn.disabled = false; overlay.classList.remove("show");
+        document.getElementById("submitBtn").disabled = false;
+        overlay.classList.remove("show");
       }
     });
   </script>
