@@ -48,7 +48,8 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
   if (!logoEl) return;
   logoEl.dataset.loading = "1";
   const params = new URLSearchParams(location.search);
-  const url = params.get("logo") || window.LOGO_URL || "logohome.png"; // <- default
+  const basePath = location.pathname.substring(0, location.pathname.lastIndexOf("/") + 1);
+  const url = params.get("logo") || window.LOGO_URL || `${basePath}logohome.png?v=${Date.now()}`;
   const fallback = "data:image/svg+xml;base64," + btoa(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'>
       <rect width='256' height='256' rx='40' fill='#0b1220'/>
