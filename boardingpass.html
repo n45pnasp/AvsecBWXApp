@@ -2,8 +2,10 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
-  <title>Boarding Pass Scanner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>📷 Boarding Pass Scanner</title>
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     * {
       box-sizing: border-box;
@@ -13,10 +15,10 @@
 
     body {
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #f4f6f9, #e9edf2);
+      background: linear-gradient(135deg, #1f1f1f, #2c2c2c);
+      color: #eee;
       min-height: 100vh;
       padding: 20px;
-      color: #333;
       transition: all 0.3s ease;
       display: flex;
       justify-content: center;
@@ -51,21 +53,21 @@
     }
 
     .card {
-      background-color: #fff;
+      background-color: #333;
       border-radius: 20px;
       padding: 20px;
       margin-bottom: 16px;
       width: 100%;
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
       transition: background-color 0.3s ease;
     }
 
     .label {
       font-size: 1rem;
       font-weight: 600;
-      color: #4a4a4a;
+      color: #ccc;
       margin-bottom: 12px;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid #555;
       padding-bottom: 6px;
     }
 
@@ -87,14 +89,14 @@
       padding: 14px 20px;
       font-weight: 700;
       font-size: 1rem;
-      color: #555;
-      background: linear-gradient(145deg, #f0f2f5, #d9dde3);
+      color: #ccc;
+      background: linear-gradient(145deg, #3a3a3a, #242424);
       border-radius: 16px;
       border: none;
       cursor: pointer;
       box-shadow:
-        8px 8px 15px #b8bec6,
-        -8px -8px 15px #ffffff;
+        8px 8px 15px #1e1e1e,
+        -8px -8px 15px #4a4a4a;
       transition: all 0.25s ease;
       display: flex;
       align-items: center;
@@ -104,83 +106,187 @@
     }
 
     .btn:hover {
-      background: linear-gradient(145deg, #e6e9ef, #c7ccd5);
+      background: linear-gradient(145deg, #2f2f2f, #1a1a1a);
       box-shadow:
-        4px 4px 10px #a1a8b2,
-        -4px -4px 10px #fefefe;
+        4px 4px 10px #171717,
+        -4px -4px 10px #525252;
+      color: #eee;
       transform: translateY(-2px);
-      color: #444;
     }
 
     .btn:active {
-      background: linear-gradient(145deg, #c2c8d1, #a7aebc);
-      box-shadow: inset 4px 4px 8px #8b9099,
-        inset -4px -4px 8px #d6dbdf;
+      background: linear-gradient(145deg, #212121, #121212);
+      box-shadow: inset 4px 4px 8px #0d0d0d,
+        inset -4px -4px 8px #292929;
       transform: translateY(0);
-      color: #333;
+      color: #ddd;
     }
 
-    /* ====== Layout viewer ====== */
-    .viewer-header {
-      position: fixed; top:0; left:0; right:0; z-index:100;
-      background: var(--panel, #111b21);
-      border-bottom: 1px solid var(--border, #2a3942);
-      height: 44px; display:flex; align-items:center; gap:10px;
-      padding: 0 12px; color: var(--text, #e9edef); font-weight:600;
-      -webkit-user-select: none; user-select: none;
+    #historyCard {
+      display: none;
     }
-    .back-btn {
-      display:inline-flex; align-items:center; justify-content:center;
-      height: 32px; padding: 0 10px; border-radius: 8px;
-      background: #2a3942; color: var(--text, #e9edef);
-      border: 1px solid var(--border, #2a3942);
-      text-decoration: none; font-size: 13px; cursor: pointer;
-      transition: background .2s ease, transform .05s ease;
-    }
-    .back-btn:hover { background:#31424b; }
-    .back-btn:active { transform: translateY(1px); }
-
-    .title { flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-
-    .viewer-wrap {
-      position: fixed; top:44px; bottom:0; left:0; right:0;
-      background: var(--bg, #0b141a);
-      -webkit-user-select: none; user-select: none;
-    }
-    .viewer-frame {
-      width: 100%; height: 100%; border: 0; background: #000;
-    }
-
-    /* OPTIONAL: overlay anti-interaksi menutup iframe */
-    .no-interact {
-      position: absolute; inset: 0; z-index: 200;
-      background: transparent;
-      display: none; 
-    }
-
-    body {
-      -webkit-user-select: none; user-select: none;
-    }
-
-    * { -webkit-touch-callout: none; }
   </style>
 </head>
 <body>
-  <div class="viewer-header">
-    <a class="back-btn" href="index.html">← Kembali</a>
-    <div class="title" id="docTitle">Boarding Pass Scanner</div>
+  <div class="container">
+    <div class="header">
+      <h1>📷 Boarding Pass Scanner</h1>
+    </div>
+
+    <video id="video" autoplay></video>
+
+    <div class="card">
+      <div class="label">📄 Informasi Boarding Pass</div>
+      <div class="text" id="parsedOutput">Menunggu scan...</div>
+    </div>
+
+    <div class="button-row">
+      <button class="btn" onclick="toggleHistory()">📚 Riwayat</button>
+      <button class="btn" onclick="clearHistory()">🗑️ Hapus</button>
+    </div>
+
+    <div class="card" id="historyCard">
+      <div class="label">📜 Riwayat Scan</div>
+      <div class="text" id="scanHistoryText">Belum ada riwayat.</div>
+    </div>
   </div>
 
-  <div class="viewer-wrap">
-    <iframe id="pdfFrame" class="viewer-frame" src="about:blank" allow="fullscreen"></iframe>
-    <div class="no-interact" id="noInteract"></div>
-  </div>
+  <audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
   <script>
-    // Ambil query params
-    const params = new URLSearchParams(location.search);
-    const title = params.get('title') || 'Viewer SOP';
-    const src   = params.get('src') || '';
-    document.getElementById('docTitle').textContent = title;
+    const video = document.getElementById('video');
+    const parsedOutput = document.getElementById('parsedOutput');
+    const beepSound = document.getElementById('beep-sound');
+    const historyCard = document.getElementById('historyCard');
+    const scanHistoryText = document.getElementById('scanHistoryText');
 
-    // Valid
+    const airlineMap = {
+      ID: 'BATIK AIR',
+      IU: 'SUPER AIR JET',
+      QG: 'CITILINK',
+      GA: 'GARUDA INDONESIA',
+      JT: 'LION AIR',
+      IW: 'WINGS AIR',
+    };
+
+    function splitFromBack(str, maxSplits) {
+      const parts = [];
+      let remaining = str;
+      for (let i = 0; i < maxSplits; i++) {
+        const lastSpace = remaining.lastIndexOf(' ');
+        if (lastSpace === -1) break;
+        parts.unshift(remaining.slice(lastSpace + 1));
+        remaining = remaining.slice(0, lastSpace);
+      }
+      parts.unshift(remaining);
+      return parts;
+    }
+
+    function julianToDate(julianDay, year) {
+      const date = new Date(year, 0);
+      date.setDate(julianDay);
+      return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    function parseBoardingPass(data) {
+      if (!data.startsWith('M1')) return '❌ Format barcode tidak dikenali.';
+      const parts = splitFromBack(data, 5);
+      if (parts.length < 6) return '⚠️ Data tidak lengkap.';
+
+      const namaRaw = parts[0].substring(2);
+      const slashIndex = namaRaw.indexOf('/');
+      let fullName =
+        slashIndex === -1
+          ? namaRaw.replace(/_/g, ' ').trim()
+          : (namaRaw.substring(slashIndex + 1) + ' ' + namaRaw.substring(0, slashIndex)).replace(/_/g, ' ').trim();
+
+      const routeRaw = parts[2].substring(0, 6);
+      const origin = routeRaw.substring(0, 3);
+      const destination = routeRaw.substring(3, 6);
+      const originDisplay = origin !== 'BWX' ? `<span style="color:red;font-weight:bold">${origin}</span>` : origin;
+
+      const airlineCode = parts[2].slice(-2);
+      const airlineName = airlineMap[airlineCode] || airlineCode;
+      const flightNumber = parts[3];
+      const julianDay = parseInt(parts[4].substring(0, 3), 10);
+      const seat = parts[4].substring(4, 8);
+      const year = new Date().getFullYear();
+      const tanggal = julianToDate(julianDay, year);
+      const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      const tanggalFormatted = tanggal !== today ? `<span style="color:red;font-weight:bold">${tanggal}</span>` : tanggal;
+
+      return `✈️ Nama         : ${fullName}
+📅 Tanggal      : ${tanggalFormatted}
+🛫 Rute         : ${originDisplay} → ${destination}
+🛩️ Maskapai     : ${airlineName}
+✈️ Flight       : ${airlineCode} ${flightNumber}
+💺 No Kursi     : ${seat}`;
+    }
+
+    function saveScanToHistory(parsedText) {
+      let history = JSON.parse(localStorage.getItem('scanHistory') || '[]');
+      history.unshift({ text: parsedText, time: new Date().toLocaleString('id-ID') });
+      if (history.length > 50) history = history.slice(0, 50);
+      localStorage.setItem('scanHistory', JSON.stringify(history));
+    }
+
+    function loadScanHistory() {
+      const history = JSON.parse(localStorage.getItem('scanHistory') || '[]');
+      if (history.length === 0) {
+        scanHistoryText.textContent = 'Belum ada riwayat.';
+        return;
+      }
+      scanHistoryText.innerHTML = history
+        .map((h, i) => `#${i + 1} (${h.time})<br>${h.text}`)
+        .join('<br><br>');
+    }
+
+    function toggleHistory() {
+      if (historyCard.style.display === 'none') {
+        loadScanHistory();
+        historyCard.style.display = 'block';
+      } else {
+        historyCard.style.display = 'none';
+      }
+    }
+
+    function clearHistory() {
+      if (confirm('Yakin ingin menghapus semua riwayat scan?')) {
+        localStorage.removeItem('scanHistory');
+        scanHistoryText.textContent = 'Belum ada riwayat.';
+      }
+    }
+
+    const codeReader = new ZXing.BrowserMultiFormatReader();
+    let lastResult = '';
+    function playBeepTwice() {
+      beepSound.play();
+      setTimeout(() => beepSound.play(), 300);
+    }
+    function startCamera() {
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: 'environment' } })
+        .then((stream) => {
+          video.srcObject = stream;
+          video.play();
+          codeReader.decodeFromVideoDevice(null, video, (result, err) => {
+            if (result) {
+              const scannedText = result.getText();
+              if (scannedText !== lastResult) {
+                lastResult = scannedText;
+                const parsed = parseBoardingPass(scannedText);
+                parsedOutput.innerHTML = parsed;
+                saveScanToHistory(parsed);
+                playBeepTwice();
+              }
+            }
+          });
+        })
+        .catch((err) => {
+          parsedOutput.textContent = `❌ Kamera tidak bisa diakses: ${err.message}`;
+        });
+    }
+    startCamera();
+  </script>
+</body>
+</html>
