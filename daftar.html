@@ -5,20 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Daftar Akun App</title>
   <style>
-    :root {
-      --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb;
-      --accent:#22c55e; --accent-2:#16a34a;
-    }
+    :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --accent-2:#16a34a; }
     * { box-sizing: border-box; font-family: system-ui, sans-serif; }
     body {
       margin:0; background:linear-gradient(180deg,#0b1220,#0f172a);
-      color:var(--text); display:grid; place-items:center; min-height:100vh;
-      padding:20px;
+      color:var(--text); display:grid; place-items:center; min-height:100vh; padding:20px;
     }
-    .card {
-      background:rgba(17,24,39,.85); border:1px solid rgba(148,163,184,.15);
-      border-radius:18px; padding:24px; max-width:380px; width:100%;
-    }
+    .card { background:rgba(17,24,39,.85); border:1px solid rgba(148,163,184,.15); border-radius:18px; padding:24px; max-width:380px; width:100%; }
     h1 { margin:0 0 8px; font-size:26px; text-align:center; }
     p { margin:0 0 18px; font-size:14px; color:var(--muted); text-align:center; }
     label { font-size:14px; color:var(--muted); display:block; margin-bottom:4px; }
@@ -31,12 +24,13 @@
       width:100%; padding:12px; border-radius:10px; border:none;
       background:var(--accent); color:#052e16; font-weight:600; cursor:pointer;
     }
-    button:hover { background:var(--accent-2); }
-    .msg {
-      margin-top:12px; font-size:14px; padding:10px; border-radius:8px; display:none;
-    }
+    button[disabled]{ opacity:.7; cursor:wait; }
+    button:hover:not([disabled]) { background:var(--accent-2); }
+    .msg { margin-top:12px; font-size:14px; padding:10px; border-radius:8px; display:none; }
     .error { background:#7f1d1d; color:#fecaca; }
     .success { background:#14532d; color:#bbf7d0; }
+    .small { text-align:center; font-size:12px; color:var(--muted); margin-top:8px; }
+    .small a { color:#a7f3d0; text-decoration:none; }
   </style>
 </head>
 <body>
@@ -44,7 +38,7 @@
     <h1>Daftar</h1>
     <p>Buat akun baru dengan nama lengkap, email, dan kata sandi.</p>
 
-    <form id="registerForm">
+    <form id="registerForm" novalidate>
       <label for="nama">Nama Lengkap</label>
       <input type="text" id="nama" placeholder="Contoh: Budi Santoso" required />
 
@@ -54,22 +48,23 @@
       <label for="password">Kata Sandi</label>
       <input type="password" id="password" placeholder="Minimal 6 karakter" minlength="6" required />
 
-      <button type="submit">Daftar</button>
+      <button id="submitBtn" type="submit">Daftar</button>
     </form>
 
     <div id="msgBox" class="msg"></div>
+    <div class="small">Sudah punya akun? <a href="index.html">Masuk</a></div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-    // Konfigurasi Firebase-mu
+    // Konfigurasi Firebase (diperbaiki storageBucket)
     const firebaseConfig = {
       apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
       authDomain: "avsecbwx-4229c.firebaseapp.com",
       projectId: "avsecbwx-4229c",
-      storageBucket: "avsecbwx-4229c.firebasestorage.app",
+      storageBucket: "avsecbwx-4229c.appspot.com",
       messagingSenderId: "1029406629258",
       appId: "1:1029406629258:web:53e8f09585cd77823efc73",
       measurementId: "G-P37F88HGFE"
@@ -83,6 +78,7 @@
     const emailEl = document.getElementById("email");
     const passEl = document.getElementById("password");
     const msgBox = document.getElementById("msgBox");
+    const submitBtn = document.getElementById("submitBtn");
 
     function showMsg(text, type="error") {
       msgBox.textContent = text;
@@ -92,9 +88,9 @@
 
     function formatNama(nama) {
       return nama
-        .split(" ")
-        .filter(Boolean)
-        .map(kata => kata.charAt(0).toUpperCase() + kata.slice(1).toLowerCase())
+        .trim()
+        .split(/\s+/)
+        .map(k => k.charAt(0).toUpperCase() + k.slice(1).toLowerCase())
         .join(" ");
     }
 
@@ -102,21 +98,24 @@
       e.preventDefault();
       msgBox.style.display = "none";
 
-      let nama = namaEl.value.trim();
+      let nama = namaEl.value;
       const email = emailEl.value.trim();
       const pass = passEl.value;
 
-      // Validasi nama: minimal 2 kata, hanya huruf dan spasi
-      if (!/^[A-Za-zÀ-ÿ\s]+$/.test(nama)) {
-        showMsg("Nama hanya boleh huruf dan spasi.", "error");
+      // Validasi nama: huruf semua bahasa + spasi/titik/apostrof/hyphen, minimal 2 kata
+      const onlyLetters = /^[\p{L}\s.'-]+$/u.test(nama.trim());
+      const words = nama.trim().split(/\s+/);
+      if (!onlyLetters) {
+        showMsg("Nama hanya boleh huruf dan spasi (boleh titik, apostrof, dan tanda hubung).", "error");
         return;
       }
-      if (nama.split(" ").length < 2) {
+      if (words.length < 2) {
         showMsg("Nama lengkap harus minimal 2 kata.", "error");
         return;
       }
       nama = formatNama(nama);
 
+      submitBtn.disabled = true;
       try {
         const cred = await createUserWithEmailAndPassword(auth, email, pass);
         await updateProfile(cred.user, { displayName: nama });
@@ -137,9 +136,7 @@
         showMsg("Pendaftaran berhasil! Selamat datang, " + nama + ".", "success");
 
         // Redirect ke login
-        setTimeout(() => {
-          window.location.href = "index.html"; // arahkan ke halaman login
-        }, 1500);
+        setTimeout(() => { window.location.href = "index.html"; }, 1200);
       } catch (err) {
         const map = {
           "auth/email-already-in-use": "Email sudah terdaftar.",
@@ -147,6 +144,8 @@
           "auth/weak-password": "Kata sandi minimal 6 karakter."
         };
         showMsg(map[err.code] || "Gagal daftar: " + err.message, "error");
+      } finally {
+        submitBtn.disabled = false;
       }
     });
   </script>
