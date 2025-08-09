@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <title>Viewer SOP</title>
+  <link rel="stylesheet" href="chatbot.css" />
+  <style>
+    /* ====== Layout viewer (selaras dengan style.css tema kamu) ====== */
+    .viewer-header {
+      position: fixed; top:0; left:0; right:0; z-index:100;
+      background: var(--panel, #111b21);
+      border-bottom: 1px solid var(--border, #2a3942);
+      height: 44px; display:flex; align-items:center; gap:10px;
+      padding: 0 12px; color: var(--text, #e9edef); font-weight:600;
+      -webkit-user-select: none; user-select: none;
+    }
+    .back-btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      height: 32px; padding: 0 10px; border-radius: 8px;
+      background: #2a3942; color: var(--text, #e9edef);
+      border: 1px solid var(--border, #2a3942);
+      text-decoration: none; font-size: 13px; cursor: pointer;
+      transition: background .2s ease, transform .05s ease;
+    }
+    .back-btn:hover { background:#31424b; }
+    .back-btn:active { transform: translateY(1px); }
+
+    .title { flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+
+    .viewer-wrap {
+      position: fixed; top:44px; bottom:0; left:0; right:0;
+      background: var(--bg, #0b141a);
+      /* Nonaktifkan seleksi di area viewer */
+      -webkit-user-select: none; user-select: none;
+    }
+    .viewer-frame {
+      width: 100%; height: 100%; border: 0; background: #000;
+    }
+
+    /* OPTIONAL (SANGAT KETAT): overlay anti-interaksi menutup iframe
+       PERINGATAN: ini akan memblok scroll & klik pada PDF
+       Aktifkan dengan hapus komentar 'display:none' di bawah */
+    .no-interact {
+      position: absolute; inset: 0; z-index: 200;
+      background: transparent;
+      display: none; /* <-- ubah ke 'block' kalau mau super ketat (tidak bisa dioperasikan) */
+      /* pointer-events: auto; */ /* default auto, cukup dengan display:block sudah blok interaksi */
+    }
+
+    /* Body: kurangi aksi copy/drag di halaman */
+    body {
+      -webkit-user-select: none; user-select: none;
+    }
+
+    /* Saat user coba pilih teks, tampilkan kursor default saja */
+    * { -webkit-touch-callout: none; }
+  </style>
+</head>
+<body>
+  <div class="viewer-header">
+    <a class="back-btn" href="index.html">← Kembali</a>
+    <div class="title" id="docTitle">Viewer SOP</div>
+    <!-- Diminta: hilangkan tombol "Buka di Tab Baru" -->
+  </div>
+
+  <div class="viewer-wrap">
+    <iframe id="pdfFrame" class="viewer-frame" src="about:blank" allow="fullscreen"></iframe>
+    <div class="no-interact" id="noInteract"></div>
+  </div>
+
+  <script>
+    // ====== Ambil query params ======
+    const params = new URLSearchParams(location.search);
+    const title = params.get('title') || 'Viewer SOP';
+    const src   = params.get('src') || '';
+    document.getElementById('docTitle').textContent = title;
+
+    // ====== Validasi URL dasar ======
+    function isSafeURL(u) {
+      try {
+        const x = new URL(u, location.href);
+        return /^https?:$/i.test(x.protocol);
+      } catch { return false; }
+    }
+
+    // ====== Set iframe src ======
+    const frame = document.getElementById('pdfFrame');
+    if (isSafeURL(src)) {
+      // Untuk Google Drive, idealnya sudah /preview dari index.html
+      frame.src = src;
+    } else {
+      frame.srcdoc = `
+        <html><body style="background:#0b141a;color:#e9edef;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100%;text-align:center;padding:16px;">
+          <div>
+            <h3>URL tidak valid</h3>
+            <p>Parameter <code>src</code> tidak ditemukan atau bukan URL http(s).</p>
+            <p><a href="index.html" style="color:#06cf9c;text-decoration:none;">Kembali ke Chatbot</a></p>
+          </div>
+        </body></html>`;
+    }
+
+    // ====== Proteksi dasar (best effort) ======
+    // 1) Blok klik kanan di halaman (CATATAN: tidak memblok klik kanan DI DALAM iframe lintas-origin)
+    document.addEventListener("contextmenu", e => e.preventDefault());
+
+    // 2) Nonaktifkan drag (untuk gambar/elemen)
+    document.addEventListener("dragstart", e => e.preventDefault());
+
+    // 3) Blok kombinasi tombol umum (best effort, tidak 100% di semua browser)
+    document.addEventListener("keydown", e => {
+      const k = e.key.toLowerCase();
+      const ctrl = e.ctrlKey || e.metaKey;
+
+      // Blok DevTools, Save, Copy, Print, View Source
+      if (
+        k === 'f12' ||
+        (ctrl && (k === 's' || k === 'p' || k === 'u' || k === 'c')) ||
+        (ctrl && e.shiftKey && (k === 'i' || k === 'j'))
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+
+      // PrintScreen (tidak selalu terdeteksi)
+      if (k === 'printscreen') {
+        // sebagian browser/OS mengabaikan ini
+        try { navigator.clipboard.writeText(''); } catch {}
+        alert('Screenshot dinonaktifkan (best effort).');
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }, { capture: true });
+
+    // 4) Nonaktifkan seleksi via JS (fallback tambahan)
+    document.addEventListener('selectstart', e => e.preventDefault(), { capture: true });
+
+    // ====== MODE KETAT (opsional): aktifkan overlay anti-interaksi ======
+    // Jika kamu benar-benar ingin tidak bisa dioperasikan (tidak bisa scroll/klik),
+    // set ini ke true. Default-nya false agar user masih bisa menggulir PDF.
+    const STRICT_VIEW_ONLY = false;
+    if (STRICT_VIEW_ONLY) {
+      document.getElementById('noInteract').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
