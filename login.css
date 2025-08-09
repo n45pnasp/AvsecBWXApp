@@ -1,0 +1,59 @@
+:root {
+  --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb;
+  --accent:#22c55e; --accent-2:#16a34a;
+}
+* { box-sizing:border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial; }
+body {
+  margin:0; background:linear-gradient(180deg,#0b1220,#0f172a);
+  color:var(--text); min-height:100svh; display:grid; place-items:center;
+}
+.wrap { width:100%; max-width:420px; padding:24px; }
+.card {
+  background:rgba(17,24,39,.75); border:1px solid rgba(148,163,184,.15);
+  border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,.35); overflow:hidden;
+}
+.section { padding:28px; display:none; }
+.section.active { display:block; animation:fade .25s ease; }
+@keyframes fade { from { opacity:.5; transform:translateY(6px);} to { opacity:1; transform:none;} }
+h1 { margin:0 0 8px; font-size:28px; line-height:1.2; }
+p { margin:0; color:var(--muted); }
+.cta { margin-top:18px; display:flex; gap:12px; }
+button, .btn {
+  width:100%; padding:12px 14px; border-radius:12px; border:1px solid transparent;
+  cursor:pointer; font-weight:600; background:var(--accent); color:#052e16;
+  transition:.15s transform ease, .15s background ease, .15s border-color ease, .15s opacity ease;
+}
+button:hover { background:var(--accent-2); }
+.ghost { background:transparent; color:var(--text); border-color:rgba(148,163,184,.25); }
+.ghost:hover { border-color:rgba(148,163,184,.45); }
+form { display:grid; gap:12px; margin-top:16px; }
+label { font-size:14px; color:var(--muted); }
+input {
+  width:100%; padding:12px 14px; border-radius:12px;
+  border:1px solid rgba(148,163,184,.25); background:#0b1220; color:var(--text);
+  outline:none;
+}
+input:focus { border-color:var(--accent); }
+.row { display:grid; gap:8px; }
+.hint { font-size:12px; color:var(--muted); margin-top:4px; }
+.error {
+  margin-top:10px; color:#fecaca; background:#7f1d1d; border:1px solid #fecaca33;
+  padding:10px 12px; border-radius:12px; display:none;
+}
+.error.show { display:block; }
+.fine {
+  margin-top:10px; color:#bbf7d0; background:#14532d; border:1px solid #22c55e33;
+  padding:10px 12px; border-radius:12px; display:none;
+}
+.fine.show { display:block; }
+.footer {
+  padding:12px 16px; text-align:center; font-size:12px; color:var(--muted);
+  border-top:1px dashed rgba(148,163,184,.2);
+}
+
+/* Logo */
+.logo-wrap { display:flex; justify-content:center; margin-bottom:14px; }
+.logo-wrap img {
+  width:120px; height:120px; object-fit:contain; border-radius:16px;
+  background:#0b1220; border:1px solid rgba(148,163,184,.15); padding:10px;
+}
