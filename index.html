@@ -2,35 +2,43 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
   <title>Welcome & Login</title>
   <link rel="stylesheet" href="login.css" />
+  <meta name="color-scheme" content="dark light" />
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
+  <main class="wrap">
+    <article class="card" aria-live="polite">
       <!-- WELCOME -->
-      <section id="welcome" class="section active">
+      <section id="welcome" class="section active" role="region" aria-label="Welcome">
         <div class="logo-wrap">
-          <img id="appLogo" alt="Logo" />
+          <img id="appLogo" alt="Logo Aplikasi" />
         </div>
-        <h1>Selamat Datang 👋</h1>
-        <p>Silakan masuk untuk melanjutkan ke halaman Home.</p>
+        <h1 class="title">Selamat Datang 👋</h1>
+        <p class="subtitle">Masuk untuk melanjutkan ke halaman Home.</p>
+
         <div class="cta">
-          <button id="goLoginBtn">Masuk</button>
+          <button id="goLoginBtn" class="btn">Masuk</button>
         </div>
-        <div class="hint">Autentikasi oleh Firebase. Jika akunmu masih aktif, kamu akan diarahkan otomatis.</div>
+
+        <div class="hint">
+          Autentikasi oleh Firebase. Jika sesi masih aktif, kamu akan diarahkan otomatis.
+        </div>
       </section>
 
       <!-- LOGIN -->
-      <section id="login" class="section">
-        <h1>Masuk</h1>
-        <p>Gunakan email & kata sandi terdaftar.</p>
+      <section id="login" class="section" role="region" aria-label="Login">
+        <h1 class="title">Masuk</h1>
+        <p class="subtitle">Gunakan email & kata sandi terdaftar.</p>
 
-        <form id="loginForm">
+        <form id="loginForm" novalidate>
           <div class="row">
             <label for="email">Email</label>
-            <input id="email" type="email" placeholder="nama@domain.com" autocomplete="username" required />
+            <input id="email" type="email" inputmode="email" placeholder="nama@domain.com" autocomplete="username" required />
           </div>
 
           <div class="row">
@@ -38,22 +46,23 @@
             <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" minlength="6" required />
           </div>
 
-          <button id="loginBtn" type="submit">Masuk</button>
-          <button id="backBtn" type="button" class="ghost">Kembali</button>
+          <button id="loginBtn" type="submit" class="btn">Masuk</button>
+          <button id="backBtn" type="button" class="btn ghost">Kembali</button>
         </form>
 
-        <div id="errBox" class="error"></div>
-        <div id="okBox" class="fine"></div>
+        <div id="errBox" class="callout error" role="alert"></div>
+        <div id="okBox" class="callout ok"></div>
       </section>
 
-      <div class="footer">© <span id="year"></span> — Auth by Firebase</div>
-    </div>
-  </div>
+      <footer class="footer">
+        © <span id="year"></span> — Auth by Firebase
+      </footer>
+    </article>
+  </main>
 
-  <script>
-    // OPSIONAL: set logo via variabel global kalau tidak pakai query ?logo=
-    // window.LOGO_URL = "https://example.com/logo.png";
-  </script>
+  <!-- OPSIONAL: override logo default jika perlu -->
+  <!-- <script>window.LOGO_URL = "https://domainmu.com/logohome.png";</script> -->
+
   <script type="module" src="login.js"></script>
 </body>
 </html>
