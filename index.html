@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Welcome & Login</title>
+  <link rel="stylesheet" href="login.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <!-- WELCOME -->
+      <section id="welcome" class="section active">
+        <div class="logo-wrap">
+          <img id="appLogo" alt="Logo" />
+        </div>
+        <h1>Selamat Datang 👋</h1>
+        <p>Silakan masuk untuk melanjutkan ke halaman Home.</p>
+        <div class="cta">
+          <button id="goLoginBtn">Masuk</button>
+        </div>
+        <div class="hint">Autentikasi oleh Firebase. Jika akunmu masih aktif, kamu akan diarahkan otomatis.</div>
+      </section>
+
+      <!-- LOGIN -->
+      <section id="login" class="section">
+        <h1>Masuk</h1>
+        <p>Gunakan email & kata sandi terdaftar.</p>
+
+        <form id="loginForm">
+          <div class="row">
+            <label for="email">Email</label>
+            <input id="email" type="email" placeholder="nama@domain.com" autocomplete="username" required />
+          </div>
+
+          <div class="row">
+            <label for="password">Kata Sandi</label>
+            <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" minlength="6" required />
+          </div>
+
+          <button id="loginBtn" type="submit">Masuk</button>
+          <button id="backBtn" type="button" class="ghost">Kembali</button>
+        </form>
+
+        <div id="errBox" class="error"></div>
+        <div id="okBox" class="fine"></div>
+      </section>
+
+      <div class="footer">© <span id="year"></span> — Auth by Firebase</div>
+    </div>
+  </div>
+
+  <script>
+    // OPSIONAL: set logo via variabel global kalau tidak pakai query ?logo=
+    // window.LOGO_URL = "https://example.com/logo.png";
+  </script>
+  <script type="module" src="login.js"></script>
+</body>
+</html>
