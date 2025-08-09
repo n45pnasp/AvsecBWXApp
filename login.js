@@ -5,49 +5,47 @@ import {
   setPersistence, browserLocalPersistence, signOut
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-/** 1) GANTI DENGAN punyamu (Firebase Console -> Project settings) */
+/** Firebase config (perbaiki storageBucket) */
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
   authDomain: "avsecbwx-4229c.firebaseapp.com",
   projectId: "avsecbwx-4229c",
   appId: "1:1029406629258:web:53e8f09585cd77823efc73",
-  storageBucket: "avsecbwx-4229c.firebasestorage.app",
+  storageBucket: "avsecbwx-4229c.appspot.com",   // ✅ perbaikan
   messagingSenderId: "1029406629258",
   measurementId: "G-P37F88HGFE",
-  // storageBucket, messagingSenderId, measurementId boleh ditambah jika ada
 };
 
-/** 2) INIT */
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// Pastikan sesi persisten (tetap login setelah app ditutup/dibuka lagi)
+// Sesi persisten
 (async () => {
   try { await setPersistence(auth, browserLocalPersistence); }
-  catch(e){ console.warn("setPersistence gagal:", e?.message || e); }
+  catch (e) { console.warn("setPersistence gagal:", e?.message || e); }
 })();
 
-/** 3) ELEMENTS */
+/** ELEMENTS */
 const $ = (q) => document.querySelector(q);
-const welcome = $("#welcome");
-const login = $("#login");
-const goLoginBtn = $("#goLoginBtn");
-const backBtn = $("#backBtn");
-const form = $("#loginForm");
-const emailEl = $("#email");
-const passEl = $("#password");
-const loginBtn = $("#loginBtn");
-const errBox = $("#errBox");
-const okBox = $("#okBox");
-const yearEl = $("#year");
-const logoEl = $("#appLogo");
+const welcome   = $("#welcome");
+const login     = $("#login");
+const goLoginBtn= $("#goLoginBtn");
+const backBtn   = $("#backBtn");
+const form      = $("#loginForm");
+const emailEl   = $("#email");
+const passEl    = $("#password");
+const loginBtn  = $("#loginBtn");
+const errBox    = $("#errBox");
+const okBox     = $("#okBox");
+const yearEl    = $("#year");
+const logoEl    = $("#appLogo");
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
-/** 4) LOGO: default 'logohome.png', bisa override via ?logo= atau window.LOGO_URL */
+/** LOGO */
 (function setLogo(){
   if (!logoEl) return;
   logoEl.dataset.loading = "1";
-  const params = new URLSearchParams(location.search);
+  const params   = new URLSearchParams(location.search);
   const basePath = location.pathname.substring(0, location.pathname.lastIndexOf("/") + 1);
   const url = params.get("logo") || window.LOGO_URL || `${basePath}logohome.png?v=${Date.now()}`;
   const fallback = "data:image/svg+xml;base64," + btoa(
@@ -61,54 +59,50 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
     </svg>`
   );
   logoEl.src = url;
-  logoEl.onload = () => { delete logoEl.dataset.loading; };
+  logoEl.onload  = () => { delete logoEl.dataset.loading; };
   logoEl.onerror = () => { logoEl.src = fallback; delete logoEl.dataset.loading; };
 })();
 
-/** 5) UTIL */
+/** UTIL */
 function show(sec){
   for (const el of document.querySelectorAll(".section")) el.classList.remove("active");
   sec.classList.add("active");
   err(""); ok("");
 }
-function err(msg){
-  if (!msg){ errBox.classList.remove("show"); errBox.textContent=""; }
-  else { errBox.textContent=msg; errBox.classList.add("show"); }
-}
-function ok(msg){
-  if (!msg){ okBox.classList.remove("show"); okBox.textContent=""; }
-  else { okBox.textContent=msg; okBox.classList.add("show"); }
-}
-function disableForm(d){
-  loginBtn.disabled = d;
-  loginBtn.textContent = d ? "Memproses..." : "Masuk";
-}
+function err(msg){ if (!msg){ errBox.classList.remove("show"); errBox.textContent=""; } else { errBox.textContent=msg; errBox.classList.add("show"); } }
+function ok(msg){  if (!msg){ okBox.classList.remove("show");  okBox.textContent=""; } else {  okBox.textContent=msg;  okBox.classList.add("show"); } }
+function disableForm(d){ loginBtn.disabled = d; loginBtn.textContent = d ? "Memproses..." : "Masuk"; }
 
-/** 6) NAV */
+/** NAV */
 goLoginBtn?.addEventListener("click", () => show(login));
 backBtn?.addEventListener("click", () => show(welcome));
-
-/** 6.1) Ripple pos (biar efek klik muncul di posisi jari) */
 for (const b of document.querySelectorAll(".btn")){
   b.addEventListener("pointerdown", (e)=>{
-    const rect = b.getBoundingClientRect();
-    b.style.setProperty("--x", `${e.clientX-rect.left}px`);
-    b.style.setProperty("--y", `${e.clientY-rect.top}px`);
+    const r = b.getBoundingClientRect();
+    b.style.setProperty("--x", `${e.clientX - r.left}px`);
+    b.style.setProperty("--y", `${e.clientY - r.top}px`);
   }, {passive:true});
 }
 
-/** 7) LOGIN (Email & Password) */
+/** Helper nama */
+function resolveDisplayName(user){
+  if (user?.displayName && user.displayName.trim()) return user.displayName.trim();
+  if (user?.email) return user.email.split("@")[0];
+  return "Pengguna";
+}
+
+/** LOGIN */
 form?.addEventListener("submit", async (e)=>{
   e.preventDefault();
   err(""); ok("");
   const email = emailEl.value.trim();
-  const pass = passEl.value;
+  const pass  = passEl.value;
 
   if (!email || !pass){ err("Email & kata sandi wajib diisi."); return; }
   disableForm(true);
   try{
     const cred = await signInWithEmailAndPassword(auth, email, pass);
-    notifyKodularAndGoHome("success", cred.user);
+    await notifyKodularAndGoHome("success", cred.user);   // ✅ await
   }catch(e){
     const map = {
       "auth/invalid-email":"Format email tidak valid.",
@@ -123,24 +117,29 @@ form?.addEventListener("submit", async (e)=>{
   }
 });
 
-/** 8) AUTO-SKIP jika sudah login (langsung ke Home) */
-onAuthStateChanged(auth, (user)=>{
+/** AUTO-SKIP jika sudah login */
+onAuthStateChanged(auth, async (user)=>{   // ✅ async
   if (user){
-    notifyKodularAndGoHome("already_signed_in", user);
+    await notifyKodularAndGoHome("already_signed_in", user); // ✅ await
   }else{
     show(welcome);
   }
 });
 
-/** 9) Helper: kirim sinyal ke Kodular & beri jeda agar tertangkap */
-function notifyKodularAndGoHome(status, user){
+/** Kirim ke Kodular + nama */
+async function notifyKodularAndGoHome(status, user){
+  const name = resolveDisplayName(user);
+
   const payload = JSON.stringify({
-    event:"auth", status,
-    uid:user.uid, email:user.email || null,
-    ts:Date.now()
+    event: "auth",
+    status,
+    uid: user.uid,
+    email: user.email || null,
+    name,                 // ✅ kirim nama
+    ts: Date.now()
   });
 
-  if (window.AppInventor && typeof window.AppInventor.setWebViewString==="function"){
+  if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
     window.AppInventor.setWebViewString(payload);
   }else{
     document.title = payload; // fallback
@@ -150,7 +149,7 @@ function notifyKodularAndGoHome(status, user){
   setTimeout(()=>{ /* location.href = "kodular://home"; */ }, 600);
 }
 
-/** 10) LOGOUT: panggil dari Kodular → WebViewer.EvaluateJavaScript("logout()") */
+/** LOGOUT */
 window.logout = async function(){
   try{
     await signOut(auth);
@@ -161,4 +160,3 @@ window.logout = async function(){
     err("Gagal logout: " + (e.message || e));
   }
 };
-
