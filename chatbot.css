@@ -1,0 +1,291 @@
+/* =========================================================
+   THEME & RESET
+   ========================================================= */
+:root {
+  --bg: #0b141a;
+  --panel: #111b21;
+  --accent: #00a884;
+  --accent-2: #06cf9c;
+  --text: #e9edef;
+  --muted: #8696a0;
+  --bubble-user: #005c4b;
+  --bubble-bot: #202c33;
+  --border: #2a3942;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100dvh; /* aman untuk mobile viewport */
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  overscroll-behavior: contain;
+  touch-action: manipulation;
+  overflow: hidden;          /* cegah body ikut scroll, hanya chat-box yang scroll */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+.chat-header {
+  position: fixed; /* manteng di atas */
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: .2px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* =========================================================
+   LAYOUT: CONTAINER & CHAT BOX
+   ========================================================= */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  transition: padding-bottom .25s ease-in-out;
+}
+
+/* ruang konten: atas = tinggi header, bawah = ruang input */
+.chat-box {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 60px 12px calc(90px + env(safe-area-inset-bottom, 0px)); /* + safe area */
+  -webkit-overflow-scrolling: touch;
+  transition: padding-bottom .25s ease-in-out;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.chat-box::-webkit-scrollbar { width: 8px; }
+.chat-box::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+}
+
+/* =========================================================
+   BUBBLES
+   ========================================================= */
+.chat-message {
+  display: flex;
+  max-width: 92%;
+  margin: 6px 0;
+  word-wrap: break-word;
+  transition: transform .2s ease, opacity .2s ease;
+}
+
+.chat-message.user { align-self: flex-end; justify-content: flex-end; }
+.chat-message.bot  { align-self: flex-start; justify-content: flex-start; }
+
+.chat-message .message {
+  padding: 10px 12px;
+  border-radius: 10px;
+  line-height: 1.35;
+  font-size: 15px;
+  white-space: pre-wrap;     /* jaga line break dari innerText */
+  word-wrap: break-word;
+  border: 1px solid transparent;
+}
+
+.chat-message.user .message {
+  background: var(--bubble-user);
+  color: #fff;
+  border-color: rgba(255,255,255,0.06);
+  border-bottom-right-radius: 0;
+}
+
+.chat-message.bot .message {
+  background: var(--bubble-bot);
+  color: var(--text);
+  border-color: var(--border);
+  border-bottom-left-radius: 0;
+}
+
+/* Garis pemisah dinamis di dalam bubble (div atau hr sama-sama didukung) */
+.sep,
+.message hr.sep {
+  display: block;
+  width: 100%;
+  height: 1px;
+  margin: 10px 0;
+  border: 0;
+  background: var(--text);
+  opacity: .11;
+}
+
+/* =========================================================
+   QUICK REPLY CHIPS
+   ========================================================= */
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.chip {
+  background: #2a3942;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .2s ease, transform .06s ease, opacity .2s ease;
+}
+
+.chip:hover { background: #31424b; }
+.chip:active { transform: translateY(1px); }
+.chip[disabled] { opacity: .6; cursor: not-allowed; }
+
+.chip:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+
+/* =========================================================
+   INPUT BAR
+   ========================================================= */
+.chat-input-area {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 101;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, var(--panel) 28%);
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -1px 3px rgba(0,0,0,0.2);
+  transition: transform .25s ease-in-out, padding .25s ease-in-out;
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 900px;
+  margin: 0 auto;
+  background: #2a3942;
+  border-radius: 24px;
+  padding: 6px 8px;
+}
+
+#userInput,
+.chat-input-area input {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  color: #fff;
+  padding: 10px 14px;
+  font-size: 14px;
+  outline: none;
+  min-width: 0; /* cegah melar di flex */
+}
+
+#userInput::placeholder { color: var(--muted); }
+
+/* Tombol Kirim */
+.send-btn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 1px solid transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform .05s ease, background .2s ease, opacity .2s ease;
+}
+
+.send-btn:hover { background: var(--accent-2); }
+.send-btn:active { transform: translateY(1px); }
+.send-btn[disabled] { opacity: .6; cursor: not-allowed; }
+
+.send-btn svg {
+  width: 20px; height: 20px;
+  fill: #121b22; /* kontras di atas accent terang */
+}
+
+/* Status tersembunyi (biar JS tidak error kalau masih referensi elemen ini) */
+.status { display: none !important; }
+
+/* Fokus keyboard */
+#userInput:focus-visible,
+.send-btn:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+/* =========================================================
+   BUTTON LINK STYLE
+   ========================================================= */
+.btn {
+  display: inline-block;
+  background: var(--accent);
+  color: #121b22;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 1;
+  transition: background .2s ease, transform .05s ease;
+}
+.btn:hover { background: var(--accent-2); }
+.btn:active { transform: translateY(1px); }
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 768px) {
+  .chat-message { max-width: 95%; }
+  .chat-header { height: 40px; }
+  .chat-box { padding: 56px 10px calc(88px + env(safe-area-inset-bottom, 0px)); }
+  .chat-message .message { font-size: 14px; padding: 9px 11px; }
+  .input-wrapper { padding: 5px 8px; }
+  #userInput { font-size: 14px; padding: 9px 12px; }
+  .send-btn { width: 40px; height: 40px; }
+  .send-btn svg { width: 18px; height: 18px; }
+}
+
+@media (max-width: 420px) {
+  .chat-message .message { max-width: 100%; font-size: 13.5px; padding: 8px 10px; }
+  .chat-box { padding: 56px 8px calc(84px + env(safe-area-inset-bottom, 0px)); }
+  #userInput { font-size: 13.5px; }
+}
+
+@media (max-width: 360px) {
+  .chat-header { height: 38px; }
+  .chat-box { padding-top: 54px; }
+  #userInput { font-size: 12.5px; }
+  .send-btn { width: 36px; height: 36px; }
+  .send-btn svg { width: 16px; height: 16px; }
+}
