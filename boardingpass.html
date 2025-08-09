@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <title>Boarding Pass Scanner</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #f4f6f9, #e9edf2);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+      transition: all 0.3s ease;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+    }
+
+    video {
+      width: 100%;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background-color: #fff;
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 16px;
+      width: 100%;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.3s ease;
+    }
+
+    .label {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #4a4a4a;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 6px;
+    }
+
+    .text {
+      font-size: 1rem;
+      white-space: pre-line;
+      line-height: 1.6;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      width: 100%;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 20px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: #555;
+      background: linear-gradient(145deg, #f0f2f5, #d9dde3);
+      border-radius: 16px;
+      border: none;
+      cursor: pointer;
+      box-shadow:
+        8px 8px 15px #b8bec6,
+        -8px -8px 15px #ffffff;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      user-select: none;
+    }
+
+    .btn:hover {
+      background: linear-gradient(145deg, #e6e9ef, #c7ccd5);
+      box-shadow:
+        4px 4px 10px #a1a8b2,
+        -4px -4px 10px #fefefe;
+      transform: translateY(-2px);
+      color: #444;
+    }
+
+    .btn:active {
+      background: linear-gradient(145deg, #c2c8d1, #a7aebc);
+      box-shadow: inset 4px 4px 8px #8b9099,
+        inset -4px -4px 8px #d6dbdf;
+      transform: translateY(0);
+      color: #333;
+    }
+
+    /* ====== Layout viewer ====== */
+    .viewer-header {
+      position: fixed; top:0; left:0; right:0; z-index:100;
+      background: var(--panel, #111b21);
+      border-bottom: 1px solid var(--border, #2a3942);
+      height: 44px; display:flex; align-items:center; gap:10px;
+      padding: 0 12px; color: var(--text, #e9edef); font-weight:600;
+      -webkit-user-select: none; user-select: none;
+    }
+    .back-btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      height: 32px; padding: 0 10px; border-radius: 8px;
+      background: #2a3942; color: var(--text, #e9edef);
+      border: 1px solid var(--border, #2a3942);
+      text-decoration: none; font-size: 13px; cursor: pointer;
+      transition: background .2s ease, transform .05s ease;
+    }
+    .back-btn:hover { background:#31424b; }
+    .back-btn:active { transform: translateY(1px); }
+
+    .title { flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+
+    .viewer-wrap {
+      position: fixed; top:44px; bottom:0; left:0; right:0;
+      background: var(--bg, #0b141a);
+      -webkit-user-select: none; user-select: none;
+    }
+    .viewer-frame {
+      width: 100%; height: 100%; border: 0; background: #000;
+    }
+
+    /* OPTIONAL: overlay anti-interaksi menutup iframe */
+    .no-interact {
+      position: absolute; inset: 0; z-index: 200;
+      background: transparent;
+      display: none; 
+    }
+
+    body {
+      -webkit-user-select: none; user-select: none;
+    }
+
+    * { -webkit-touch-callout: none; }
+  </style>
+</head>
+<body>
+  <div class="viewer-header">
+    <a class="back-btn" href="index.html">← Kembali</a>
+    <div class="title" id="docTitle">Boarding Pass Scanner</div>
+  </div>
+
+  <div class="viewer-wrap">
+    <iframe id="pdfFrame" class="viewer-frame" src="about:blank" allow="fullscreen"></iframe>
+    <div class="no-interact" id="noInteract"></div>
+  </div>
+
+  <script>
+    // Ambil query params
+    const params = new URLSearchParams(location.search);
+    const title = params.get('title') || 'Viewer SOP';
+    const src   = params.get('src') || '';
+    document.getElementById('docTitle').textContent = title;
+
+    // Valid
