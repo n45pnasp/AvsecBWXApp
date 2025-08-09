@@ -11,7 +11,7 @@
       margin:0; background:linear-gradient(180deg,#0b1220,#0f172a);
       color:var(--text); display:grid; place-items:center; min-height:100vh; padding:20px;
     }
-    .card { background:rgba(17,24,39,.85); border:1px solid rgba(148,163,184,.15); border-radius:18px; padding:24px; max-width:380px; width:100%; }
+    .card { background:rgba(17,24,39,.85); border:1px solid rgba(148,163,184,.15); border-radius:18px; padding:24px; max-width:420px; width:100%; }
     h1 { margin:0 0 8px; font-size:26px; text-align:center; }
     p  { margin:0 0 18px; font-size:14px; color:var(--muted); text-align:center; }
     label { font-size:14px; color:var(--muted); display:block; margin-bottom:4px; }
@@ -31,12 +31,13 @@
     .success { background:#14532d; color:#bbf7d0; }
     .small { text-align:center; font-size:12px; color:var(--muted); margin-top:8px; }
     .small a { color:#a7f3d0; text-decoration:none; }
+    .hidden { display:none; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Daftar</h1>
-    <p>Buat akun baru dengan <b>nama lengkap (2 kata)</b>, spesifikasi, email, dan kata sandi.</p>
+    <p>Isi <b>nama lengkap (tepat 2 kata)</b>, spesifikasi, tipe akun, email, dan kata sandi.</p>
 
     <form id="registerForm" novalidate>
       <label for="nama">Nama Lengkap (2 kata)</label>
@@ -49,6 +50,17 @@
         <option value="junior">Junior</option>
         <option value="senior">Senior</option>
       </select>
+
+      <label for="role">Tipe Akun</label>
+      <select id="role" required>
+        <option value="user" selected>Non-Admin</option>
+        <option value="admin">Admin</option>
+      </select>
+
+      <div id="adminWrap" class="hidden">
+        <label for="adminCode">Kode Admin</label>
+        <input type="password" id="adminCode" placeholder="Masukkan Kode Admin" />
+      </div>
 
       <label for="email">Email</label>
       <input type="email" id="email" placeholder="nama@domain.com" required />
@@ -68,7 +80,7 @@
     import { getAuth, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-    // KONFIG FIREBASE (sudah diisi, ganti databaseURL jika beda)
+    // ====== KONFIG FIREBASE (RTDB URL ganti jika beda) ======
     const firebaseConfig = {
       apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
       authDomain: "avsecbwx-4229c.firebaseapp.com",
@@ -77,45 +89,70 @@
       messagingSenderId: "1029406629258",
       appId: "1:1029406629258:web:53e8f09585cd77823efc73",
       measurementId: "G-P37F88HGFE",
-      databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com/"
+      databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
     };
+
+    // ====== KODE ADMIN (RAHASIA) ======
+    // Ganti dengan kode rahasia kamu. Idealnya simpan/validasi di server/Cloud Function.
+    const ADMIN_CODE = "BWX-ADMIN-2025";
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getDatabase(app);
 
-    const form = document.getElementById("registerForm");
-    const namaEl = document.getElementById("nama");
-    const specEl = document.getElementById("spec");
-    const emailEl = document.getElementById("email");
-    const passEl = document.getElementById("password");
-    const msgBox = document.getElementById("msgBox");
-    const submitBtn = document.getElementById("submitBtn");
+    const $ = (q)=>document.querySelector(q);
+    const form = $("#registerForm");
+    const namaEl = $("#nama");
+    const specEl = $("#spec");
+    const roleEl = $("#role");
+    const adminWrap = $("#adminWrap");
+    const adminCodeEl = $("#adminCode");
+    const emailEl = $("#email");
+    const passEl = $("#password");
+    const msgBox = $("#msgBox");
+    const submitBtn = $("#submitBtn");
 
-    const showMsg = (t, type="error") => { msgBox.textContent=t; msgBox.className="msg "+type; msgBox.style.display="block"; };
-    const formatNama = (s)=> s.trim().split(/\s+/).map(k=>k[0]?.toUpperCase()+k.slice(1).toLowerCase()).join(" ");
+    roleEl.addEventListener("change", ()=>{
+      const wantAdmin = roleEl.value === "admin";
+      adminWrap.classList.toggle("hidden", !wantAdmin);
+      if (!wantAdmin) adminCodeEl.value = "";
+    });
 
-    form.addEventListener("submit", async (e) => {
+    const showMsg=(t,type="error")=>{msgBox.textContent=t;msgBox.className="msg "+type;msgBox.style.display="block";};
+    const formatNama=(s)=>s.trim().split(/\s+/).map(k=>k[0]?.toUpperCase()+k.slice(1).toLowerCase()).join(" ");
+
+    form.addEventListener("submit", async (e)=>{
       e.preventDefault(); msgBox.style.display="none";
-
       let nama = namaEl.value.trim();
       const spec = specEl.value;
+      const roleReq = roleEl.value; // "admin" | "user"
+      const adminCode = adminCodeEl.value.trim();
       const email = emailEl.value.trim();
       const pass  = passEl.value;
 
-      // Validasi nama: huruf semua bahasa + spasi/titik/apostrof/hyphen, HARUS 2 kata
+      // Validasi nama: huruf semua bahasa + spasi/titik/apostrof/hyphen, HARUS tepat 2 kata
       const onlyLetters = /^[\p{L}\s.'-]+$/u.test(nama);
       const words = nama.split(/\s+/).filter(Boolean);
-
       if (!onlyLetters) return showMsg("Nama hanya boleh huruf dan spasi (boleh titik, apostrof, tanda hubung).");
       if (words.length < 2) return showMsg("Nama lengkap minimal 2 kata.");
       if (words.length > 2) return showMsg("Nama lengkap maksimal 2 kata.");
       if (!spec) return showMsg("Silakan pilih spesifikasi.");
 
-      // Format kapitalisasi
-      nama = formatNama(nama);
+      // Validasi admin code jika pilih admin
+      let isAdmin = false;
+      if (roleReq === "admin") {
+        if (!adminCode) return showMsg("Kode Admin wajib diisi untuk membuat akun Admin.");
+        if (adminCode !== ADMIN_CODE) {
+          showMsg("Kode Admin salah. Akun akan dibuat sebagai Non-Admin.", "error");
+          // Kita lanjutkan tetapi set sebagai Non-Admin
+        } else {
+          isAdmin = true;
+        }
+      }
 
+      nama = formatNama(nama);
       submitBtn.disabled = true;
+
       try {
         // Buat user
         const cred = await createUserWithEmailAndPassword(auth, email, pass);
@@ -126,7 +163,9 @@
         // Simpan profil ke Realtime Database
         await set(ref(db, `users/${cred.user.uid}`), {
           name: nama,
-          spec: spec,           // basic | junior | senior
+          spec: spec,                    // basic | junior | senior
+          role: isAdmin ? "admin" : "user",
+          isAdmin: isAdmin,
           email: cred.user.email,
           createdAt: Date.now()
         });
@@ -139,11 +178,13 @@
           email: cred.user.email,
           name: nama,
           spec: spec,
+          role: isAdmin ? "admin" : "user",
+          isAdmin: isAdmin,
           ts: Date.now()
         });
         if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
 
-        showMsg(`Pendaftaran berhasil! Selamat datang, ${nama} (${spec}).`, "success");
+        showMsg(`Pendaftaran berhasil! Selamat datang, ${nama} [${spec}] ${isAdmin ? "(Admin)" : ""}.`, "success");
         setTimeout(()=>{ window.location.href = "index.html"; }, 1200);
       } catch (err) {
         const map = {
