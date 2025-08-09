@@ -7,32 +7,20 @@
   <style>
     :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --accent-2:#16a34a; --danger:#ef4444; }
     * { box-sizing: border-box; font-family: system-ui, sans-serif; }
-    body {
-      margin:0; background:linear-gradient(180deg,#0b1220,#0f172a);
-      color:var(--text); display:grid; place-items:center; min-height:100vh; padding:20px;
-    }
+    body { margin:0; background:linear-gradient(180deg,#0b1220,#0f172a); color:var(--text); display:grid; place-items:center; min-height:100vh; padding:20px; }
     .card { background:rgba(17,24,39,.85); border:1px solid rgba(148,163,184,.15); border-radius:18px; padding:24px; max-width:420px; width:100%; }
     h1 { margin:0 0 8px; font-size:26px; text-align:center; }
     p  { margin:0 18px 18px; font-size:14px; color:var(--muted); text-align:center; }
     label { font-size:14px; color:var(--muted); display:block; margin-bottom:4px; }
-    input, select {
-      width:100%; padding:12px; border-radius:10px; border:1px solid rgba(148,163,184,.25);
-      background:#0b1220; color:var(--text); font-size:14px; margin-bottom:14px;
-    }
+    input, select { width:100%; padding:12px; border-radius:10px; border:1px solid rgba(148,163,184,.25); background:#0b1220; color:var(--text); font-size:14px; margin-bottom:14px; }
     input:focus, select:focus { border-color:var(--accent); outline:none; }
     .row-inline { display:flex; gap:8px; align-items:center; }
     .hint { font-size:12px; color:var(--muted); margin-top:-8px; margin-bottom:12px; }
-    button {
-      width:100%; padding:12px; border-radius:10px; border:none;
-      background:var(--accent); color:#052e16; font-weight:600; cursor:pointer;
-    }
+    button { width:100%; padding:12px; border-radius:10px; border:none; background:var(--accent); color:#052e16; font-weight:600; cursor:pointer; }
     button[disabled]{ opacity:.7; cursor:wait; }
     button:hover:not([disabled]) { background:var(--accent-2); }
     .btn-ghost { background:transparent; border:1px solid rgba(148,163,184,.25); color:var(--text); }
-    .file-chip {
-      display:inline-flex; align-items:center; gap:8px; font-size:12px;
-      padding:6px 10px; border-radius:999px; border:1px solid rgba(148,163,184,.25); margin-top:-6px; margin-bottom:10px;
-    }
+    .file-chip { display:inline-flex; align-items:center; gap:8px; font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid rgba(148,163,184,.25); margin-top:-6px; margin-bottom:10px; }
     .file-chip img { width:18px; height:18px; border-radius:3px; object-fit:cover; display:none; }
     .file-chip.has-thumb img { display:block; }
     .msg { margin-top:12px; font-size:14px; padding:10px; border-radius:8px; display:none; }
@@ -42,34 +30,21 @@
     .small a { color:#a7f3d0; text-decoration:none; }
     .hidden { display:none; }
 
-    /* Modal (popup) – ukuran disesuaikan, warna tetap */
+    /* Modal upload */
     .modal-backdrop { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); z-index:50; }
     .modal-backdrop.show { display:grid; }
-    .modal {
-      width:min(92vw, 360px);
-      background:rgba(17,24,39,.98);
-      border:1px solid rgba(148,163,184,.25);
-      border-radius:14px;
-      padding:14px;
-      box-shadow:0 10px 30px rgba(0,0,0,.45);
-      animation:pop .2s ease-out both;
-    }
+    .modal { width:min(92vw, 360px); background:rgba(17,24,39,.98); border:1px solid rgba(148,163,184,.25); border-radius:14px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.45); animation:pop .2s ease-out both; }
     .modal h3 { margin:0 0 6px; font-size:16px; }
     .modal p  { margin:0 0 10px; color:var(--muted); font-size:12px; }
-    .modal input[type=file] {
-      width:100%; padding:10px; border-radius:10px; border:1px dashed rgba(148,163,184,.35); background:#0b1220; color:var(--text);
-    }
+    .modal input[type=file] { width:100%; padding:10px; border-radius:10px; border:1px dashed rgba(148,163,184,.35); background:#0b1220; color:var(--text); }
     .modal .actions { display:flex; gap:8px; margin-top:10px; }
     .bar{height:8px;background:#0b1220;border:1px solid rgba(148,163,184,.25);border-radius:8px;overflow:hidden;margin-top:10px}
     .fill{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#16a34a)}
     .preview { margin-top:10px; display:none; }
     .preview img { max-width:100%; max-height:42vh; object-fit:contain; border-radius:12px; border:1px solid rgba(148,163,184,.15); }
+    @media (min-width: 768px){ .modal { width:min(80vw, 380px); } }
 
-    @media (min-width: 768px){
-      .modal { width:min(80vw, 380px); }
-    }
-
-    /* Overlay proses (spinner) */
+    /* Overlay proses */
     .overlay { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:60; }
     .overlay.show { display:grid; }
     .spinner { width:54px; height:54px; border:5px solid rgba(255,255,255,.25); border-top-color:#22c55e; border-radius:50%; animation:spin 1s linear infinite; }
@@ -171,7 +146,7 @@
       databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
     };
 
-    const ADMIN_CODE = "BWX-ADMIN-2025"; // ganti sesuai kebutuhan
+    const ADMIN_CODE = "BWX-ADMIN"; // ganti sesuai kebutuhan
 
     const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -208,8 +183,8 @@
 
     const overlay = $("#overlay");
 
-    let uploadedPhotoURL = null;   // URL hasil upload (wajib ada sebelum daftar)
-    let currentUID = null;         // UID anonymous (sebelum link)
+    let uploadedPhotoURL = null;   // URL hasil upload (wajib)
+    let currentUID = null;         // UID (anon) untuk path Storage
     let uploading = false;
 
     const showMsg=(t,type="error")=>{ msgBox.textContent=t; msgBox.className="msg "+type; msgBox.style.display="block"; };
@@ -222,12 +197,10 @@
       if (!wantAdmin) adminCodeEl.value = "";
     });
 
-    // ===== Auth watcher (ambil UID anonymous) =====
-    onAuthStateChanged(auth, (user)=>{
-      currentUID = user?.uid || null;
-    });
+    // ===== Pantau user (ambil UID jika ada) =====
+    onAuthStateChanged(auth, (user)=>{ currentUID = user?.uid || null; });
 
-    // ===== Buka popup upload: login anonymous jika perlu =====
+    // ===== Buka popup upload → pastikan login anonymous & simpan UID =====
     openUpload.addEventListener("click", async ()=>{
       modalMsg.style.display="none";
       previewBox.style.display = "none";
@@ -236,9 +209,13 @@
       saveFile.disabled = true;
       uploadedPhotoURL = null;
 
-      // login anon kalau belum ada user
       try {
-        if (!auth.currentUser) await signInAnonymously(auth);
+        let user = auth.currentUser;
+        if (!user) {
+          const res = await signInAnonymously(auth);
+          user = res.user;
+        }
+        currentUID = user.uid; // ✅ pakai currentUID untuk path Storage
       } catch (e) {
         showMsg("Gagal menyiapkan sesi upload: " + (e.message || e), "error");
         return;
@@ -254,7 +231,7 @@
       modalBack.setAttribute("aria-hidden","true");
     });
 
-    // ===== Saat pilih file: langsung upload dengan progress di popup =====
+    // ===== Pilih file → langsung upload (progress di popup) =====
     fileEl.addEventListener("change", async ()=>{
       modalMsg.style.display="none";
       const f = fileEl.files?.[0];
@@ -263,13 +240,12 @@
       const max = 5 * 1024 * 1024;
       if (f.size > max) { showModalMsg("Ukuran maksimal 5 MB.", "error"); fileEl.value=""; return; }
 
-      // tampilkan preview
+      // preview
       previewBox.style.display = "block";
       const objURL = URL.createObjectURL(f);
       previewImg.src = objURL;
 
-      // mulai upload
-      if (!auth.currentUser) {
+      if (!currentUID) {
         showModalMsg("Sesi upload belum siap. Cobalah buka ulang popup.", "error");
         URL.revokeObjectURL(objURL);
         return;
@@ -281,7 +257,7 @@
       fill.style.width = "0%";
 
       const safeName = f.name.replace(/[^\w.\-]+/g, "_");
-      const path = `user_uploads/${auth.currentUser.uid}/${Date.now()}-${safeName}`;
+      const path = `user_uploads/${currentUID}/${Date.now()}-${safeName}`;
       const storageRef = sRef(stg, path);
       const task = uploadBytesResumable(storageRef, f, { contentType: f.type });
 
@@ -296,7 +272,7 @@
         );
       }).then(async ()=>{
         uploadedPhotoURL = await getDownloadURL(storageRef);
-        saveFile.disabled = false;                  // ✅ bisa disimpan
+        saveFile.disabled = false;              // ✅ boleh simpan pilihan
         showModalMsg("Upload selesai. Klik 'Simpan Pilihan'.", "success");
       }).catch((e)=>{
         showModalMsg("Gagal upload: " + (e.message || e), "error");
@@ -308,10 +284,9 @@
       });
     });
 
-    // ===== Simpan pilihan (set chip & enable tombol daftar) =====
+    // ===== Simpan pilihan (tampil chip + enable Daftar) =====
     saveFile.addEventListener("click", ()=>{
       if (!uploadedPhotoURL) { showModalMsg("Belum ada foto yang berhasil diupload.", "error"); return; }
-      // tampilkan chip ringkas di form
       const url = new URL(uploadedPhotoURL);
       const last = url.pathname.split("/").pop() || "foto";
       const nameShown = decodeURIComponent(last).split("?")[0];
@@ -319,113 +294,77 @@
       thumb.src = uploadedPhotoURL;
       fileChip.classList.add("has-thumb");
       fileChip.style.display = "inline-flex";
-
-      submitBtn.disabled = false;           // ✅ form siap dikirim
+      submitBtn.disabled = false;           // ✅ form siap daftar
       modalBack.classList.remove("show");
       modalBack.setAttribute("aria-hidden","true");
     });
 
-    // Hapus file yang dipilih (bukan menghapus di storage, hanya reset pilihan)
+    // Reset chip (tidak menghapus file di storage, hanya reset pilihan)
     clearFileBtn.addEventListener("click", ()=>{
       uploadedPhotoURL = null;
       fileChip.style.display = "none";
       fileChip.classList.remove("has-thumb");
-      submitBtn.disabled = true;            // butuh upload ulang
+      submitBtn.disabled = true;
     });
 
-    // ===== Validasi & Submit (pakai URL yang sudah diupload) =====
+    // ===== Submit daftar (link anon → email/pass, simpan profil) =====
     form.addEventListener("submit", async (e)=>{
       e.preventDefault(); msgBox.style.display="none";
 
       let nama = namaEl.value.trim();
       const spec = specEl.value;
-      const roleReq = roleEl.value; // "admin" | "user"
+      const roleReq = roleEl.value;
       const adminCode = adminCodeEl.value.trim();
       const email = emailEl.value.trim();
       const pass  = passEl.value;
 
-      // Validasi nama: huruf semua bahasa + spasi/titik/apostrof/hyphen, HARUS tepat 2 kata
       const onlyLetters = /^[\p{L}\s.'-]+$/u.test(nama);
       const words = nama.split(/\s+/).filter(Boolean);
       if (!onlyLetters) return showMsg("Nama hanya boleh huruf dan spasi (boleh titik, apostrof, tanda hubung).");
       if (words.length < 2) return showMsg("Nama lengkap minimal 2 kata.");
       if (words.length > 2) return showMsg("Nama lengkap maksimal 2 kata.");
       if (!spec) return showMsg("Silakan pilih spesifikasi.");
+      if (!uploadedPhotoURL) { showMsg("Foto profil wajib diunggah & disimpan dulu."); return; }
 
-      // Foto wajib sudah harus ada URL-nya
-      if (!uploadedPhotoURL) {
-        showMsg("Foto profil wajib diunggah dan disimpan terlebih dahulu.");
-        modalBack.classList.add("show");
-        modalBack.setAttribute("aria-hidden","false");
-        return;
-      }
-
-      // Validasi admin code jika pilih admin
       let isAdmin = false;
       if (roleReq === "admin") {
         if (!adminCode) return showMsg("Kode Admin wajib diisi untuk membuat akun Admin.");
-        if (adminCode !== ADMIN_CODE) {
-          showMsg("Kode Admin salah. Akun akan dibuat sebagai Non-Admin.", "error");
-        } else {
-          isAdmin = true;
-        }
+        if (adminCode !== ADMIN_CODE) showMsg("Kode Admin salah. Akun akan dibuat sebagai Non-Admin.");
+        else isAdmin = true;
       }
 
       nama = formatNama(nama);
-      submitBtn.disabled = true;
-      overlay.classList.add("show");
-
-      let cred = null;
+      submitBtn.disabled = true; overlay.classList.add("show");
 
       try {
-        // === Link akun anonymous → email+password (UID tetap) ===
+        if (!auth.currentUser) { const res = await signInAnonymously(auth); currentUID = res.user.uid; }
         const credential = EmailAuthProvider.credential(email, pass);
-        // jika somehow belum anonymous (mis: user close/open), lakukan anonym dulu
-        if (!auth.currentUser) await signInAnonymously(auth);
-        cred = await linkWithCredential(auth.currentUser, credential);
+        const cred = await linkWithCredential(auth.currentUser, credential); // UID tetap
 
-        // === Simpan profil ke Auth & RTDB (pakai uploadedPhotoURL) ===
         await updateProfile(cred.user, { displayName: nama, photoURL: uploadedPhotoURL });
         await set(ref(db, `users/${cred.user.uid}`), {
-          name: nama,
-          spec: spec,
-          role: isAdmin ? "admin" : "user",
-          isAdmin: isAdmin,
-          email: cred.user.email,
-          photoURL: uploadedPhotoURL,
-          createdAt: Date.now()
+          name: nama, spec, role: isAdmin ? "admin" : "user", isAdmin,
+          email: cred.user.email, photoURL: uploadedPhotoURL, createdAt: Date.now()
         });
 
-        // === Kirim payload ke Kodular ===
         const payload = JSON.stringify({
-          event: "register",
-          status: "success",
-          uid: cred.user.uid,
-          email: cred.user.email,
-          name: nama,
-          spec: spec,
-          role: isAdmin ? "admin" : "user",
-          isAdmin: isAdmin,
-          photoURL: uploadedPhotoURL,
-          ts: Date.now()
+          event:"register", status:"success", uid:cred.user.uid, email:cred.user.email,
+          name:nama, spec, role:isAdmin?"admin":"user", isAdmin, photoURL:uploadedPhotoURL, ts:Date.now()
         });
         if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
 
         showMsg(`Pendaftaran berhasil! Selamat datang, ${nama} [${spec}] ${isAdmin ? "(Admin)" : ""}.`, "success");
         setTimeout(()=>{ window.location.href = "index.html"; }, 1200);
-
       } catch (err) {
-        // Jika link gagal dan user masih anonymous, opsional hapus user supaya tidak nyangkut
         try { if (auth.currentUser && auth.currentUser.isAnonymous) await deleteUser(auth.currentUser); } catch(_) {}
         const map = {
-          "auth/email-already-in-use": "Email sudah terdaftar.",
-          "auth/invalid-email": "Format email tidak valid.",
-          "auth/weak-password": "Kata sandi minimal 6 karakter."
+          "auth/email-already-in-use":"Email sudah terdaftar.",
+          "auth/invalid-email":"Format email tidak valid.",
+          "auth/weak-password":"Kata sandi minimal 6 karakter."
         };
-        showMsg(map[err.code] || "Gagal daftar: " + err.message);
+        showMsg(map[err.code] || ("Gagal daftar: " + (err.message || err)));
       } finally {
-        submitBtn.disabled = false;
-        overlay.classList.remove("show");
+        submitBtn.disabled = false; overlay.classList.remove("show");
       }
     });
   </script>
