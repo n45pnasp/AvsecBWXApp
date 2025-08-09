@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Daftar Akun Avsec App</title>
+  <title>Daftar Akun + Upload Foto</title>
   <style>
     :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --accent-2:#16a34a; --danger:#ef4444; }
     * { box-sizing: border-box; font-family: system-ui, sans-serif; }
@@ -42,11 +42,11 @@
     .small a { color:#a7f3d0; text-decoration:none; }
     .hidden { display:none; }
 
-    /* Modal (popup) – hanya ukuran yang disesuaikan, warna tetap */
+    /* Modal (popup) – ukuran disesuaikan, warna tetap */
     .modal-backdrop { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); z-index:50; }
     .modal-backdrop.show { display:grid; }
     .modal {
-      width:min(92vw, 360px);  /* lebih kecil agar pas di HP */
+      width:min(92vw, 360px);
       background:rgba(17,24,39,.98);
       border:1px solid rgba(148,163,184,.25);
       border-radius:14px;
@@ -66,7 +66,7 @@
     .preview img { max-width:100%; max-height:42vh; object-fit:contain; border-radius:12px; border:1px solid rgba(148,163,184,.15); }
 
     @media (min-width: 768px){
-      .modal { width:min(80vw, 380px); } /* sedikit lega di desktop */
+      .modal { width:min(80vw, 380px); }
     }
 
     /* Overlay proses (spinner) */
@@ -81,7 +81,7 @@
 <body>
   <div class="card">
     <h1>Daftar</h1>
-    <p>Isi <b>nama lengkap (tepat 2 kata)</b>, spesifikasi, tipe akun, email, sandi, dan (opsional) upload foto.</p>
+    <p>Isi <b>nama lengkap (tepat 2 kata)</b>, spesifikasi, tipe akun, email, sandi, dan <b>wajib</b> upload foto.</p>
 
     <form id="registerForm" novalidate>
       <label for="nama">Nama Lengkap (2 kata)</label>
@@ -107,7 +107,7 @@
         <input type="password" id="adminCode" placeholder="Masukkan Kode Admin" />
       </div>
 
-      <label>Foto (opsional)</label>
+      <label>Foto (<b>wajib</b>)</label>
       <div class="row-inline">
         <button id="openUpload" type="button" class="btn-ghost" style="flex:1">Upload Foto…</button>
       </div>
@@ -281,6 +281,15 @@
       if (words.length > 2) return showMsg("Nama lengkap maksimal 2 kata.");
       if (!spec) return showMsg("Silakan pilih spesifikasi.");
 
+      // Foto wajib
+      if (!selectedFile) {
+        showMsg("Foto profil wajib diunggah.");
+        // buka popup otomatis supaya langsung pilih
+        modalBack.classList.add("show");
+        modalBack.setAttribute("aria-hidden","false");
+        return;
+      }
+
       // Validasi admin code jika pilih admin
       let isAdmin = false;
       if (roleReq === "admin") {
@@ -305,28 +314,26 @@
         // 2) Set displayName
         await updateProfile(cred.user, { displayName: nama });
 
-        // 3) Upload foto (kalau ada) — diperbaiki: bungkus UploadTask jadi Promise
-        if (selectedFile) {
-          const safeName = selectedFile.name.replace(/[^\w.\-]+/g, "_");
-          const path = `user_uploads/${cred.user.uid}/${Date.now()}-${safeName}`;
-          const storageRef = sRef(stg, path);
-          const task = uploadBytesResumable(storageRef, selectedFile, { contentType: selectedFile.type });
+        // 3) Upload foto — wajib
+        const safeName = selectedFile.name.replace(/[^\w.\-]+/g, "_");
+        const path = `user_uploads/${cred.user.uid}/${Date.now()}-${safeName}`;
+        const storageRef = sRef(stg, path);
+        const task = uploadBytesResumable(storageRef, selectedFile, { contentType: selectedFile.type });
 
-          await new Promise((resolve, reject) => {
-            task.on(
-              "state_changed",
-              (snap) => {
-                const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-                fill.style.width = pct + "%";
-              },
-              (err) => reject(err),
-              () => resolve()
-            );
-          });
+        await new Promise((resolve, reject) => {
+          task.on(
+            "state_changed",
+            (snap) => {
+              const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+              fill.style.width = pct + "%";
+            },
+            (err) => reject(err),
+            () => resolve()
+          );
+        });
 
-          photoURL = await getDownloadURL(storageRef);
-          try { await updateProfile(cred.user, { photoURL }); } catch(_) {}
-        }
+        photoURL = await getDownloadURL(storageRef);
+        try { await updateProfile(cred.user, { photoURL }); } catch(_) {}
 
         // 4) Simpan profil ke Realtime Database
         await set(ref(db, `users/${cred.user.uid}`), {
@@ -335,7 +342,7 @@
           role: isAdmin ? "admin" : "user",
           isAdmin: isAdmin,
           email: cred.user.email,
-          photoURL: photoURL || null,
+          photoURL: photoURL,            // sudah dijamin ada
           createdAt: Date.now()
         });
 
