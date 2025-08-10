@@ -108,7 +108,6 @@ function getTimeOfDayUTC7(){
     if (hour >= 15 && hour < 18) return "sore";
     return "malam";
   }catch{
-    // fallback manual jika Intl tidak tersedia
     const now = new Date();
     const hour = (now.getUTCHours() + 7) % 24;
     if (hour >= 5 && hour < 12) return "pagi";
@@ -117,6 +116,68 @@ function getTimeOfDayUTC7(){
     return "malam";
   }
 }
+
+/** ===== Offline Sheet (JS only) ===== */
+(function setupOfflineSheet(){
+  // gaya & elemen
+  const style = document.createElement("style");
+  style.textContent = `
+    .net-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9999;
+      background:#7f1d1d;color:#fecaca;border-top:1px solid #fecaca33;
+      padding:12px 14px;display:none;gap:10px;align-items:center}
+    .net-sheet.show{display:flex;animation:slideUp .18s ease-out both}
+    .net-dot{width:10px;height:10px;border-radius:50%;background:#ef4444}
+    .net-msg{flex:1;font-size:14px;line-height:1.3}
+    .net-act{display:flex;gap:8px}
+    .net-btn{background:#0b1220;color:#e5e7eb;border:1px solid #94a3b84d;
+      padding:8px 10px;border-radius:10px;cursor:pointer}
+    @keyframes slideUp{from{transform:translateY(8px);opacity:.0}to{transform:none;opacity:1}}
+  `;
+  document.head.appendChild(style);
+
+  const sheet = document.createElement("div");
+  sheet.className = "net-sheet";
+  sheet.innerHTML = `
+    <div class="net-dot"></div>
+    <div class="net-msg">Tidak ada koneksi internet. Cek jaringan Anda.</div>
+    <div class="net-act"><button class="net-btn" id="netRetryBtn">Coba Lagi</button></div>
+  `;
+  document.body.appendChild(sheet);
+
+  const retryBtn = sheet.querySelector("#netRetryBtn");
+
+  function setFormEnabled(enable){
+    [emailEl, passEl, loginBtn].forEach(el => { if (el) el.disabled = !enable; });
+  }
+  function showSheet(){ sheet.classList.add("show"); setFormEnabled(false); err("Tidak ada koneksi internet."); }
+  function hideSheet(){ sheet.classList.remove("show"); setFormEnabled(true); err(""); }
+
+  function reportNetwork(){ navigator.onLine ? hideSheet() : showSheet(); }
+  window.addEventListener("online", reportNetwork);
+  window.addEventListener("offline", reportNetwork);
+  retryBtn.addEventListener("click", reportNetwork);
+
+  // Auto-poll ringan saat sheet tampil
+  let timer=null;
+  sheet.addEventListener("transitionend", ()=>{
+    if (sheet.classList.contains("show") && !timer){
+      timer = setInterval(()=>{
+        if (navigator.onLine){ clearInterval(timer); timer=null; hideSheet(); }
+      }, 3000);
+    }
+  });
+
+  // cek pertama kali saat load
+  reportNetwork();
+
+  // guard submit (tambahan selain di handler)
+  form?.addEventListener("submit", (e)=>{
+    if (!navigator.onLine){
+      e.preventDefault();
+      showSheet();
+    }
+  }, true);
+})();
 
 /** Ambil profil dari RTDB (name, spec, role, isAdmin) */
 async function fetchProfile(user){
@@ -146,10 +207,17 @@ async function fetchProfile(user){
 form?.addEventListener("submit", async (e)=>{
   e.preventDefault();
   err(""); ok("");
+
+  // cegah login saat offline
+  if (!navigator.onLine){
+    err("Tidak ada koneksi internet. Coba lagi setelah jaringan tersambung.");
+    return;
+  }
+
   const email = emailEl.value.trim();
   const pass  = passEl.value;
-
   if (!email || !pass){ err("Email & kata sandi wajib diisi."); return; }
+
   disableForm(true);
   try{
     const cred = await signInWithEmailAndPassword(auth, email, pass);
@@ -180,16 +248,15 @@ onAuthStateChanged(auth, async (user)=>{
 /** Kirim ke Kodular + profil lengkap + salam waktu */
 async function notifyKodularAndGoHome(status, user){
   const prof = await fetchProfile(user);
-
   const payload = JSON.stringify({
     event: "auth",
     status,
     uid: user.uid,
     email: user.email || null,
-    name: prof.name,       // from RTDB or displayName/email
-    spec: prof.spec,       // basic | junior | senior
-    role: prof.role,       // "admin" | "user"
-    isAdmin: prof.isAdmin, // boolean
+    name: prof.name,
+    spec: prof.spec,
+    role: prof.role,
+    isAdmin: prof.isAdmin,
     ts: Date.now(),
     timeOfDay: getTimeOfDayUTC7()
   });
