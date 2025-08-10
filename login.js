@@ -36,7 +36,7 @@ let authEventSent = sessionStorage.getItem(AUTH_SENT_KEY) === "1";
 function markAuthSent(){ authEventSent = true; sessionStorage.setItem(AUTH_SENT_KEY, "1"); }
 function clearAuthSent(){ authEventSent = false; sessionStorage.removeItem(AUTH_SENT_KEY); }
 
-/** Flag untuk membedakan login manual vs auto-login */
+/** Beda status login manual vs auto-login */
 let justLoggedInAttempt = false;
 
 /** ELEMENTS */
@@ -64,7 +64,7 @@ toggleEye?.addEventListener("click", () => {
   toggleEye.textContent = isPassword ? "🙈" : "👁️";
 });
 
-/** LOGO (fallback netral) */
+/** LOGO (fallback netral, fix template literal) */
 (function setLogo(){
   if (!logoEl) return;
   logoEl.dataset.loading = "1";
@@ -249,9 +249,9 @@ form?.addEventListener("submit", async (e)=>{
 
   disableForm(true);
   try{
-    justLoggedInAttempt = true; // tandai ini login manual
+    justLoggedInAttempt = true; // login manual
     await signInWithEmailAndPassword(auth, email, pass);
-    // JANGAN kirim ke Kodular di sini. Tunggu onAuthStateChanged agar tidak double.
+    // Tidak kirim di sini; tunggu onAuthStateChanged agar tidak double.
     ok("Login berhasil. Mengalihkan ke Home...");
   }catch(e){
     justLoggedInAttempt = false;
@@ -301,7 +301,6 @@ onAuthStateChanged(auth, async (user)=>{
     const status = justLoggedInAttempt ? "success" : "already_signed_in";
     justLoggedInAttempt = false;
 
-    // Guard: jika sudah pernah kirim di sesi ini, skip.
     if (authEventSent){
       console.debug("[auth] Skip duplicate send:", status);
       return;
@@ -309,14 +308,15 @@ onAuthStateChanged(auth, async (user)=>{
     await notifyKodularAndGoHome(status, user);
   }else{
     show(welcome);
-    // Saat user sign-out, boleh kirim lagi pada sesi berikutnya
-    // (reset dilakukan juga di window.logout setelah signOut)
+    // Jika user jadi null (logout dari device lain), izinkan kirim lagi setelah login berikutnya
+    clearAuthSent();
   }
 });
 
 /** Kirim ke Kodular + profil lengkap + salam waktu (ONCE) */
 async function notifyKodularAndGoHome(status, user){
   if (authEventSent) return; // double safety
+
   const prof = await fetchProfile(user);
   const payload = JSON.stringify({
     event: "auth",
@@ -332,7 +332,7 @@ async function notifyKodularAndGoHome(status, user){
     timeOfDay: getTimeOfDayUTC7()
   });
 
-  // Tandai sudah kirim sebelum melakukan IO untuk menghindari race
+  // Tandai sudah kirim sebelum IO untuk cegah race condition
   markAuthSent();
 
   if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
