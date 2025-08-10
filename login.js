@@ -30,6 +30,15 @@ const db   = getDatabase(app);
   catch (e) { console.warn("setPersistence gagal:", e?.message || e); }
 })();
 
+/** ====== GUARD: kirim ke Kodular hanya sekali per sesi halaman ====== */
+const AUTH_SENT_KEY = "__AUTH_EVENT_SENT__";
+let authEventSent = sessionStorage.getItem(AUTH_SENT_KEY) === "1";
+function markAuthSent(){ authEventSent = true; sessionStorage.setItem(AUTH_SENT_KEY, "1"); }
+function clearAuthSent(){ authEventSent = false; sessionStorage.removeItem(AUTH_SENT_KEY); }
+
+/** Flag untuk membedakan login manual vs auto-login */
+let justLoggedInAttempt = false;
+
 /** ELEMENTS */
 const $ = (q) => document.querySelector(q);
 const welcome    = $("#welcome");
@@ -40,7 +49,7 @@ const form       = $("#loginForm");
 const emailEl    = $("#email");
 const passEl     = $("#password");
 const loginBtn   = $("#loginBtn");
-const forgotBtn  = $("#forgotBtn");         // <— tombol/link "Lupa Password?"
+const forgotBtn  = $("#forgotBtn");
 const errBox     = $("#errBox");
 const okBox      = $("#okBox");
 const yearEl     = $("#year");
@@ -240,9 +249,12 @@ form?.addEventListener("submit", async (e)=>{
 
   disableForm(true);
   try{
-    const cred = await signInWithEmailAndPassword(auth, email, pass);
-    await notifyKodularAndGoHome("success", cred.user);
+    justLoggedInAttempt = true; // tandai ini login manual
+    await signInWithEmailAndPassword(auth, email, pass);
+    // JANGAN kirim ke Kodular di sini. Tunggu onAuthStateChanged agar tidak double.
+    ok("Login berhasil. Mengalihkan ke Home...");
   }catch(e){
+    justLoggedInAttempt = false;
     const map = {
       "auth/invalid-email":"Format email tidak valid.",
       "auth/user-not-found":"Akun tidak ditemukan.",
@@ -283,17 +295,28 @@ forgotBtn?.addEventListener("click", async ()=>{
   }
 });
 
-/** AUTO-SKIP jika sudah login */
+/** AUTO-SKIP / TRIGGER KIRIM SATU KALI */
 onAuthStateChanged(auth, async (user)=>{
   if (user){
-    await notifyKodularAndGoHome("already_signed_in", user);
+    const status = justLoggedInAttempt ? "success" : "already_signed_in";
+    justLoggedInAttempt = false;
+
+    // Guard: jika sudah pernah kirim di sesi ini, skip.
+    if (authEventSent){
+      console.debug("[auth] Skip duplicate send:", status);
+      return;
+    }
+    await notifyKodularAndGoHome(status, user);
   }else{
     show(welcome);
+    // Saat user sign-out, boleh kirim lagi pada sesi berikutnya
+    // (reset dilakukan juga di window.logout setelah signOut)
   }
 });
 
-/** Kirim ke Kodular + profil lengkap + salam waktu */
+/** Kirim ke Kodular + profil lengkap + salam waktu (ONCE) */
 async function notifyKodularAndGoHome(status, user){
+  if (authEventSent) return; // double safety
   const prof = await fetchProfile(user);
   const payload = JSON.stringify({
     event: "auth",
@@ -308,6 +331,9 @@ async function notifyKodularAndGoHome(status, user){
     ts: Date.now(),
     timeOfDay: getTimeOfDayUTC7()
   });
+
+  // Tandai sudah kirim sebelum melakukan IO untuk menghindari race
+  markAuthSent();
 
   if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
     window.AppInventor.setWebViewString(payload);
@@ -331,6 +357,7 @@ window.logout = async function(){
     });
     if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
     show(welcome);
+    clearAuthSent(); // izinkan kirim lagi setelah logout
   }catch(e){
     err("Gagal logout: " + (e.message || e));
   }
