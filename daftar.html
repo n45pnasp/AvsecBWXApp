@@ -127,8 +127,9 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged,
-             linkWithCredential, EmailAuthProvider, updateProfile, deleteUser } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+      getAuth, createUserWithEmailAndPassword, updateProfile
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
     // Firebase (Auth + RTDB)
@@ -142,7 +143,7 @@
       databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
     };
 
-    // === URL GAS & FOLDER (punyamu) ===
+    // GAS & Folder Drive (punyamu)
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbye3DxrOPeCS58sWdKQdEFXm9xfrTzLXIYAG0v5wFKwaqfSSyQXq_32RXszqJJOdRXgKQ/exec";
     const FOLDER_ID  = "1_bk5jcyq_3xkzWw69D64qPGHMd6yNba5";
 
@@ -182,7 +183,6 @@
     const overlay = $("#overlay");
 
     let uploadedPhotoURL = null;
-    let currentUID = null;
     let uploading = false;
     let lastFileId = null;
 
@@ -196,21 +196,12 @@
       if (!wantAdmin) adminCodeEl.value = "";
     });
 
-    onAuthStateChanged(auth, (user)=>{ currentUID = user?.uid || null; });
-
     // buka popup
-    openUpload.addEventListener("click", async ()=>{
+    openUpload.addEventListener("click", ()=>{
       modalMsg.style.display="none";
       previewBox.style.display = "none";
       fill.classList.remove("indet"); fill.style.width="0%";
       fileEl.value = ""; saveFile.disabled = true; uploadedPhotoURL = null; lastFileId = null;
-
-      try {
-        if (!auth.currentUser) await signInAnonymously(auth);
-        currentUID = auth.currentUser.uid;
-      } catch (e) {
-        showMsg("Gagal menyiapkan sesi upload: " + (e.message || e), "error"); return;
-      }
 
       modalBack.classList.add("show");
       modalBack.setAttribute("aria-hidden","false");
@@ -222,7 +213,7 @@
       modalBack.setAttribute("aria-hidden","true");
     });
 
-    // metode upload: base64 → fetch ke GAS (meniru contohmu, tapi terima ID/URL penuh)
+    // upload → GAS (boleh balas ID atau URL penuh)
     fileEl.addEventListener("change", ()=>{
       modalMsg.style.display="none";
       const f = fileEl.files?.[0];
@@ -234,7 +225,6 @@
       const objURL = URL.createObjectURL(f);
       previewImg.src = objURL;
 
-      // baca file (progress baca → bar persentase)
       const reader = new FileReader();
       reader.onprogress = (e)=>{
         if (e.lengthComputable){
@@ -246,7 +236,6 @@
       reader.onload = async (e)=>{
         const base64Data = String(e.target.result).split(",")[1];
 
-        // mulai upload → progress indeterminate
         uploading = true;
         fill.classList.add("indet");
         saveFile.disabled = true;
@@ -257,37 +246,31 @@
         fd.append("action", "upload");
         fd.append("FILE", base64Data);
         fd.append("MIMETYPE", f.type);
-        // tambahkan UID ke nama file agar unik
-        const safeName = (currentUID ? currentUID + "-" : "") + f.name;
+        const safeName = `${Date.now()}-${f.name}`;
         fd.append("NAMA_FILE", safeName);
         fd.append("FOLDER_ID", FOLDER_ID);
 
         try{
-          const res = await fetch(SCRIPT_URL, { method:"POST", body: fd });
+          const res  = await fetch(SCRIPT_URL, { method:"POST", body: fd });
           const text = await res.text();
           const resText = (text || "").trim();
 
-          // Terima ID atau URL penuh dari Apps Script
+          // Terima ID atau URL penuh
           let urlFromServer = "";
           let idFromServer  = "";
-          
           if (resText.startsWith("http")) {
-            // Server mengembalikan URL penuh
             urlFromServer = resText;
             try { idFromServer = new URL(resText).searchParams.get("id") || ""; } catch(_) {}
           } else if (/^[A-Za-z0-9_-]{25,}$/.test(resText)) {
-            // Server mengembalikan file ID
             idFromServer  = resText;
             urlFromServer = `https://drive.google.com/uc?export=view&id=${idFromServer}`;
           } else {
-            // Error dari server
             uploadedPhotoURL = null; lastFileId = null;
             fill.classList.remove("indet"); fill.style.width = "0%";
             showModalMsg("Upload gagal: " + resText, "error");
             return;
           }
-          
-          // Sukses
+
           lastFileId = idFromServer || "foto";
           uploadedPhotoURL = urlFromServer;
           fill.classList.remove("indet"); fill.style.width = "100%";
@@ -303,20 +286,15 @@
           URL.revokeObjectURL(objURL);
         }
       };
-      reader.onerror = ()=> {
-        showModalMsg("Gagal membaca file.", "error");
-      };
+      reader.onerror = ()=> showModalMsg("Gagal membaca file.", "error");
       reader.readAsDataURL(f);
     });
 
     // simpan pilihan → tampil chip + aktifkan daftar
     saveFile.addEventListener("click", ()=>{
       if (!uploadedPhotoURL){ showModalMsg("Belum ada foto yang berhasil diupload.", "error"); return; }
-      try {
-        fileNameEl.textContent = lastFileId || (new URL(uploadedPhotoURL).searchParams.get("id") || "foto");
-      } catch(_) {
-        fileNameEl.textContent = lastFileId || "foto";
-      }
+      try { fileNameEl.textContent = lastFileId || (new URL(uploadedPhotoURL).searchParams.get("id") || "foto"); }
+      catch { fileNameEl.textContent = lastFileId || "foto"; }
       thumb.src = uploadedPhotoURL;
       fileChip.classList.add("has-thumb");
       fileChip.style.display = "inline-flex";
@@ -331,7 +309,7 @@
       submitBtn.disabled = true;
     });
 
-    // submit daftar (link anon → email/pass; simpan profil)
+    // submit daftar → buat akun langsung, simpan profil
     form.addEventListener("submit", async (e)=>{
       e.preventDefault(); msgBox.style.display="none";
 
@@ -361,10 +339,7 @@
       submitBtn.disabled = true; overlay.classList.add("show");
 
       try{
-        if (!auth.currentUser) await signInAnonymously(auth);
-        const credential = EmailAuthProvider.credential(email, pass);
-        const cred = await linkWithCredential(auth.currentUser, credential);
-
+        const cred = await createUserWithEmailAndPassword(auth, email, pass);
         await updateProfile(cred.user, { displayName: nama, photoURL: uploadedPhotoURL });
         await set(ref(db, `users/${cred.user.uid}`), {
           name:nama, spec, role:isAdmin?"admin":"user", isAdmin,
@@ -379,15 +354,16 @@
 
         showMsg(`Pendaftaran berhasil! Selamat datang, ${nama} [${spec}] ${isAdmin ? "(Admin)" : ""}.`, "success");
         setTimeout(()=>{ window.location.href = "index.html"; }, 1200);
-      }catch(err){
-        try{ if (auth.currentUser && auth.currentUser.isAnonymous) await deleteUser(auth.currentUser); }catch(_){}
+
+      } catch(err){
         const map = {
           "auth/email-already-in-use":"Email sudah terdaftar.",
           "auth/invalid-email":"Format email tidak valid.",
-          "auth/weak-password":"Kata sandi minimal 6 karakter."
+          "auth/weak-password":"Kata sandi minimal 6 karakter.",
+          "auth/operation-not-allowed":"Aktifkan Email/Password di Authentication → Sign-in method."
         };
         showMsg(map[err.code] || ("Gagal daftar: " + (err.message || err)));
-      }finally{
+      } finally{
         submitBtn.disabled = false; overlay.classList.remove("show");
       }
     });
