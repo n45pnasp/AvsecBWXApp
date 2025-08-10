@@ -8,7 +8,7 @@
   --danger:#ef4444;      /* Merah untuk error + offline bar */
   --ok:#22c55e;          /* Hijau untuk sukses */
   --radius:18px;
-  --shadow:0 12px 30px rgba(0,0,0,.35);
+  --shadow:0 6px 16px rgba(0,0,0,.30); /* CHANGED: ringankan shadow */
 }
 
 /* Layout responsif & aman notch */
@@ -32,7 +32,7 @@ body{
   border-radius:var(--radius);
   box-shadow:var(--shadow);
   overflow:hidden;
-  backdrop-filter: blur(8px);
+  /* backdrop-filter: blur(8px); */   /* CHANGED: nonaktifkan blur default */
   animation:pop-in .35s ease-out both;
 }
 
@@ -122,18 +122,15 @@ input:focus{
   text-decoration: underline;
   cursor: pointer;
 }
-.link-btn:hover {
-  opacity: 0.8;
-}
-.forgot-link {
-  text-align: center;
-}
-
+.link-btn:hover { opacity: 0.8; }
+.forgot-link { text-align: center; }
 
 /* Logo */
 .logo-wrap{ display:flex; justify-content:center; margin-bottom:12px }
 .logo-wrap img{
-  width:clamp(180px, 50vw, 300px); height:clamp(180px, 50vw, 300px);
+  /* Tetap besar (sesuai permintaan sebelumnya), tapi ripple & efek berat dikurangi */
+  width:clamp(180px, 50vw, 300px);
+  height:clamp(180px, 50vw, 300px);
   object-fit:contain; border-radius:16px; background:#0b1220;
   border:1px solid rgba(148,163,184,.15); padding:10px;
   animation:logo-in .45s ease-out both;
@@ -150,7 +147,8 @@ input:focus{
   pointer-events:none;
 }
 .btn:active::after{
-  left:var(--x,50%); top:var(--y,50%); width:220px; height:220px; opacity:.25;
+  left:var(--x,50%); top:var(--y,50%); width:140px; height:140px; /* CHANGED: kecilkan ripple */
+  opacity:.25;
   transition:width .35s ease, height .35s ease, opacity .5s ease;
 }
 
@@ -197,7 +195,23 @@ input:focus{
   .logo-wrap{ margin-bottom:8px }
 }
 
-/* Reduce motion */
+/* Reduce motion (global) */
 @media (prefers-reduced-motion:reduce){
   *{ animation:none!important; transition:none!important }
+}
+
+/* ===== Safety tweaks untuk perangkat high-DPI (contoh: Samsung S23) ===== */
+@media (min-resolution: 3dppx) {
+  .card{
+    backdrop-filter:none !important;   /* CHANGED: pastikan blur mati */
+    animation:none !important;         /* CHANGED: hindari animasi awal */
+  }
+  .section.active{ animation:none !important; } /* CHANGED */
+  .logo-wrap img{
+    width:clamp(150px, 40vw, 220px) !important; /* CHANGED: batasi max agar tidak terlalu berat */
+    height:clamp(150px, 40vw, 220px) !important;
+  }
+  .btn:active::after{
+    width:120px !important; height:120px !important; /* CHANGED: ripple lebih kecil lagi */
+  }
 }
