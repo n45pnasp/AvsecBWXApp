@@ -64,7 +64,7 @@ toggleEye?.addEventListener("click", () => {
   toggleEye.textContent = isPassword ? "🙈" : "👁️";
 });
 
-/** LOGO (fallback netral) */
+/** LOGO (fallback netral, fix template literal) */
 (function setLogo(){
   if (!logoEl) return;
   logoEl.dataset.loading = "1";
@@ -201,7 +201,7 @@ const DEFAULT_AVATAR =
     </svg>`
   );
 
-/** Ambil profil dari RTDB (TIDAK dipakai dulu untuk Samsung freeze issue) */
+/** Ambil profil dari RTDB */
 async function fetchProfile(user){
   try{
     const root = ref(db);
@@ -305,65 +305,45 @@ onAuthStateChanged(auth, async (user)=>{
       console.debug("[auth] Skip duplicate send:", status);
       return;
     }
-    await notifyKodularMiniAuth(status, user); // <<< kirim mini segera
+    await notifyKodularAndGoHome(status, user);
   }else{
     show(welcome);
-    // Kalau user jadi null (logout dari device lain), izinkan kirim lagi setelah login berikutnya
+    // Jika user jadi null (logout dari device lain), izinkan kirim lagi setelah login berikutnya
     clearAuthSent();
   }
 });
 
-/** === Kirim payload MINI, cepat & kecil (ONCE) === */
-async function notifyKodularMiniAuth(status, user){
+/** Kirim ke Kodular + profil lengkap + salam waktu (ONCE) */
+async function notifyKodularAndGoHome(status, user){
   if (authEventSent) return; // double safety
 
-  const mini = {
+  const prof = await fetchProfile(user);
+  const payload = JSON.stringify({
     event: "auth",
     status,
     uid: user.uid,
     email: user.email || null,
+    name: prof.name,
+    spec: prof.spec,
+    role: prof.role,
+    isAdmin: prof.isAdmin,
+    photoURL: prof.photoURL,
     ts: Date.now(),
     timeOfDay: getTimeOfDayUTC7()
-  };
+  });
 
-  // Tandai sudah kirim SEBELUM IO untuk cegah race
+  // Tandai sudah kirim sebelum IO untuk cegah race condition
   markAuthSent();
 
-  try{
-    const s = JSON.stringify(mini);
-    if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
-      window.AppInventor.setWebViewString(s);
-    }else{
-      document.title = s; // fallback dev
-    }
-  }catch(errSend){
-    console.warn("send mini failed:", errSend);
+  if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
+    window.AppInventor.setWebViewString(payload);
+  }else{
+    document.title = payload; // fallback
   }
 
   ok(status==="success" ? "Login berhasil. Mengalihkan ke Home..." : "Sesi ditemukan. Mengalihkan ke Home...");
-  setTimeout(()=>{ /* location.href = "kodular://home"; */ }, 400);
+  setTimeout(()=>{ /* location.href = "kodular://home"; */ }, 600);
 }
-
-/** OPTIONAL: kalau suatu saat butuh detail profil setelah pindah screen,
-    kamu bisa panggil fungsi ini dari EvaluateJavaScript Kodular:
-    window.requestAuthProfile && window.requestAuthProfile();
-*/
-window.requestAuthProfile = async function(){
-  const user = auth.currentUser;
-  if (!user) return;
-  const prof = await fetchProfile(user);
-  const payload = JSON.stringify({
-    event: "auth_profile",
-    uid: user.uid,
-    ...prof,
-    ts: Date.now()
-  });
-  try{
-    if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
-  }catch(e){
-    console.warn("send profile failed:", e);
-  }
-};
 
 /** LOGOUT */
 window.logout = async function(){
