@@ -119,7 +119,6 @@ function getTimeOfDayUTC7(){
 
 /** ===== Offline Sheet (JS only) ===== */
 (function setupOfflineSheet(){
-  // gaya & elemen
   const style = document.createElement("style");
   style.textContent = `
     .net-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9999;
@@ -157,7 +156,6 @@ function getTimeOfDayUTC7(){
   window.addEventListener("offline", reportNetwork);
   retryBtn.addEventListener("click", reportNetwork);
 
-  // Auto-poll ringan saat sheet tampil
   let timer=null;
   sheet.addEventListener("transitionend", ()=>{
     if (sheet.classList.contains("show") && !timer){
@@ -167,10 +165,7 @@ function getTimeOfDayUTC7(){
     }
   });
 
-  // cek pertama kali saat load
   reportNetwork();
-
-  // guard submit (tambahan selain di handler)
   form?.addEventListener("submit", (e)=>{
     if (!navigator.onLine){
       e.preventDefault();
@@ -179,7 +174,17 @@ function getTimeOfDayUTC7(){
   }, true);
 })();
 
-/** Ambil profil dari RTDB (name, spec, role, isAdmin) */
+/** (opsional) Avatar default jika tak ada foto */
+const DEFAULT_AVATAR =
+  "data:image/svg+xml;base64," + btoa(
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
+      <rect width='128' height='128' rx='18' fill='#0b1220'/>
+      <circle cx='64' cy='52' r='22' fill='#22c55e'/>
+      <rect x='26' y='84' width='76' height='26' rx='13' fill='#16a34a'/>
+    </svg>`
+  );
+
+/** Ambil profil dari RTDB (name, spec, role, isAdmin, photoURL) */
 async function fetchProfile(user){
   try{
     const root = ref(db);
@@ -188,18 +193,26 @@ async function fetchProfile(user){
       get(child(root, `users/${user.uid}/spec`)),
       get(child(root, `users/${user.uid}/role`)),
       get(child(root, `users/${user.uid}/isAdmin`)),
+      get(child(root, `users/${user.uid}/photoURL`)), // ← foto dari RTDB
     ]);
-    const [nameSnap, specSnap, roleSnap, isAdminSnap] = snaps;
+    const [nameSnap, specSnap, roleSnap, isAdminSnap, photoSnap] = snaps;
+
     const name = nameSnap.exists() ? String(nameSnap.val()).trim()
                : (user.displayName?.trim() || (user.email?.split("@")[0] ?? "Pengguna"));
     const spec = specSnap.exists() ? String(specSnap.val()).trim() : "";
     const role = roleSnap.exists() ? String(roleSnap.val()).trim()
                : (isAdminSnap.exists() && isAdminSnap.val() ? "admin" : "user");
-    const isAdmin = isAdminSnap.exists() ? !!isAdminSnap.val() : role === "admin";
-    return { name, spec, role, isAdmin };
+    const isAdmin  = isAdminSnap.exists() ? !!isAdminSnap.val() : role === "admin";
+
+    const fromRTDB = photoSnap.exists() ? String(photoSnap.val()).trim() : "";
+    const fromAuth = (user.photoURL || "").trim();
+    const photoURL = fromRTDB || fromAuth || DEFAULT_AVATAR;
+
+    return { name, spec, role, isAdmin, photoURL };
   }catch(e){
     console.warn("RTDB fetch error:", e?.message || e);
-    return { name: resolveDisplayName(user), spec: "", role: "user", isAdmin: false };
+    const fallbackPhoto = (user.photoURL && user.photoURL.trim()) || DEFAULT_AVATAR;
+    return { name: resolveDisplayName(user), spec: "", role: "user", isAdmin: false, photoURL: fallbackPhoto };
   }
 }
 
@@ -208,7 +221,6 @@ form?.addEventListener("submit", async (e)=>{
   e.preventDefault();
   err(""); ok("");
 
-  // cegah login saat offline
   if (!navigator.onLine){
     err("Tidak ada koneksi internet. Coba lagi setelah jaringan tersambung.");
     return;
@@ -245,7 +257,7 @@ onAuthStateChanged(auth, async (user)=>{
   }
 });
 
-/** Kirim ke Kodular + profil lengkap + salam waktu */
+/** Kirim ke Kodular + profil lengkap + salam waktu (termasuk photoURL) */
 async function notifyKodularAndGoHome(status, user){
   const prof = await fetchProfile(user);
   const payload = JSON.stringify({
@@ -257,6 +269,7 @@ async function notifyKodularAndGoHome(status, user){
     spec: prof.spec,
     role: prof.role,
     isAdmin: prof.isAdmin,
+    photoURL: prof.photoURL,       // ← dikirim ke Kodular
     ts: Date.now(),
     timeOfDay: getTimeOfDayUTC7()
   });
