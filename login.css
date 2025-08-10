@@ -133,7 +133,7 @@ input:focus{
 /* Logo */
 .logo-wrap{ display:flex; justify-content:center; margin-bottom:12px }
 .logo-wrap img{
-  width:clamp(72px,22vw,120px); height:clamp(72px,22vw,120px);
+  width:clamp(100px, 28vw, 170px); height:clamp(100px, 28vw, 170px);
   object-fit:contain; border-radius:16px; background:#0b1220;
   border:1px solid rgba(148,163,184,.15); padding:10px;
   animation:logo-in .45s ease-out both;
