@@ -1,7 +1,7 @@
 :root{
   --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb;
   --accent:#9C27B0;     /* ungu utama */
-  --accent-2:#6A1B9A;   /* ungu lebih gelap (hover/active) */
+  --accent-2:#0f172a;   /* seperti Bg*/
   --danger:#ef4444; --ok:#22c55e;
   --radius:18px;
   --shadow:0 12px 30px rgba(0,0,0,.35);
