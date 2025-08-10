@@ -1,5 +1,4 @@
-// login.js (module) — tanpa pengaturan warna; semua warna via CSS
-
+// login.js (module)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword,
@@ -55,7 +54,7 @@ toggleEye?.addEventListener("click", () => {
   toggleEye.textContent = isPassword ? "🙈" : "👁️";
 });
 
-/** LOGO (tanpa warna di JS) */
+/** LOGO (tanpa pewarnaan di JS) */
 (function setLogo(){
   if (!logoEl) return;
   logoEl.dataset.loading = "1";
@@ -63,12 +62,21 @@ toggleEye?.addEventListener("click", () => {
   const basePath = location.pathname.substring(0, location.pathname.lastIndexOf("/") + 1);
   const url = params.get("logo") || window.LOGO_URL || `${basePath}logohome.png?v=${Date.now()}`;
 
-  // 1x1 transparent GIF sebagai fallback agar JS tidak mendikte warna
-  const transparent = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+  // Fallback SVG netral (tanpa atribut warna eksplisit)
+  const fallback = "data:image/svg+xml;base64," + btoa(
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' aria-hidden='true'>
+      <rect width='256' height='256' rx='40'/>
+      <g>
+        <circle cx='92' cy='104' r='34'/>
+        <rect x='132' y='70' width='60' height='68' rx='12'/>
+        <rect x='52' y='154' width='140' height='24' rx='12'/>
+      </g>
+    </svg>`
+  );
 
   logoEl.src = url;
   logoEl.onload  = () => { delete logoEl.dataset.loading; };
-  logoEl.onerror = () => { logoEl.src = transparent; delete logoEl.dataset.loading; };
+  logoEl.onerror = () => { logoEl.src = fallback; delete logoEl.dataset.loading; };
 })();
 
 /** UTIL UI */
@@ -78,20 +86,26 @@ function show(sec){
   err(""); ok("");
 }
 function err(msg){
+  if (!errBox) return;
   if (!msg){ errBox.classList.remove("show"); errBox.textContent=""; }
   else { errBox.textContent=msg; errBox.classList.add("show"); }
 }
 function ok(msg){
+  if (!okBox) return;
   if (!msg){ okBox.classList.remove("show"); okBox.textContent=""; }
   else { okBox.textContent=msg; okBox.classList.add("show"); }
 }
 function disableForm(d){
-  loginBtn.disabled = d; loginBtn.textContent = d ? "Memproses..." : "Masuk";
+  if (!loginBtn) return;
+  loginBtn.disabled = d;
+  loginBtn.textContent = d ? "Memproses..." : "Masuk";
 }
 
 /** NAV */
 goLoginBtn?.addEventListener("click", () => show(login));
 backBtn?.addEventListener("click", () => show(welcome));
+
+// Ripple position CSS var (bukan warna)
 for (const b of document.querySelectorAll(".btn")){
   b.addEventListener("pointerdown", (e)=>{
     const r = b.getBoundingClientRect();
@@ -128,8 +142,10 @@ function getTimeOfDayUTC7(){
   }
 }
 
-/** ===== Offline Sheet (tanpa styling warna di JS) =====
- * Hanya markup & logika. Styling sepenuhnya dari CSS (.net-sheet, .net-btn, dst).
+/** ===== Offline Sheet (tanpa style/color injection) =====
+ * Hanya membuat elemen & event; semua tampilan/warna diatur di CSS kamu.
+ * Pastikan kamu punya aturan CSS untuk:
+ * .net-sheet, .net-sheet.show, .net-dot, .net-msg, .net-act, .net-btn
  */
 (function setupOfflineSheet(){
   const sheet = document.createElement("div");
@@ -137,7 +153,7 @@ function getTimeOfDayUTC7(){
   sheet.innerHTML = `
     <div class="net-dot"></div>
     <div class="net-msg">Tidak ada koneksi internet. Cek jaringan Anda.</div>
-    <div class="net-act"><button class="net-btn" id="netRetryBtn" type="button">Coba Lagi</button></div>
+    <div class="net-act"><button class="net-btn" id="netRetryBtn">Coba Lagi</button></div>
   `;
   document.body.appendChild(sheet);
 
@@ -152,7 +168,7 @@ function getTimeOfDayUTC7(){
   function reportNetwork(){ navigator.onLine ? hideSheet() : showSheet(); }
   window.addEventListener("online", reportNetwork);
   window.addEventListener("offline", reportNetwork);
-  retryBtn.addEventListener("click", reportNetwork);
+  retryBtn?.addEventListener("click", reportNetwork);
 
   let timer=null;
   sheet.addEventListener("transitionend", ()=>{
@@ -172,8 +188,15 @@ function getTimeOfDayUTC7(){
   }, true);
 })();
 
-/** Avatar default (netral) */
-const DEFAULT_AVATAR = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+/** Avatar default tanpa atribut warna eksplisit */
+const DEFAULT_AVATAR =
+  "data:image/svg+xml;base64," + btoa(
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128' aria-hidden='true'>
+      <rect width='128' height='128' rx='18'/>
+      <circle cx='64' cy='52' r='22'/>
+      <rect x='26' y='84' width='76' height='26' rx='13'/>
+    </svg>`
+  );
 
 /** Ambil profil dari RTDB */
 async function fetchProfile(user){
