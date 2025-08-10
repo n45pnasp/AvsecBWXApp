@@ -30,7 +30,6 @@
     .small a { color:#a7f3d0; text-decoration:none; }
     .hidden { display:none; }
 
-    /* Modal upload */
     .modal-backdrop { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); z-index:50; }
     .modal-backdrop.show { display:grid; }
     .modal { width:min(92vw, 360px); background:rgba(17,24,39,.98); border:1px solid rgba(148,163,184,.25); border-radius:14px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.45); animation:pop .2s ease-out both; }
@@ -47,7 +46,6 @@
     @keyframes indet { 0%{width:5%} 50%{width:85%} 100%{width:5%} }
     @media (min-width: 768px){ .modal { width:min(80vw, 380px); } }
 
-    /* Overlay proses */
     .overlay { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.55); z-index:60; }
     .overlay.show { display:grid; }
     .spinner { width:54px; height:54px; border:5px solid rgba(255,255,255,.25); border-top-color:#22c55e; border-radius:50%; animation:spin 1s linear infinite; }
@@ -113,14 +111,7 @@
       <h3 id="modalTitle">Unggah Foto</h3>
       <p>Pilih gambar (maks 5 MB). Setelah dipilih, upload akan berjalan dan progress terlihat di bawah.</p>
 
-      <!-- Form upload langsung ke GAS -->
-      <form id="uploadForm" method="post" enctype="multipart/form-data" target="uploadFrame">
-        <input id="file" name="file" type="file" accept="image/*" />
-        <!-- ✅ GANTI dengan Folder ID tujuan -->
-        <input type="hidden" name="folderId" value="1_bk5jcyq_3xkzWw69D64qPGHMd6yNba5" />
-      </form>
-      <iframe id="uploadFrame" name="uploadFrame" style="display:none;"></iframe>
-
+      <input id="file" type="file" accept="image/*" />
       <div class="preview"><img id="previewImg" alt="Preview" /></div>
       <div class="bar"><div id="fill" class="fill"></div></div>
 
@@ -132,18 +123,15 @@
     </div>
   </div>
 
-  <!-- Overlay proses -->
   <div id="overlay" class="overlay"><div class="spinner"></div></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import {
-      getAuth, signInAnonymously, onAuthStateChanged,
-      linkWithCredential, EmailAuthProvider, updateProfile, deleteUser
-    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged,
+             linkWithCredential, EmailAuthProvider, updateProfile, deleteUser } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-    // ===== FIREBASE (AUTH + RTDB) =====
+    // Firebase (Auth + RTDB)
     const firebaseConfig = {
       apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
       authDomain: "avsecbwx-4229c.firebaseapp.com",
@@ -154,8 +142,9 @@
       databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
     };
 
-    // ===== URL GAS WEB APP — GANTI DENGAN PUNYAMU =====
-    const GAS_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbxE8YIXPTl5NBhaykYfe8khV9LIIOQksbN0ggYkiApNIrobf7U1t_YWpCxoGvtwuneaOQ/exec";
+    // === URL GAS & FOLDER (punyamu) ===
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbye3DxrOPeCS58sWdKQdEFXm9xfrTzLXIYAG0v5wFKwaqfSSyQXq_32RXszqJJOdRXgKQ/exec";
+    const FOLDER_ID  = "1_bk5jcyq_3xkzWw69D64qPGHMd6yNba5";
 
     const ADMIN_CODE = "BWX-ADMIN";
 
@@ -163,7 +152,7 @@
     const auth = getAuth(app);
     const db   = getDatabase(app);
 
-    // EL helper
+    // EL
     const $ = (q)=>document.querySelector(q);
     const form = $("#registerForm");
     const namaEl = $("#nama");
@@ -183,7 +172,6 @@
     const thumb = $("#thumb");
 
     const modalBack = $("#modalBack");
-    const uploadForm = $("#uploadForm");
     const fileEl = $("#file");
     const saveFile = $("#saveFile");
     const cancelFile = $("#cancelFile");
@@ -191,12 +179,12 @@
     const previewBox = document.querySelector(".preview");
     const previewImg = $("#previewImg");
     const fill = $("#fill");
-    const uploadFrame = $("#uploadFrame");
     const overlay = $("#overlay");
 
-    let uploadedPhotoURL = null;  // URL Drive hasil upload
-    let currentUID = null;        // UID anon → nanti di-link ke email/pass
+    let uploadedPhotoURL = null;
+    let currentUID = null;
     let uploading = false;
+    let lastFileId = null;
 
     const showMsg=(t,type="error")=>{ msgBox.textContent=t; msgBox.className="msg "+type; msgBox.style.display="block"; };
     const showModalMsg=(t,type="error")=>{ modalMsg.textContent=t; modalMsg.className="msg "+type; modalMsg.style.display="block"; };
@@ -210,26 +198,20 @@
 
     onAuthStateChanged(auth, (user)=>{ currentUID = user?.uid || null; });
 
-    // === Buka popup → siapkan anon + set action GAS ===
+    // buka popup
     openUpload.addEventListener("click", async ()=>{
       modalMsg.style.display="none";
       previewBox.style.display = "none";
-      fill.classList.remove("indet");
-      fill.style.width = "0%";
-      fileEl.value = "";
-      saveFile.disabled = true;
-      uploadedPhotoURL = null;
+      fill.classList.remove("indet"); fill.style.width="0%";
+      fileEl.value = ""; saveFile.disabled = true; uploadedPhotoURL = null; lastFileId = null;
 
       try {
         if (!auth.currentUser) await signInAnonymously(auth);
         currentUID = auth.currentUser.uid;
       } catch (e) {
-        showMsg("Gagal menyiapkan sesi upload: " + (e.message || e), "error");
-        return;
+        showMsg("Gagal menyiapkan sesi upload: " + (e.message || e), "error"); return;
       }
 
-      // sertakan uid sebagai query (opsional, untuk penamaan di GAS)
-      uploadForm.action = GAS_UPLOAD_URL + "?uid=" + encodeURIComponent(currentUID);
       modalBack.classList.add("show");
       modalBack.setAttribute("aria-hidden","false");
     });
@@ -240,65 +222,101 @@
       modalBack.setAttribute("aria-hidden","true");
     });
 
-    // === Terima hasil upload dari GAS (iframe → postMessage) ===
-    window.addEventListener("message", (ev)=>{
-      // if (!String(ev.origin).includes("script.google.com")) return; // opsional
-      try{
-        const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
-        if (data && data.event === "upload_done") {
-          uploading = false;
-          fill.classList.remove("indet");
-          fill.style.width = "100%";
-          if (data.ok && data.photoURL) {
-            uploadedPhotoURL = data.photoURL;
-            saveFile.disabled = false;
-            showModalMsg("Upload selesai. Klik 'Simpan Pilihan'.", "success");
-          } else {
-            uploadedPhotoURL = null;
-            saveFile.disabled = true;
-            showModalMsg(data.error || "Upload gagal.", "error");
-          }
-        }
-      }catch(_){}
-    });
-
-    // === Pilih file → submit ke GAS via iframe (indeterminate progress) ===
+    // metode upload: base64 → fetch ke GAS (meniru contohmu, tapi terima ID/URL penuh)
     fileEl.addEventListener("change", ()=>{
       modalMsg.style.display="none";
       const f = fileEl.files?.[0];
-      if (!f) { previewBox.style.display="none"; saveFile.disabled = true; return; }
-      if (!/^image\//.test(f.type)) { showModalMsg("File harus gambar.", "error"); fileEl.value=""; return; }
-      const max = 5 * 1024 * 1024;
-      if (f.size > max) { showModalMsg("Ukuran maksimal 5 MB.", "error"); fileEl.value=""; return; }
+      if (!f){ previewBox.style.display="none"; saveFile.disabled = true; return; }
+      if (!/^image\//.test(f.type)){ showModalMsg("File harus gambar.", "error"); fileEl.value=""; return; }
+      if (f.size > 5*1024*1024){ showModalMsg("Ukuran maksimal 5 MB.", "error"); fileEl.value=""; return; }
 
-      // preview
       previewBox.style.display = "block";
       const objURL = URL.createObjectURL(f);
       previewImg.src = objURL;
 
-      // mulai upload (progress bar indeterminate)
-      uploading = true;
-      saveFile.disabled = true;
-      uploadedPhotoURL = null;
-      fill.classList.add("indet");
-      try {
-        uploadForm.submit(); // kirim ke GAS
-      } catch (e) {
-        fill.classList.remove("indet");
-        showModalMsg("Gagal mulai upload: " + (e.message || e), "error");
-      } finally {
-        setTimeout(()=> URL.revokeObjectURL(objURL), 1500);
-      }
+      // baca file (progress baca → bar persentase)
+      const reader = new FileReader();
+      reader.onprogress = (e)=>{
+        if (e.lengthComputable){
+          const pct = Math.round((e.loaded / e.total) * 100);
+          fill.classList.remove("indet");
+          fill.style.width = pct + "%";
+        }
+      };
+      reader.onload = async (e)=>{
+        const base64Data = String(e.target.result).split(",")[1];
+
+        // mulai upload → progress indeterminate
+        uploading = true;
+        fill.classList.add("indet");
+        saveFile.disabled = true;
+        uploadedPhotoURL = null;
+        lastFileId = null;
+
+        const fd = new FormData();
+        fd.append("action", "upload");
+        fd.append("FILE", base64Data);
+        fd.append("MIMETYPE", f.type);
+        // tambahkan UID ke nama file agar unik
+        const safeName = (currentUID ? currentUID + "-" : "") + f.name;
+        fd.append("NAMA_FILE", safeName);
+        fd.append("FOLDER_ID", FOLDER_ID);
+
+        try{
+          const res = await fetch(SCRIPT_URL, { method:"POST", body: fd });
+          const text = await res.text();
+          const resText = (text || "").trim();
+
+          // Terima ID atau URL penuh dari Apps Script
+          let urlFromServer = "";
+          let idFromServer  = "";
+          
+          if (resText.startsWith("http")) {
+            // Server mengembalikan URL penuh
+            urlFromServer = resText;
+            try { idFromServer = new URL(resText).searchParams.get("id") || ""; } catch(_) {}
+          } else if (/^[A-Za-z0-9_-]{25,}$/.test(resText)) {
+            // Server mengembalikan file ID
+            idFromServer  = resText;
+            urlFromServer = `https://drive.google.com/uc?export=view&id=${idFromServer}`;
+          } else {
+            // Error dari server
+            uploadedPhotoURL = null; lastFileId = null;
+            fill.classList.remove("indet"); fill.style.width = "0%";
+            showModalMsg("Upload gagal: " + resText, "error");
+            return;
+          }
+          
+          // Sukses
+          lastFileId = idFromServer || "foto";
+          uploadedPhotoURL = urlFromServer;
+          fill.classList.remove("indet"); fill.style.width = "100%";
+          saveFile.disabled = false;
+          showModalMsg("Upload selesai. Klik 'Simpan Pilihan'.", "success");
+
+        } catch(err){
+          uploadedPhotoURL = null; lastFileId = null;
+          fill.classList.remove("indet"); fill.style.width = "0%";
+          showModalMsg("Error: " + (err.message || err), "error");
+        } finally{
+          uploading = false;
+          URL.revokeObjectURL(objURL);
+        }
+      };
+      reader.onerror = ()=> {
+        showModalMsg("Gagal membaca file.", "error");
+      };
+      reader.readAsDataURL(f);
     });
 
-    // === Simpan pilihan → tampil chip + enable tombol daftar
+    // simpan pilihan → tampil chip + aktifkan daftar
     saveFile.addEventListener("click", ()=>{
-      if (!uploadedPhotoURL) { showModalMsg("Belum ada foto yang berhasil diupload.", "error"); return; }
-      try{
-        const u = new URL(uploadedPhotoURL);
-        const id = u.searchParams.get("id") || "foto";
-        fileNameEl.textContent = id;
-      }catch{ fileNameEl.textContent = "foto"; }
+      if (!uploadedPhotoURL){ showModalMsg("Belum ada foto yang berhasil diupload.", "error"); return; }
+      try {
+        fileNameEl.textContent = lastFileId || (new URL(uploadedPhotoURL).searchParams.get("id") || "foto");
+      } catch(_) {
+        fileNameEl.textContent = lastFileId || "foto";
+      }
       thumb.src = uploadedPhotoURL;
       fileChip.classList.add("has-thumb");
       fileChip.style.display = "inline-flex";
@@ -308,13 +326,12 @@
     });
 
     clearFileBtn.addEventListener("click", ()=>{
-      uploadedPhotoURL = null;
-      fileChip.style.display = "none";
-      fileChip.classList.remove("has-thumb");
+      uploadedPhotoURL = null; lastFileId = null;
+      fileChip.style.display = "none"; fileChip.classList.remove("has-thumb");
       submitBtn.disabled = true;
     });
 
-    // === Submit daftar → link anon → email/pass; simpan profil (Auth + RTDB)
+    // submit daftar (link anon → email/pass; simpan profil)
     form.addEventListener("submit", async (e)=>{
       e.preventDefault(); msgBox.style.display="none";
 
@@ -336,21 +353,21 @@
       let isAdmin = false;
       if (roleReq === "admin") {
         if (!adminCode) return showMsg("Kode Admin wajib diisi untuk membuat akun Admin.");
-        if (adminCode !== "BWX-ADMIN") showMsg("Kode Admin salah. Akun akan dibuat sebagai Non-Admin.");
+        if (adminCode !== ADMIN_CODE) showMsg("Kode Admin salah. Akun akan dibuat sebagai Non-Admin.");
         else isAdmin = true;
       }
 
       nama = formatNama(nama);
       submitBtn.disabled = true; overlay.classList.add("show");
 
-      try {
+      try{
         if (!auth.currentUser) await signInAnonymously(auth);
         const credential = EmailAuthProvider.credential(email, pass);
-        const cred = await linkWithCredential(auth.currentUser, credential); // UID tetap
+        const cred = await linkWithCredential(auth.currentUser, credential);
 
         await updateProfile(cred.user, { displayName: nama, photoURL: uploadedPhotoURL });
         await set(ref(db, `users/${cred.user.uid}`), {
-          name: nama, spec, role: isAdmin ? "admin" : "user", isAdmin,
+          name:nama, spec, role:isAdmin?"admin":"user", isAdmin,
           email: cred.user.email, photoURL: uploadedPhotoURL, createdAt: Date.now()
         });
 
@@ -362,15 +379,15 @@
 
         showMsg(`Pendaftaran berhasil! Selamat datang, ${nama} [${spec}] ${isAdmin ? "(Admin)" : ""}.`, "success");
         setTimeout(()=>{ window.location.href = "index.html"; }, 1200);
-      } catch (err) {
-        try { if (auth.currentUser && auth.currentUser.isAnonymous) await deleteUser(auth.currentUser); } catch(_) {}
+      }catch(err){
+        try{ if (auth.currentUser && auth.currentUser.isAnonymous) await deleteUser(auth.currentUser); }catch(_){}
         const map = {
           "auth/email-already-in-use":"Email sudah terdaftar.",
           "auth/invalid-email":"Format email tidak valid.",
           "auth/weak-password":"Kata sandi minimal 6 karakter."
         };
         showMsg(map[err.code] || ("Gagal daftar: " + (err.message || err)));
-      } finally {
+      }finally{
         submitBtn.disabled = false; overlay.classList.remove("show");
       }
     });
