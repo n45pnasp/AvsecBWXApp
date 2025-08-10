@@ -13,6 +13,10 @@
 
 /* Layout responsif & aman notch */
 *{box-sizing:border-box}
+
+/* ===== FORCE: Matikan semua ANIMASI (debug/performa) ===== */
+*{ animation:none !important; }
+
 html,body{height:100%}
 body{
   margin:0; color:var(--text);
