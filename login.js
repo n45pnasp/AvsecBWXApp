@@ -17,7 +17,6 @@ const firebaseConfig = {
   storageBucket: "avsecbwx-4229c.appspot.com",
   messagingSenderId: "1029406629258",
   measurementId: "G-P37F88HGFE",
-  // Tambahkan URL RTDB agar pasti tepat
   databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
 };
 
@@ -69,7 +68,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
   logoEl.onerror = () => { logoEl.src = fallback; delete logoEl.dataset.loading; };
 })();
 
-/** UTIL */
+/** UTIL UI */
 function show(sec){
   for (const el of document.querySelectorAll(".section")) el.classList.remove("active");
   sec.classList.add("active");
@@ -97,6 +96,28 @@ function resolveDisplayName(user){
   return "Pengguna";
 }
 
+/** Waktu salam (UTC+7 / Asia/Jakarta) */
+function getTimeOfDayUTC7(){
+  try{
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit', hour12: false, timeZone: 'Asia/Jakarta'
+    }).formatToParts(new Date());
+    const hour = parseInt(parts.find(p=>p.type==='hour')?.value ?? '0', 10);
+    if (hour >= 5 && hour < 12) return "pagi";
+    if (hour >= 12 && hour < 15) return "siang";
+    if (hour >= 15 && hour < 18) return "sore";
+    return "malam";
+  }catch{
+    // fallback manual jika Intl tidak tersedia
+    const now = new Date();
+    const hour = (now.getUTCHours() + 7) % 24;
+    if (hour >= 5 && hour < 12) return "pagi";
+    if (hour >= 12 && hour < 15) return "siang";
+    if (hour >= 15 && hour < 18) return "sore";
+    return "malam";
+  }
+}
+
 /** Ambil profil dari RTDB (name, spec, role, isAdmin) */
 async function fetchProfile(user){
   try{
@@ -117,10 +138,7 @@ async function fetchProfile(user){
     return { name, spec, role, isAdmin };
   }catch(e){
     console.warn("RTDB fetch error:", e?.message || e);
-    return {
-      name: resolveDisplayName(user),
-      spec: "", role: "user", isAdmin: false
-    };
+    return { name: resolveDisplayName(user), spec: "", role: "user", isAdmin: false };
   }
 }
 
@@ -159,7 +177,7 @@ onAuthStateChanged(auth, async (user)=>{
   }
 });
 
-/** Kirim ke Kodular + profil lengkap */
+/** Kirim ke Kodular + profil lengkap + salam waktu */
 async function notifyKodularAndGoHome(status, user){
   const prof = await fetchProfile(user);
 
@@ -172,7 +190,8 @@ async function notifyKodularAndGoHome(status, user){
     spec: prof.spec,       // basic | junior | senior
     role: prof.role,       // "admin" | "user"
     isAdmin: prof.isAdmin, // boolean
-    ts: Date.now()
+    ts: Date.now(),
+    timeOfDay: getTimeOfDayUTC7()
   });
 
   if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
@@ -185,11 +204,16 @@ async function notifyKodularAndGoHome(status, user){
   setTimeout(()=>{ /* location.href = "kodular://home"; */ }, 600);
 }
 
-/** LOGOUT */
+/** LOGOUT (kirim timeOfDay juga) */
 window.logout = async function(){
   try{
     await signOut(auth);
-    const payload = JSON.stringify({event:"auth", status:"signed_out", ts:Date.now()});
+    const payload = JSON.stringify({
+      event:"auth",
+      status:"signed_out",
+      ts:Date.now(),
+      timeOfDay: getTimeOfDayUTC7()
+    });
     if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
     show(welcome);
   }catch(e){
