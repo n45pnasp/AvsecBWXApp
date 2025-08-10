@@ -1,6 +1,8 @@
 :root{
   --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb;
-  --accent:#22c55e; --accent-2:#16a34a; --danger:#ef4444; --ok:#22c55e;
+  --accent:#9C27B0;     /* ungu utama */
+  --accent-2:#6A1B9A;   /* ungu lebih gelap (hover) */
+  --danger:#ef4444; --ok:#22c55e;
   --radius:18px;
   --shadow:0 12px 30px rgba(0,0,0,.35);
 }
@@ -40,9 +42,10 @@ body{
 .subtitle{ margin:0 0 .6rem; color:var(--muted); font-size:clamp(13px,3.4vw,15px) }
 
 .cta{ margin-top:12px; display:flex; gap:10px }
+
 .btn{
   width:100%; padding:14px 16px; border-radius:14px; border:1px solid transparent;
-  background:var(--accent); color:#052e16; font-weight:700; cursor:pointer;
+  background:var(--accent); color:#fff; font-weight:700; cursor:pointer;
   font-size:clamp(14px,3.6vw,16px);
   transition: transform .12s ease, background .15s ease, opacity .15s ease;
   position:relative; overflow:hidden;
@@ -51,7 +54,10 @@ body{
 .btn:hover{ background:var(--accent-2) }
 
 /* Ghost button */
-.ghost{ background:transparent; color:var(--text); border:1px solid rgba(148,163,184,.25) }
+.ghost{
+  background:transparent; color:var(--text);
+  border:1px solid rgba(148,163,184,.25)
+}
 .ghost:hover{ border-color:rgba(148,163,184,.45) }
 
 form{ display:grid; gap:12px; margin-top:8px }
@@ -62,7 +68,10 @@ input{
   background:#0b1220; color:var(--text); outline:none;
   font-size:clamp(14px,3.6vw,16px);
 }
-input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px #22c55e22 }
+input:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px #9c27b022; /* ungu transparan */
+}
 
 .row{ display:grid; gap:6px }
 .hint{ font-size:12px; color:var(--muted); margin-top:8px }
@@ -100,23 +109,20 @@ input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px #22c55e22 }
   pointer-events:none;
 }
 .btn:active::after{
-  left:var(--x,50%); top:var(--y,50%); width:220px; height:220px; opacity:.25; transition:width .35s ease, height .35s ease, opacity .5s ease;
+  left:var(--x,50%); top:var(--y,50%); width:220px; height:220px; opacity:.25;
+  transition:width .35s ease, height .35s ease, opacity .5s ease;
 }
 
-.password-wrapper {
-  position: relative;
+/* Password eye */
+.password-wrapper{ position:relative; }
+.password-wrapper input{ padding-right:44px; }
+.toggle-eye{
+  position:absolute; right:10px; top:50%; transform:translateY(-50%);
+  cursor:pointer; user-select:none;
+  width:32px; height:32px; display:grid; place-items:center;
+  border-radius:8px; color:#e5e7eb;
 }
-.password-wrapper input {
-  padding-right: 40px; /* beri ruang untuk icon mata */
-}
-.toggle-eye {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: pointer;
-  user-select: none;
-}
+.toggle-eye:active{ background:rgba(255,255,255,.06); }
 
 /* Animations */
 @keyframes pop-in{ from{ opacity:.0; transform:translateY(8px) scale(.98) } to{ opacity:1; transform:none } }
