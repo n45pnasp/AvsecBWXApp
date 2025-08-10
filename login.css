@@ -53,17 +53,29 @@ body{
 .btn:active{ transform:scale(.98) }
 .btn:hover{ background:var(--accent-2) }
 
-/* Ghost button */
-/* Tombol outline ungu (Kembali) */
-.ghost-purple {
-  background: var(--bg);
-  color: var(--accent);
+/* Ghost button (outline ungu, fill ikut background) */
+.btn.ghost-purple{
+  background: var(--bg);       /* sama dengan background halaman */
+  color: var(--accent);        /* teks ungu */
   border: 2px solid var(--accent);
 }
-.ghost-purple:hover {
-  background: rgba(156, 39, 176, 0.1);
+
+.btn.ghost-purple:hover{
+  /* jangan ikut .btn:hover yang ungu gelap */
+  background: rgba(156, 39, 176, 0.10); /* ungu transparan tipis */
+  color: var(--accent);
 }
 
+.btn.ghost-purple:active{
+  transform: scale(.98);       /* tetap ada efek tekan */
+  background: rgba(156, 39, 176, 0.16);
+}
+
+.btn.ghost-purple:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px #9c27b022;  /* ring ungu transparan */
+  border-color: var(--accent);
+}
 
 form{ display:grid; gap:12px; margin-top:8px }
 label{ font-size:clamp(12px,3.2vw,14px); color:var(--muted) }
