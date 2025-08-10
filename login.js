@@ -46,6 +46,33 @@ const yearEl     = $("#year");
 const logoEl     = $("#appLogo");
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
+/** Inject custom color styles (Ungu) */
+(function injectCustomColors(){
+  const style = document.createElement("style");
+  style.textContent = `
+    .btn, button, .net-btn {
+      background-color: #9C27B0FF !important;
+      color: #fff !important;
+    }
+    .btn:hover, button:hover, .net-btn:hover {
+      background-color: #6A1B9A !important;
+    }
+    /* Avatar background ganti jadi ungu gelap */
+    .avatar-dark {
+      background-color: #6A1B9A !important;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+/** Toggle password visibility (👁️ / 🙈) */
+const toggleEye = document.querySelector("#togglePassword");
+toggleEye?.addEventListener("click", () => {
+  const isPassword = passEl.type === "password";
+  passEl.type = isPassword ? "text" : "password";
+  toggleEye.textContent = isPassword ? "🙈" : "👁️";
+});
+
 /** LOGO */
 (function setLogo(){
   if (!logoEl) return;
@@ -56,7 +83,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
   const fallback = "data:image/svg+xml;base64," + btoa(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'>
       <rect width='256' height='256' rx='40' fill='#0b1220'/>
-      <g fill='#22c55e'>
+      <g fill='#9C27B0'>
         <circle cx='92' cy='104' r='34'/>
         <rect x='132' y='70' width='60' height='68' rx='12'/>
         <rect x='52' y='154' width='140' height='24' rx='12'/>
@@ -128,8 +155,9 @@ function getTimeOfDayUTC7(){
     .net-dot{width:10px;height:10px;border-radius:50%;background:#ef4444}
     .net-msg{flex:1;font-size:14px;line-height:1.3}
     .net-act{display:flex;gap:8px}
-    .net-btn{background:#0b1220;color:#e5e7eb;border:1px solid #94a3b84d;
+    .net-btn{background:#9C27B0FF;color:#fff;border:1px solid #6A1B9A;
       padding:8px 10px;border-radius:10px;cursor:pointer}
+    .net-btn:hover{background:#6A1B9A;}
     @keyframes slideUp{from{transform:translateY(8px);opacity:.0}to{transform:none;opacity:1}}
   `;
   document.head.appendChild(style);
@@ -179,12 +207,12 @@ const DEFAULT_AVATAR =
   "data:image/svg+xml;base64," + btoa(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
       <rect width='128' height='128' rx='18' fill='#0b1220'/>
-      <circle cx='64' cy='52' r='22' fill='#22c55e'/>
-      <rect x='26' y='84' width='76' height='26' rx='13' fill='#16a34a'/>
+      <circle cx='64' cy='52' r='22' fill='#9C27B0'/>
+      <rect x='26' y='84' width='76' height='26' rx='13' fill='#6A1B9A'/>
     </svg>`
   );
 
-/** Ambil profil dari RTDB (name, spec, role, isAdmin, photoURL) */
+/** Ambil profil dari RTDB */
 async function fetchProfile(user){
   try{
     const root = ref(db);
@@ -193,7 +221,7 @@ async function fetchProfile(user){
       get(child(root, `users/${user.uid}/spec`)),
       get(child(root, `users/${user.uid}/role`)),
       get(child(root, `users/${user.uid}/isAdmin`)),
-      get(child(root, `users/${user.uid}/photoURL`)), // ← foto dari RTDB
+      get(child(root, `users/${user.uid}/photoURL`)),
     ]);
     const [nameSnap, specSnap, roleSnap, isAdminSnap, photoSnap] = snaps;
 
@@ -257,7 +285,7 @@ onAuthStateChanged(auth, async (user)=>{
   }
 });
 
-/** Kirim ke Kodular + profil lengkap + salam waktu (termasuk photoURL) */
+/** Kirim ke Kodular + profil lengkap + salam waktu */
 async function notifyKodularAndGoHome(status, user){
   const prof = await fetchProfile(user);
   const payload = JSON.stringify({
@@ -269,7 +297,7 @@ async function notifyKodularAndGoHome(status, user){
     spec: prof.spec,
     role: prof.role,
     isAdmin: prof.isAdmin,
-    photoURL: prof.photoURL,       // ← dikirim ke Kodular
+    photoURL: prof.photoURL,
     ts: Date.now(),
     timeOfDay: getTimeOfDayUTC7()
   });
@@ -284,7 +312,7 @@ async function notifyKodularAndGoHome(status, user){
   setTimeout(()=>{ /* location.href = "kodular://home"; */ }, 600);
 }
 
-/** LOGOUT (kirim timeOfDay juga) */
+/** LOGOUT */
 window.logout = async function(){
   try{
     await signOut(auth);
