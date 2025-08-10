@@ -38,7 +38,9 @@
 
           <div class="row">
             <label for="password">Kata Sandi</label>
-            <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" minlength="6" required />
+            <div class="password-wrapper">
+              <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" minlength="6" required />
+              <span id="togglePassword" class="toggle-eye">👁️</span>
           </div>
 
           <button id="loginBtn" type="submit" class="btn">Masuk</button>
