@@ -103,6 +103,21 @@ input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px #22c55e22 }
   left:var(--x,50%); top:var(--y,50%); width:220px; height:220px; opacity:.25; transition:width .35s ease, height .35s ease, opacity .5s ease;
 }
 
+.password-wrapper {
+  position: relative;
+}
+.password-wrapper input {
+  padding-right: 40px; /* beri ruang untuk icon mata */
+}
+.toggle-eye {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  user-select: none;
+}
+
 /* Animations */
 @keyframes pop-in{ from{ opacity:.0; transform:translateY(8px) scale(.98) } to{ opacity:1; transform:none } }
 @keyframes section-in{ from{ opacity:.0; transform:translateY(6px) } to{ opacity:1; transform:none } }
