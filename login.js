@@ -1,4 +1,4 @@
-// login.js (module) — TANPA pengaturan warna; semua warna diatur via CSS
+// login.js (module) — tanpa pengaturan warna; semua warna via CSS
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
@@ -55,7 +55,7 @@ toggleEye?.addEventListener("click", () => {
   toggleEye.textContent = isPassword ? "🙈" : "👁️";
 });
 
-/** LOGO (fallback netral/transparent; warna diatur di CSS jika perlu) */
+/** LOGO (tanpa warna di JS) */
 (function setLogo(){
   if (!logoEl) return;
   logoEl.dataset.loading = "1";
@@ -63,7 +63,7 @@ toggleEye?.addEventListener("click", () => {
   const basePath = location.pathname.substring(0, location.pathname.lastIndexOf("/") + 1);
   const url = params.get("logo") || window.LOGO_URL || `${basePath}logohome.png?v=${Date.now()}`;
 
-  // 1x1 transparent GIF sebagai fallback agar tidak ada warna di JS
+  // 1x1 transparent GIF sebagai fallback agar JS tidak mendikte warna
   const transparent = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 
   logoEl.src = url;
@@ -77,9 +77,17 @@ function show(sec){
   sec.classList.add("active");
   err(""); ok("");
 }
-function err(msg){ if (!msg){ errBox.classList.remove("show"); errBox.textContent=""; } else { errBox.textContent=msg; errBox.classList.add("show"); } }
-function ok(msg){  if (!msg){ okBox.classList.remove("show");  okBox.textContent=""; } else {  okBox.textContent=msg;  okBox.classList.add("show"); } }
-function disableForm(d){ loginBtn.disabled = d; loginBtn.textContent = d ? "Memproses..." : "Masuk"; }
+function err(msg){
+  if (!msg){ errBox.classList.remove("show"); errBox.textContent=""; }
+  else { errBox.textContent=msg; errBox.classList.add("show"); }
+}
+function ok(msg){
+  if (!msg){ okBox.classList.remove("show"); okBox.textContent=""; }
+  else { okBox.textContent=msg; okBox.classList.add("show"); }
+}
+function disableForm(d){
+  loginBtn.disabled = d; loginBtn.textContent = d ? "Memproses..." : "Masuk";
+}
 
 /** NAV */
 goLoginBtn?.addEventListener("click", () => show(login));
@@ -120,15 +128,14 @@ function getTimeOfDayUTC7(){
   }
 }
 
-/** ===== Offline Sheet (tanpa warna di JS) =====
- * JS hanya membuat elemen & logic. Gaya/warna diatur di CSS:
- *  .net-sheet, .net-dot, .net-msg, .net-act, .net-btn, .net-sheet.show
+/** ===== Offline Sheet (tanpa styling warna di JS) =====
+ * Hanya markup & logika. Styling sepenuhnya dari CSS (.net-sheet, .net-btn, dst).
  */
 (function setupOfflineSheet(){
   const sheet = document.createElement("div");
   sheet.className = "net-sheet";
   sheet.innerHTML = `
-    <div class="net-dot" aria-hidden="true"></div>
+    <div class="net-dot"></div>
     <div class="net-msg">Tidak ada koneksi internet. Cek jaringan Anda.</div>
     <div class="net-act"><button class="net-btn" id="netRetryBtn" type="button">Coba Lagi</button></div>
   `;
@@ -165,7 +172,7 @@ function getTimeOfDayUTC7(){
   }, true);
 })();
 
-/** Avatar default netral/transparan agar tidak mengatur warna di JS */
+/** Avatar default (netral) */
 const DEFAULT_AVATAR = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 
 /** Ambil profil dari RTDB */
@@ -202,7 +209,7 @@ async function fetchProfile(user){
 
 /** LOGIN */
 form?.addEventListener("submit", async (e)=>{
-  e.preventefault();
+  e.preventDefault();
   err(""); ok("");
 
   if (!navigator.onLine){
