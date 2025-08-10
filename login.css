@@ -55,7 +55,7 @@ body{
 
 /* Ghost button (outline ungu, fill ikut background) */
 .btn.ghost-purple{
-  background: var(--bg);       /* sama dengan background halaman */
+  background: rgba(17,24,39,.75);       /* sama dengan background halaman */
   color: var(--accent);        /* teks ungu */
   border: 2px solid var(--accent);
 }
