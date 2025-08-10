@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword,
-  setPersistence, browserLocalPersistence, signOut
+  setPersistence, browserLocalPersistence, signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
   getDatabase, ref, get, child
@@ -40,6 +40,7 @@ const form       = $("#loginForm");
 const emailEl    = $("#email");
 const passEl     = $("#password");
 const loginBtn   = $("#loginBtn");
+const forgotBtn  = $("#forgotBtn");         // <— tombol/link "Lupa Password?"
 const errBox     = $("#errBox");
 const okBox      = $("#okBox");
 const yearEl     = $("#year");
@@ -54,15 +55,13 @@ toggleEye?.addEventListener("click", () => {
   toggleEye.textContent = isPassword ? "🙈" : "👁️";
 });
 
-/** LOGO (tanpa pewarnaan di JS) */
+/** LOGO (fallback netral) */
 (function setLogo(){
   if (!logoEl) return;
   logoEl.dataset.loading = "1";
   const params   = new URLSearchParams(location.search);
   const basePath = location.pathname.substring(0, location.pathname.lastIndexOf("/") + 1);
   const url = params.get("logo") || window.LOGO_URL || `${basePath}logohome.png?v=${Date.now()}`;
-
-  // Fallback SVG netral (tanpa atribut warna eksplisit)
   const fallback = "data:image/svg+xml;base64," + btoa(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' aria-hidden='true'>
       <rect width='256' height='256' rx='40'/>
@@ -73,7 +72,6 @@ toggleEye?.addEventListener("click", () => {
       </g>
     </svg>`
   );
-
   logoEl.src = url;
   logoEl.onload  = () => { delete logoEl.dataset.loading; };
   logoEl.onerror = () => { logoEl.src = fallback; delete logoEl.dataset.loading; };
@@ -142,11 +140,7 @@ function getTimeOfDayUTC7(){
   }
 }
 
-/** ===== Offline Sheet (tanpa style/color injection) =====
- * Hanya membuat elemen & event; semua tampilan/warna diatur di CSS kamu.
- * Pastikan kamu punya aturan CSS untuk:
- * .net-sheet, .net-sheet.show, .net-dot, .net-msg, .net-act, .net-btn
- */
+/** ===== Offline Sheet (tanpa style/color injection) ===== */
 (function setupOfflineSheet(){
   const sheet = document.createElement("div");
   sheet.className = "net-sheet";
@@ -188,7 +182,7 @@ function getTimeOfDayUTC7(){
   }, true);
 })();
 
-/** Avatar default tanpa atribut warna eksplisit */
+/** Avatar default netral */
 const DEFAULT_AVATAR =
   "data:image/svg+xml;base64," + btoa(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128' aria-hidden='true'>
@@ -259,6 +253,33 @@ form?.addEventListener("submit", async (e)=>{
     err(map[e.code] || ("Gagal login: " + (e.message || e)));
   }finally{
     disableForm(false);
+  }
+});
+
+/** LUPA PASSWORD */
+forgotBtn?.addEventListener("click", async ()=>{
+  err(""); ok("");
+  if (!navigator.onLine){
+    err("Tidak ada koneksi internet. Coba lagi setelah jaringan tersambung.");
+    return;
+  }
+  const email = (emailEl?.value || "").trim();
+  if (!email){
+    err("Masukkan email akun kamu dulu, lalu klik 'Lupa Password'.");
+    emailEl?.focus();
+    return;
+  }
+
+  try{
+    await sendPasswordResetEmail(auth, email);
+    ok("Tautan reset kata sandi sudah dikirim ke email kamu. Periksa inbox/spam.");
+  }catch(e){
+    const map = {
+      "auth/invalid-email":"Format email tidak valid.",
+      "auth/user-not-found":"Email tidak terdaftar.",
+      "auth/missing-email":"Masukkan email terlebih dahulu.",
+    };
+    err(map[e.code] || ("Gagal mengirim tautan reset: " + (e.message || e)));
   }
 });
 
