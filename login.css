@@ -1,11 +1,16 @@
-:root{
-  --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb;
-  --accent:#9C27B0;     /* ungu utama */
-  --accent-2:#6A1B9A;   /* ungu gelap */
-  --danger:#ef4444; --ok:#22c55e;
+:root {
+  --bg:#0b1220;          /* background utama sangat gelap */
+  --card:#111827;        /* card container */
+  --muted:#94a3b8;       /* teks sekunder */
+  --text:#e5e7eb;        /* teks utama */
+  --accent:#3B82F6;      /* biru muda (tombol utama) */
+  --accent-2:#1E3A8A;    /* biru tua (hover/active) */
+  --danger:#ef4444;      /* merah untuk error */
+  --ok:#22c55e;          /* hijau untuk sukses */
   --radius:18px;
   --shadow:0 12px 30px rgba(0,0,0,.35);
 }
+
 
 /* Layout responsif & aman notch */
 *{box-sizing:border-box}
