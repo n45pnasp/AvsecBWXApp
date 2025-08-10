@@ -103,17 +103,17 @@ function getTimeOfDayUTC7(){
       hour: '2-digit', hour12: false, timeZone: 'Asia/Jakarta'
     }).formatToParts(new Date());
     const hour = parseInt(parts.find(p=>p.type==='hour')?.value ?? '0', 10);
-    if (hour >= 5 && hour < 12) return "pagi";
-    if (hour >= 12 && hour < 15) return "siang";
-    if (hour >= 15 && hour < 18) return "sore";
-    return "malam";
+    if (hour >= 5 && hour < 12) return "Pagi";
+    if (hour >= 12 && hour < 15) return "Siang";
+    if (hour >= 15 && hour < 18) return "Sore";
+    return "Malam";
   }catch{
     const now = new Date();
     const hour = (now.getUTCHours() + 7) % 24;
-    if (hour >= 5 && hour < 12) return "pagi";
-    if (hour >= 12 && hour < 15) return "siang";
-    if (hour >= 15 && hour < 18) return "sore";
-    return "malam";
+    if (hour >= 5 && hour < 12) return "Pagi";
+    if (hour >= 12 && hour < 15) return "Siang";
+    if (hour >= 15 && hour < 18) return "Sore";
+    return "Malam";
   }
 }
 
