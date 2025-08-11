@@ -44,12 +44,12 @@ body{
 /* Banner tanggal + waktu */
 .date-banner{
   position:sticky; top:0; z-index:5;
-  text-align:center; font-weight:800;
-  padding:10px 16px calc(6px + env(safe-area-inset-top,0px));
-  color:#fff;
-  background: linear-gradient(180deg, #2f66ff, #7b4dff);
-  border-bottom:1px solid rgba(255,255,255,.12);
-  font-size: clamp(15px, 4vw, 24px);
+  padding:10px 16px calc(8px + env(safe-area-inset-top,0px));
+  color:var(--text);
+  background: var(--bg);                 /* sama dengan background dark mode */
+  border-bottom:1px solid var(--border);
+  text-align:center; font-weight:700;
+  font-size: clamp(14px, 3.8vw, 20px);
 }
 
 /* Layout */
