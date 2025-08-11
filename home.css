@@ -1,11 +1,17 @@
 :root{
+  /* Tema dasar */
   --bg-1:#0b1020; --bg-2:#0e1530; --bg-3:#0a0f24;
   --text:#e8ecf4; --muted:#a9b6c9;
   --border:rgba(255,255,255,.08);
   --accent:#7c9bff; --accent-2:#6a58ff;
+
   --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.35);
   --safe-b: env(safe-area-inset-bottom, 0px);
+
+  /* Noise tipis */
   --noise: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2"/></filter><rect width="128" height="128" filter="url(%23n)" opacity=".035"/></svg>');
+
+  /* Dock dinamis */
   --dock-font: clamp(13px, 3.7vw, 18px);
   --dock-gap: clamp(6px, 2vw, 10px);
   --dock-radius: clamp(14px, 3.2vw, 22px);
@@ -18,6 +24,8 @@ body{
   font:400 16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans";
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
   -webkit-tap-highlight-color: transparent;
+
+  /* Gradient dark mulus */
   background:
     radial-gradient(1200px 600px at 20% -10%, rgba(124,155,255,.25),transparent 60%),
     radial-gradient(900px 500px at 90% 10%, rgba(106,88,255,.22),transparent 55%),
@@ -26,7 +34,7 @@ body{
   overflow-x:hidden;
 }
 
-/* Aurora + noise */
+/* Aurora + noise (hiasan halus) */
 .aurora{
   position:fixed; inset:-20% -10%;
   background:
@@ -41,7 +49,7 @@ body{
 @media (prefers-reduced-motion:reduce){ .aurora{ animation:none } }
 .grain{ position:fixed; inset:0; background-image:var(--noise); pointer-events:none; z-index:-1; }
 
-/* Banner tanggal */
+/* Banner tanggal – menyatu dengan background */
 .date-banner{
   position:sticky; top:0; z-index:5;
   padding:10px 16px calc(8px + env(safe-area-inset-top,0px));
@@ -49,21 +57,20 @@ body{
   background:
     radial-gradient(600px 300px at 20% 0%, rgba(124,155,255,.15), transparent 60%),
     radial-gradient(400px 200px at 80% 0%, rgba(106,88,255,.18), transparent 55%),
-    var(--bg);
+    linear-gradient(180deg, transparent, rgba(0,0,0,.08));
   border-bottom:1px solid var(--border);
   text-align:center; font-weight:700;
   font-size: clamp(14px, 3.8vw, 20px);
   backdrop-filter: blur(8px);
 }
 
-
-/* Layout */
+/* Layout umum */
 .wrap{
   min-height:100dvh; display:flex; flex-direction:column;
   padding: 12px 12px calc(100px + var(--safe-b));
 }
 
-/* Greeting Card (match contoh) */
+/* Greeting Card (sapaan + avatar / logout) */
 .greet-card{
   position:relative; display:flex; align-items:center; gap:12px;
   background:#0d0f13; border:1px solid var(--border);
@@ -100,7 +107,7 @@ body{
 }
 .logout-btn:active{ transform: translateY(1px) }
 
-/* Pill */
+/* Info pill */
 .pill{
   margin:26px 4px 10px; padding:12px 14px;
   background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
@@ -115,29 +122,54 @@ body{
   box-shadow:0 0 14px var(--accent); flex:0 0 auto;
 }
 
-/* Apps */
+/* =========================
+   Ikon Home TANPA BOX
+   ========================= */
 .apps{
-  display:grid; gap:14px; padding:10px 0 20px;
-  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: clamp(12px, 3.2vw, 18px);
+  padding: 10px 0 20px;
 }
-.app{
-  position:relative;
-  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
-  border:1px solid var(--border); border-radius:18px;
-  padding:14px 12px; display:flex; flex-direction:column; align-items:center; gap:10px;
-  text-align:center; text-decoration:none; color:var(--text); backdrop-filter: blur(8px);
-  transition: transform .12s ease, border-color .2s ease, background .25s ease, box-shadow .25s ease;
-}
-.app:hover{ border-color:rgba(255,255,255,.12); box-shadow:0 10px 28px rgba(0,0,0,.25) }
-.app:active{ transform: translateY(1px) scale(.99) }
-.app-icon{
-  width:42px; height:42px; border-radius:14px; display:grid; place-items:center; font-size:22px;
-  background:linear-gradient(135deg, var(--accent), var(--accent-2));
-  border:1px solid rgba(255,255,255,.12); box-shadow:0 10px 24px rgba(106,88,255,.35);
-}
-.app-name{ font-size:12.5px; color:#e1e7f5 }
 
-/* Dock (transparan, tidak motong gradient) */
+/* setiap item adalah link biasa tanpa tile */
+.app{
+  display:flex; flex-direction:column; align-items:center;
+  gap: 8px; text-align:center; text-decoration:none; color:var(--text);
+  user-select:none; transition: transform .12s ease, filter .18s ease;
+  background: none; border: none; box-shadow: none;
+}
+.app:active{ transform: translateY(1px) scale(.97); filter: brightness(.95); }
+
+/* ikon tampil mengambang (tanpa tile) */
+.app-icon{
+  width: clamp(44px, 11vw, 62px);
+  height: clamp(44px, 11vw, 62px);
+  border-radius: 16px;               /* tetap rounded biar konsisten */
+  display:grid; place-items:center;
+  font-size: clamp(22px, 6vw, 28px); /* jika pakai emoji */
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:
+    0 10px 24px rgba(106,88,255,.35),      /* glow bawah */
+    inset 0 1px 0 rgba(255,255,255,.18);   /* highlight tipis */
+}
+
+/* jika kamu pakai <img> sebagai ikon, style ini bantu drop-shadow */
+.app-icon img{
+  width: 72%; height: 72%; object-fit: contain; display:block;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.28));
+}
+
+.app-name{
+  font-size: clamp(11px, 2.8vw, 13px);
+  color:#dbe4f6;
+  line-height:1.2;
+}
+
+/* =========================
+   Dock (transparan, adaptif)
+   ========================= */
 .dock{
   position:fixed; left:0; right:0; bottom:0;
   padding:10px 14px calc(10px + var(--safe-b));
