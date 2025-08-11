@@ -1,5 +1,5 @@
-// home.js (FINAL untuk HTML yang kamu kirim)
-// Pastikan <script type="module" src="home.js"></script> di home.html
+// home.js (FINAL, cocok dengan home.html & home.css kamu)
+// NOTE: muat file ini sebagai <script type="module" src="home.js"></script>
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
@@ -23,7 +23,6 @@ const db   = getDatabase(app);
 
 /* ===================== Helpers (DOM & WIB) ===================== */
 const $ = (s, el = document) => el.querySelector(s);
-const params = new URLSearchParams(location.search);
 
 function getWIBDate(d = new Date()){
   return new Date(d.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
@@ -63,6 +62,7 @@ function updateGreeting(){
 /* ===================== State Profil & Avatar ===================== */
 let CURRENT_NAME  = "Pengguna";
 let CURRENT_PHOTO = "";
+let SHOW_LOGOUT   = false; // state tampilan profileSlot (avatar vs tombol logout)
 
 const DEFAULT_AVATAR = "data:image/svg+xml;base64," + btoa(
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
@@ -96,56 +96,57 @@ function applyProfile({ name, photo }){
   }
   if (photo){
     CURRENT_PHOTO = photo;
-    setAvatarSrc(photo);
+    if (!SHOW_LOGOUT) setAvatarSrc(photo); // update avatar hanya jika tidak sedang menampilkan tombol logout
   } else if (!CURRENT_PHOTO){
     CURRENT_PHOTO = makeInitialsAvatar(CURRENT_NAME);
-    setAvatarSrc(CURRENT_PHOTO);
+    if (!SHOW_LOGOUT) setAvatarSrc(CURRENT_PHOTO);
   }
 }
 
-/* ===================== Greet Card: klik → tampil tombol Logout ===================== */
-(function setupGreetCard(){
-  const card        = $("#greetCard");
-  const profileSlot = $("#profileSlot");
-  if (!card || !profileSlot) return;
-
-  function renderProfileSlot(showLogout){
-    if (showLogout){
-      profileSlot.innerHTML =
-        '<button id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">Logout</button>';
-      const btn = $("#logoutBtn");
-      btn?.addEventListener("click", async (e)=>{
-        e.stopPropagation();
-
-        // 1) Kirim nilai "logout" ke Kodular (jika ada)
-        try{
-          if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
-            window.AppInventor.setWebViewString("logout");
-          }
-        }catch(_){}
-
-        // 2) Sign out Firebase
-        try{ await signOut(auth); }catch(err){ console.warn("SignOut error:", err); }
-
-        // 3) Kembali ke login
-        location.replace("./login.html");
-      });
-    } else {
-      profileSlot.innerHTML =
-        `<img id="avatar" class="avatar-large" alt="Foto pengguna" src="${CURRENT_PHOTO || ""}" />`;
+/* ===================== Logout handler (dipanggil tombol) ===================== */
+window.onLogout = async function(){
+  // kirim sinyal "logout" ke Kodular (jika ada)
+  try{
+    if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
+      window.AppInventor.setWebViewString("logout");
     }
+  }catch(_){}
+
+  try{ await signOut(auth); }catch(e){ console.warn("SignOut error:", e); }
+  location.replace("./login.html");
+};
+
+/* ===================== Greet Card: toggle avatar ↔ tombol Logout ===================== */
+function renderProfileSlot(){
+  const profileSlot = $("#profileSlot");
+  if (!profileSlot) return;
+
+  if (SHOW_LOGOUT){
+    profileSlot.innerHTML =
+      '<button id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">Logout</button>';
+    $("#logoutBtn")?.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      window.onLogout();
+    });
+  } else {
+    profileSlot.innerHTML =
+      `<img id="avatar" class="avatar-large" alt="Foto pengguna" src="${CURRENT_PHOTO || ""}" />`;
   }
+}
 
-  // Awal: tampil avatar
-  renderProfileSlot(false);
+(function setupGreetCard(){
+  const card = $("#greetCard");
+  if (!card) return;
+
+  SHOW_LOGOUT = false;
   card.setAttribute("aria-pressed", "false");
+  renderProfileSlot();
 
-  // Klik kartu → toggle avatar ↔ tombol logout
+  // klik kartu → toggle avatar ↔ tombol logout
   card.addEventListener("click", ()=>{
-    const active = card.getAttribute("aria-pressed") === "true";
-    const next = !active;
-    card.setAttribute("aria-pressed", String(next));
-    renderProfileSlot(next);
+    SHOW_LOGOUT = !SHOW_LOGOUT;
+    card.setAttribute("aria-pressed", String(SHOW_LOGOUT));
+    renderProfileSlot();
   });
 })();
 
@@ -191,12 +192,12 @@ function subscribeProfile(user){
   const userRef = ref(db, `users/${user.uid}`);
   return onValue(userRef, (snap)=>{
     const v = snap.val() || {};
-    const name    = (v.name || user.displayName || user.email?.split("@")[0] || "Pengguna").toString().trim();
-    const photoURL= (v.photoURL || user.photoURL || DEFAULT_AVATAR).toString().trim();
+    const name     = (v.name || user.displayName || user.email?.split("@")[0] || "Pengguna").toString().trim();
+    const photoURL = (v.photoURL || user.photoURL || DEFAULT_AVATAR).toString().trim();
 
     applyProfile({ name, photo: photoURL });
 
-    // Kirim update realtime ke Kodular
+    // kirim update realtime ke Kodular
     sendToKodular({
       uid: user.uid,
       name,
