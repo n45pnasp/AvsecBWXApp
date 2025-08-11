@@ -1,4 +1,4 @@
-// home.js (FINAL, module)
+// home.js (gabungan greet card + firebase + kirim ke Kodular)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, signOut
@@ -7,7 +7,7 @@ import {
   getDatabase, ref, get, child, onValue
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-/* ============ Firebase Config ============ */
+/* Firebase Config */
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
   authDomain: "avsecbwx-4229c.firebaseapp.com",
@@ -23,14 +23,10 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
 
-/* ============ DOM Helpers ============ */
-const $ = s => document.querySelector(s);
-const nameEl    = $("#name");
-const emailEl   = $("#email");
-const avatarEl  = $("#avatar");
-const logoutBtn = $("#logoutBtn");
+/* ===================== Helpers ===================== */
+const $ = (s, el = document) => el.querySelector(s);
+const params = new URLSearchParams(location.search);
 
-/* ============ Avatar default ============ */
 const DEFAULT_AVATAR = "data:image/svg+xml;base64," + btoa(
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
      <rect width='128' height='128' rx='18' fill='#0b1220'/>
@@ -39,17 +35,104 @@ const DEFAULT_AVATAR = "data:image/svg+xml;base64," + btoa(
    </svg>`
 );
 
-/* ============ UI Render ============ */
-function setProfile({ name, email, photoURL }){
-  if (nameEl)  nameEl.textContent  = name || "Pengguna";
-  if (emailEl) emailEl.textContent = email || "";
-  if (avatarEl){
-    avatarEl.src = photoURL || DEFAULT_AVATAR;
-    avatarEl.alt = name ? `Avatar ${name}` : "Avatar";
+/* WIB date utilities */
+function getWIBDate(d = new Date()){
+  return new Date(d.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+}
+function bannerString(){
+  const d = getWIBDate();
+  const hari  = d.toLocaleDateString('id-ID', { weekday: 'long' });
+  const tanggal = d.getDate();
+  const bulan = d.toLocaleDateString('id-ID', { month: 'long' });
+  const tahun = d.getFullYear();
+  return `${hari}, ${tanggal} ${bulan} ${tahun}`;
+}
+function getGreetingID(d = getWIBDate()){
+  const h = d.getHours();
+  if (h >= 4 && h < 11)  return "Selamat Pagi,";
+  if (h >= 11 && h < 15) return "Selamat Siang,";
+  if (h >= 15 && h < 18) return "Selamat Sore,";
+  return "Selamat Malam,";
+}
+function updateGreeting(){
+  $("#greet").textContent = getGreetingID();
+  const k = $("#greet").textContent.split(" ")[1];
+  const tips = {
+    Pagi:"Fokus & semangat produktif ☕",
+    Siang:"Jeda sejenak, tarik napas 🌤️",
+    Sore:"Akhiri dengan manis 🌇",
+    Malam:"Santai, recharge energi 🌙"
+  };
+  $("#taglineText").textContent = tips[k] || "Siap bantu aktivitasmu hari ini ✨";
+  $("#dateBanner").textContent = bannerString();
+}
+
+/* ===================== Profile State ===================== */
+let CURRENT_NAME = "Pengguna";
+let CURRENT_PHOTO = "";
+
+/* Render avatar */
+function setAvatarSrc(src){
+  const img = $("#avatar");
+  if (img) img.src = src;
+}
+function makeInitialsAvatar(name){
+  const initials = (name || "P U").trim().split(/\s+/).map(w => w[0]).slice(0,2).join("").toUpperCase();
+  const c = document.createElement("canvas"); c.width = 256; c.height = 256;
+  const x = c.getContext("2d");
+  const g = x.createLinearGradient(0,0,256,256);
+  g.addColorStop(0, "#1b2238"); g.addColorStop(1, "#151b2e");
+  x.fillStyle = g; x.fillRect(0,0,256,256);
+  x.fillStyle = "#7c9bff"; x.font = "bold 120px ui-sans-serif";
+  x.textAlign = "center"; x.textBaseline = "middle";
+  x.fillText(initials, 128, 140);
+  return c.toDataURL("image/png");
+}
+function applyProfile({ name, photo }){
+  if (name){
+    CURRENT_NAME = name;
+    $("#name").textContent = name;
+  }
+  if (photo){
+    CURRENT_PHOTO = photo;
+    setAvatarSrc(photo);
+  } else if (!CURRENT_PHOTO){
+    CURRENT_PHOTO = makeInitialsAvatar(CURRENT_NAME);
+    setAvatarSrc(CURRENT_PHOTO);
   }
 }
 
-/* ============ Ambil profil lengkap dari RTDB ============ */
+/* ===================== Greet Card (toggle avatar ↔ logout) ===================== */
+(function setupGreetCard(){
+  const card        = $("#greetCard");
+  const profileSlot = $("#profileSlot");
+
+  function renderProfileSlot(showLogout){
+    if (showLogout){
+      profileSlot.innerHTML =
+        '<button id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">✖</button>';
+      $("#logoutBtn").addEventListener("click", async (e)=>{
+        e.stopPropagation();
+        try{ await signOut(auth); }catch(_){}
+        location.replace("./login.html");
+      });
+    }else{
+      profileSlot.innerHTML =
+        `<img id="avatar" class="avatar-large" alt="Foto pengguna" src="${CURRENT_PHOTO || ""}" />`;
+    }
+  }
+
+  renderProfileSlot(false);
+  card.setAttribute("aria-pressed", "false");
+  card.addEventListener("click", ()=>{
+    const active = card.getAttribute("aria-pressed") === "true";
+    const next = !active;
+    card.setAttribute("aria-pressed", String(next));
+    renderProfileSlot(next);
+  });
+})();
+
+/* ===================== Firebase Profile fetch & send to Kodular ===================== */
 async function fetchFullProfile(user){
   const root = ref(db);
   const snaps = await Promise.all([
@@ -68,139 +151,51 @@ async function fetchFullProfile(user){
   const role = roleSnap.exists() ? String(roleSnap.val()).trim()
             : (isAdminSnap.exists() && isAdminSnap.val() ? "admin" : "user");
   const isAdmin = isAdminSnap.exists() ? !!isAdminSnap.val() : role === "admin";
+  const photoURL = photoSnap.exists() ? String(photoSnap.val()).trim()
+            : (user.photoURL || DEFAULT_AVATAR);
 
-  const fromRTDB = photoSnap.exists() ? String(photoSnap.val()).trim() : "";
-  const fromAuth = (user.photoURL || "").trim();
-  const photoURL = fromRTDB || fromAuth || DEFAULT_AVATAR;
-
-  return {
-    uid: user.uid,
-    name,
-    spec,
-    role,
-    isAdmin,
-    email: user.email || "",
-    photoURL
-  };
+  return { uid: user.uid, name, spec, role, isAdmin, email: user.email || "", photoURL };
 }
-
-/* ============ Kirim ke Kodular ============ */
 function sendToKodular(data){
-  const jsonStr = JSON.stringify({
-    event: "profile",
-    ...data
-  });
-  if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
-    try { window.AppInventor.setWebViewString(jsonStr); }
-    catch(e){ console.warn("setWebViewString error:", e); }
+  const jsonStr = JSON.stringify({ event: "profile", ...data });
+  if (window.AppInventor?.setWebViewString){
+    window.AppInventor.setWebViewString(jsonStr);
   } else {
-    // Untuk debug di browser biasa:
     console.log("[KODULAR_SIMULATE]", jsonStr);
   }
 }
-
-/* ============ Realtime subscribe (opsional, tapi aktif) ============ */
 function subscribeProfile(user){
-  const userRef = ref(db, `users/${user.uid}`);
-  // Kembalikan fungsi unsubscribe dari onValue
-  return onValue(userRef, (snap)=>{
+  return onValue(ref(db, `users/${user.uid}`), (snap)=>{
     const v = snap.val() || {};
-    const name = (v.name || auth.currentUser?.displayName || auth.currentUser?.email?.split("@")[0] || "Pengguna").toString().trim();
-    const email = auth.currentUser?.email || "";
-    const photoURL = (v.photoURL || auth.currentUser?.photoURL || "").toString().trim();
-
-    // Render ke UI
-    setProfile({ name, email, photoURL });
-
-    // Kirim ulang ke Kodular saat ada perubahan
+    const name = v.name || user.displayName || user.email?.split("@")[0] || "Pengguna";
+    const photo = v.photoURL || user.photoURL || DEFAULT_AVATAR;
+    applyProfile({ name, photo });
     sendToKodular({
       uid: user.uid,
       name,
-      spec: (v.spec || ""),
-      role: (v.role || (v.isAdmin ? "admin" : "user")),
+      spec: v.spec || "",
+      role: v.role || (v.isAdmin ? "admin" : "user"),
       isAdmin: !!v.isAdmin,
-      email,
-      photoURL: photoURL || DEFAULT_AVATAR
+      email: user.email || "",
+      photoURL: photo
     });
-  }, (err)=>{
-    console.warn("RTDB subscribe error:", err?.message || err);
   });
 }
 
-/* ============ Auth flow ============ */
-let unsubProfile = null;
+/* ===================== Init ===================== */
+function tick(){ updateGreeting(); }
+tick();
+setInterval(tick, 60 * 1000);
 
+let unsubProfile = null;
 onAuthStateChanged(auth, async (user)=>{
   if (!user){
-    // Belum login → balik ke login
     location.replace("./login.html");
     return;
   }
-
-  // Render cepat dari Auth
-  setProfile({
-    name: user.displayName || user.email?.split("@")[0],
-    email: user.email || "",
-    photoURL: user.photoURL || ""
-  });
-
-  // Ambil profil lengkap dari RTDB, kirim ke Kodular
-  try{
-    const prof = await fetchFullProfile(user);
-
-    setProfile({
-      name: prof.name,
-      email: prof.email,
-      photoURL: prof.photoURL
-    });
-
-    sendToKodular(prof);
-  }catch(e){
-    console.warn("fetchFullProfile error:", e?.message || e);
-    // Tetap kirim minimal payload dari Auth agar Kodular punya data
-    sendToKodular({
-      uid: user.uid,
-      name: user.displayName || user.email?.split("@")[0] || "Pengguna",
-      spec: "",
-      role: "user",
-      isAdmin: false,
-      email: user.email || "",
-      photoURL: user.photoURL || DEFAULT_AVATAR
-    });
-  }
-
-  // Realtime update
-  if (unsubProfile) { try { unsubProfile(); } catch(_){} }
+  const prof = await fetchFullProfile(user);
+  applyProfile({ name: prof.name, photo: prof.photoURL });
+  sendToKodular(prof);
+  if (unsubProfile) unsubProfile();
   unsubProfile = subscribeProfile(user);
 });
-
-/* ============ Logout ============ */
-logoutBtn?.addEventListener("click", async ()=>{
-  try{
-    await signOut(auth);
-  } finally {
-    location.replace("./login.html");
-  }
-});
-
-/* ============ API tambahan untuk Kodular (opsional) ============ */
-// Kodular bisa panggil JS function ini via WebViewer.EvaluateJavaScript
-// untuk minta kirim ulang profil kapan saja.
-window.requestProfile = async function(){
-  const user = auth.currentUser;
-  if (!user) return;
-  try{
-    const prof = await fetchFullProfile(user);
-    sendToKodular(prof);
-  }catch(e){
-    sendToKodular({
-      uid: user.uid,
-      name: user.displayName || user.email?.split("@")[0] || "Pengguna",
-      spec: "",
-      role: "user",
-      isAdmin: false,
-      email: user.email || "",
-      photoURL: user.photoURL || DEFAULT_AVATAR
-    });
-  }
-};
