@@ -112,29 +112,43 @@ body{
 
 /* ===== Apps grid ===== */
 .apps{
-  display:grid; gap: var(--g4);
-  grid-template-columns: repeat(auto-fit, minmax(98px, 1fr));
+  display:grid;
+  grid-template-columns: repeat(4, 1fr); /* 4 kolom tetap */
+  gap: var(--g4);
   padding-bottom: var(--g6);
 }
+
 .app{
-  position:relative; min-height: 128px;
+  aspect-ratio: 1 / 1; /* kotak proporsional */
   background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
-  border:1px solid var(--border); border-radius:18px;
-  padding: 14px 10px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
-  text-align:center; text-decoration:none; color:var(--text); backdrop-filter: blur(8px);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding: clamp(10px, 2.5vw, 14px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap: clamp(6px, 1.8vw, 10px);
+  text-align:center; text-decoration:none; color:var(--text);
+  backdrop-filter: blur(8px);
   transition: transform .12s ease, border-color .2s ease, background .25s ease, box-shadow .25s ease;
 }
-.app:hover{ border-color:rgba(255,255,255,.12); box-shadow:0 10px 28px rgba(0,0,0,.25) }
-.app:active{ transform: translateY(1px) scale(.99) }
+
 .app-icon{
-  width:44px; height:44px; border-radius:14px; display:grid; place-items:center; font-size:22px;
+  width: clamp(38px, 7vw, 48px);
+  height: clamp(38px, 7vw, 48px);
+  border-radius:14px;
+  display:grid; place-items:center;
+  font-size: clamp(18px, 4.5vw, 26px);
   background:linear-gradient(135deg, var(--accent), var(--accent-2));
-  border:1px solid rgba(255,255,255,.12); box-shadow:0 10px 24px rgba(106,88,255,.35);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 10px 24px rgba(106,88,255,.35);
 }
+
 .app-name{
-  margin-top: 8px; font-size:12.5px; color:#e1e7f5;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  font-size: clamp(11px, 2.8vw, 13px);
+  color:#e1e7f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* ===== Dock ===== */
