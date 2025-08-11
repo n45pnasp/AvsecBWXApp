@@ -11,16 +11,15 @@ function getWIBDate(d = new Date()){
   return new Date(d.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
 }
 
-// ===== Banner: "senin, 12 agustus 2025" WIB =====
+// ===== Banner: "Senin, 11 Agustus 2025" WIB =====
 function bannerString(){
-  const d = getWIBDate(); // pakai waktu WIB (GMT+7)
-  const hari  = d.toLocaleDateString('id-ID', { weekday: 'long' }).toLowerCase();
+  const d = getWIBDate(); // waktu WIB (GMT+7)
+  const hari  = d.toLocaleDateString('id-ID', { weekday: 'long' });
   const tanggal = d.getDate();
-  const bulan = d.toLocaleDateString('id-ID', { month: 'long' }).toLowerCase();
+  const bulan = d.toLocaleDateString('id-ID', { month: 'long' });
   const tahun = d.getFullYear();
   return `${hari}, ${tanggal} ${bulan} ${tahun}`;
 }
-
 
 /* ===================== Greeting ===================== */
 function getGreetingID(d = getWIBDate()){
