@@ -6,150 +6,207 @@
   <title>Home</title>
   <style>
     :root{
-      --bg:#0b1220;
-      --card:#101827;
-      --text:#e5e7eb;
-      --muted:#9aa3b2;
-      --accent:#8b5cf6;      /* ungu */
-      --accent-2:#6d28d9;    /* ungu gelap */
-      --border:#1f2937;
-      --radius:18px;
-      --shadow:0 12px 24px rgba(0,0,0,.35);
+      /* Tema 2025: soft-aurora + glass */
+      --bg-1:#0b1020; --bg-2:#0e1530; --bg-3:#0a0f24;
+      --text:#e8ecf4; --muted:#a9b6c9;
+      --border:rgba(255,255,255,.08);
+      --accent:#7c9bff;         /* akan di-overwrite dari foto */
+      --accent-2:#6a58ff;       /* akan di-overwrite dari foto */
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.35);
       --safe-b: env(safe-area-inset-bottom, 0px);
+      --noise: url('data:image/svg+xml;utf8,\
+        <svg xmlns="http://www.w3.org/2000/svg" width=\"128\" height=\"128\" viewBox=\"0 0 128 128\">\
+        <filter id=\"n\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.8\" numOctaves=\"2\"/></filter>\
+        <rect width=\"128\" height=\"128\" filter=\"url(%23n)\" opacity=\".035\"/></svg>');
     }
 
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0; background:linear-gradient(180deg,#0a0f1a 0%, #0b1220 40%, #0e1626 100%);
-      color:var(--text); font:400 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+      margin:0; color:var(--text);
+      font:400 16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans";
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
       -webkit-tap-highlight-color: transparent;
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(124,155,255,.25),transparent 60%),
+                  radial-gradient(900px 500px at 90% 10%, rgba(106,88,255,.22),transparent 55%),
+                  linear-gradient(180deg,var(--bg-1),var(--bg-2) 50%, var(--bg-3));
+      position:relative;
+      overflow-x:hidden;
     }
 
-    /* ===== Container ===== */
+    /* Aurora anim ringan */
+    .aurora{
+      position:fixed; inset:-20% -10%;
+      background:
+        radial-gradient(60% 40% at 70% 10%, rgba(124,155,255,.18), transparent 60%),
+        radial-gradient(50% 35% at 20% 80%, rgba(106,88,255,.16), transparent 60%),
+        conic-gradient(from 120deg, transparent 0 30%, rgba(124,155,255,.08) 40%, transparent 70%);
+      filter: blur(38px) saturate(120%);
+      animation: float 18s ease-in-out infinite alternate;
+      pointer-events:none;
+      z-index:-1;
+      mix-blend-mode: screen;
+    }
+    @keyframes float{
+      0%{ transform: translateY(-2%) translateX(0) scale(1) }
+      100%{ transform: translateY(2%) translateX(-2%) scale(1.03) }
+    }
+    @media (prefers-reduced-motion:reduce){
+      .aurora{ animation:none }
+    }
+
+    /* lapisan noise halus */
+    .grain{
+      position:fixed; inset:0; background-image:var(--noise); pointer-events:none; z-index:-1;
+    }
+
+    /* ===== Layout ===== */
     .wrap{
-      min-height:100dvh;
-      display:flex; flex-direction:column;
-      padding-bottom: calc(74px + var(--safe-b)); /* space for dock */
+      min-height:100dvh; display:flex; flex-direction:column;
+      padding-bottom: calc(86px + var(--safe-b)); /* ruang untuk dock */
     }
 
-    /* ===== Header (Profile + Greeting) ===== */
+    /* ===== Header ===== */
     .header{
       display:flex; align-items:center; gap:14px;
-      padding:20px 16px 8px;
+      padding:24px 16px 8px;
+    }
+    .avatar-wrap{
+      position:relative; flex:0 0 auto;
+      width:72px; height:72px; border-radius:50%;
+      padding:2px; background:linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow:0 12px 28px rgba(0,0,0,.35);
     }
     .avatar{
-      width:64px; height:64px; border-radius:50%;
-      background:#111a2a; border:1px solid var(--border);
-      box-shadow: var(--shadow);
-      object-fit:cover; flex:0 0 auto;
+      width:100%; height:100%; border-radius:inherit; object-fit:cover;
+      display:block; background:#0e1628; border:1px solid var(--border);
     }
-    .hello{
-      display:flex; flex-direction:column; gap:4px; min-width:0;
-    }
-    .greet{
-      font-size:14px; color:var(--muted); letter-spacing:.2px;
-    }
+    .hello{ display:flex; flex-direction:column; gap:6px; min-width:0 }
+    .greet{ font-size:13px; color:var(--muted); letter-spacing:.2px }
     .name{
-      font-size:22px; font-weight:700; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;
+      font-size:24px; font-weight:800; letter-spacing:.2px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      text-shadow: 0 6px 24px rgba(0,0,0,.35);
     }
 
-    /* ===== Quick info card (optional tagline) ===== */
-    .card{
-      margin:12px 16px 8px; padding:14px 16px;
-      background:rgba(16,24,39,.55);
-      border:1px solid var(--border); border-radius:16px; backdrop-filter: blur(6px);
-      color:var(--muted);
+    /* ===== Pill info ===== */
+    .pill{
+      margin:10px 16px 6px; padding:12px 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--border);
+      border-radius:999px; color:#d9e3f7; backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      display:flex; align-items:center; gap:10px;
+    }
+    .pill-dot{
+      width:10px; height:10px; border-radius:50%;
+      background: radial-gradient(circle at 30% 30%, var(--accent), var(--accent-2));
+      box-shadow:0 0 14px var(--accent);
+      flex:0 0 auto;
     }
 
     /* ===== Apps Grid ===== */
     .apps{
-      display:grid; gap:12px;
-      grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
-      padding:10px 12px 16px;
+      display:grid; gap:14px; padding:12px 12px 20px;
+      grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
     }
     .app{
-      background:rgba(16,24,39,.55);
+      position:relative;
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
       border:1px solid var(--border);
-      border-radius:16px; padding:12px 10px;
-      display:flex; flex-direction:column; align-items:center; gap:8px;
+      border-radius:18px; padding:14px 12px;
+      display:flex; flex-direction:column; align-items:center; gap:10px;
       text-align:center; text-decoration:none; color:var(--text);
-      transition: transform .12s ease, background .2s ease, border-color .2s ease;
-      user-select:none;
+      transition: transform .12s ease, border-color .2s ease, background .25s ease, box-shadow .25s ease;
+      backdrop-filter: blur(8px);
     }
-    .app:active{ transform: scale(.98); }
-    .app:hover{ background:rgba(16,24,39,.7); border-color:#243244; }
+    .app:hover{ border-color:rgba(255,255,255,.12); box-shadow:0 10px 28px rgba(0,0,0,.25) }
+    .app:active{ transform: translateY(1px) scale(.99) }
     .app-icon{
-      width:36px; height:36px; border-radius:11px;
-      display:grid; place-items:center; font-size:20px;
-      background:linear-gradient(135deg,var(--accent),var(--accent-2));
-      border:1px solid rgba(255,255,255,.08);
-      box-shadow:0 6px 14px rgba(107,33,168,.35);
+      width:42px; height:42px; border-radius:14px;
+      display:grid; place-items:center; font-size:22px;
+      background:linear-gradient(135deg, var(--accent), var(--accent-2));
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:0 10px 24px rgba(106,88,255,.35);
     }
-    .app-name{ font-size:12px; color:#dbe3f0 }
+    .app-name{ font-size:12.5px; color:#e1e7f5 }
+
+    /* Small status badge (opsional) */
+    .badge{
+      position:absolute; top:8px; right:10px;
+      font-size:10px; padding:3px 6px; border-radius:999px;
+      background:rgba(124,155,255,.2); border:1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(6px); color:#eaf0ff;
+    }
 
     /* ===== Bottom Dock ===== */
     .dock{
       position:fixed; left:0; right:0; bottom:0;
-      padding:10px 12px calc(10px + var(--safe-b));
-      background:rgba(10,15,26,.7);
-      border-top:1px solid var(--border);
-      backdrop-filter: blur(10px);
+      padding:12px 14px calc(12px + var(--safe-b));
+      background: linear-gradient(180deg, rgba(6,10,22,.0), rgba(6,10,22,.45));
       z-index:50;
     }
     .dock-inner{
-      height:54px; border-radius:16px; border:1px solid var(--border);
+      height:62px; border-radius:22px;
+      border:1px solid var(--border);
       display:grid; grid-template-columns: repeat(5, 1fr);
-      gap:8px; padding:6px; background:rgba(16,24,39,.7);
-      box-shadow: var(--shadow);
+      gap:10px; padding:8px;
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      backdrop-filter: blur(14px);
+      box-shadow: 0 20px 40px rgba(0,0,0,.4);
+      max-width:960px; margin:0 auto;
     }
     .dock-btn{
-      display:grid; place-items:center;
-      border-radius:12px; text-decoration:none; color:var(--text);
-      font-size:20px; user-select:none;
-      transition: background .2s ease, transform .12s ease;
+      display:grid; place-items:center; gap:4px;
+      border-radius:14px; text-decoration:none; color:var(--text);
+      font-size:22px; user-select:none;
+      transition: background .2s ease, transform .12s ease, outline-color .2s ease;
+      outline:1.5px solid transparent;
     }
-    .dock-btn:active{ transform:scale(.98); }
     .dock-btn:hover{ background:rgba(255,255,255,.06) }
-    .dock-btn[aria-current="page"]{ outline:2px solid rgba(139,92,246,.5) }
-
-    /* ===== Utilities ===== */
-    .sr-only{
-      position:absolute !important; width:1px; height:1px; padding:0; margin:-1px;
-      overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+    .dock-btn:active{ transform:translateY(1px) scale(.98) }
+    .dock-btn[aria-current="page"]{
+      outline-color: color-mix(in oklab, var(--accent) 40%, transparent);
+      background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.05));
     }
 
-    /* ===== Responsive tweaks ===== */
+    /* ===== Responsive ===== */
     @media (min-width:768px){
-      .header{ padding:24px 20px 8px }
-      .apps{ padding:12px 16px 18px; gap:14px }
-      .app{ padding:14px 12px; }
-      .dock-inner{ max-width:760px; margin:0 auto; }
+      .header{ padding:28px 20px 10px }
+      .apps{ padding:14px 16px 24px; gap:16px }
+      .app{ padding:16px 14px }
     }
   </style>
 </head>
 <body>
+  <div class="aurora"></div>
+  <div class="grain"></div>
+
   <div class="wrap" role="application">
     <!-- Header -->
     <header class="header">
-      <img id="avatar" class="avatar" alt="Foto pengguna" src="" />
+      <div class="avatar-wrap">
+        <img id="avatar" class="avatar" alt="Foto pengguna" src="" />
+      </div>
       <div class="hello">
         <div id="greet" class="greet">Selamat datang</div>
         <div id="name" class="name">Pengguna</div>
       </div>
     </header>
 
-    <!-- Optional small card -->
-    <section class="card" id="tagline" aria-live="polite">
-      Semoga harimu menyenangkan ✨
+    <!-- Pill info -->
+    <section class="pill" id="tagline" aria-live="polite">
+      <span class="pill-dot" aria-hidden="true"></span>
+      <span id="taglineText">Siap bantu aktivitasmu hari ini ✨</span>
     </section>
 
     <!-- Apps grid -->
     <main class="apps" id="apps" aria-label="Aplikasi">
-      <!-- Contoh item aplikasi. Ganti href & label sesuai kebutuhan -->
+      <!-- contoh item -->
       <a class="app" href="#chat" role="button">
         <div class="app-icon" aria-hidden="true">💬</div>
         <div class="app-name">Chat</div>
+        <span class="badge">Baru</span>
       </a>
       <a class="app" href="#video" role="button">
         <div class="app-icon" aria-hidden="true">🎥</div>
@@ -186,75 +243,78 @@
   </nav>
 
   <script>
-    // ===== Utilities =====
-    const $ = (sel, el=document) => el.querySelector(sel);
+    /* ===== Helper ===== */
+    const $ = (s,el=document)=>el.querySelector(s);
     const params = new URLSearchParams(location.search);
 
-    // ===== Greeting logic (ID): pagi/siang/sore/malam =====
-    function getGreetingID(date=new Date()){
-      const h = date.getHours();
+    /* ===== Greeting (ID) ===== */
+    function getGreetingID(d=new Date()){
+      const h = d.getHours();
       if (h >= 4 && h < 11)  return "Selamat pagi";
       if (h >= 11 && h < 15) return "Selamat siang";
       if (h >= 15 && h < 18) return "Selamat sore";
       return "Selamat malam";
     }
-
-    // ===== Data sources for name & photo =====
-    // Prioritas:
-    // 1) Data dari Kodular (via fungsi global setTinyData / postMessage)
-    // 2) URL params ?name=... & ?photo=...
-    // 3) localStorage (tinydb_name, tinydb_photo)
-    function loadInitialData(){
-      const nameFromURL = (params.get('name') || '').trim();
-      const photoFromURL = (params.get('photo') || '').trim();
-
-      const nameFromLS = localStorage.getItem('tinydb_name') || '';
-      const photoFromLS = localStorage.getItem('tinydb_photo') || '';
-
-      const name = nameFromURL || nameFromLS || 'Pengguna';
-      const photo = photoFromURL || photoFromLS || '';
-
-      applyProfile({ name, photo });
+    function updateGreeting(){
+      $("#greet").textContent = getGreetingID();
+      // tagline ringan sesuai waktu
+      const t = {
+        pagi:"Fokus & semangat produktif ☕",
+        siang:"Jeda sejenak, tarik napas 🌤️",
+        sore:"Akhiri dengan manis 🌇",
+        malam:"Santai, recharge energi 🌙"
+      };
+      const g = $("#greet").textContent.split(" ")[1]; // pagi/siang/sore/malam
+      $("#taglineText").textContent = t[g] || "Siap bantu aktivitasmu hari ini ✨";
     }
 
+    /* ===== Profile & TinyDB Integrasi =====
+       Prioritas: Kodular -> URL params -> localStorage
+    */
     function applyProfile({name, photo}){
-      if (name) {
+      if (name){
         $("#name").textContent = name;
         localStorage.setItem('tinydb_name', name);
       }
-      if (photo) {
+      if (photo){
         $("#avatar").src = photo;
         localStorage.setItem('tinydb_photo', photo);
-      } else {
-        // fallback avatar (initials)
+        // auto-set aksen berdasarkan foto
+        extractAccentFromImage(photo).then(colors=>{
+          if(colors){
+            setAccent(colors.primary, colors.secondary);
+          }
+        }).catch(()=>{ /* ignore */ });
+      }else{
+        // avatar inisial
         const n = (name || 'P U').trim();
         const initials = n.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
-        // Make a simple initials avatar as data URL
-        const canvas = document.createElement('canvas');
-        canvas.width = 256; canvas.height = 256;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#111a2a';
-        ctx.fillRect(0,0,256,256);
-        ctx.fillStyle = '#8b5cf6';
-        ctx.font = 'bold 120px system-ui';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(initials, 128, 140);
-        $("#avatar").src = canvas.toDataURL('image/png');
+        const c = document.createElement('canvas'); c.width=256; c.height=256;
+        const x = c.getContext('2d');
+        const g = x.createLinearGradient(0,0,256,256);
+        g.addColorStop(0,'#1b2238'); g.addColorStop(1,'#151b2e');
+        x.fillStyle=g; x.fillRect(0,0,256,256);
+        x.fillStyle='#7c9bff'; x.font='bold 120px ui-sans-serif';
+        x.textAlign='center'; x.textBaseline='middle';
+        x.fillText(initials,128,140);
+        $("#avatar").src = c.toDataURL('image/png');
       }
     }
 
-    function updateGreeting(){
-      $("#greet").textContent = getGreetingID();
+    function loadInitialData(){
+      const nameFromURL = (params.get('name') || '').trim();
+      const photoFromURL = (params.get('photo') || '').trim();
+      const nameFromLS = localStorage.getItem('tinydb_name') || '';
+      const photoFromLS = localStorage.getItem('tinydb_photo') || '';
+      const name = nameFromURL || nameFromLS || 'Pengguna';
+      const photo = photoFromURL || photoFromLS || '';
+      applyProfile({name, photo});
+      // URL ?accent, ?accent2 untuk override manual (opsional)
+      if(params.get('accent')) setAccent(params.get('accent'));
+      if(params.get('accent2')) setAccent(undefined, params.get('accent2'));
     }
 
-    // ===== Integrasi Kodular / TinyDB =====
-    // Opsi A (paling simpel): dari Kodular, panggil Evaluate JavaScript:
-    //   setTinyData({name: TinyDB.GetValue("nama"), photo: TinyDB.GetValue("fotoUrl")});
-    // Opsi B: kirim postMessage dari WebViewer:
-    //   WebViewer1.PostMessage( JSONTextEncode({type:"tinydb", name:"Budi", photo:"https://..."}) )
-    // Opsi C: set WebViewString lalu Evaluate JS untuk membaca:
-    //   WebViewer.WebViewString = JSONTextEncode({name:"Budi", photo:"..."});
-    //   WebViewer.EvaluateJavaScript("readFromWebViewString()");
+    // Kodular hooks
     window.setTinyData = function(obj){
       try{
         if (typeof obj === 'string') obj = JSON.parse(obj);
@@ -262,43 +322,87 @@
         applyProfile({name, photo});
       }catch(e){ console.warn('TinyData parse error:', e); }
     };
-
-    window.readFromWebViewString = function(){
-      // Jika Kodular sudah mengisi document.title atau menyuntik JSON ke title/WebViewString via Evaluate JS,
-      // kamu bisa override fungsi ini untuk ambil dari interface lain.
-      // Secara default kita coba baca dari window.tinyWebString jika sudah diset sebelum ini dipanggil.
-      try{
-        if (window.tinyWebString){
-          window.setTinyData(window.tinyWebString);
-        }
-      }catch(e){ console.warn(e); }
-    };
-
     window.addEventListener('message', (ev)=>{
-      // Terima pesan dari Kodular WebViewer.PostMessage (pastikan Allowed origins sesuai)
       try{
         const data = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
-        if (data && (data.type === 'tinydb' || data.type === 'profile')) {
-          applyProfile({name: data.name, photo: data.photo});
+        if (data && (data.type==='tinydb' || data.type==='profile')){
+          applyProfile({name:data.name, photo:data.photo});
         }
-      }catch(e){ /* ignore */ }
+      }catch(e){}
     });
 
-    // ===== Init =====
-    updateGreeting();                // set awal
-    loadInitialData();               // tarik nama/foto awal
-    setInterval(updateGreeting, 60 * 1000); // refresh tiap menit
+    /* ===== Accent auto-color dari foto (ringan, no lib) ===== */
+    async function extractAccentFromImage(src){
+      return new Promise((resolve,reject)=>{
+        const img = new Image(); img.crossOrigin='anonymous'; img.decoding='async';
+        img.onload = ()=>{
+          try{
+            const w = 80, h = 80;
+            const c = document.createElement('canvas'); c.width=w; c.height=h;
+            const x = c.getContext('2d', { willReadFrequently:true });
+            x.drawImage(img,0,0,w,h);
+            const {data} = x.getImageData(0,0,w,h);
+            // hitung warna dominan kasar (binning)
+            const bins = {};
+            for(let i=0;i<data.length;i+=16){ // sampling step
+              const r=data[i], g=data[i+1], b=data[i+2], a=data[i+3];
+              if(a<128) continue;
+              const key = [(r/24|0),(g/24|0),(b/24|0)].join(',');
+              bins[key]=(bins[key]||0)+1;
+            }
+            let topKey=null,max=-1;
+            for(const k in bins){ if(bins[k]>max){ max=bins[k]; topKey=k; } }
+            if(!topKey) return resolve(null);
+            const [br,bg,bb]=topKey.split(',').map(n=>Number(n)*24+12);
+            // secondary = hue shifted
+            const sec = rotateHue(br,bg,bb,30);
+            resolve({
+              primary:`rgb(${br},${bg},${bb})`,
+              secondary:`rgb(${sec[0]},${sec[1]},${sec[2]})`
+            });
+          }catch(e){ resolve(null); }
+        };
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+    function rotateHue(r,g,b,deg){
+      // matriks rotasi hue (approx)
+      const u = Math.cos(deg*Math.PI/180), w = Math.sin(deg*Math.PI/180);
+      return [
+        clamp((.299+.701*u+.168*w)*r + (.587-.587*u+.330*w)*g + (.114-.114*u-.497*w)*b),
+        clamp((.299-.299*u-.328*w)*r + (.587+.413*u+.035*w)*g + (.114-.114*u+.292*w)*b),
+        clamp((.299-.3*u+1.25*w)*r + (.587-.588*u-1.05*w)*g + (.114+.886*u-.203*w)*b)
+      ];
+    }
+    const clamp = v=>Math.max(0,Math.min(255,Math.round(v)));
 
-    // Demo: jika ingin menambah/ubah item apps lewat JS
-    // const apps = $("#apps");
-    // apps.append(makeApp("🛰️","Monitoring","#monitor"));
+    function setAccent(a1, a2){
+      const root = document.documentElement.style;
+      if(a1) root.setProperty('--accent', a1);
+      if(a2) root.setProperty('--accent-2', a2);
+      // update efek yang pakai shadow accent (halus)
+      document.body.style.setProperty('--accent-shadow', `0 10px 24px ${a1 || 'rgba(124,155,255,.35)'}`);
+    }
 
-    function makeApp(icon, label, href="#"){
+    /* ===== Apps builder (opsional) ===== */
+    function makeApp(icon, label, href="#", opts={}){
       const a = document.createElement('a');
       a.className = 'app'; a.href = href; a.role = 'button';
-      a.innerHTML = `<div class="app-icon" aria-hidden="true">${icon}</div><div class="app-name">${label}</div>`;
+      a.innerHTML = `
+        <div class="app-icon" aria-hidden="true">${icon}</div>
+        <div class="app-name">${label}</div>
+        ${opts.badge ? `<span class="badge">${opts.badge}</span>`:''}
+      `;
       return a;
     }
+    // contoh menambah item dinamis:
+    // $("#apps").append(makeApp("🛰️","Monitoring","#monitor",{badge:"Live"}));
+
+    /* ===== Init ===== */
+    updateGreeting();
+    loadInitialData();
+    setInterval(updateGreeting, 60*1000); // refresh tiap menit
   </script>
 </body>
 </html>
