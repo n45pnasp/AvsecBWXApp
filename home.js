@@ -76,7 +76,7 @@ function loadInitialDataFromSession() {
   const raw = sessionStorage.getItem("authProfile");
   if (!raw) {
     // Jika tidak ada, paksa kembali ke login untuk ambil ulang & signOut
-    location.href = "login.html?logout=1";
+    location.href = "index.html?logout=1";
     return;
   }
   try {
@@ -91,7 +91,7 @@ function loadInitialDataFromSession() {
     if (params.get('accent2')) setAccent(undefined, params.get('accent2'));
   } catch (e) {
     console.warn("authProfile parse error:", e);
-    location.href = "login.html?logout=1";
+    location.href = "index.html?logout=1";
   }
 }
 
