@@ -41,16 +41,21 @@ body{
 @media (prefers-reduced-motion:reduce){ .aurora{ animation:none } }
 .grain{ position:fixed; inset:0; background-image:var(--noise); pointer-events:none; z-index:-1; }
 
-/* Banner tanggal + waktu */
+/* Banner tanggal */
 .date-banner{
   position:sticky; top:0; z-index:5;
   padding:10px 16px calc(8px + env(safe-area-inset-top,0px));
   color:var(--text);
-  background: var(--bg);                 /* sama dengan background dark mode */
+  background:
+    radial-gradient(600px 300px at 20% 0%, rgba(124,155,255,.15), transparent 60%),
+    radial-gradient(400px 200px at 80% 0%, rgba(106,88,255,.18), transparent 55%),
+    var(--bg);
   border-bottom:1px solid var(--border);
   text-align:center; font-weight:700;
   font-size: clamp(14px, 3.8vw, 20px);
+  backdrop-filter: blur(8px);
 }
+
 
 /* Layout */
 .wrap{
