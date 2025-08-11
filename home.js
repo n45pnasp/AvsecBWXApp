@@ -1,26 +1,42 @@
 const $ = (s,el=document)=>el.querySelector(s);
 const params = new URLSearchParams(location.search);
 
-function getGreetingID(d=new Date()){
-  const h = d.getHours();
-  if (h >= 4 && h < 11)  return "Selamat pagi";
-  if (h >= 11 && h < 15) return "Selamat siang";
-  if (h >= 15 && h < 18) return "Selamat sore";
-  return "Selamat malam";
+/* ===== Format tanggal & waktu WIB (GMT+7) ===== */
+const ID_DAYS = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+function pad2(n){ return n<10 ? "0"+n : ""+n; }
+function getWIBDate(d=new Date()){
+  // Pakai timezone Asia/Jakarta agar konsisten meski device bukan GMT+7
+  const parts = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+  return parts;
+}
+function bannerString(){
+  const d = getWIBDate();
+  const hari = ID_DAYS[d.getDay()];
+  const tgl = pad2(d.getDate());
+  const bln = pad2(d.getMonth()+1);
+  const thn = d.getFullYear();
+  const jam = pad2(d.getHours());
+  const mnt = pad2(d.getMinutes());
+  return `${hari}, ${tgl}/${bln}/${thn} • ${jam}:${mnt} WIB (GMT+7)`;
 }
 
+/* ===== Greeting (ID) ===== */
+function getGreetingID(d=getWIBDate()){
+  const h = d.getHours();
+  if (h >= 4 && h < 11)  return "Selamat Pagi,";
+  if (h >= 11 && h < 15) return "Selamat Siang,";
+  if (h >= 15 && h < 18) return "Selamat Sore,";
+  return "Selamat Malam,";
+}
 function updateGreeting(){
   $("#greet").textContent = getGreetingID();
-  const t = {
-    pagi:"Fokus & semangat produktif ☕",
-    siang:"Jeda sejenak, tarik napas 🌤️",
-    sore:"Akhiri dengan manis 🌇",
-    malam:"Santai, recharge energi 🌙"
-  };
-  const g = $("#greet").textContent.split(" ")[1];
-  $("#taglineText").textContent = t[g] || "Siap bantu aktivitasmu hari ini ✨";
+  const k = $("#greet").textContent.split(" ")[1]; // Pagi/Siang/Sore/Malam
+  const t = { Pagi:"Fokus & semangat produktif ☕", Siang:"Jeda sejenak, tarik napas 🌤️", Sore:"Akhiri dengan manis 🌇", Malam:"Santai, recharge energi 🌙" };
+  $("#taglineText").textContent = t[k] || "Siap bantu aktivitasmu hari ini ✨";
+  $("#dateBanner").textContent = bannerString();
 }
 
+/* ===== Profil & TinyDB ===== */
 function applyProfile({name, photo}){
   if (name){
     $("#name").textContent = name;
@@ -29,8 +45,8 @@ function applyProfile({name, photo}){
   if (photo){
     $("#avatar").src = photo;
     localStorage.setItem('tinydb_photo', photo);
-    extractAccentFromImage(photo).then(colors=>{
-      if(colors){ setAccent(colors.primary, colors.secondary); }
+    extractAccentFromImage(photo).then(c=>{
+      if(c){ setAccent(c.primary, c.secondary); }
     }).catch(()=>{});
   }else{
     const n = (name || 'P U').trim();
@@ -46,7 +62,6 @@ function applyProfile({name, photo}){
     $("#avatar").src = c.toDataURL('image/png');
   }
 }
-
 function loadInitialData(){
   const nameFromURL = (params.get('name') || '').trim();
   const photoFromURL = (params.get('photo') || '').trim();
@@ -59,6 +74,7 @@ function loadInitialData(){
   if(params.get('accent2')) setAccent(undefined, params.get('accent2'));
 }
 
+/* ===== Kodular hooks ===== */
 window.setTinyData = function(obj){
   try{
     if (typeof obj === 'string') obj = JSON.parse(obj);
@@ -66,7 +82,6 @@ window.setTinyData = function(obj){
     applyProfile({name, photo});
   }catch(e){ console.warn('TinyData parse error:', e); }
 };
-
 window.addEventListener('message', (ev)=>{
   try{
     const data = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
@@ -76,6 +91,7 @@ window.addEventListener('message', (ev)=>{
   }catch(e){}
 });
 
+/* ===== Accent dari foto (ringan) ===== */
 async function extractAccentFromImage(src){
   return new Promise((resolve,reject)=>{
     const img = new Image(); img.crossOrigin='anonymous'; img.decoding='async';
@@ -91,4 +107,60 @@ async function extractAccentFromImage(src){
           const r=data[i], g=data[i+1], b=data[i+2], a=data[i+3];
           if(a<128) continue;
           const key = [(r/24|0),(g/24|0),(b/24|0)].join(',');
-         
+          bins[key]=(bins[key]||0)+1;
+        }
+        let topKey=null,max=-1;
+        for(const k in bins){ if(bins[k]>max){ max=bins[k]; topKey=k; } }
+        if(!topKey) return resolve(null);
+        const [br,bg,bb]=topKey.split(',').map(n=>Number(n)*24+12);
+        const sec = rotateHue(br,bg,bb,30);
+        resolve({ primary:`rgb(${br},${bg},${bb})`, secondary:`rgb(${sec[0]},${sec[1]},${sec[2]})` });
+      }catch(e){ resolve(null); }
+    };
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+function rotateHue(r,g,b,deg){
+  const u = Math.cos(deg*Math.PI/180), w = Math.sin(deg*Math.PI/180);
+  const clamp = v=>Math.max(0,Math.min(255,Math.round(v)));
+  return [
+    clamp((.299+.701*u+.168*w)*r + (.587-.587*u+.330*w)*g + (.114-.114*u-.497*w)*b),
+    clamp((.299-.299*u-.328*w)*r + (.587+.413*u+.035*w)*g + (.114-.114*u+.292*w)*b),
+    clamp((.299-.3*u+1.25*w)*r + (.587-.588*u-1.05*w)*g + (.114+.886*u-.203*w)*b)
+  ];
+}
+function setAccent(a1, a2){
+  const root = document.documentElement.style;
+  if(a1) root.setProperty('--accent', a1);
+  if(a2) root.setProperty('--accent-2', a2);
+}
+
+/* ===== Toggle foto ↔ logout di kartu ===== */
+(function setupGreetCard(){
+  const card = $("#greetCard");
+  const avatar = $("#avatar");
+  const logoutBtn = $("#logoutBtn");
+
+  card.addEventListener('click', ()=>{
+    const active = card.getAttribute('aria-pressed') === 'true';
+    const next = !active;
+    card.setAttribute('aria-pressed', String(next));
+    logoutBtn.hidden = !next;
+    avatar.hidden = next;
+  });
+
+  $("#logoutBtn").addEventListener('click', (e)=>{
+    e.stopPropagation();
+    try{ window.parent && window.parent.postMessage(JSON.stringify({type:'logout'}),'*'); }catch(_){}
+    if (typeof window.onLogout === 'function') window.onLogout();
+  });
+})();
+
+/* ===== Init (update tiap menit supaya jam selalu benar) ===== */
+function tick(){
+  updateGreeting();
+}
+tick();
+loadInitialData();
+setInterval(tick, 60*1000);
