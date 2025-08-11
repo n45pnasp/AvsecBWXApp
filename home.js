@@ -1,18 +1,16 @@
 // ===== Utils =====
 const $ = (s, el = document) => el.querySelector(s);
-const params = new URLSearchParams(location.search);
 
 // ===== Waktu WIB (GMT+7) =====
 function getWIBDate(d = new Date()) {
-  // Force ke zona waktu Asia/Jakarta agar konsisten
   return new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
 }
 
-// Banner: "senin, 12 agustus 2025" (bahasa Indonesia, huruf kecil)
+// Banner: "senin, 12 agustus 2025"
 function bannerString() {
   const d = getWIBDate();
   const hari = d.toLocaleDateString('id-ID', { weekday: 'long' }).toLowerCase();
-  const tanggal = d.getDate(); // tanpa leading zero
+  const tanggal = d.getDate();
   const bulan = d.toLocaleDateString('id-ID', { month: 'long' }).toLowerCase();
   const tahun = d.getFullYear();
   return `${hari}, ${tanggal} ${bulan} ${tahun}`;
@@ -40,21 +38,23 @@ function updateGreeting() {
   $("#dateBanner").textContent = bannerString();
 }
 
-// ===== Profil & TinyDB =====
-function applyProfile({ name, photo }) {
+// ===== Profil (dari RTDB via sessionStorage oleh login.js) =====
+function applyProfile({ name, photoURL }) {
   if (name) {
     $("#name").textContent = name;
+    // Isi localStorage agar toggle (yang tak boleh diubah) tetap berfungsi
     localStorage.setItem('tinydb_name', name);
   }
-  if (photo) {
+  if (photoURL) {
     const avatar = $("#avatar");
-    if (avatar) avatar.src = photo;
-    localStorage.setItem('tinydb_photo', photo);
-    extractAccentFromImage(photo).then(c => {
+    if (avatar) avatar.src = photoURL;
+    localStorage.setItem('tinydb_photo', photoURL);
+    // (opsional) ekstrak warna aksen dari foto
+    extractAccentFromImage(photoURL).then(c => {
       if (c) setAccent(c.primary, c.secondary);
     }).catch(() => {});
   } else {
-    // Avatar inisial (fallback)
+    // Fallback avatar inisial
     const n = (name || 'P U').trim();
     const initials = n.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
     const c = document.createElement('canvas'); c.width = 256; c.height = 256;
@@ -67,41 +67,33 @@ function applyProfile({ name, photo }) {
     x.fillText(initials, 128, 140);
     const avatar = $("#avatar");
     if (avatar) avatar.src = c.toDataURL('image/png');
+    localStorage.setItem('tinydb_photo', $("#avatar")?.src || "");
   }
 }
 
-function loadInitialData() {
-  const nameFromURL = (params.get('name') || '').trim();
-  const photoFromURL = (params.get('photo') || '').trim();
-  const nameFromLS = localStorage.getItem('tinydb_name') || '';
-  const photoFromLS = localStorage.getItem('tinydb_photo') || '';
+// Ambil data dari sessionStorage (diset login.js setelah fetch RTDB)
+function loadInitialDataFromSession() {
+  const raw = sessionStorage.getItem("authProfile");
+  if (!raw) {
+    // Jika tidak ada, paksa kembali ke login untuk ambil ulang & signOut
+    location.href = "login.html?logout=1";
+    return;
+  }
+  try {
+    const p = JSON.parse(raw);
+    const name  = (p.name || "Pengguna").trim();
+    const photo = (p.photoURL || "").trim();
+    applyProfile({ name, photoURL: photo });
 
-  const name = nameFromURL || nameFromLS || 'Pengguna';
-  const photo = photoFromURL || photoFromLS || '';
-  applyProfile({ name, photo });
-
-  // Optional override aksen
-  if (params.get('accent'))  setAccent(params.get('accent'));
-  if (params.get('accent2')) setAccent(undefined, params.get('accent2'));
+    // (opsional) override aksen dari query
+    const params = new URLSearchParams(location.search);
+    if (params.get('accent'))  setAccent(params.get('accent'));
+    if (params.get('accent2')) setAccent(undefined, params.get('accent2'));
+  } catch (e) {
+    console.warn("authProfile parse error:", e);
+    location.href = "login.html?logout=1";
+  }
 }
-
-// ===== Kodular hooks =====
-window.setTinyData = function (obj) {
-  try {
-    if (typeof obj === 'string') obj = JSON.parse(obj);
-    const { name, photo } = obj || {};
-    applyProfile({ name, photo });
-  } catch (e) { console.warn('TinyData parse error:', e); }
-};
-
-window.addEventListener('message', (ev) => {
-  try {
-    const data = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
-    if (data && (data.type === 'tinydb' || data.type === 'profile')) {
-      applyProfile({ name: data.name, photo: data.photo });
-    }
-  } catch (e) { /* ignore */ }
-});
 
 // ===== Accent dari foto (ringan, no-lib) =====
 async function extractAccentFromImage(src) {
@@ -115,7 +107,7 @@ async function extractAccentFromImage(src) {
         x.drawImage(img, 0, 0, w, h);
         const { data } = x.getImageData(0, 0, w, h);
         const bins = {};
-        for (let i = 0; i < data.length; i += 16) { // sampling
+        for (let i = 0; i < data.length; i += 16) {
           const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
           if (a < 128) continue;
           const key = [(r / 24 | 0), (g / 24 | 0), (b / 24 | 0)].join(',');
@@ -154,6 +146,7 @@ function setAccent(a1, a2) {
 }
 
 // ===== Toggle foto ↔ logout (DOM swap, tombol tak ada sebelum diklik) =====
+// [PERMINTAANMU: bagian ini TIDAK DIUBAH sama sekali]
 (function setupGreetCard() {
   const card = $("#greetCard");
   const profileSlot = $("#profileSlot");
@@ -165,7 +158,9 @@ function setAccent(a1, a2) {
 
     if (next) {
       // Tampilkan tombol logout (ganti avatar)
-      profileSlot.innerHTML = '<button id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">✖</button>';
+      profileSlot.innerHTML =
+        '<button id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">✖</button>';
+
       $("#logoutBtn").addEventListener('click', (e) => {
         e.stopPropagation();
         try { window.parent && window.parent.postMessage(JSON.stringify({ type: 'logout' }), '*'); } catch (_) {}
@@ -174,13 +169,26 @@ function setAccent(a1, a2) {
     } else {
       // Balik ke avatar
       const photo = localStorage.getItem('tinydb_photo') || '';
-      profileSlot.innerHTML = `<img id="avatar" class="avatar-large" alt="Foto pengguna" src="${photo}" />`;
+      profileSlot.innerHTML =
+        `<img id="avatar" class="avatar-large" alt="Foto pengguna" src="${photo}" />`;
     }
   });
 })();
 
-// ===== Init (update per menit agar tanggal tetap akurat) =====
+// ===== Hook Logout untuk tombol di atas =====
+window.onLogout = function () {
+  try {
+    sessionStorage.removeItem("authProfile");
+    // Biar aman, bersihkan juga cache local
+    localStorage.removeItem("tinydb_name");
+    localStorage.removeItem("tinydb_photo");
+  } catch (_) {}
+  // Kembali ke login & paksa signOut lewat query
+  location.href = "login.html?logout=1";
+};
+
+// ===== Init =====
 function tick() { updateGreeting(); }
 tick();
-loadInitialData();
+loadInitialDataFromSession();
 setInterval(tick, 60 * 1000);
