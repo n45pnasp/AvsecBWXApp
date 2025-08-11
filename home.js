@@ -189,8 +189,14 @@ function setAccent(a1, a2) {
   if (a2) root.setProperty('--accent-2', a2);
 }
 
+function setAccent(a1, a2) {
+  const root = document.documentElement.style;
+  if (a1) root.setProperty('--accent', a1);
+  if (a2) root.setProperty('--accent-2', a2);
+}
+
 // ===== Toggle foto ↔ logout (DOM swap, tombol tak ada sebelum diklik) =====
-// [SESUI KEBUTUHANMU: TIDAK DIUBAH]
+// [PERMINTAANMU: bagian ini TIDAK DIUBAH sama sekali]
 (function setupGreetCard() {
   const card = $("#greetCard");
   const profileSlot = $("#profileSlot");
@@ -201,6 +207,7 @@ function setAccent(a1, a2) {
     card.setAttribute('aria-pressed', String(next));
 
     if (next) {
+      // Tampilkan tombol logout (ganti avatar)
       profileSlot.innerHTML =
         '<button id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">✖</button>';
 
@@ -210,6 +217,7 @@ function setAccent(a1, a2) {
         if (typeof window.onLogout === 'function') window.onLogout();
       });
     } else {
+      // Balik ke avatar
       const photo = localStorage.getItem('tinydb_photo') || '';
       profileSlot.innerHTML =
         `<img id="avatar" class="avatar-large" alt="Foto pengguna" src="${photo}" />`;
