@@ -1,24 +1,23 @@
-// ===== Utils =====
+// ================== Utils dasar ==================
 const $ = (s, el = document) => el.querySelector(s);
 const params = new URLSearchParams(location.search);
 
-// ===== Waktu WIB (GMT+7) =====
+// WIB (GMT+7)
 function getWIBDate(d = new Date()) {
-  // Force ke zona waktu Asia/Jakarta agar konsisten
   return new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
 }
 
-// Banner: "senin, 12 agustus 2025" (bahasa Indonesia, huruf kecil)
+// Banner tanggal: "senin, 12 agustus 2025"
 function bannerString() {
   const d = getWIBDate();
   const hari = d.toLocaleDateString('id-ID', { weekday: 'long' }).toLowerCase();
-  const tanggal = d.getDate(); // tanpa leading zero
+  const tanggal = d.getDate();
   const bulan = d.toLocaleDateString('id-ID', { month: 'long' }).toLowerCase();
   const tahun = d.getFullYear();
   return `${hari}, ${tanggal} ${bulan} ${tahun}`;
 }
 
-// ===== Greeting (ID) =====
+// Greeting (ID)
 function getGreetingID(d = getWIBDate()) {
   const h = d.getHours();
   if (h >= 4 && h < 11)  return "Selamat Pagi,";
@@ -40,16 +39,85 @@ function updateGreeting() {
   $("#dateBanner").textContent = bannerString();
 }
 
-// ===== Profil & TinyDB =====
-function applyProfile({ name, photo }) {
-  if (name) {
-    $("#name").textContent = name;
-    localStorage.setItem('tinydb_name', name);
+// ================== Firebase (Auth + RTDB) ==================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import {
+  getDatabase, ref, get, child
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+/** Gunakan config yang sama dengan login.js */
+const firebaseConfig = {
+  apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
+  authDomain: "avsecbwx-4229c.firebaseapp.com",
+  projectId: "avsecbwx-4229c",
+  appId: "1:1029406629258:web:53e8f09585cd77823efc73",
+  storageBucket: "avsecbwx-4229c.appspot.com",
+  messagingSenderId: "1029406629258",
+  measurementId: "G-P37F88HGFE",
+  databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getDatabase(app);
+
+// ================== Profil dari RTDB ==================
+const DEFAULT_AVATAR =
+  "data:image/svg+xml;base64," + btoa(
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128' aria-hidden='true'>
+      <rect width='128' height='128' rx='18'/>
+      <circle cx='64' cy='52' r='22'/>
+      <rect x='26' y='84' width='76' height='26' rx='13'/>
+    </svg>`
+  );
+
+function resolveDisplayName(user){
+  if (user?.displayName && user.displayName.trim()) return user.displayName.trim();
+  if (user?.email) return user.email.split("@")[0];
+  return "Pengguna";
+}
+
+async function fetchProfileFromRTDB(user){
+  try{
+    const root = ref(db);
+    const snaps = await Promise.all([
+      get(child(root, `users/${user.uid}/name`)),
+      get(child(root, `users/${user.uid}/spec`)),
+      get(child(root, `users/${user.uid}/role`)),
+      get(child(root, `users/${user.uid}/isAdmin`)),
+      get(child(root, `users/${user.uid}/photoURL`)),
+    ]);
+    const [nameSnap, specSnap, roleSnap, isAdminSnap, photoSnap] = snaps;
+
+    const name = nameSnap.exists() ? String(nameSnap.val()).trim()
+               : (user.displayName?.trim() || (user.email?.split("@")[0] ?? "Pengguna"));
+    const spec = specSnap.exists() ? String(specSnap.val()).trim() : "";
+    const role = roleSnap.exists() ? String(roleSnap.val()).trim()
+               : (isAdminSnap.exists() && isAdminSnap.val() ? "admin" : "user");
+    const isAdmin  = isAdminSnap.exists() ? !!isAdminSnap.val() : role === "admin";
+
+    const fromRTDB = photoSnap.exists() ? String(photoSnap.val()).trim() : "";
+    const fromAuth = (user.photoURL || "").trim();
+    const photoURL = fromRTDB || fromAuth || DEFAULT_AVATAR;
+
+    return { name, spec, role, isAdmin, photoURL };
+  }catch(e){
+    console.warn("RTDB fetch error:", e?.message || e);
+    const fallbackPhoto = (user?.photoURL && user.photoURL.trim()) || DEFAULT_AVATAR;
+    return { name: resolveDisplayName(user), spec: "", role: "user", isAdmin: false, photoURL: fallbackPhoto };
   }
+}
+
+// ================== Terapkan profil ke UI ==================
+function applyProfile({ name, photo }) {
+  if (name) $("#name").textContent = name;
+
   if (photo) {
     const avatar = $("#avatar");
     if (avatar) avatar.src = photo;
-    localStorage.setItem('tinydb_photo', photo);
     extractAccentFromImage(photo).then(c => {
       if (c) setAccent(c.primary, c.secondary);
     }).catch(() => {});
@@ -70,40 +138,7 @@ function applyProfile({ name, photo }) {
   }
 }
 
-function loadInitialData() {
-  const nameFromURL = (params.get('name') || '').trim();
-  const photoFromURL = (params.get('photo') || '').trim();
-  const nameFromLS = localStorage.getItem('tinydb_name') || '';
-  const photoFromLS = localStorage.getItem('tinydb_photo') || '';
-
-  const name = nameFromURL || nameFromLS || 'Pengguna';
-  const photo = photoFromURL || photoFromLS || '';
-  applyProfile({ name, photo });
-
-  // Optional override aksen
-  if (params.get('accent'))  setAccent(params.get('accent'));
-  if (params.get('accent2')) setAccent(undefined, params.get('accent2'));
-}
-
-// ===== Kodular hooks =====
-window.setTinyData = function (obj) {
-  try {
-    if (typeof obj === 'string') obj = JSON.parse(obj);
-    const { name, photo } = obj || {};
-    applyProfile({ name, photo });
-  } catch (e) { console.warn('TinyData parse error:', e); }
-};
-
-window.addEventListener('message', (ev) => {
-  try {
-    const data = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
-    if (data && (data.type === 'tinydb' || data.type === 'profile')) {
-      applyProfile({ name: data.name, photo: data.photo });
-    }
-  } catch (e) { /* ignore */ }
-});
-
-// ===== Accent dari foto (ringan, no-lib) =====
+// ================== Accent dari foto ==================
 async function extractAccentFromImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image(); img.crossOrigin = 'anonymous'; img.decoding = 'async';
@@ -153,7 +188,7 @@ function setAccent(a1, a2) {
   if (a2) root.setProperty('--accent-2', a2);
 }
 
-// ===== Toggle foto ↔ logout (DOM swap, tombol tak ada sebelum diklik) =====
+// ================== Kartu profil (JANGAN DIUBAH) ==================
 (function setupGreetCard() {
   const card = $("#greetCard");
   const profileSlot = $("#profileSlot");
@@ -166,21 +201,64 @@ function setAccent(a1, a2) {
     if (next) {
       // Tampilkan tombol logout (ganti avatar)
       profileSlot.innerHTML = '<button id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">✖</button>';
-      $("#logoutBtn").addEventListener('click', (e) => {
+      $("#logoutBtn").addEventListener('click', async (e) => {
         e.stopPropagation();
-        try { window.parent && window.parent.postMessage(JSON.stringify({ type: 'logout' }), '*'); } catch (_) {}
-        if (typeof window.onLogout === 'function') window.onLogout();
+        try {
+          if (typeof window.onLogout === 'function') await window.onLogout();
+        } catch (_) {}
       });
     } else {
       // Balik ke avatar
-      const photo = localStorage.getItem('tinydb_photo') || '';
+      const photo = $("#avatar")?.src || "";
       profileSlot.innerHTML = `<img id="avatar" class="avatar-large" alt="Foto pengguna" src="${photo}" />`;
     }
   });
 })();
 
-// ===== Init (update per menit agar tanggal tetap akurat) =====
-function tick() { updateGreeting(); }
-tick();
-loadInitialData();
-setInterval(tick, 60 * 1000);
+// ================== Auth guard + binding logout ==================
+function redirectToLogin(){
+  const here = location.pathname.split("/").pop() || "home.html";
+  const loginURL = `login.html?next=${encodeURIComponent(here)}`;
+  location.replace(loginURL);
+}
+
+// Dijalankan saat halaman siap
+async function initHome(){
+  updateGreeting();
+  setInterval(updateGreeting, 60 * 1000);
+
+  // Opsi: izinkan override aksen via URL
+  if (params.get('accent'))  setAccent(params.get('accent'));
+  if (params.get('accent2')) setAccent(undefined, params.get('accent2'));
+
+  // Auth guard
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      redirectToLogin();
+      return;
+    }
+
+    // 1) Paint cepat jika ada cache dari login (LOGIN MENGISI dari RTDB)
+    try {
+      const cached = sessionStorage.getItem("HOME_PROFILE");
+      if (cached) {
+        const { name, photo } = JSON.parse(cached);
+        applyProfile({ name, photo });
+      }
+    } catch (_) {}
+
+    // 2) Sumber kebenaran: RTDB (fresh)
+    const prof = await fetchProfileFromRTDB(user);
+    applyProfile({ name: prof.name, photo: prof.photoURL });
+
+    // Siapkan handler logout yang dipanggil tombol pada kartu
+    window.onLogout = async function(){
+      try { await signOut(auth); } catch (_) {}
+      // bersih-bersih ringan
+      try { sessionStorage.removeItem("HOME_PROFILE"); } catch (_){}
+      redirectToLogin();
+    };
+  });
+}
+
+initHome();
