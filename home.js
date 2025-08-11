@@ -1,3 +1,42 @@
+// ===== Mobile Debug Console (eruda) =====
+(function setupMobileDebug() {
+  const qs = new URLSearchParams(location.search);
+  const shouldDebug =
+    qs.get('debug') === '1' ||                 // aktif kalau ?debug=1
+    localStorage.getItem('debug') === '1' ||   // atau set via storage
+    location.hostname === 'localhost';         // otomatis saat lokal
+
+  if (!shouldDebug) return;
+
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/eruda';
+  s.async = true;
+  s.onload = () => {
+    try {
+      eruda.init();
+      console.warn('[debug] eruda initialized');
+    } catch (e) {
+      console.warn('[debug] eruda failed:', e);
+    }
+  };
+  document.head.appendChild(s);
+
+  // helper opsional: tulis ke console + ke layar (kalau perlu)
+  window.debugLog = (...args) => {
+    try { console.log(...args); } catch(_) {}
+    let el = document.getElementById('debug');
+    if (!el) {
+      el = document.createElement('pre');
+      el.id = 'debug';
+      el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;max-height:40vh;overflow:auto;background:#111;color:#0f0;padding:8px;border-radius:8px;font:12px/1.4 ui-monospace;z-index:99999;opacity:.9';
+      document.body.appendChild(el);
+    }
+    el.textContent += args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ') + '\n';
+  };
+})();
+
+
+
 // home.js (module)
 
 // ===== Firebase (gunakan config yang sama dengan login.js) =====
