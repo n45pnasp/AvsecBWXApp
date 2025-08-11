@@ -1,211 +1,206 @@
-/* ===================== Helpers ===================== */
-const $ = (s, el = document) => el.querySelector(s);
-const params = new URLSearchParams(location.search);
+// home.js (FINAL, module)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import {
+  getDatabase, ref, get, child, onValue
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-/* WIB (GMT+7) date utilities */
-const ID_DAYS = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
-const pad2 = n => (n < 10 ? "0" + n : "" + n);
-
-function getWIBDate(d = new Date()){
-  // Pakai timezone Asia/Jakarta biar konsisten di semua device
-  return new Date(d.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-}
-
-// ===== Banner: "Senin, 11 Agustus 2025" WIB =====
-function bannerString(){
-  const d = getWIBDate(); // waktu WIB (GMT+7)
-  const hari  = d.toLocaleDateString('id-ID', { weekday: 'long' });
-  const tanggal = d.getDate();
-  const bulan = d.toLocaleDateString('id-ID', { month: 'long' });
-  const tahun = d.getFullYear();
-  return `${hari}, ${tanggal} ${bulan} ${tahun}`;
-}
-
-/* ===================== Greeting ===================== */
-function getGreetingID(d = getWIBDate()){
-  const h = d.getHours();
-  if (h >= 4 && h < 11)  return "Selamat Pagi,";
-  if (h >= 11 && h < 15) return "Selamat Siang,";
-  if (h >= 15 && h < 18) return "Selamat Sore,";
-  return "Selamat Malam,";
-}
-function updateGreeting(){
-  $("#greet").textContent = getGreetingID();
-  const k = $("#greet").textContent.split(" ")[1]; // Pagi/Siang/Sore/Malam
-  const tips = {
-    Pagi:"Fokus & semangat produktif ☕",
-    Siang:"Jeda sejenak, tarik napas 🌤️",
-    Sore:"Akhiri dengan manis 🌇",
-    Malam:"Santai, recharge energi 🌙"
-  };
-  $("#taglineText").textContent = tips[k] || "Siap bantu aktivitasmu hari ini ✨";
-  $("#dateBanner").textContent = bannerString();
-}
-
-/* ===================== Profile state ===================== */
-let CURRENT_NAME = "Pengguna";
-let CURRENT_PHOTO = ""; // url/dataURL terakhir yang dipakai avatar
-
-function applyProfile({ name, photo }){
-  if (name){
-    CURRENT_NAME = name;
-    $("#name").textContent = name;
-    localStorage.setItem("tinydb_name", name);
-  }
-  if (photo){
-    CURRENT_PHOTO = photo;
-    setAvatarSrc(photo);
-    localStorage.setItem("tinydb_photo", photo);
-    extractAccentFromImage(photo)
-      .then(c => { if (c) setAccent(c.primary, c.secondary); })
-      .catch(()=>{});
-  } else if (!CURRENT_PHOTO){
-    // buat avatar inisial kalau belum ada foto
-    const url = makeInitialsAvatar(CURRENT_NAME);
-    CURRENT_PHOTO = url;
-    setAvatarSrc(url);
-  }
-}
-
-/* Render avatar image */
-function setAvatarSrc(src){
-  const img = $("#avatar");
-  if (img) img.src = src;
-}
-
-/* Buat avatar inisial (dataURL) */
-function makeInitialsAvatar(name){
-  const initials = (name || "P U").trim().split(/\s+/).map(w => w[0]).slice(0,2).join("").toUpperCase();
-  const c = document.createElement("canvas"); c.width = 256; c.height = 256;
-  const x = c.getContext("2d");
-  const g = x.createLinearGradient(0,0,256,256);
-  g.addColorStop(0, "#1b2238"); g.addColorStop(1, "#151b2e");
-  x.fillStyle = g; x.fillRect(0,0,256,256);
-  x.fillStyle = "#7c9bff"; x.font = "bold 120px ui-sans-serif";
-  x.textAlign = "center"; x.textBaseline = "middle";
-  x.fillText(initials, 128, 140);
-  return c.toDataURL("image/png");
-}
-
-/* Sumber data awal: Kodular -> URL -> localStorage */
-function loadInitialData(){
-  const nameFromURL  = (params.get("name")  || "").trim();
-  const photoFromURL = (params.get("photo") || "").trim();
-  const nameFromLS   = localStorage.getItem("tinydb_name")  || "";
-  const photoFromLS  = localStorage.getItem("tinydb_photo") || "";
-
-  const name  = nameFromURL  || nameFromLS  || "Pengguna";
-  const photo = photoFromURL || photoFromLS || "";
-
-  applyProfile({ name, photo });
-
-  // optional: override accent via URL
-  if (params.get("accent"))  setAccent(params.get("accent"));
-  if (params.get("accent2")) setAccent(undefined, params.get("accent2"));
-}
-
-/* ===================== Kodular hooks ===================== */
-window.setTinyData = function(obj){
-  try{
-    if (typeof obj === "string") obj = JSON.parse(obj);
-    const { name, photo } = obj || {};
-    applyProfile({ name, photo });
-  }catch(e){ console.warn("TinyData parse error:", e); }
+/* ============ Firebase Config ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
+  authDomain: "avsecbwx-4229c.firebaseapp.com",
+  projectId: "avsecbwx-4229c",
+  appId: "1:1029406629258:web:53e8f09585cd77823efc73",
+  storageBucket: "avsecbwx-4229c.appspot.com",
+  messagingSenderId: "1029406629258",
+  measurementId: "G-P37F88HGFE",
+  databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
 };
 
-window.addEventListener("message", (ev)=>{
-  try{
-    const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
-    if (data && (data.type === "tinydb" || data.type === "profile")){
-      applyProfile({ name: data.name, photo: data.photo });
-    }
-  }catch(e){}
-});
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getDatabase(app);
 
-/* ===================== Accent dari foto ===================== */
-async function extractAccentFromImage(src){
-  return new Promise((resolve,reject)=>{
-    const img = new Image(); img.crossOrigin = "anonymous"; img.decoding = "async";
-    img.onload = ()=>{
-      try{
-        const w = 80, h = 80;
-        const c = document.createElement("canvas"); c.width = w; c.height = h;
-        const x = c.getContext("2d", { willReadFrequently: true });
-        x.drawImage(img,0,0,w,h);
-        const { data } = x.getImageData(0,0,w,h);
-        const bins = {};
-        for (let i=0;i<data.length;i+=16){
-          const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-          if (a < 128) continue;
-          const key = [(r/24|0),(g/24|0),(b/24|0)].join(",");
-          bins[key] = (bins[key]||0) + 1;
-        }
-        let topKey=null, max=-1;
-        for (const k in bins){ if (bins[k] > max){ max = bins[k]; topKey = k; } }
-        if (!topKey) return resolve(null);
-        const [br,bg,bb] = topKey.split(",").map(n => Number(n)*24+12);
-        const sec = rotateHue(br,bg,bb,30);
-        resolve({ primary:`rgb(${br},${bg},${bb})`,
-                  secondary:`rgb(${sec[0]},${sec[1]},${sec[2]})` });
-      }catch(e){ resolve(null); }
-    };
-    img.onerror = reject;
-    img.src = src;
+/* ============ DOM Helpers ============ */
+const $ = s => document.querySelector(s);
+const nameEl    = $("#name");
+const emailEl   = $("#email");
+const avatarEl  = $("#avatar");
+const logoutBtn = $("#logoutBtn");
+
+/* ============ Avatar default ============ */
+const DEFAULT_AVATAR = "data:image/svg+xml;base64," + btoa(
+  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
+     <rect width='128' height='128' rx='18' fill='#0b1220'/>
+     <circle cx='64' cy='50' r='22' fill='#7c9bff'/>
+     <rect x='26' y='84' width='76' height='26' rx='13' fill='#1f2937'/>
+   </svg>`
+);
+
+/* ============ UI Render ============ */
+function setProfile({ name, email, photoURL }){
+  if (nameEl)  nameEl.textContent  = name || "Pengguna";
+  if (emailEl) emailEl.textContent = email || "";
+  if (avatarEl){
+    avatarEl.src = photoURL || DEFAULT_AVATAR;
+    avatarEl.alt = name ? `Avatar ${name}` : "Avatar";
+  }
+}
+
+/* ============ Ambil profil lengkap dari RTDB ============ */
+async function fetchFullProfile(user){
+  const root = ref(db);
+  const snaps = await Promise.all([
+    get(child(root, `users/${user.uid}/name`)),
+    get(child(root, `users/${user.uid}/spec`)),
+    get(child(root, `users/${user.uid}/role`)),
+    get(child(root, `users/${user.uid}/isAdmin`)),
+    get(child(root, `users/${user.uid}/photoURL`))
+  ]);
+
+  const [nameSnap, specSnap, roleSnap, isAdminSnap, photoSnap] = snaps;
+
+  const name = nameSnap.exists() ? String(nameSnap.val()).trim()
+            : (user.displayName?.trim() || (user.email?.split("@")[0] ?? "Pengguna"));
+  const spec = specSnap.exists() ? String(specSnap.val()).trim() : "";
+  const role = roleSnap.exists() ? String(roleSnap.val()).trim()
+            : (isAdminSnap.exists() && isAdminSnap.val() ? "admin" : "user");
+  const isAdmin = isAdminSnap.exists() ? !!isAdminSnap.val() : role === "admin";
+
+  const fromRTDB = photoSnap.exists() ? String(photoSnap.val()).trim() : "";
+  const fromAuth = (user.photoURL || "").trim();
+  const photoURL = fromRTDB || fromAuth || DEFAULT_AVATAR;
+
+  return {
+    uid: user.uid,
+    name,
+    spec,
+    role,
+    isAdmin,
+    email: user.email || "",
+    photoURL
+  };
+}
+
+/* ============ Kirim ke Kodular ============ */
+function sendToKodular(data){
+  const jsonStr = JSON.stringify({
+    event: "profile",
+    ...data
+  });
+  if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
+    try { window.AppInventor.setWebViewString(jsonStr); }
+    catch(e){ console.warn("setWebViewString error:", e); }
+  } else {
+    // Untuk debug di browser biasa:
+    console.log("[KODULAR_SIMULATE]", jsonStr);
+  }
+}
+
+/* ============ Realtime subscribe (opsional, tapi aktif) ============ */
+function subscribeProfile(user){
+  const userRef = ref(db, `users/${user.uid}`);
+  // Kembalikan fungsi unsubscribe dari onValue
+  return onValue(userRef, (snap)=>{
+    const v = snap.val() || {};
+    const name = (v.name || auth.currentUser?.displayName || auth.currentUser?.email?.split("@")[0] || "Pengguna").toString().trim();
+    const email = auth.currentUser?.email || "";
+    const photoURL = (v.photoURL || auth.currentUser?.photoURL || "").toString().trim();
+
+    // Render ke UI
+    setProfile({ name, email, photoURL });
+
+    // Kirim ulang ke Kodular saat ada perubahan
+    sendToKodular({
+      uid: user.uid,
+      name,
+      spec: (v.spec || ""),
+      role: (v.role || (v.isAdmin ? "admin" : "user")),
+      isAdmin: !!v.isAdmin,
+      email,
+      photoURL: photoURL || DEFAULT_AVATAR
+    });
+  }, (err)=>{
+    console.warn("RTDB subscribe error:", err?.message || err);
   });
 }
-function rotateHue(r,g,b,deg){
-  const u = Math.cos(deg*Math.PI/180), w = Math.sin(deg*Math.PI/180);
-  const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
-  return [
-    clamp((.299+.701*u+.168*w)*r + (.587-.587*u+.330*w)*g + (.114-.114*u-.497*w)*b),
-    clamp((.299-.299*u-.328*w)*r + (.587+.413*u+.035*w)*g + (.114-.114*u+.292*w)*b),
-    clamp((.299-.3*u+1.25*w)*r + (.587-.588*u-1.05*w)*g + (.114+.886*u-.203*w)*b)
-  ];
-}
-function setAccent(a1, a2){
-  const root = document.documentElement.style;
-  if (a1) root.setProperty("--accent", a1);
-  if (a2) root.setProperty("--accent-2", a2);
-}
 
-/* ===================== Greet Card: toggle avatar ↔ logout ===================== */
-(function setupGreetCard(){
-  const card        = $("#greetCard");
-  const profileSlot = $("#profileSlot");
+/* ============ Auth flow ============ */
+let unsubProfile = null;
 
-  // render helper
-  function renderProfileSlot(showLogout){
-    if (showLogout){
-      profileSlot.innerHTML =
-        '<button id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">✖</button>';
-      $("#logoutBtn").addEventListener("click", (e)=>{
-        e.stopPropagation(); // jangan toggle balik
-        try{
-          // kirim sinyal ke Kodular (opsional)
-          window.parent && window.parent.postMessage(JSON.stringify({ type:"logout" }), "*");
-        }catch(_){}
-        if (typeof window.onLogout === "function") window.onLogout();
-      });
-    }else{
-      profileSlot.innerHTML =
-        `<img id="avatar" class="avatar-large" alt="Foto pengguna" src="${CURRENT_PHOTO || ""}" />`;
-    }
+onAuthStateChanged(auth, async (user)=>{
+  if (!user){
+    // Belum login → balik ke login
+    location.replace("./login.html");
+    return;
   }
 
-  // initial view: avatar (logout tidak dibuat di DOM)
-  renderProfileSlot(false);
-  card.setAttribute("aria-pressed", "false");
-
-  card.addEventListener("click", ()=>{
-    const active = card.getAttribute("aria-pressed") === "true";
-    const next = !active;
-    card.setAttribute("aria-pressed", String(next));
-    renderProfileSlot(next);
+  // Render cepat dari Auth
+  setProfile({
+    name: user.displayName || user.email?.split("@")[0],
+    email: user.email || "",
+    photoURL: user.photoURL || ""
   });
-})();
 
-/* ===================== Init ===================== */
-function tick(){ updateGreeting(); }
-tick();
-loadInitialData();
-setInterval(tick, 60 * 1000);
+  // Ambil profil lengkap dari RTDB, kirim ke Kodular
+  try{
+    const prof = await fetchFullProfile(user);
+
+    setProfile({
+      name: prof.name,
+      email: prof.email,
+      photoURL: prof.photoURL
+    });
+
+    sendToKodular(prof);
+  }catch(e){
+    console.warn("fetchFullProfile error:", e?.message || e);
+    // Tetap kirim minimal payload dari Auth agar Kodular punya data
+    sendToKodular({
+      uid: user.uid,
+      name: user.displayName || user.email?.split("@")[0] || "Pengguna",
+      spec: "",
+      role: "user",
+      isAdmin: false,
+      email: user.email || "",
+      photoURL: user.photoURL || DEFAULT_AVATAR
+    });
+  }
+
+  // Realtime update
+  if (unsubProfile) { try { unsubProfile(); } catch(_){} }
+  unsubProfile = subscribeProfile(user);
+});
+
+/* ============ Logout ============ */
+logoutBtn?.addEventListener("click", async ()=>{
+  try{
+    await signOut(auth);
+  } finally {
+    location.replace("./login.html");
+  }
+});
+
+/* ============ API tambahan untuk Kodular (opsional) ============ */
+// Kodular bisa panggil JS function ini via WebViewer.EvaluateJavaScript
+// untuk minta kirim ulang profil kapan saja.
+window.requestProfile = async function(){
+  const user = auth.currentUser;
+  if (!user) return;
+  try{
+    const prof = await fetchFullProfile(user);
+    sendToKodular(prof);
+  }catch(e){
+    sendToKodular({
+      uid: user.uid,
+      name: user.displayName || user.email?.split("@")[0] || "Pengguna",
+      spec: "",
+      role: "user",
+      isAdmin: false,
+      email: user.email || "",
+      photoURL: user.photoURL || DEFAULT_AVATAR
+    });
+  }
+};
