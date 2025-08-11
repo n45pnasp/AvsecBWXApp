@@ -22,10 +22,12 @@ body{
   font:400 16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans";
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
   -webkit-tap-highlight-color: transparent;
-  background: radial-gradient(1200px 600px at 20% -10%, rgba(124,155,255,.25),transparent 60%),
-              radial-gradient(900px 500px at 90% 10%, rgba(106,88,255,.22),transparent 55%),
-              linear-gradient(180deg,var(--bg-1),var(--bg-2) 50%, var(--bg-3));
-  position:relative; overflow-x:hidden;
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(124,155,255,.25),transparent 60%),
+    radial-gradient(900px 500px at 90% 10%, rgba(106,88,255,.22),transparent 55%),
+    linear-gradient(180deg,var(--bg-1),var(--bg-2) 50%, var(--bg-3) 100%);
+  background-attachment: fixed; /* biar mulus tanpa potongan */
+  overflow-x:hidden;
 }
 
 /* Aurora */
@@ -121,41 +123,55 @@ body{
   backdrop-filter: blur(6px); color:#eaf0ff;
 }
 
-/* Bottom Dock */
+/* Dock transparan agar nyatu dengan background */
 .dock{
   position:fixed; left:0; right:0; bottom:0;
-  padding:12px 14px calc(12px + var(--safe-b));
-  background: linear-gradient(180deg, rgba(6,10,22,.0), rgba(6,10,22,.45));
+  padding:10px 14px calc(10px + var(--safe-b));
+  background: rgba(10,15,26,0.2); /* transparan, tidak memotong gradient */
+  backdrop-filter: blur(12px);
   z-index:50;
 }
+
+/* Dock inner sedikit lebih tipis */
 .dock-inner{
-  height: clamp(50px, calc(var(--dock-font) * 2.6), 62px);
+  height: clamp(48px, calc(var(--dock-font) * 2.4), 56px);
   border-radius: var(--dock-radius);
   border:1px solid var(--border);
   display:grid; grid-template-columns: repeat(5, 1fr);
-  gap: var(--dock-gap); padding: clamp(6px, 1.6vw, 8px);
-  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  gap: var(--dock-gap); padding: clamp(4px, 1.4vw, 6px);
+  background: rgba(255,255,255,0.05);
   backdrop-filter: blur(14px);
-  box-shadow: 0 20px 40px rgba(0,0,0,.4);
+  box-shadow: 0 10px 20px rgba(0,0,0,.35);
   max-width:960px; margin:0 auto;
 }
+
+/* Icon & teks dock lebih kecil & rapi */
 .dock-btn{
-  display:grid; place-items:center; gap:4px;
-  border-radius: clamp(10px, 2.8vw, 14px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  border-radius: clamp(8px, 2.4vw, 12px);
   text-decoration:none; color:var(--text);
-  font-size: var(--dock-font);
+  font-size: clamp(16px, 4vw, 18px); /* icon size */
   line-height: 1;
   user-select:none;
   transition: background .2s ease, transform .12s ease, outline-color .2s ease;
   outline:1.5px solid transparent;
-  min-height: calc(var(--dock-font) * 1.8);
 }
+
+/* label text kecil di bawah icon */
+.dock-btn span{
+  display:block;
+  font-size: clamp(9px, 2.5vw, 11px);
+  line-height:1.1;
+  margin-top:2px;
+}
+
 .dock-btn:hover{ background:rgba(255,255,255,.06) }
 .dock-btn:active{ transform:translateY(1px) scale(.98) }
 .dock-btn[aria-current="page"]{
   outline-color: color-mix(in oklab, var(--accent) 40%, transparent);
-  background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.05));
+  background: rgba(255,255,255,0.07);
 }
+
 @media (max-width: 360px){
   :root{ --dock-font: clamp(13px, 4.6vw, 18px); }
   .dock-inner{ gap: 6px; }
