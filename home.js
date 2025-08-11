@@ -184,7 +184,7 @@ window.onLogout = function () {
     localStorage.removeItem("tinydb_photo");
   } catch (_) {}
   // Kembali ke login & paksa signOut lewat query
-  location.href = "login.html?logout=1";
+  location.href = "login.html";
 };
 
 // ===== Init =====
