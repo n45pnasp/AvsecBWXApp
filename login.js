@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword,
-  setPersistence, browserLocalPersistence, signOut
+  setPersistence, browserLocalPersistence, signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
   getDatabase, ref, get, child
@@ -57,10 +57,7 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
     .btn:hover, button:hover, .net-btn:hover {
       background-color: #6A1B9A !important;
     }
-    /* Avatar background ganti jadi ungu gelap */
-    .avatar-dark {
-      background-color: #6A1B9A !important;
-    }
+    .avatar-dark { background-color: #6A1B9A !important; }
   `;
   document.head.appendChild(style);
 })();
@@ -144,7 +141,7 @@ function getTimeOfDayUTC7(){
   }
 }
 
-/** ===== Offline Sheet (JS only) ===== */
+/** ===== Offline Sheet ===== */
 (function setupOfflineSheet(){
   const style = document.createElement("style");
   style.textContent = `
@@ -202,7 +199,7 @@ function getTimeOfDayUTC7(){
   }, true);
 })();
 
-/** (opsional) Avatar default jika tak ada foto */
+/** (opsional) Avatar default */
 const DEFAULT_AVATAR =
   "data:image/svg+xml;base64," + btoa(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
@@ -244,6 +241,49 @@ async function fetchProfile(user){
   }
 }
 
+/** Kirim ke Kodular + simpan profil + goto Home */
+async function notifyKodularAndGoHome(status, user){
+  const prof = await fetchProfile(user);
+
+  // 1) Simpan ke sessionStorage agar bisa dibaca home.js (pengganti TinyDB)
+  try {
+    sessionStorage.setItem("authProfile", JSON.stringify({
+      uid: user.uid,
+      email: user.email || null,
+      name: prof.name,
+      photoURL: prof.photoURL,
+      role: prof.role,
+      isAdmin: prof.isAdmin,
+      ts: Date.now()
+    }));
+  } catch (_) {}
+
+  // 2) (opsional) kirim ke Kodular
+  const payload = JSON.stringify({
+    event: "auth",
+    status,
+    uid: user.uid,
+    email: user.email || null,
+    name: prof.name,
+    spec: prof.spec,
+    role: prof.role,
+    isAdmin: prof.isAdmin,
+    photoURL: prof.photoURL,
+    ts: Date.now(),
+    timeOfDay: getTimeOfDayUTC7()
+  });
+
+  if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
+    window.AppInventor.setWebViewString(payload);
+  } else {
+    document.title = payload; // fallback
+  }
+
+  ok(status==="success" ? "Login berhasil. Mengalihkan ke Home..." : "Sesi ditemukan. Mengalihkan ke Home...");
+  // 3) Arahkan ke Home
+  setTimeout(()=>{ location.href = "home.html"; }, 600);
+}
+
 /** LOGIN */
 form?.addEventListener("submit", async (e)=>{
   e.preventDefault();
@@ -278,6 +318,15 @@ form?.addEventListener("submit", async (e)=>{
 
 /** AUTO-SKIP jika sudah login */
 onAuthStateChanged(auth, async (user)=>{
+  const params = new URLSearchParams(location.search);
+  const wantLogout = params.get("logout") === "1";
+
+  if (wantLogout) {
+    // Jika datang dari home → logout
+    await window.logout();
+    return;
+  }
+
   if (user){
     await notifyKodularAndGoHome("already_signed_in", user);
   }else{
@@ -285,57 +334,27 @@ onAuthStateChanged(auth, async (user)=>{
   }
 });
 
-/** Kirim ke Kodular + profil lengkap + salam waktu + redirect ke Home */
-async function notifyKodularAndGoHome(status, user){
-  const prof = await fetchProfile(user);
-  const payloadObj = {
-    event: "auth",
-    status,
-    uid: user.uid,
-    email: user.email || null,
-    name: prof.name,
-    spec: prof.spec,
-    role: prof.role,
-    isAdmin: prof.isAdmin,
-    photoURL: prof.photoURL,
-    ts: Date.now(),
-    timeOfDay: getTimeOfDayUTC7()
-  };
-  const payload = JSON.stringify(payloadObj);
-
-  // Jika dipakai lewat Kodular, tetap kirim event
-  if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
-    window.AppInventor.setWebViewString(payload);
-  } else {
-    // fallback tidak mengganggu
-    document.title = payload;
-  }
-
-  // Simpan profil untuk jembatan (browser) → dipakai Home jika perlu
-  try { sessionStorage.setItem("auth_profile", JSON.stringify(payloadObj)); } catch {}
-
-  ok(status==="success" ? "Login berhasil. Mengalihkan ke Home..." : "Sesi ditemukan. Mengalihkan ke Home...");
-
-  // Redirect ke Home (sesuaikan nama file jika berbeda)
-  setTimeout(()=>{
-    location.href = "home.html";
-  }, 600);
-}
-
-/** LOGOUT (opsional dipakai dari luar) */
+/** LOGOUT (dipanggil dari login.html?logout=1 atau manual) */
 window.logout = async function(){
   try{
     await signOut(auth);
-    const payload = JSON.stringify({
-      event:"auth",
-      status:"signed_out",
-      ts:Date.now(),
-      timeOfDay: getTimeOfDayUTC7()
-    });
-    if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
-    try { sessionStorage.removeItem("auth_profile"); } catch {}
+    // Bersihkan jejak local/session profile
+    sessionStorage.removeItem("authProfile");
+    ok("Berhasil keluar.");
     show(welcome);
   }catch(e){
     err("Gagal logout: " + (e.message || e));
   }
 };
+
+// (Opsional) contoh lupa password jika ada tombol dengan id #forgotBtn
+document.querySelector("#forgotBtn")?.addEventListener("click", async ()=>{
+  const email = (emailEl?.value || "").trim();
+  if (!email) return err("Masukkan email terlebih dahulu.");
+  try{
+    await sendPasswordResetEmail(auth, email);
+    ok("Link reset password telah dikirim.");
+  }catch(e){
+    err("Gagal kirim reset: " + (e.code || e.message || e));
+  }
+});
