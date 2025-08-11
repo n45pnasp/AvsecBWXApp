@@ -23,25 +23,26 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
 
-// ================ Utils DOM & Waktu =====================
+// ===== Utils =====
 const $ = (s, el = document) => el.querySelector(s);
+const params = new URLSearchParams(location.search);
 
-// WIB (GMT+7)
+// ===== Waktu WIB (GMT+7) =====
 function getWIBDate(d = new Date()) {
   return new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
 }
 
-// Banner: "senin, 12 agustus 2025"
+// Banner: "senin, 12 agustus 2025" (bahasa Indonesia, huruf kecil)
 function bannerString() {
   const d = getWIBDate();
   const hari = d.toLocaleDateString('id-ID', { weekday: 'long' }).toLowerCase();
-  const tanggal = d.getDate();
+  const tanggal = d.getDate(); // tanpa leading zero
   const bulan = d.toLocaleDateString('id-ID', { month: 'long' }).toLowerCase();
   const tahun = d.getFullYear();
   return `${hari}, ${tanggal} ${bulan} ${tahun}`;
 }
 
-// Greeting (ID)
+// ===== Greeting (ID) =====
 function getGreetingID(d = getWIBDate()) {
   const h = d.getHours();
   if (h >= 4 && h < 11)  return "Selamat Pagi,";
@@ -51,22 +52,55 @@ function getGreetingID(d = getWIBDate()) {
 }
 
 function updateGreeting() {
-  const greetEl = $("#greet");
-  const tagEl   = $("#taglineText");
-  const dateEl  = $("#dateBanner");
-  if (greetEl) greetEl.textContent = getGreetingID();
-  const k = (greetEl?.textContent || "").split(" ")[1];
+  $("#greet").textContent = getGreetingID();
+  const k = $("#greet").textContent.split(" ")[1]; // Pagi/Siang/Sore/Malam
   const t = {
     Pagi:  "Fokus & semangat produktif ☕",
     Siang: "Jeda sejenak, tarik napas 🌤️",
     Sore:  "Akhiri dengan manis 🌇",
     Malam: "Santai, recharge energi 🌙"
   };
-  if (tagEl)  tagEl.textContent  = t[k] || "Siap bantu aktivitasmu hari ini ✨";
-  if (dateEl) dateEl.textContent = bannerString();
+  $("#taglineText").textContent = t[k] || "Siap bantu aktivitasmu hari ini ✨";
+  $("#dateBanner").textContent = bannerString();
 }
 
-// ============== Ambil Profil dari RTDB ==================
+// ===== Accent dari foto (ringan, no-lib) =====
+async function extractAccentFromImage(src) {
+  return new Promise((resolve, reject) => {
+    if (!src) return resolve(null);
+    const img = new Image(); img.crossOrigin = 'anonymous'; img.decoding = 'async';
+    img.onload = () => {
+      try {
+        const w = 80, h = 80;
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const x = c.getContext('2d', { willReadFrequently: true });
+        x.drawImage(img, 0, 0, w, h);
+        const { data } = x.getImageData(0, 0, w, h);
+        const bins = {};
+        for (let i = 0; i < data.length; i += 16) { // sampling
+          const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+          if (a < 128) continue;
+          const key = [(r / 24 | 0), (g / 24 | 0), (b / 24 | 0)].join(',');
+          bins[key] = (bins[key] || 0) + 1;
+        }
+        let topKey = null, max = -1;
+        for (const k in bins) { if (bins[k] > max) { max = bins[k]; topKey = k; } }
+        if (!topKey) return resolve(null);
+        const [br, bg, bb] = topKey.split(',').map(n => Number(n) * 24 + 12);
+        resolve({ primary: `rgb(${br},${bg},${bb})` });
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+function setAccent(a1) {
+  if (!a1) return;
+  document.documentElement.style.setProperty('--accent', a1);
+}
+
+// ===== Default avatar (fallback) =====
 const DEFAULT_AVATAR =
   "data:image/svg+xml;base64," + btoa(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
@@ -82,6 +116,7 @@ function resolveDisplayName(user){
   return "Pengguna";
 }
 
+// ===== Ambil profil dari RTDB akun yang login =====
 async function fetchProfile(user){
   try{
     const root = ref(db);
@@ -113,55 +148,34 @@ async function fetchProfile(user){
   }
 }
 
-// ============== Accent dari foto (opsional ringan) ==============
-async function extractAccentFromImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image(); img.crossOrigin = 'anonymous'; img.decoding = 'async';
-    img.onload = () => {
-      try {
-        const w = 80, h = 80;
-        const c = document.createElement('canvas'); c.width = w; c.height = h;
-        const x = c.getContext('2d', { willReadFrequently: true });
-        x.drawImage(img, 0, 0, w, h);
-        const { data } = x.getImageData(0, 0, w, h);
-        const bins = {};
-        for (let i = 0; i < data.length; i += 16) {
-          const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
-          if (a < 128) continue;
-          const key = [(r / 24 | 0), (g / 24 | 0), (b / 24 | 0)].join(',');
-          bins[key] = (bins[key] || 0) + 1;
-        }
-        let topKey = null, max = -1;
-        for (const k in bins) { if (bins[k] > max) { max = bins[k]; topKey = k; } }
-        if (!topKey) return resolve(null);
-        const [br, bg, bb] = topKey.split(',').map(n => Number(n) * 24 + 12);
-        resolve({ primary: `rgb(${br},${bg},${bb})` });
-      } catch { resolve(null); }
-    };
-    img.onerror = reject;
-    img.src = src;
-  });
-}
+// ===== Render profil ke UI =====
+let CURRENT_PHOTO_URL = DEFAULT_AVATAR; // dipakai saat toggle balik ke avatar
 
-function setAccent(a1) {
-  if (!a1) return;
-  document.documentElement.style.setProperty('--accent', a1);
-}
-
-// ============== Render Profil ke UI =====================
 function applyProfile({ name, photoURL }) {
   const nameEl = $("#name");
-  const avatarEl = $("#avatar");
-  if (nameEl)   nameEl.textContent = name || "Pengguna";
-  if (avatarEl) avatarEl.src = photoURL || DEFAULT_AVATAR;
+  if (nameEl) nameEl.textContent = name || "Pengguna";
+
+  let avatar = $("#avatar");
+  if (!avatar) {
+    // jika HTML awal belum menyiapkan <img id="avatar">, buatkan
+    const slot = $("#profileSlot") || document.body;
+    avatar = document.createElement("img");
+    avatar.id = "avatar";
+    avatar.className = "avatar-large";
+    avatar.alt = "Foto pengguna";
+    slot.innerHTML = "";
+    slot.appendChild(avatar);
+  }
+  avatar.src = photoURL || DEFAULT_AVATAR;
+  CURRENT_PHOTO_URL = avatar.src;
 
   // opsional: sinkronkan aksen dari foto
-  extractAccentFromImage(photoURL || "").then(c => {
+  extractAccentFromImage(CURRENT_PHOTO_URL).then(c => {
     if (c?.primary) setAccent(c.primary);
   }).catch(()=>{});
 }
 
-// ============== Toggle foto ↔ logout (tetap sama) =======
+// ===== Toggle foto ↔ logout (DOM swap, sesuai logika-mu) =====
 (function setupGreetCard() {
   const card = $("#greetCard");
   const profileSlot = $("#profileSlot");
@@ -177,50 +191,28 @@ function applyProfile({ name, photoURL }) {
       profileSlot.innerHTML = '<button id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">✖</button>';
       $("#logoutBtn")?.addEventListener('click', async (e) => {
         e.stopPropagation();
-        try {
-          await signOut(auth);
-        } catch {}
-        // Bersihkan jejak dan kembali ke login
-        try { sessionStorage.removeItem("auth_profile"); } catch {}
+        try { await signOut(auth); } catch {}
         location.href = "login.html";
       });
     } else {
-      // Balik ke avatar
-      const avatar = document.createElement("img");
-      avatar.id = "avatar";
-      avatar.className = "avatar-large";
-      avatar.alt = "Foto pengguna";
-      profileSlot.innerHTML = "";
-      profileSlot.appendChild(avatar);
-      // setelah kembali ke avatar, isi ulang foto dari elemen #name/#avatar yang sudah ada
-      // (akan terisi lagi oleh applyProfile berikutnya bila diperlukan)
+      // Balik ke avatar (gunakan foto yang sudah kita muat dari RTDB)
+      profileSlot.innerHTML = `<img id="avatar" class="avatar-large" alt="Foto pengguna" src="${CURRENT_PHOTO_URL}" />`;
     }
   });
 })();
 
-// ============== Init: Auth Gate & Load Profil ==========
-async function boot(){
-  updateGreeting();
-  setInterval(updateGreeting, 60 * 1000);
+// ===== Init (update per menit agar tanggal tetap akurat) =====
+function tick() { updateGreeting(); }
+tick();
+setInterval(tick, 60 * 1000);
 
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      // Jika tidak ada sesi, cek apakah ada jembatan dari login.js
-      let bridge = null;
-      try { bridge = JSON.parse(sessionStorage.getItem("auth_profile") || "null"); } catch {}
-      if (bridge && bridge.uid) {
-        // Tidak memaksa, tapi demi konsistensi UI: tetap arahkan ke login agar sesi Firebase jelas
-        location.href = "login.html";
-        return;
-      }
-      location.href = "login.html";
-      return;
-    }
-
-    // Sudah login → ambil profil langsung dari RTDB
-    const prof = await fetchProfile(user);
-    applyProfile({ name: prof.name, photoURL: prof.photoURL });
-  });
-}
-
-boot();
+// ===== Auth gate & muat profil dari RTDB =====
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    // tidak ada sesi -> kembali ke login
+    location.href = "login.html";
+    return;
+  }
+  const prof = await fetchProfile(user);
+  applyProfile({ name: prof.name, photoURL: prof.photoURL });
+});
