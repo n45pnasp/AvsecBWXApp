@@ -101,9 +101,9 @@ function show(sec){
   sec.classList.add("active");
   err(""); ok("");
 }
-function err(msg){ if (!msg){ errBox.classList.remove("show"); errBox.textContent=""; } else { errBox.textContent=msg; errBox.classList.add("show"); } }
-function ok(msg){  if (!msg){ okBox.classList.remove("show");  okBox.textContent=""; } else {  okBox.textContent=msg;  okBox.classList.add("show"); } }
-function disableForm(d){ loginBtn.disabled = d; loginBtn.textContent = d ? "Memproses..." : "Masuk"; }
+function err(msg){ if (!msg){ errBox?.classList.remove("show"); if (errBox) errBox.textContent=""; } else { if (errBox){ errBox.textContent=msg; errBox.classList.add("show"); } } }
+function ok(msg){  if (!msg){ okBox?.classList.remove("show");  if (okBox) okBox.textContent=""; } else {  if (okBox){ okBox.textContent=msg;  okBox.classList.add("show"); } } }
+function disableForm(d){ if (loginBtn){ loginBtn.disabled = d; loginBtn.textContent = d ? "Memproses..." : "Masuk"; } }
 
 /** NAV */
 goLoginBtn?.addEventListener("click", () => show(login));
@@ -285,10 +285,10 @@ onAuthStateChanged(auth, async (user)=>{
   }
 });
 
-/** Kirim ke Kodular + profil lengkap + salam waktu */
+/** Kirim ke Kodular + profil lengkap + salam waktu + redirect ke Home */
 async function notifyKodularAndGoHome(status, user){
   const prof = await fetchProfile(user);
-  const payload = JSON.stringify({
+  const payloadObj = {
     event: "auth",
     status,
     uid: user.uid,
@@ -300,19 +300,29 @@ async function notifyKodularAndGoHome(status, user){
     photoURL: prof.photoURL,
     ts: Date.now(),
     timeOfDay: getTimeOfDayUTC7()
-  });
+  };
+  const payload = JSON.stringify(payloadObj);
 
+  // Jika dipakai lewat Kodular, tetap kirim event
   if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
     window.AppInventor.setWebViewString(payload);
-  }else{
-    document.title = payload; // fallback
+  } else {
+    // fallback tidak mengganggu
+    document.title = payload;
   }
 
+  // Simpan profil untuk jembatan (browser) → dipakai Home jika perlu
+  try { sessionStorage.setItem("auth_profile", JSON.stringify(payloadObj)); } catch {}
+
   ok(status==="success" ? "Login berhasil. Mengalihkan ke Home..." : "Sesi ditemukan. Mengalihkan ke Home...");
-  setTimeout(()=>{ /* location.href = "kodular://home"; */ }, 600);
+
+  // Redirect ke Home (sesuaikan nama file jika berbeda)
+  setTimeout(()=>{
+    location.href = "home.html";
+  }, 600);
 }
 
-/** LOGOUT */
+/** LOGOUT (opsional dipakai dari luar) */
 window.logout = async function(){
   try{
     await signOut(auth);
@@ -323,6 +333,7 @@ window.logout = async function(){
       timeOfDay: getTimeOfDayUTC7()
     });
     if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
+    try { sessionStorage.removeItem("auth_profile"); } catch {}
     show(welcome);
   }catch(e){
     err("Gagal logout: " + (e.message || e));
