@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword,
-  setPersistence, browserLocalPersistence, signOut, sendPasswordResetEmail
+  setPersistence, browserLocalPersistence, signOut
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
   getDatabase, ref, get, child
@@ -30,15 +30,6 @@ const db   = getDatabase(app);
   catch (e) { console.warn("setPersistence gagal:", e?.message || e); }
 })();
 
-/** ====== GUARD: kirim ke Kodular hanya sekali per sesi halaman ====== */
-const AUTH_SENT_KEY = "__AUTH_EVENT_SENT__";
-let authEventSent = sessionStorage.getItem(AUTH_SENT_KEY) === "1";
-function markAuthSent(){ authEventSent = true; sessionStorage.setItem(AUTH_SENT_KEY, "1"); }
-function clearAuthSent(){ authEventSent = false; sessionStorage.removeItem(AUTH_SENT_KEY); }
-
-/** Beda status login manual vs auto-login */
-let justLoggedInAttempt = false;
-
 /** ELEMENTS */
 const $ = (q) => document.querySelector(q);
 const welcome    = $("#welcome");
@@ -49,12 +40,30 @@ const form       = $("#loginForm");
 const emailEl    = $("#email");
 const passEl     = $("#password");
 const loginBtn   = $("#loginBtn");
-const forgotBtn  = $("#forgotBtn");
 const errBox     = $("#errBox");
 const okBox      = $("#okBox");
 const yearEl     = $("#year");
 const logoEl     = $("#appLogo");
 if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+/** Inject custom color styles (Ungu) */
+(function injectCustomColors(){
+  const style = document.createElement("style");
+  style.textContent = `
+    .btn, button, .net-btn {
+      background-color: #9C27B0FF !important;
+      color: #fff !important;
+    }
+    .btn:hover, button:hover, .net-btn:hover {
+      background-color: #6A1B9A !important;
+    }
+    /* Avatar background ganti jadi ungu gelap */
+    .avatar-dark {
+      background-color: #6A1B9A !important;
+    }
+  `;
+  document.head.appendChild(style);
+})();
 
 /** Toggle password visibility (👁️ / 🙈) */
 const toggleEye = document.querySelector("#togglePassword");
@@ -64,7 +73,7 @@ toggleEye?.addEventListener("click", () => {
   toggleEye.textContent = isPassword ? "🙈" : "👁️";
 });
 
-/** LOGO (fallback netral, fix template literal) */
+/** LOGO */
 (function setLogo(){
   if (!logoEl) return;
   logoEl.dataset.loading = "1";
@@ -72,9 +81,9 @@ toggleEye?.addEventListener("click", () => {
   const basePath = location.pathname.substring(0, location.pathname.lastIndexOf("/") + 1);
   const url = params.get("logo") || window.LOGO_URL || `${basePath}logohome.png?v=${Date.now()}`;
   const fallback = "data:image/svg+xml;base64," + btoa(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' aria-hidden='true'>
-      <rect width='256' height='256' rx='40'/>
-      <g>
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'>
+      <rect width='256' height='256' rx='40' fill='#0b1220'/>
+      <g fill='#9C27B0'>
         <circle cx='92' cy='104' r='34'/>
         <rect x='132' y='70' width='60' height='68' rx='12'/>
         <rect x='52' y='154' width='140' height='24' rx='12'/>
@@ -89,30 +98,16 @@ toggleEye?.addEventListener("click", () => {
 /** UTIL UI */
 function show(sec){
   for (const el of document.querySelectorAll(".section")) el.classList.remove("active");
-  sec?.classList.add("active");
+  sec.classList.add("active");
   err(""); ok("");
 }
-function err(msg){
-  if (!errBox) return;
-  if (!msg){ errBox.classList.remove("show"); errBox.textContent=""; }
-  else { errBox.textContent=msg; errBox.classList.add("show"); }
-}
-function ok(msg){
-  if (!okBox) return;
-  if (!msg){ okBox.classList.remove("show"); okBox.textContent=""; }
-  else { okBox.textContent=msg; okBox.classList.add("show"); }
-}
-function disableForm(d){
-  if (!loginBtn) return;
-  loginBtn.disabled = d;
-  loginBtn.textContent = d ? "Memproses..." : "Masuk";
-}
+function err(msg){ if (!msg){ errBox.classList.remove("show"); errBox.textContent=""; } else { errBox.textContent=msg; errBox.classList.add("show"); } }
+function ok(msg){  if (!msg){ okBox.classList.remove("show");  okBox.textContent=""; } else {  okBox.textContent=msg;  okBox.classList.add("show"); } }
+function disableForm(d){ loginBtn.disabled = d; loginBtn.textContent = d ? "Memproses..." : "Masuk"; }
 
 /** NAV */
 goLoginBtn?.addEventListener("click", () => show(login));
 backBtn?.addEventListener("click", () => show(welcome));
-
-// Ripple position CSS var (bukan warna)
 for (const b of document.querySelectorAll(".btn")){
   b.addEventListener("pointerdown", (e)=>{
     const r = b.getBoundingClientRect();
@@ -149,8 +144,24 @@ function getTimeOfDayUTC7(){
   }
 }
 
-/** ===== Offline Sheet (tanpa style/color injection) ===== */
+/** ===== Offline Sheet (JS only) ===== */
 (function setupOfflineSheet(){
+  const style = document.createElement("style");
+  style.textContent = `
+    .net-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9999;
+      background:#7f1d1d;color:#fecaca;border-top:1px solid #fecaca33;
+      padding:12px 14px;display:none;gap:10px;align-items:center}
+    .net-sheet.show{display:flex;animation:slideUp .18s ease-out both}
+    .net-dot{width:10px;height:10px;border-radius:50%;background:#ef4444}
+    .net-msg{flex:1;font-size:14px;line-height:1.3}
+    .net-act{display:flex;gap:8px}
+    .net-btn{background:#9C27B0FF;color:#fff;border:1px solid #6A1B9A;
+      padding:8px 10px;border-radius:10px;cursor:pointer}
+    .net-btn:hover{background:#6A1B9A;}
+    @keyframes slideUp{from{transform:translateY(8px);opacity:.0}to{transform:none;opacity:1}}
+  `;
+  document.head.appendChild(style);
+
   const sheet = document.createElement("div");
   sheet.className = "net-sheet";
   sheet.innerHTML = `
@@ -171,7 +182,7 @@ function getTimeOfDayUTC7(){
   function reportNetwork(){ navigator.onLine ? hideSheet() : showSheet(); }
   window.addEventListener("online", reportNetwork);
   window.addEventListener("offline", reportNetwork);
-  retryBtn?.addEventListener("click", reportNetwork);
+  retryBtn.addEventListener("click", reportNetwork);
 
   let timer=null;
   sheet.addEventListener("transitionend", ()=>{
@@ -191,13 +202,13 @@ function getTimeOfDayUTC7(){
   }, true);
 })();
 
-/** Avatar default netral */
+/** (opsional) Avatar default jika tak ada foto */
 const DEFAULT_AVATAR =
   "data:image/svg+xml;base64," + btoa(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128' aria-hidden='true'>
-      <rect width='128' height='128' rx='18'/>
-      <circle cx='64' cy='52' r='22'/>
-      <rect x='26' y='84' width='76' height='26' rx='13'/>
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
+      <rect width='128' height='128' rx='18' fill='#0b1220'/>
+      <circle cx='64' cy='52' r='22' fill='#9C27B0'/>
+      <rect x='26' y='84' width='76' height='26' rx='13' fill='#6A1B9A'/>
     </svg>`
   );
 
@@ -249,12 +260,9 @@ form?.addEventListener("submit", async (e)=>{
 
   disableForm(true);
   try{
-    justLoggedInAttempt = true; // login manual
-    await signInWithEmailAndPassword(auth, email, pass);
-    // Tidak kirim di sini; tunggu onAuthStateChanged agar tidak double.
-    ok("Login berhasil. Mengalihkan ke Home...");
+    const cred = await signInWithEmailAndPassword(auth, email, pass);
+    await notifyKodularAndGoHome("success", cred.user);
   }catch(e){
-    justLoggedInAttempt = false;
     const map = {
       "auth/invalid-email":"Format email tidak valid.",
       "auth/user-not-found":"Akun tidak ditemukan.",
@@ -268,57 +276,17 @@ form?.addEventListener("submit", async (e)=>{
   }
 });
 
-/** LUPA PASSWORD */
-forgotBtn?.addEventListener("click", async ()=>{
-  err(""); ok("");
-  if (!navigator.onLine){
-    err("Tidak ada koneksi internet. Coba lagi setelah jaringan tersambung.");
-    return;
-  }
-  const email = (emailEl?.value || "").trim();
-  if (!email){
-    err("Masukkan email akun kamu dulu, lalu klik 'Lupa Password'.");
-    emailEl?.focus();
-    return;
-  }
-
-  try{
-    await sendPasswordResetEmail(auth, email);
-    ok("Tautan reset kata sandi sudah dikirim ke email kamu. Periksa inbox/spam.");
-  }catch(e){
-    const map = {
-      "auth/invalid-email":"Format email tidak valid.",
-      "auth/user-not-found":"Email tidak terdaftar.",
-      "auth/missing-email":"Masukkan email terlebih dahulu.",
-    };
-    err(map[e.code] || ("Gagal mengirim tautan reset: " + (e.message || e)));
-  }
-});
-
-/** AUTO-SKIP / TRIGGER KIRIM SATU KALI */
+/** AUTO-SKIP jika sudah login */
 onAuthStateChanged(auth, async (user)=>{
   if (user){
-    const status = justLoggedInAttempt ? "success" : "already_signed_in";
-    justLoggedInAttempt = false;
-
-    if (authEventSent){
-      console.debug("[auth] Skip duplicate send:", status);
-      // tetap redirect agar web murni langsung masuk home kalau sudah login
-      redirectToHome();
-      return;
-    }
-    await notifyKodularAndGoHome(status, user);
+    await notifyKodularAndGoHome("already_signed_in", user);
   }else{
     show(welcome);
-    // Jika user jadi null (logout dari device lain), izinkan kirim lagi setelah login berikutnya
-    clearAuthSent();
   }
 });
 
-/** Kirim ke Kodular + profil lengkap + salam waktu (ONCE) */
+/** Kirim ke Kodular + profil lengkap + salam waktu */
 async function notifyKodularAndGoHome(status, user){
-  if (authEventSent) { redirectToHome(); return; } // double safety
-
   const prof = await fetchProfile(user);
   const payload = JSON.stringify({
     event: "auth",
@@ -334,35 +302,14 @@ async function notifyKodularAndGoHome(status, user){
     timeOfDay: getTimeOfDayUTC7()
   });
 
-  // Tandai sudah kirim sebelum IO untuk cegah race condition
-  markAuthSent();
-
-  // (A) Kirim ke Kodular (kalau memang dipakai; aman diabaikan di web murni)
   if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
     window.AppInventor.setWebViewString(payload);
   }else{
-    document.title = payload; // fallback tanpa efek UI
+    document.title = payload; // fallback
   }
 
-  // (B) Simpan ringkas ke sessionStorage agar home bisa akses cepat (opsional)
-  try {
-    sessionStorage.setItem("HOME_PROFILE", JSON.stringify({
-      name: prof.name,
-      photo: prof.photoURL
-    }));
-  } catch (_) {}
-
-  // (C) Broadcast juga via postMessage (optional)
-  try {
-    const msg = JSON.stringify({ type: "profile", name: prof.name, photo: prof.photoURL });
-    window.parent?.postMessage(msg, "*");
-    window.opener?.postMessage(msg, "*");
-  } catch (_) {}
-
   ok(status==="success" ? "Login berhasil. Mengalihkan ke Home..." : "Sesi ditemukan. Mengalihkan ke Home...");
-
-  // (D) Redirect ke Home (WEB MURNI)
-  redirectToHome();
+  setTimeout(()=>{ /* location.href = "kodular://home"; */ }, 600);
 }
 
 /** LOGOUT */
@@ -377,14 +324,7 @@ window.logout = async function(){
     });
     if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
     show(welcome);
-    clearAuthSent(); // izinkan kirim lagi setelah logout
   }catch(e){
     err("Gagal logout: " + (e.message || e));
   }
 };
-
-/** Helper redirect */
-function redirectToHome(){
-  const next = new URLSearchParams(location.search).get("next") || window.NEXT_URL || "home.html";
-  setTimeout(()=>{ location.href = next; }, 600);
-}
