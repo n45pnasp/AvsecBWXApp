@@ -81,8 +81,12 @@ function resolveDisplayName(user){
 // ===== Helpers URL Foto =====
 function cleanURL(s) {
   if (!s) return "";
-  // trim & hilangkan kutip tunggal/ganda di awal/akhir
-  return String(s).trim().replace(/^['"]+|['"]+$/g, "");
+  let v = String(s).trim();
+  // buang smart quotes & kutip biasa di awal/akhir
+  v = v.replace(/^[\s'"\u2018\u2019\u201C\u201D]+|[\s'"\u2018\u2019\u201C\u201D]+$/g, "");
+  // buang zero-width chars (copy-paste artefacts)
+  v = v.replace(/[\u200B-\u200D\u2060\uFEFF]/g, "");
+  return v;
 }
 function normalizeDriveURL(u) {
   if (!u) return "";
@@ -96,11 +100,14 @@ async function resolvePhotoURL(raw, user) {
   let url = cleanURL(raw || user?.photoURL || "");
   if (!url) return "";
   // block mixed content
-  if (location.protocol === "https:" && url.startsWith("http://")) return "";
+  if (location.protocol === "https:" && url.startsWith("http://")) {
+    console.warn("Blocked mixed content:", url);
+    return "";
+  }
   // normalisasi Google Drive
   if (/drive\.google\.com/i.test(url)) url = normalizeDriveURL(url);
 
-  // Kalau nanti pakai Firebase Storage (gs:// atau path relatif), aktifkan:
+  // Jika kelak pakai Firebase Storage (gs:// atau path relatif), aktifkan:
   // if (url.startsWith("gs://") || (!/^https?:\/\//i.test(url) && !url.startsWith("data:"))) {
   //   try {
   //     const storage = getStorage(app);
@@ -114,14 +121,22 @@ async function resolvePhotoURL(raw, user) {
 async function fetchProfile(user){
   try{
     const root = ref(db);
+
+    // Baca beberapa kemungkinan key untuk foto
     const snaps = await Promise.all([
       get(child(root, `users/${user.uid}/name`)),
       get(child(root, `users/${user.uid}/spec`)),
       get(child(root, `users/${user.uid}/role`)),
       get(child(root, `users/${user.uid}/isAdmin`)),
+
       get(child(root, `users/${user.uid}/photoURL`)),
+      get(child(root, `users/${user.uid}/photoUrl`)),
+      get(child(root, `users/${user.uid}/avatar`)),
+      get(child(root, `users/${user.uid}/profile/photoURL`)),
+      get(child(root, `users/${user.uid}/profile/avatar`)),
     ]);
-    const [nameSnap, specSnap, roleSnap, isAdminSnap, photoSnap] = snaps;
+
+    const [nameSnap, specSnap, roleSnap, isAdminSnap, p1, p2, p3, p4, p5] = snaps;
 
     const name = nameSnap.exists() ? String(nameSnap.val()).trim()
                : (user.displayName?.trim() || (user.email?.split("@")[0] ?? "Pengguna"));
@@ -130,9 +145,13 @@ async function fetchProfile(user){
                : (isAdminSnap.exists() && isAdminSnap.val() ? "admin" : "user");
     const isAdmin  = isAdminSnap.exists() ? !!isAdminSnap.val() : role === "admin";
 
-    const rawPhoto = photoSnap.exists() ? photoSnap.val() : (user.photoURL || "");
+    const rawPhoto = [p1, p2, p3, p4, p5].find(s => s.exists())?.val() || (user.photoURL || "");
     const resolved = await resolvePhotoURL(rawPhoto, user);
     const photoURL = resolved || DEFAULT_AVATAR;
+
+    // DEBUG: lihat apa yang dibaca & hasil akhirnya
+    console.log("[profile] rawPhoto from RTDB/Auth:", rawPhoto);
+    console.log("[profile] resolved photoURL:", photoURL);
 
     return { name, spec, role, isAdmin, photoURL };
   }catch(e){
@@ -149,16 +168,18 @@ function applyProfile({ name, photoURL }) {
     // Isi localStorage agar toggle (yang tak boleh diubah) tetap berfungsi
     localStorage.setItem('tinydb_name', name);
   }
+  const finalURL = photoURL || DEFAULT_AVATAR;
   const avatar = $("#avatar");
   if (avatar) {
     avatar.onerror = () => { avatar.src = DEFAULT_AVATAR; };
-    avatar.src = photoURL || DEFAULT_AVATAR;
+    avatar.src = finalURL;
   }
-  localStorage.setItem('tinydb_photo', photoURL || DEFAULT_AVATAR);
+  // simpan URL final agar saat toggle balik, avatar tetap benar
+  localStorage.setItem('tinydb_photo', finalURL);
 
-  // Optional: skip ekstrak warna jika host Google Drive (CORS kadang tainted)
-  if (photoURL && !/drive\.google\.com/i.test(photoURL)) {
-    extractAccentFromImage(photoURL).then(c => {
+  // Optional: skip ekstrak warna jika host Google Drive (CORS bisa tainted)
+  if (finalURL && !/drive\.google\.com/i.test(finalURL)) {
+    extractAccentFromImage(finalURL).then(c => {
       if (c) setAccent(c.primary, c.secondary);
     }).catch(() => {});
   }
@@ -254,14 +275,17 @@ window.onLogout = function () {
 function mountAuthGate() {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
+      // Belum login → balik ke login
       location.href = "index.html";
       return;
     }
+    // Sudah login → ambil profil dari RTDB lalu render
     try {
       const p = await fetchProfile(user);
       applyProfile({ name: p.name, photoURL: p.photoURL });
     } catch (e) {
       console.warn("apply profile error:", e);
+      // tetap render minimal dari auth
       applyProfile({ name: resolveDisplayName(user), photoURL: user.photoURL || DEFAULT_AVATAR });
     }
   });
