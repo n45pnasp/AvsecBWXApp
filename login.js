@@ -89,7 +89,7 @@ toggleEye?.addEventListener("click", () => {
 /** UTIL UI */
 function show(sec){
   for (const el of document.querySelectorAll(".section")) el.classList.remove("active");
-  sec.classList.add("active");
+  sec?.classList.add("active");
   err(""); ok("");
 }
 function err(msg){
@@ -303,6 +303,8 @@ onAuthStateChanged(auth, async (user)=>{
 
     if (authEventSent){
       console.debug("[auth] Skip duplicate send:", status);
+      // tetap redirect agar web murni langsung masuk home kalau sudah login
+      redirectToHome();
       return;
     }
     await notifyKodularAndGoHome(status, user);
@@ -315,7 +317,7 @@ onAuthStateChanged(auth, async (user)=>{
 
 /** Kirim ke Kodular + profil lengkap + salam waktu (ONCE) */
 async function notifyKodularAndGoHome(status, user){
-  if (authEventSent) return; // double safety
+  if (authEventSent) { redirectToHome(); return; } // double safety
 
   const prof = await fetchProfile(user);
   const payload = JSON.stringify({
@@ -335,14 +337,32 @@ async function notifyKodularAndGoHome(status, user){
   // Tandai sudah kirim sebelum IO untuk cegah race condition
   markAuthSent();
 
+  // (A) Kirim ke Kodular (kalau memang dipakai; aman diabaikan di web murni)
   if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
     window.AppInventor.setWebViewString(payload);
   }else{
-    document.title = payload; // fallback
+    document.title = payload; // fallback tanpa efek UI
   }
 
+  // (B) Simpan ringkas ke sessionStorage agar home bisa akses cepat (opsional)
+  try {
+    sessionStorage.setItem("HOME_PROFILE", JSON.stringify({
+      name: prof.name,
+      photo: prof.photoURL
+    }));
+  } catch (_) {}
+
+  // (C) Broadcast juga via postMessage (optional)
+  try {
+    const msg = JSON.stringify({ type: "profile", name: prof.name, photo: prof.photoURL });
+    window.parent?.postMessage(msg, "*");
+    window.opener?.postMessage(msg, "*");
+  } catch (_) {}
+
   ok(status==="success" ? "Login berhasil. Mengalihkan ke Home..." : "Sesi ditemukan. Mengalihkan ke Home...");
-  setTimeout(()=>{ /* location.href = "kodular://home"; */ }, 600);
+
+  // (D) Redirect ke Home (WEB MURNI)
+  redirectToHome();
 }
 
 /** LOGOUT */
@@ -362,3 +382,9 @@ window.logout = async function(){
     err("Gagal logout: " + (e.message || e));
   }
 };
+
+/** Helper redirect */
+function redirectToHome(){
+  const next = new URLSearchParams(location.search).get("next") || window.NEXT_URL || "home.html";
+  setTimeout(()=>{ location.href = next; }, 600);
+}
