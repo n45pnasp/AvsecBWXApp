@@ -1,9 +1,11 @@
 // home.js (module)
 
-// ===== Firebase (gunakan config yang sama dgn login.js) =====
+// ===== Firebase (gunakan config yang sama dengan login.js) =====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+// Jika nanti pakai Firebase Storage, aktifkan import di bawah:
+// import { getStorage, ref as sref, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
@@ -60,7 +62,7 @@ function updateGreeting() {
   $("#dateBanner").textContent = bannerString();
 }
 
-// ===== Ambil profil dari RTDB untuk user yg sedang login =====
+// ===== Avatar default =====
 const DEFAULT_AVATAR =
   "data:image/svg+xml;base64," + btoa(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
@@ -76,6 +78,39 @@ function resolveDisplayName(user){
   return "Pengguna";
 }
 
+// ===== Helpers URL Foto =====
+function cleanURL(s) {
+  if (!s) return "";
+  // trim & hilangkan kutip tunggal/ganda di awal/akhir
+  return String(s).trim().replace(/^['"]+|['"]+$/g, "");
+}
+function normalizeDriveURL(u) {
+  if (!u) return "";
+  const url = cleanURL(u);
+  const m1 = url.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+  const m2 = url.match(/[?&]id=([^&]+)/i);
+  const id = m1 ? m1[1] : (m2 ? m2[1] : null);
+  return id ? `https://drive.google.com/uc?export=view&id=${id}` : url;
+}
+async function resolvePhotoURL(raw, user) {
+  let url = cleanURL(raw || user?.photoURL || "");
+  // block mixed content
+  if (location.protocol === "https:" && url.startsWith("http://")) return "";
+  // normalisasi Google Drive
+  if (/drive\.google\.com/i.test(url)) url = normalizeDriveURL(url);
+
+  // Jika kelak pakai Firebase Storage (gs:// atau path):
+  // if (url.startsWith("gs://") || (!/^https?:\/\//i.test(url) && !url.startsWith("data:"))) {
+  //   try {
+  //     const storage = getStorage(app);
+  //     url = await getDownloadURL(sref(storage, url));
+  //   } catch (e) { console.warn("getDownloadURL fail:", e?.message || e); url = ""; }
+  // }
+
+  return url;
+}
+
+// ===== Ambil profil dari RTDB untuk user yg sedang login =====
 async function fetchProfile(user){
   try{
     const root = ref(db);
@@ -95,47 +130,37 @@ async function fetchProfile(user){
                : (isAdminSnap.exists() && isAdminSnap.val() ? "admin" : "user");
     const isAdmin  = isAdminSnap.exists() ? !!isAdminSnap.val() : role === "admin";
 
-    const fromRTDB = photoSnap.exists() ? String(photoSnap.val()).trim() : "";
-    const fromAuth = (user.photoURL || "").trim();
-    const photoURL = fromRTDB || fromAuth || DEFAULT_AVATAR;
+    const rawPhoto = photoSnap.exists() ? photoSnap.val() : (user.photoURL || "");
+    const resolved = await resolvePhotoURL(rawPhoto, user);
+    const photoURL = resolved || DEFAULT_AVATAR;
 
     return { name, spec, role, isAdmin, photoURL };
   }catch(e){
     console.warn("RTDB fetch error:", e?.message || e);
-    const fallbackPhoto = (user.photoURL && user.photoURL.trim()) || DEFAULT_AVATAR;
+    const fallbackPhoto = (user.photoURL && cleanURL(user.photoURL)) || DEFAULT_AVATAR;
     return { name: resolveDisplayName(user), spec: "", role: "user", isAdmin: false, photoURL: fallbackPhoto };
   }
 }
 
-// ===== Profil (Render) =====
+// ===== Render profil =====
 function applyProfile({ name, photoURL }) {
   if (name) {
     $("#name").textContent = name;
-    // Tetap isi localStorage agar toggle (yang tak boleh diubah) bekerja
+    // Isi localStorage agar toggle (yang tak boleh diubah) tetap berfungsi
     localStorage.setItem('tinydb_name', name);
   }
-  if (photoURL) {
-    const avatar = $("#avatar");
-    if (avatar) avatar.src = photoURL;
-    localStorage.setItem('tinydb_photo', photoURL);
+  const avatar = $("#avatar");
+  if (avatar) {
+    avatar.onerror = () => { avatar.src = DEFAULT_AVATAR; };
+    avatar.src = photoURL || DEFAULT_AVATAR;
+  }
+  localStorage.setItem('tinydb_photo', photoURL || DEFAULT_AVATAR);
+
+  // Optional: skip ekstrak warna jika host Google Drive (CORS kadang tainted)
+  if (photoURL && !/drive\.google\.com/i.test(photoURL)) {
     extractAccentFromImage(photoURL).then(c => {
       if (c) setAccent(c.primary, c.secondary);
     }).catch(() => {});
-  } else {
-    // Fallback avatar inisial
-    const n = (name || 'P U').trim();
-    const initials = n.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-    const c = document.createElement('canvas'); c.width = 256; c.height = 256;
-    const x = c.getContext('2d');
-    const g = x.createLinearGradient(0, 0, 256, 256);
-    g.addColorStop(0, '#1b2238'); g.addColorStop(1, '#151b2e');
-    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
-    x.fillStyle = '#7c9bff'; x.font = 'bold 120px ui-sans-serif';
-    x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.fillText(initials, 128, 140);
-    const avatar = $("#avatar");
-    if (avatar) avatar.src = c.toDataURL('image/png');
-    localStorage.setItem('tinydb_photo', $("#avatar")?.src || "");
   }
 }
 
@@ -172,7 +197,6 @@ async function extractAccentFromImage(src) {
     img.src = src;
   });
 }
-
 function rotateHue(r, g, b, deg) {
   const u = Math.cos(deg * Math.PI / 180), w = Math.sin(deg * Math.PI / 180);
   const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
@@ -182,7 +206,6 @@ function rotateHue(r, g, b, deg) {
     clamp((.299 - .3 * u + 1.25 * w) * r + (.587 - .588 * u - 1.05 * w) * g + (.114 + .886 * u - .203 * w) * b)
   ];
 }
-
 function setAccent(a1, a2) {
   const root = document.documentElement.style;
   if (a1) root.setProperty('--accent', a1);
@@ -190,7 +213,7 @@ function setAccent(a1, a2) {
 }
 
 // ===== Toggle foto ↔ logout (DOM swap, tombol tak ada sebelum diklik) =====
-// [SESUI KEBUTUHANMU: TIDAK DIUBAH]
+// (SESUI PERMINTAANMU: TIDAK DIUBAH)
 (function setupGreetCard() {
   const card = $("#greetCard");
   const profileSlot = $("#profileSlot");
@@ -241,6 +264,8 @@ function mountAuthGate() {
       applyProfile({ name: p.name, photoURL: p.photoURL });
     } catch (e) {
       console.warn("apply profile error:", e);
+      // tetap render nama dari auth minimal
+      applyProfile({ name: resolveDisplayName(user), photoURL: user.photoURL || DEFAULT_AVATAR });
     }
   });
 }
