@@ -10,16 +10,17 @@ function getWIBDate(d = new Date()){
   // Pakai timezone Asia/Jakarta biar konsisten di semua device
   return new Date(d.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
 }
+
+// ===== Banner: "senin, 12 agustus 2025" WIB =====
 function bannerString(){
-  const d = getWIBDate();
-  const hari = ID_DAYS[d.getDay()];
-  const tgl = pad2(d.getDate());
-  const bln = pad2(d.getMonth() + 1);
-  const thn = d.getFullYear();
-  const jam = pad2(d.getHours());
-  const mnt = pad2(d.getMinutes());
-  return `${hari}, ${tgl}/${bln}/${thn} • ${jam}:${mnt} WIB (GMT+7)`;
+  const d = getWIBDate(); // pakai waktu WIB (GMT+7)
+  const hari  = d.toLocaleDateString('id-ID', { weekday: 'long' }).toLowerCase();
+  const tanggal = d.getDate();
+  const bulan = d.toLocaleDateString('id-ID', { month: 'long' }).toLowerCase();
+  const tahun = d.getFullYear();
+  return `${hari}, ${tanggal} ${bulan} ${tahun}`;
 }
+
 
 /* ===================== Greeting ===================== */
 function getGreetingID(d = getWIBDate()){
