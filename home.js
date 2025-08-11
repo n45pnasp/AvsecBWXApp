@@ -51,7 +51,7 @@ function getGreetingID(d = getWIBDate()) {
 
 function updateGreeting() {
   $("#greet").textContent = getGreetingID();
-  const k = $("#greet").textContent.split(" ")[1]; // Pagi/Siang/Sore/Malam
+  const k = $("#greet").textContent.split(" ")[1];
   const t = {
     Pagi:  "Fokus & semangat produktif ☕",
     Siang: "Jeda sejenak, tarik napas 🌤️",
@@ -94,19 +94,19 @@ function normalizeDriveURL(u) {
 }
 async function resolvePhotoURL(raw, user) {
   let url = cleanURL(raw || user?.photoURL || "");
+  if (!url) return "";
   // block mixed content
   if (location.protocol === "https:" && url.startsWith("http://")) return "";
   // normalisasi Google Drive
   if (/drive\.google\.com/i.test(url)) url = normalizeDriveURL(url);
 
-  // Jika kelak pakai Firebase Storage (gs:// atau path):
+  // Kalau nanti pakai Firebase Storage (gs:// atau path relatif), aktifkan:
   // if (url.startsWith("gs://") || (!/^https?:\/\//i.test(url) && !url.startsWith("data:"))) {
   //   try {
   //     const storage = getStorage(app);
   //     url = await getDownloadURL(sref(storage, url));
-  //   } catch (e) { console.warn("getDownloadURL fail:", e?.message || e); url = ""; }
+  //   } catch (_) { url = ""; }
   // }
-
   return url;
 }
 
@@ -254,17 +254,14 @@ window.onLogout = function () {
 function mountAuthGate() {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
-      // Belum login → balik ke login
       location.href = "index.html";
       return;
     }
-    // Sudah login → ambil profil dari RTDB lalu render
     try {
       const p = await fetchProfile(user);
       applyProfile({ name: p.name, photoURL: p.photoURL });
     } catch (e) {
       console.warn("apply profile error:", e);
-      // tetap render nama dari auth minimal
       applyProfile({ name: resolveDisplayName(user), photoURL: user.photoURL || DEFAULT_AVATAR });
     }
   });
