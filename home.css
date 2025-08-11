@@ -133,12 +133,13 @@ body{
 }
 
 /* setiap item adalah link biasa tanpa tile */
-.app{
-  display:flex; flex-direction:column; align-items:center;
-  gap: 8px; text-align:center; text-decoration:none; color:var(--text);
-  user-select:none; transition: transform .12s ease, filter .18s ease;
-  background: none; border: none; box-shadow: none;
+.apps{
+  display:grid;
+  grid-template-columns: repeat(4, 1fr); /* 4 kolom */
+  gap: clamp(12px, 3.2vw, 18px);
+  padding: 10px 0 20px;
 }
+
 .app:active{ transform: translateY(1px) scale(.97); filter: brightness(.95); }
 
 /* ikon tampil mengambang (tanpa tile) */
