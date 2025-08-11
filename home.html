@@ -10,86 +10,53 @@
   <div class="aurora"></div>
   <div class="grain"></div>
 
-  <!-- Banner tanggal -->
-  <div id="dateBanner" class="date-banner">Senin, 11 Agustus 2025</div>
+  <!-- Banner tanggal (WIB, tanpa jam) -->
+  <div class="date-banner" id="dateBanner">senin, 11 agustus 2025</div>
 
   <div class="wrap" role="application">
-    <!-- Greeting Card -->
-    <section class="greet-card" id="greetCard" role="button" aria-pressed="false">
-      <div class="greet-text">
-        <div id="greet" class="greet-big">Selamat Pagi,</div>
-        <div id="name" class="name-big">Pengguna</div>
-      </div>
-      <div class="profile-slot" id="profileSlot">
-        <img id="avatar" class="avatar-large" alt="Foto pengguna" src="" />
-      </div>
-    </section>
+    <div class="page">
+      <!-- Greeting Card -->
+      <section class="greet-card" id="greetCard" role="button" aria-pressed="false">
+        <div class="greet-text">
+          <div id="greet" class="greet-big">Selamat Pagi,</div>
+          <div id="name" class="name-big">Pengguna</div>
+        </div>
 
-    <!-- Info pill -->
-    <section class="pill" id="tagline" aria-live="polite">
-      <span class="pill-dot" aria-hidden="true"></span>
-      <span id="taglineText">Siap bantu aktivitasmu hari ini ✨</span>
-    </section>
+        <!-- Profil/Logout slot -->
+        <div class="profile-slot" id="profileSlot">
+          <img id="avatar" class="avatar-large" alt="Foto pengguna" src="" />
+        </div>
+      </section>
 
-    <!-- Grid ikon aplikasi tanpa box -->
-<main class="apps" id="apps" aria-label="Aplikasi">
-  <a class="app" href="#chatbot" title="Chatbot">
-    <div class="app-icon">🤖</div>
-    <div class="app-name">Chatbot</div>
-  </a>
-  <a class="app" href="#fuel" title="Fuel">
-    <div class="app-icon">⛽</div>
-    <div class="app-name">Fuel</div>
-  </a>
-  <a class="app" href="#id-visitor" title="ID Visitor">
-    <div class="app-icon">🪪</div>
-    <div class="app-name">ID Visitor</div>
-  </a>
-  <a class="app" href="#permission" title="Permission">
-    <div class="app-icon">📝</div>
-    <div class="app-name">Permission</div>
-  </a>
+      <!-- Info pill -->
+      <section class="pill" id="tagline" aria-live="polite">
+        <span class="pill-dot" aria-hidden="true"></span>
+        <span id="taglineText">Siap bantu aktivitasmu hari ini ✨</span>
+      </section>
 
-  <a class="app" href="#gate-access" title="Gate Access">
-    <div class="app-icon">🚧</div>
-    <div class="app-name">Gate Access</div>
-  </a>
-  <a class="app" href="#gun-storage" title="Gun Storage">
-    <div class="app-icon">🔐</div>
-    <div class="app-name">Gun Storage</div>
-  </a>
-  <a class="app" href="#lb-pscp" title="LB. PSCP">
-    <div class="app-icon">🛡️</div>
-    <div class="app-name">LB. PSCP</div>
-  </a>
-  <a class="app" href="#lb-hbscp" title="LB HBSCP">
-    <div class="app-icon">🧳</div>
-    <div class="app-name">LB HBSCP</div>
-  </a>
-
-  <a class="app" href="#lb-cctv" title="LB CCTV">
-    <div class="app-icon">📹</div>
-    <div class="app-name">LB CCTV</div>
-  </a>
-  <a class="app" href="#lb-patrol" title="LB Patrol">
-    <div class="app-icon">🚓</div>
-    <div class="app-name">LB Patrol</div>
-  </a>
-  <a class="app" href="#lb-cargo" title="LB Cargo">
-    <div class="app-icon">📦</div>
-    <div class="app-name">LB Cargo</div>
-  </a>
-  <a class="app" href="#lb-arrival" title="LB Arrival">
-    <div class="app-icon">🛬</div>
-    <div class="app-name">LB Arrival</div>
-  </a>
-
-  <a class="app" href="#lb-malam" title="LB Malam">
-    <div class="app-icon">🌙</div>
-    <div class="app-name">LB Malam</div>
-  </a>
-</main>
-
+      <!-- Apps grid (urut sesuai permintaan) -->
+      <main class="apps" id="apps" aria-label="Aplikasi">
+        <!-- Baris 1 -->
+        <a class="app" href="#chatbot" role="button" title="Chatbot"><div class="app-icon">🤖</div><div class="app-name">Chatbot</div></a>
+        <a class="app" href="#fuel" role="button" title="Fuel"><div class="app-icon">⛽</div><div class="app-name">Fuel</div></a>
+        <a class="app" href="#id-visitor" role="button" title="ID Visitor"><div class="app-icon">🪪</div><div class="app-name">ID Visitor</div></a>
+        <!-- Baris 2 -->
+        <a class="app" href="#permission" role="button" title="Permission"><div class="app-icon">📝</div><div class="app-name">Permission</div></a>
+        <a class="app" href="#gate-access" role="button" title="Gate Access"><div class="app-icon">🚧</div><div class="app-name">Gate Access</div></a>
+        <a class="app" href="#gun-storage" role="button" title="Gun Storage"><div class="app-icon">🔐</div><div class="app-name">Gun Storage</div></a>
+        <!-- Baris 3 -->
+        <a class="app" href="#lb-pscp" role="button" title="LB. PSCP"><div class="app-icon">🛡️</div><div class="app-name">LB. PSCP</div></a>
+        <a class="app" href="#lb-hbscp" role="button" title="LB HBSCP"><div class="app-icon">🧳</div><div class="app-name">LB HBSCP</div></a>
+        <a class="app" href="#lb-cctv" role="button" title="LB CCTV"><div class="app-icon">📹</div><div class="app-name">LB CCTV</div></a>
+        <!-- Baris 4 -->
+        <a class="app" href="#lb-patrol" role="button" title="LB Patrol"><div class="app-icon">🚓</div><div class="app-name">LB Patrol</div></a>
+        <a class="app" href="#lb-cargo" role="button" title="LB Cargo"><div class="app-icon">📦</div><div class="app-name">LB Cargo</div></a>
+        <a class="app" href="#lb-arrival" role="button" title="LB Arrival"><div class="app-icon">🛬</div><div class="app-name">LB Arrival</div></a>
+        <!-- Baris 5 -->
+        <a class="app" href="#lb-malam" role="button" title="LB Malam"><div class="app-icon">🌙</div><div class="app-name">LB Malam</div></a>
+      </main>
+    </div>
+  </div>
 
   <!-- Dock bawah -->
   <nav class="dock" aria-label="Menu bawah">
@@ -112,6 +79,7 @@
     </div>
   </nav>
 
+  <!-- Pakai file JS kamu sebelumnya (punya fungsi WIB & toggle logout) -->
   <script src="home.js"></script>
 </body>
 </html>
