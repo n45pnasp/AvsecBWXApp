@@ -18,7 +18,7 @@ const firebaseConfig = {
 
 // ======== Init & Diagnostik ========
 const diagEl = document.getElementById('diag');
-const log = (...a)=>{ diagEl.textContent += '\n' + a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' '); };
+const log = (...a)=>{ if(diagEl){ diagEl.textContent += '\n' + a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' '); } };
 
 let app, db;
 try {
@@ -45,12 +45,12 @@ const juniorSpec = document.getElementById('juniorSpec');
 const basicSpec  = document.getElementById('basicSpec');
 const addPersonBtn = document.getElementById('addPersonBtn');
 
-// ======== Data statis posisi & durasi ========
+// ======== Data posisi & durasi (UI tetap) ========
 const positions = [
-  { id: 'pos1', name: 'XRAY',             spec: ['junior'], dur: 40 },
-  { id: 'pos2', name: 'Pemeriksa Barang', spec: ['junior'], dur: 20 },
-  { id: 'pos3', name: 'Pemeriksa Orang',  spec: ['basic'],  dur: 20 },
-  { id: 'pos4', name: 'Pemeriksa Tiket',  spec: ['basic'],  dur: 20 }
+  { id: 'pos1', name: 'XRAY',             specLabel: 'junior',       dur: 40 },
+  { id: 'pos2', name: 'Pemeriksa Barang', specLabel: 'junior|basic', dur: 20 },
+  { id: 'pos3', name: 'Pemeriksa Orang',  specLabel: 'basic',        dur: 20 },
+  { id: 'pos4', name: 'Pemeriksa Tiket',  specLabel: 'basic',        dur: 20 }
 ];
 
 // ======== RTDB refs ========
@@ -61,16 +61,16 @@ const peopleRef      = ref(db, 'people');
 let timer = null;
 let countdowns = positions.map(p=>p.dur);
 
-// 👉 Indeks rotasi per ring (tanpa ubah UX pemilihan)
-let rotationIndexJunior = 0;
-let rotationIndexBasic  = 0;
+// Indeks rotasi terpisah
+let rotationIndexJunior = 0;  // untuk XRAY (dan pos2 jika >=2 junior)
+let rotationIndexBasic  = 0;  // untuk pos2 (jika pakai basic), pos3, pos4
 
 // ======== Render ========
 function renderAssignments(assignments){
   assignRows.innerHTML = '';
   positions.forEach((pos, idx)=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${pos.name}</td><td>${pos.spec.join(',')}</td><td>${assignments?.[pos.id]||'-'}</td><td>${countdowns[idx]}s</td>`;
+    tr.innerHTML = `<td>${pos.name}</td><td>${pos.specLabel}</td><td>${assignments?.[pos.id]||'-'}</td><td>${countdowns[idx]}s</td>`;
     assignRows.appendChild(tr);
   });
 }
@@ -88,31 +88,62 @@ function renderPeople(people){
   });
 }
 
-// ======== Rotasi (perbaikan: benar-benar berputar) ========
+// ======== Helper ========
+const rotate = (arr, idx) => arr.length ? arr.slice(idx).concat(arr.slice(0, idx)) : [];
+const pickNext = (list, used) => {
+  for(const p of list){
+    if(p?.name && !used.has(p.name)) return p.name;
+  }
+  return '-';
+};
+
+// ======== Rotasi dengan aturan pilihan baru ========
 async function stepRotation(){
   const snap = await get(peopleRef);
   const all  = snap.val() || {};
 
-  const junior = Object.values(all).filter(p=>p.spec?.includes('junior'));
-  const basic  = Object.values(all).filter(p=>p.spec?.includes('basic'));
+  const juniors = Object.values(all).filter(p=>Array.isArray(p.spec) && p.spec.includes('junior'));
+  const basics  = Object.values(all).filter(p=>Array.isArray(p.spec) && p.spec.includes('basic'));
 
-  // putar urutan berdasar indeks rotasi, lalu tetap ambil dua teratas
-  const jr = junior.length ? junior.slice(rotationIndexJunior).concat(junior.slice(0, rotationIndexJunior)) : [];
-  const bs = basic.length  ? basic.slice(rotationIndexBasic).concat(basic.slice(0, rotationIndexBasic))     : [];
+  // urutan berputar sesuai indeks
+  const jrRot = rotate(juniors, rotationIndexJunior);
+  const bsRot = rotate(basics,  rotationIndexBasic);
 
-  const assignments = {
-    pos1: jr[0]?.name || '-',
-    pos2: jr[1]?.name || '-',
-    pos3: bs[0]?.name || '-',
-    pos4: bs[1]?.name || '-'
-  };
+  const used = new Set();
+  const assignments = {};
+
+  // pos1: XRAY -> wajib junior
+  const pos1 = jrRot[0]?.name || '-';
+  assignments.pos1 = pos1;
+  if(pos1 !== '-') used.add(pos1);
+
+  // pos2: Pemeriksa Barang -> jika ada >=2 junior => pakai junior ke-2; else pakai basic
+  if (juniors.length >= 2) {
+    const jr2 = pickNext(jrRot.slice(1), used); // mulai dari kandidat kedua
+    assignments.pos2 = jr2;
+    if(jr2 !== '-') used.add(jr2);
+  } else {
+    const bs1 = pickNext(bsRot, used);
+    assignments.pos2 = bs1;
+    if(bs1 !== '-') used.add(bs1);
+  }
+
+  // pos3: Pemeriksa Orang -> basic
+  const pos3 = pickNext(bsRot, used);
+  assignments.pos3 = pos3;
+  if(pos3 !== '-') used.add(pos3);
+
+  // pos4: Pemeriksa Tiket -> basic
+  const pos4 = pickNext(bsRot, used);
+  assignments.pos4 = pos4;
+  if(pos4 !== '-') used.add(pos4);
 
   await set(assignmentsRef, assignments);
-  countdowns = positions.map(p=>p.dur);
 
-  // naikkan indeks agar giliran berikutnya bergeser
-  rotationIndexJunior = (rotationIndexJunior + 1) % Math.max(junior.length, 1);
-  rotationIndexBasic  = (rotationIndexBasic  + 1) % Math.max(basic.length,  1);
+  // reset countdown & majukan indeks
+  countdowns = positions.map(p=>p.dur);
+  rotationIndexJunior = (rotationIndexJunior + 1) % Math.max(juniors.length, 1);
+  rotationIndexBasic  = (rotationIndexBasic  + 1) % Math.max(basics.length,  1);
 }
 
 // ======== Events ========
