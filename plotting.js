@@ -2,7 +2,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getDatabase, ref, onValue, set, update, remove, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-// ======== Konfigurasi project ========
+// ======== Konfigurasi project (punyamu) ========
 const firebaseConfig = {
   apiKey: "AIzaSyCtJxtgVbMxZdVUMmFGDnqzt2LttxW9KOQ",
   authDomain: "plotting-e9cb7.firebaseapp.com",
@@ -30,6 +30,8 @@ const startBtn     = document.getElementById('startBtn');
 const stopBtn      = document.getElementById('stopBtn');
 const nextBtn      = document.getElementById('nextBtn');
 const mode2040     = document.getElementById('mode2040'); // default OFF
+const modeBadge    = document.querySelector('.mode-option');
+
 const nameInput    = document.getElementById('nameInput');
 const juniorSpec   = document.getElementById('juniorSpec');
 const basicSpec    = document.getElementById('basicSpec');
@@ -49,15 +51,23 @@ const positions = [
 // ======== RTDB refs ========
 const assignmentsRef   = ref(db, 'assignments');
 const peopleRef        = ref(db, 'people');
-const xrayCooldownRef  = ref(db, 'control/xrayCooldown'); // dipakai jika mode 20–40 aktif
+const xrayCooldownRef  = ref(db, 'control/xrayCooldown'); // untuk mode 20–40
 
 // ======== State & timing ========
-const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 }; // rotasi adil per posisi
+const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 };
 let running = false;
 let tickTimer = null;
-let nextAt = null;                // timestamp (ms) untuk perputaran berikutnya
-const CYCLE_MS = 20_000;          // *** 20 detik ***
-const TICK_MS  = 200;             // render/tick interval
+let nextAt = null;
+const CYCLE_MS = 20_000;  // 20 detik
+const TICK_MS  = 200;     // render loop
+
+// ======== UI State helper ========
+function setRunningUI(isRunning){
+  running = isRunning;
+  startBtn.disabled = isRunning;  // Mulai tidak bisa ditekan saat jalan
+  stopBtn.disabled  = !isRunning; // Hentikan hanya aktif saat jalan
+  if(modeBadge){ modeBadge.classList.toggle('hidden', isRunning); } // sembunyikan checkbox saat jalan
+}
 
 // ======== Render ========
 function renderAssignments(assignments){
@@ -123,6 +133,7 @@ async function buildPools(useCooldown){
     return { pos, idx, list: rot };
   });
 
+  // posisi paling ketat (sedikit kandidat) dikerjakan dulu
   pools.sort((a,b)=> (a.list.length - b.list.length) || (a.idx - b.idx));
   return { pools, cooldown };
 }
@@ -165,7 +176,6 @@ function advanceRotIdx(pools){
 // ======== STEP ROTATION ========
 async function stepRotation(){
   const useCooldown = !!(mode2040 && mode2040.checked);
-
   const { pools, cooldown } = await buildPools(useCooldown);
 
   let finalAssign;
@@ -185,12 +195,12 @@ async function stepRotation(){
   advanceRotIdx(pools);
 }
 
-// ======== Main tick (20 detik pasti, tidak 60) ========
+// ======== Main tick (satu timer) ========
 async function tick(){
   const now = Date.now();
   if(running && nextAt && now >= nextAt){
     await stepRotation();
-    nextAt += CYCLE_MS; // *** tambah 20 detik setiap kali ***
+    nextAt += CYCLE_MS; // tambah 20 detik
   }
   renderClock();
 }
@@ -198,9 +208,9 @@ async function tick(){
 // ======== Events ========
 startBtn.onclick = async ()=>{
   if(tickTimer) clearInterval(tickTimer);
-  running = true;
+  setRunningUI(true); // nonaktifkan Mulai, aktifkan Hentikan, sembunyikan checkbox
 
-  // Rotasi awal lalu set target 20s dari boundary detik berikutnya
+  // Rotasi awal → target 20s dari boundary detik berikutnya
   await stepRotation();
   const now = Date.now();
   nextAt = Math.ceil(now / 1000) * 1000 + CYCLE_MS;
@@ -211,9 +221,9 @@ startBtn.onclick = async ()=>{
 
 stopBtn.onclick = ()=>{
   if(tickTimer) clearInterval(tickTimer);
-  running = false;
   tickTimer = null;
   nextAt = null;
+  setRunningUI(false); // tampilkan kembali checkbox, aktifkan Mulai, nonaktifkan Hentikan
   renderClock();
 };
 
@@ -260,5 +270,6 @@ peopleRows.addEventListener('click', async (e)=>{
 onValue(assignmentsRef, (snap)=> renderAssignments(snap.val()||{}));
 onValue(peopleRef,      (snap)=> renderPeople(snap.val()||{}));
 
-// initial clock paint
+// Initial UI state
+setRunningUI(false);  // stopBtn disabled, checkbox tampil
 renderClock();
