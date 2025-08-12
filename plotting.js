@@ -18,7 +18,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 
-// Indikator koneksi (bulatan hijau/merah)
+// Indikator koneksi (bulatan hijau/merah) — sekarang di dalam card
 const connDot = document.getElementById('connDot');
 const setConn = ok => { if (connDot) connDot.classList.toggle('ok', !!ok); };
 onValue(ref(db, ".info/connected"), snap => setConn(!!snap.val()));
@@ -39,6 +39,12 @@ const seniorSpecEl = document.getElementById('seniorSpec');
 const addPersonBtn = document.getElementById('addPersonBtn');
 const clockEl      = document.getElementById('clock');
 const nextEl       = document.getElementById('nextRotation');
+
+// Bottom sheet
+const sheetBackdrop = document.getElementById('sheetBackdrop');
+const bottomSheet   = document.getElementById('bottomSheet');
+const sheetMsg      = document.getElementById('sheetMsg');
+const sheetClose    = document.getElementById('sheetClose');
 
 // ======== Posisi & aturan (semua 20s) ========
 const positions = [
@@ -61,6 +67,10 @@ let nextAt = null;
 const CYCLE_MS = 20_000;  // 20 detik pasti
 const TICK_MS  = 200;     // render loop
 
+// Gating mode 20–40
+let allow2040 = false;
+let lastJSCount = 0;
+
 // ======== UI State helper ========
 function setRunningUI(isRunning){
   running = isRunning;
@@ -68,6 +78,23 @@ function setRunningUI(isRunning){
   stopBtn.disabled  = !isRunning;  // Hentikan hanya aktif saat jalan
   if(modeBadge){ modeBadge.classList.toggle('hidden', isRunning); } // sembunyikan checkbox saat jalan
 }
+function setModeBadgeAvailability(allowed){
+  if(!modeBadge) return;
+  modeBadge.classList.toggle('disabled', !allowed);
+}
+
+// Bottom sheet helpers
+function showSheet(msg){
+  if(sheetMsg) sheetMsg.textContent = msg;
+  sheetBackdrop?.classList.remove('hidden');
+  bottomSheet?.classList.remove('hidden');
+}
+function hideSheet(){
+  sheetBackdrop?.classList.add('hidden');
+  bottomSheet?.classList.add('hidden');
+}
+sheetBackdrop?.addEventListener('click', hideSheet);
+sheetClose?.addEventListener('click', hideSheet);
 
 // ======== Render ========
 function renderAssignments(assignments){
@@ -207,10 +234,17 @@ async function tick(){
 
 // ======== Events ========
 startBtn.onclick = async ()=>{
+  // Validasi mode 20–40 sebelum mulai
+  if(mode2040?.checked && !allow2040){
+    mode2040.checked = false;
+    showSheet(`Metode 20–40 hanya bisa dipakai bila jumlah personil junior/senior tepat 3 orang (contoh: 1 senior + 2 junior, atau 3 junior). Saat ini: ${lastJSCount}.`);
+    return;
+  }
+
   if(tickTimer) clearInterval(tickTimer);
   setRunningUI(true); // nonaktifkan Mulai, aktifkan Hentikan, sembunyikan checkbox
 
-  // Rotasi awal → target 20 detik dari SEKARANG (bukan boundary detik)
+  // Rotasi awal → target 20 detik dari SEKARANG
   await stepRotation();
   nextAt = Date.now() + CYCLE_MS;
 
@@ -231,6 +265,14 @@ nextBtn.onclick = async ()=>{
   nextAt = Date.now() + CYCLE_MS; // reset target ke +20 detik dari sekarang
   renderClock();
 };
+
+// Klik/ubah checkbox 20–40 → validasi komposisi
+mode2040?.addEventListener('change', ()=>{
+  if(mode2040.checked && !allow2040){
+    mode2040.checked = false;
+    showSheet(`Metode 20–40 hanya bisa dipakai bila jumlah personil junior/senior tepat 3 orang (contoh: 1 senior + 2 junior, atau 3 junior). Saat ini: ${lastJSCount}.`);
+  }
+});
 
 // Tambah personil
 addPersonBtn.onclick = async ()=>{
@@ -267,7 +309,19 @@ peopleRows.addEventListener('click', async (e)=>{
 
 // ======== Live listeners ========
 onValue(assignmentsRef, (snap)=> renderAssignments(snap.val()||{}));
-onValue(peopleRef,      (snap)=> renderPeople(snap.val()||{}));
+onValue(peopleRef,      (snap)=> {
+  const people = snap.val()||{};
+  renderPeople(people);
+
+  // Hitung jumlah personil kategori junior/senior
+  const countJS = Object.values(people).filter(p =>
+    Array.isArray(p?.spec) && p.spec.some(s => ['junior','senior'].includes(String(s).toLowerCase()))
+  ).length;
+
+  lastJSCount = countJS;
+  allow2040 = (countJS === 3);           // HANYA jika tepat 3 orang
+  setModeBadgeAvailability(allow2040);   // ubah tampilan badge (redup jika tak memenuhi)
+});
 
 // Initial UI state
 setRunningUI(false);  // stopBtn disabled, checkbox tampil
