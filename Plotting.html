@@ -60,6 +60,18 @@
     </table>
   </div>
 
+  <!-- Bottom Sheet Notification -->
+  <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>
+  <div id="bottomSheet" class="sheet hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet-header">
+      <strong>Metode 20–40 tidak tersedia</strong>
+      <button id="sheetClose" class="sheet-close" aria-label="Tutup">×</button>
+    </div>
+    <div id="sheetMsg" class="sheet-body">
+      <!-- pesan akan diisi via JS -->
+    </div>
+  </div>
+
   <script type="module" src="plotting.js"></script>
 </body>
 </html>
