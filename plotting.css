@@ -1,11 +1,10 @@
 :root {
   --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb;
-  --border:#334; --btn-ok:#14532d; --btn-stop:#7f1d1d;
+  --border:#334; --btn-ok:#14532d; --btn-stop:#7f1d1d; --card:#0b1324;
 }
 
 *{ box-sizing:border-box }
 html,body{ margin:0; padding:0 }
-
 body{
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
   background: var(--bg);
@@ -13,75 +12,63 @@ body{
   padding: 20px;
 }
 
-h1{ margin: 0 0 12px }
-h2{ margin: 20px 0 8px }
-
 /* Indikator koneksi (bulatan saja) */
 .conn-dot{
-  position: fixed;    /* ubah ke bottom:12px bila mau di bawah */
-  top: 12px;
-  right: 12px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
+  position: fixed; top:12px; right:12px;
+  width: 14px; height: 14px; border-radius: 50%;
   background: #ef4444; /* default merah = belum terhubung */
   box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 0 10px rgba(0,0,0,.35);
 }
 .conn-dot.ok{ background: #22c55e; } /* hijau saat terhubung */
 
+/* Header card with big clock */
+.header-card{
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  margin-bottom: 14px;
+}
+.clock{
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-size: clamp(36px, 6vw, 64px);
+  line-height: 1;
+}
+.next-info{
+  color: var(--muted);
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+/* Controls */
 .controls{
-  display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 button{
-  padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);
+  padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
   background: #0b1324; color: var(--text); cursor: pointer;
 }
 button.start{ background: var(--btn-ok); border-color:#1a6a3a }
 button.stop{ background: var(--btn-stop); border-color:#9f1d1d }
 
+.mode-option{
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px; background: rgba(255,255,255,0.05);
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+}
+
+/* Assignments table (no countdown column) */
 table{ width:100%; border-collapse: collapse; margin-top: 12px }
-th,td{ border:1px solid var(--border); padding:8px 10px; text-align:left }
+th,td{ border:1px solid var(--border); padding:10px; text-align:left }
 th{ background: var(--panel) }
 
-.manage{ display:grid; gap:12px }
+.manage{ display:grid; gap:12px; margin-top: 12px }
 .add-person{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
 input[type="text"]{
-  padding: 6px 8px; border-radius: 6px; border:1px solid var(--border);
+  padding: 8px 10px; border-radius: 8px; border:1px solid var(--border);
   background:#0b1324; color: var(--text);
-}
-
-.diag{
-  white-space: pre-wrap;
-  background:#0b1324; border:1px solid var(--border);
-  padding:10px; border-radius:6px; max-height:240px; overflow:auto;
-  color: var(--muted);
-}
-
-.controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.controls button {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.mode-option {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #334;
-}
-
-.mode-option input[type="checkbox"] {
-  transform: scale(1.1);
 }
