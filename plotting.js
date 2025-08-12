@@ -31,6 +31,7 @@ const peopleRows   = document.getElementById('peopleRows');
 const startBtn     = document.getElementById('startBtn');
 const stopBtn      = document.getElementById('stopBtn');
 const nextBtn      = document.getElementById('nextBtn');
+const mode2040     = document.getElementById('mode2040'); // checkbox mode (default OFF)
 const nameInput    = document.getElementById('nameInput');
 const juniorSpec   = document.getElementById('juniorSpec');
 const basicSpec    = document.getElementById('basicSpec');
@@ -48,15 +49,14 @@ const positions = [
 // ======== RTDB refs ========
 const assignmentsRef   = ref(db, 'assignments');
 const peopleRef        = ref(db, 'people');
-// Cooldown XRAY: name -> sisa_siklus (integer). Saat orang bertugas di XRAY, set ke 2.
-// Tiap siklus berkurang 1 sampai 0; selama >0 orang tsb TIDAK eligible untuk XRAY.
+// Cooldown XRAY hanya dipakai bila mode 20–40 aktif
 const xrayCooldownRef  = ref(db, 'control/xrayCooldown');
 
 // ======== State countdown & rotasi ========
 let timer = null;
 let countdowns = positions.map(p=>p.dur);
 
-// simpan indeks rotasi per posisi supaya adil (prioritas kandidat bergilir)
+// indeks rotasi per posisi (agar prioritas kandidat bergilir adil)
 const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 };
 
 // ======== Render ========
@@ -76,9 +76,9 @@ function renderPeople(people){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${p.name}</td>
-      <td><input type="checkbox" ${has('senior')?'checked':''} data-id="${id}" data-spec="senior" /></td>
       <td><input type="checkbox" ${has('junior')?'checked':''} data-id="${id}" data-spec="junior" /></td>
       <td><input type="checkbox" ${has('basic')?'checked':''}  data-id="${id}" data-spec="basic"  /></td>
+      <td><input type="checkbox" ${has('senior')?'checked':''} data-id="${id}" data-spec="senior" /></td>
       <td><button data-del="${id}">Hapus</button></td>`;
     peopleRows.appendChild(tr);
   });
@@ -89,96 +89,116 @@ const rotate = (arr, idx) => arr.length ? arr.slice(idx).concat(arr.slice(0, idx
 const isEligible = (person, allowed) =>
   Array.isArray(person.spec) && person.spec.some(s => allowed.includes(String(s).toLowerCase()));
 
-// ======== Rotasi 20s, kombinasi UNIK antar posisi + cooldown XRAY ========
-async function stepRotation(){
-  // Ambil data personil + cooldown XRAY
-  const [pSnap, cdSnap] = await Promise.all([ get(peopleRef), get(xrayCooldownRef) ]);
+// Susun pools kandidat per posisi (dengan/ tanpa cooldown XRAY)
+async function buildPools(useCooldown){
+  const [pSnap, cdSnap] = await Promise.all([
+    get(peopleRef),
+    useCooldown ? get(xrayCooldownRef) : Promise.resolve({ val:()=>({}) })
+  ]);
+
   const raw  = pSnap.val() || {};
   const folks = Object.values(raw).map(p => ({
     ...p,
     spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toLowerCase()) : []
   }));
-  let cooldown = cdSnap.val() || {}; // { [name]: remainingCycles }
+  const cooldown = useCooldown ? (cdSnap.val() || {}) : {};
 
-  // Bersihkan cooldown untuk nama yang sudah tidak ada di people
-  const namesSet = new Set(folks.map(f=>f.name));
-  for(const key of Object.keys(cooldown)){
-    if(!namesSet.has(key)) delete cooldown[key];
+  // bersihkan cooldown untuk nama yang tidak ada
+  if(useCooldown){
+    const namesSet = new Set(folks.map(f=>f.name));
+    for(const k of Object.keys(cooldown)){ if(!namesSet.has(k)) delete cooldown[k]; }
   }
 
-  // Buat pool kandidat per posisi (dirotasi agar adil)
   const pools = positions.map((pos, idx) => {
     let candidates = folks.filter(f => isEligible(f, pos.allowed));
-    // Khusus XRAY: exclude yang masih cooldown
-    if(pos.id === 'pos1'){
+    if(useCooldown && pos.id === 'pos1'){ // XRAY patuhi cooldown
       candidates = candidates.filter(f => (cooldown[f.name] || 0) <= 0);
     }
     const rot = rotate(candidates, rotIdx[pos.id] % Math.max(candidates.length, 1));
     return { pos, idx, list: rot };
   });
 
-  // Urutkan: posisi dengan kandidat paling sedikit diproses dulu
-  pools.sort((a,b) => (a.list.length - b.list.length) || (a.idx - b.idx));
+  // Urutkan: posisi dengan kandidat paling sedikit diproses dahulu
+  pools.sort((a,b)=> (a.list.length - b.list.length) || (a.idx - b.idx));
+  return { pools, cooldown };
+}
 
-  // Backtracking untuk mencari kombinasi unik (tanpa nama ganda)
+// Backtracking: cari kombinasi unik penuh (tanpa duplikasi)
+function assignUnique(pools){
   const used = new Set();
   const result = {};
 
-  function assign(i){
+  function bt(i){
     if(i === pools.length) return true;
     const { pos, list } = pools[i];
 
     if(list.length === 0){
-      // Tidak ada kandidat yang sesuai spesifikasi (atau semua sedang cooldown untuk XRAY)
       result[pos.id] = '-';
-      return assign(i+1);
+      return bt(i+1);
     }
-
     for(const cand of list){
       const name = cand?.name;
-      if(!name || used.has(name)) continue; // jaga keunikan
-      used.add(name);
-      result[pos.id] = name;
-      if(assign(i+1)) return true;
+      if(!name || used.has(name)) continue;
+      used.add(name); result[pos.id] = name;
+      if(bt(i+1)) return true;
       used.delete(name);
     }
     return false;
   }
 
-  const fullUnique = assign(0);
+  const ok = bt(0);
+  return { ok, result };
+}
 
-  // Jika tak bisa unik penuh, isi yang bisa unik saja, sisanya '-'
-  if(!fullUnique){
-    used.clear();
-    for(const { pos, list } of pools){
-      const pick = list.find(p => p?.name && !used.has(p.name));
-      if(pick){ result[pos.id] = pick.name; used.add(pick.name); }
-      else { result[pos.id] = '-'; }
-    }
+// Isi unik semampunya (tanpa duplikasi); yang tidak bisa unik → '-'
+function assignUniqueGreedy(pools){
+  const used = new Set();
+  const result = {};
+  for(const { pos, list } of pools){
+    const pick = list.find(p => p?.name && !used.has(p.name));
+    if(pick){ result[pos.id] = pick.name; used.add(pick.name); }
+    else { result[pos.id] = '-'; }
   }
+  return result;
+}
 
-  // Majukan indeks rotasi per posisi (adil)
+// Update rotIdx agar bergilir adil
+function advanceRotIdx(pools){
   for(const { pos, list } of pools){
     const len = list.length;
     if(len > 0) rotIdx[pos.id] = (rotIdx[pos.id] + 1) % len;
   }
+}
 
-  // Update cooldown XRAY:
-  // - semua entri >0 dikurangi 1
-  // - yang bertugas di XRAY (pos1) diset ke 2 (cooldown dua siklus berikutnya)
-  for(const k of Object.keys(cooldown)){
-    const v = cooldown[k] | 0;
-    cooldown[k] = v > 0 ? v - 1 : 0;
-  }
-  const xrayName = result.pos1;
-  if (xrayName && xrayName !== '-') {
-    cooldown[xrayName] = 2; // 2 siklus ke depan tidak boleh XRAY
+// ======== STEP ROTATION (baca mode dari checkbox) ========
+async function stepRotation(){
+  const useCooldown = !!(mode2040 && mode2040.checked);
+
+  const { pools, cooldown } = await buildPools(useCooldown);
+
+  let finalAssign = {};
+
+  // Kedua mode: sama-sama anti duplikasi
+  const { ok, result } = assignUnique(pools);
+  if(ok){
+    finalAssign = result;
+  } else {
+    finalAssign = assignUniqueGreedy(pools); // isi unik semampunya; sisanya '-'
   }
 
-  await Promise.all([
-    set(assignmentsRef, result),
-    set(xrayCooldownRef, cooldown)
-  ]);
+  if(useCooldown){
+    // Mode 20–40: kelola cooldown XRAY
+    const cd = { ...cooldown };
+    for(const k of Object.keys(cd)){ cd[k] = Math.max(0, (cd[k]|0) - 1); }
+    const xrayName = finalAssign.pos1;
+    if(xrayName && xrayName !== '-') cd[xrayName] = 2; // 2 siklus ke depan tidak boleh XRAY
+    await Promise.all([ set(assignmentsRef, finalAssign), set(xrayCooldownRef, cd) ]);
+  } else {
+    // Mode standar: tidak pakai cooldown
+    await set(assignmentsRef, finalAssign);
+  }
+
+  advanceRotIdx(pools);
   countdowns = positions.map(p=>p.dur);
 }
 
