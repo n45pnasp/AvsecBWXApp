@@ -12,16 +12,7 @@ body{
   padding: 20px;
 }
 
-/* Indikator koneksi (bulatan saja) */
-.conn-dot{
-  position: fixed; top:12px; right:12px;
-  width: 14px; height: 14px; border-radius: 50%;
-  background: #ef4444; /* default merah = belum terhubung */
-  box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 0 10px rgba(0,0,0,.35);
-}
-.conn-dot.ok{ background: #22c55e; } /* hijau saat terhubung */
-
-/* Header card dengan jam besar (center) */
+/* Card Jam Utama (center content) */
 .header-card{
   background: var(--card);
   border: 1px solid var(--border);
@@ -35,6 +26,24 @@ body{
   align-items: center;
   text-align: center;
 }
+
+/* Bar atas card untuk menaruh dot di kanan */
+.header-top{
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 10px;
+}
+
+/* Indikator koneksi (di dalam card) */
+.conn-dot{
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #ef4444;           /* merah = belum terhubung */
+  box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 0 10px rgba(0,0,0,.35);
+}
+.conn-dot.ok{ background: #22c55e; }  /* hijau saat terhubung */
+
 .clock{
   font-variant-numeric: tabular-nums;
   font-weight: 800;
@@ -73,7 +82,7 @@ button:disabled{
 }
 .hidden{ display: none !important; }
 
-/* Tabel penugasan */
+/* Tabel penugasan & people */
 table{ width:100%; border-collapse: collapse; margin-top: 12px }
 th,td{ border:1px solid var(--border); padding:10px; text-align:left }
 th{ background: var(--panel) }
