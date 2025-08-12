@@ -1,10 +1,15 @@
-// ===== Mobile Debug Console (eruda) =====
+// home.js (module)
+
+/* ===========================
+   Mobile Debug Console (eruda)
+   Aktifkan dengan ?debug=1 atau localStorage.debug=1
+   =========================== */
 (function setupMobileDebug() {
   const qs = new URLSearchParams(location.search);
   const shouldDebug =
-    qs.get('debug') === '1' ||                 // aktif kalau ?debug=1
-    localStorage.getItem('debug') === '1' ||   // atau set via storage
-    location.hostname === 'localhost';         // otomatis saat lokal
+    qs.get('debug') === '1' ||
+    localStorage.getItem('debug') === '1' ||
+    location.hostname === 'localhost';
 
   if (!shouldDebug) return;
 
@@ -12,38 +17,18 @@
   s.src = 'https://cdn.jsdelivr.net/npm/eruda';
   s.async = true;
   s.onload = () => {
-    try {
-      eruda.init();
-      console.warn('[debug] eruda initialized');
-    } catch (e) {
-      console.warn('[debug] eruda failed:', e);
-    }
+    try { eruda.init(); console.warn('[debug] eruda initialized'); } catch(e){ console.warn('[debug] eruda failed:', e); }
   };
   document.head.appendChild(s);
-
-  // helper opsional: tulis ke console + ke layar (kalau perlu)
-  window.debugLog = (...args) => {
-    try { console.log(...args); } catch(_) {}
-    let el = document.getElementById('debug');
-    if (!el) {
-      el = document.createElement('pre');
-      el.id = 'debug';
-      el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;max-height:40vh;overflow:auto;background:#111;color:#0f0;padding:8px;border-radius:8px;font:12px/1.4 ui-monospace;z-index:99999;opacity:.9';
-      document.body.appendChild(el);
-    }
-    el.textContent += args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ') + '\n';
-  };
 })();
 
-
-
-// home.js (module)
-
-// ===== Firebase (gunakan config yang sama dengan login.js) =====
+/* ===========================
+   Firebase (samakan dengan login.js)
+   =========================== */
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-// Jika nanti pakai Firebase Storage, aktifkan import di bawah:
+import { getAuth, onAuthStateChanged }   from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getDatabase, ref, get, child }  from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+// Jika kelak pakai Firebase Storage, aktifkan ini:
 // import { getStorage, ref as sref, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
 const firebaseConfig = {
@@ -57,19 +42,18 @@ const firebaseConfig = {
   databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
 };
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
 
-// ===== Utils =====
+/* ===========================
+   Utils & WIB
+   =========================== */
 const $ = (s, el = document) => el.querySelector(s);
 
-// ===== Waktu WIB (GMT+7) =====
 function getWIBDate(d = new Date()) {
   return new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
 }
-
-// Banner: "senin, 12 agustus 2025"
 function bannerString() {
   const d = getWIBDate();
   const hari = d.toLocaleDateString('id-ID', { weekday: 'long' }).toLowerCase();
@@ -78,8 +62,6 @@ function bannerString() {
   const tahun = d.getFullYear();
   return `${hari}, ${tanggal} ${bulan} ${tahun}`;
 }
-
-// ===== Greeting (ID) =====
 function getGreetingID(d = getWIBDate()) {
   const h = d.getHours();
   if (h >= 4 && h < 11)  return "Selamat Pagi,";
@@ -87,7 +69,6 @@ function getGreetingID(d = getWIBDate()) {
   if (h >= 15 && h < 18) return "Selamat Sore,";
   return "Selamat Malam,";
 }
-
 function updateGreeting() {
   $("#greet").textContent = getGreetingID();
   const k = $("#greet").textContent.split(" ")[1];
@@ -101,7 +82,9 @@ function updateGreeting() {
   $("#dateBanner").textContent = bannerString();
 }
 
-// ===== Avatar default =====
+/* ===========================
+   Avatar default & helpers
+   =========================== */
 const DEFAULT_AVATAR =
   "data:image/svg+xml;base64," + btoa(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
@@ -117,14 +100,18 @@ function resolveDisplayName(user){
   return "Pengguna";
 }
 
-// ===== Helpers URL Foto =====
+/* ===========================
+   URL Cleaning & Drive normalizer
+   =========================== */
 function cleanURL(s) {
   if (!s) return "";
   let v = String(s).trim();
-  // buang smart quotes & kutip biasa di awal/akhir
-  v = v.replace(/^[\s'"\u2018\u2019\u201C\u201D]+|[\s'"\u2018\u2019\u201C\u201D]+$/g, "");
-  // buang zero-width chars (copy-paste artefacts)
+  // hapus SEMUA kutip (biasa & smart) di mana pun posisinya
+  v = v.replace(/['"\u2018-\u201F]/g, "");
+  // hapus zero-width & whitespace tak terlihat
   v = v.replace(/[\u200B-\u200D\u2060\uFEFF]/g, "");
+  // buang spasi/tab/linebreak
+  v = v.replace(/\s+/g, "");
   return v;
 }
 function normalizeDriveURL(u) {
@@ -138,36 +125,28 @@ function normalizeDriveURL(u) {
 async function resolvePhotoURL(raw, user) {
   let url = cleanURL(raw || user?.photoURL || "");
   if (!url) return "";
-  // block mixed content
-  if (location.protocol === "https:" && url.startsWith("http://")) {
-    console.warn("Blocked mixed content:", url);
-    return "";
-  }
-  // normalisasi Google Drive
+  if (location.protocol === "https:" && url.startsWith("http://")) return "";
   if (/drive\.google\.com/i.test(url)) url = normalizeDriveURL(url);
-
-  // Jika kelak pakai Firebase Storage (gs:// atau path relatif), aktifkan:
+  // Jika nanti pakai Firebase Storage, aktifkan blok ini:
   // if (url.startsWith("gs://") || (!/^https?:\/\//i.test(url) && !url.startsWith("data:"))) {
-  //   try {
-  //     const storage = getStorage(app);
-  //     url = await getDownloadURL(sref(storage, url));
-  //   } catch (_) { url = ""; }
+  //   try { const storage = getStorage(app); url = await getDownloadURL(sref(storage, url)); } catch { url = ""; }
   // }
   return url;
 }
 
-// ===== Ambil profil dari RTDB untuk user yg sedang login =====
+/* ===========================
+   Fetch profil dari RTDB
+   =========================== */
 async function fetchProfile(user){
   try{
     const root = ref(db);
-
-    // Baca beberapa kemungkinan key untuk foto
     const snaps = await Promise.all([
       get(child(root, `users/${user.uid}/name`)),
       get(child(root, `users/${user.uid}/spec`)),
       get(child(root, `users/${user.uid}/role`)),
       get(child(root, `users/${user.uid}/isAdmin`)),
 
+      // beberapa kemungkinan key foto
       get(child(root, `users/${user.uid}/photoURL`)),
       get(child(root, `users/${user.uid}/photoUrl`)),
       get(child(root, `users/${user.uid}/avatar`)),
@@ -188,7 +167,7 @@ async function fetchProfile(user){
     const resolved = await resolvePhotoURL(rawPhoto, user);
     const photoURL = resolved || DEFAULT_AVATAR;
 
-    // DEBUG: lihat apa yang dibaca & hasil akhirnya
+    // DEBUG
     console.log("[profile] rawPhoto from RTDB/Auth:", rawPhoto);
     console.log("[profile] resolved photoURL:", photoURL);
 
@@ -200,31 +179,40 @@ async function fetchProfile(user){
   }
 }
 
-// ===== Render profil =====
+/* ===========================
+   Render profil
+   =========================== */
 function applyProfile({ name, photoURL }) {
   if (name) {
     $("#name").textContent = name;
-    // Isi localStorage agar toggle (yang tak boleh diubah) tetap berfungsi
     localStorage.setItem('tinydb_name', name);
   }
   const finalURL = photoURL || DEFAULT_AVATAR;
+
+  // DEBUG: tampilkan kode karakter 6 terakhir
+  try {
+    const tail = Array.from(finalURL).slice(-6).map(c => c.charCodeAt(0)).join(",");
+    console.log("[profile] tail char codes:", tail);
+  } catch {}
+
   const avatar = $("#avatar");
   if (avatar) {
-    avatar.onerror = () => { avatar.src = DEFAULT_AVATAR; };
+    avatar.referrerPolicy = "no-referrer";
+    avatar.onerror = () => { console.warn("[profile] img error → fallback"); avatar.src = DEFAULT_AVATAR; };
+    avatar.onload  = () => { console.log("[profile] img loaded:", avatar.naturalWidth, "x", avatar.naturalHeight); };
     avatar.src = finalURL;
   }
-  // simpan URL final agar saat toggle balik, avatar tetap benar
   localStorage.setItem('tinydb_photo', finalURL);
 
-  // Optional: skip ekstrak warna jika host Google Drive (CORS bisa tainted)
+  // Ekstrak aksen: skip jika host Google Drive (CORS bisa tainted)
   if (finalURL && !/drive\.google\.com/i.test(finalURL)) {
-    extractAccentFromImage(finalURL).then(c => {
-      if (c) setAccent(c.primary, c.secondary);
-    }).catch(() => {});
+    extractAccentFromImage(finalURL).then(c => { if (c) setAccent(c.primary, c.secondary); }).catch(()=>{});
   }
 }
 
-// ===== Accent dari foto (opsional) =====
+/* ===========================
+   Accent dari foto (opsional)
+   =========================== */
 async function extractAccentFromImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image(); img.crossOrigin = 'anonymous'; img.decoding = 'async';
@@ -247,10 +235,7 @@ async function extractAccentFromImage(src) {
         if (!topKey) return resolve(null);
         const [br, bg, bb] = topKey.split(',').map(n => Number(n) * 24 + 12);
         const sec = rotateHue(br, bg, bb, 30);
-        resolve({
-          primary: `rgb(${br},${bg},${bb})`,
-          secondary: `rgb(${sec[0]},${sec[1]},${sec[2]})`
-        });
+        resolve({ primary: `rgb(${br},${bg},${bb})`, secondary: `rgb(${sec[0]},${sec[1]},${sec[2]})` });
       } catch (e) { resolve(null); }
     };
     img.onerror = reject;
@@ -272,8 +257,9 @@ function setAccent(a1, a2) {
   if (a2) root.setProperty('--accent-2', a2);
 }
 
-// ===== Toggle foto ↔ logout (DOM swap, tombol tak ada sebelum diklik) =====
-// (SESUI PERMINTAANMU: TIDAK DIUBAH)
+/* ===========================
+   Toggle foto ↔ logout (TIDAK DIUBAH)
+   =========================== */
 (function setupGreetCard() {
   const card = $("#greetCard");
   const profileSlot = $("#profileSlot");
@@ -300,37 +286,36 @@ function setAccent(a1, a2) {
   });
 })();
 
-// ===== Hook Logout untuk tombol di atas =====
+/* ===========================
+   Logout hook
+   =========================== */
 window.onLogout = function () {
   try {
     localStorage.removeItem("tinydb_name");
     localStorage.removeItem("tinydb_photo");
   } catch (_) {}
-  // Balik ke login; login.html akan cek & signOut jika perlu
-  location.href = "index.html?logout=1"; // ubah jika nama file login berbeda
+  location.href = "index.html?logout=1"; // ganti jika nama file login berbeda
 };
 
-// ===== Auth Gate di HOME =====
+/* ===========================
+   Auth Gate
+   =========================== */
 function mountAuthGate() {
   onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      // Belum login → balik ke login
-      location.href = "index.html";
-      return;
-    }
-    // Sudah login → ambil profil dari RTDB lalu render
+    if (!user) { location.href = "index.html"; return; }
     try {
       const p = await fetchProfile(user);
       applyProfile({ name: p.name, photoURL: p.photoURL });
     } catch (e) {
       console.warn("apply profile error:", e);
-      // tetap render minimal dari auth
       applyProfile({ name: resolveDisplayName(user), photoURL: user.photoURL || DEFAULT_AVATAR });
     }
   });
 }
 
-// ===== Init =====
+/* ===========================
+   Init
+   =========================== */
 function tick() { updateGreeting(); }
 tick();
 setInterval(tick, 60 * 1000);
