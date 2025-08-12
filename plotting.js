@@ -20,7 +20,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 
-// Indikator koneksi bulat hijau/merah
+// Indikator koneksi (bulatan hijau/merah)
 const connDot = document.getElementById('connDot');
 const setConn = ok => { if (connDot) connDot.classList.toggle('ok', !!ok); };
 onValue(ref(db, ".info/connected"), snap => setConn(!!snap.val()));
@@ -34,16 +34,15 @@ const nextBtn      = document.getElementById('nextBtn');
 const nameInput    = document.getElementById('nameInput');
 const juniorSpec   = document.getElementById('juniorSpec');
 const basicSpec    = document.getElementById('basicSpec');
-// (opsional) kalau kamu tambahkan checkbox senior di HTML, ambil juga elemennya:
-const seniorSpecEl = document.getElementById('seniorSpec');
+const seniorSpecEl = document.getElementById('seniorSpec'); // opsional bila ada di HTML
 const addPersonBtn = document.getElementById('addPersonBtn');
 
 // ======== Posisi & durasi (20s semuanya) ========
 const positions = [
-  { id:'pos1', name:'XRAY',             specLabel:'senior|junior',       allowed:['senior','junior'], dur:20 },
-  { id:'pos2', name:'Pemeriksa Barang', specLabel:'senior|junior|basic', allowed:['senior','junior','basic'], dur:20 },
-  { id:'pos3', name:'Pemeriksa Orang',  specLabel:'junior|basic',        allowed:['junior','basic'], dur:20 },
-  { id:'pos4', name:'Pemeriksa Tiket',  specLabel:'junior|basic',        allowed:['junior','basic'], dur:20 },
+  { id:'pos1', name:'XRAY',             specLabel:'senior|junior',       allowed:['senior','junior'],           dur:20 },
+  { id:'pos2', name:'Pemeriksa Barang', specLabel:'senior|junior|basic', allowed:['senior','junior','basic'],   dur:20 },
+  { id:'pos3', name:'Pemeriksa Orang',  specLabel:'junior|basic',        allowed:['junior','basic'],            dur:20 },
+  { id:'pos4', name:'Pemeriksa Tiket',  specLabel:'junior|basic',        allowed:['junior','basic'],            dur:20 },
 ];
 
 // ======== RTDB refs ========
@@ -54,7 +53,7 @@ const peopleRef      = ref(db, 'people');
 let timer = null;
 let countdowns = positions.map(p=>p.dur);
 
-// simpan indeks rotasi per posisi agar adil (tiap posisi punya antrian sendiri)
+// simpan indeks rotasi per posisi supaya adil (prioritas kandidat bergilir)
 const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 };
 
 // ======== Render ========
@@ -62,7 +61,7 @@ function renderAssignments(assignments){
   assignRows.innerHTML = '';
   positions.forEach((p, idx)=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${p.name}</td><td>${p.specLabel}</td><td>${assignments?.[p.id]||'-'}</td><td>${countdowns[idx]}s</td>`;
+    tr.innerHTML = `<td>${p.name}</td><td>${p.specLabel}</td><td>${assignments?.[p.id] ?? '-'}</td><td>${countdowns[idx]}s</td>`;
     assignRows.appendChild(tr);
   });
 }
@@ -84,35 +83,76 @@ function renderPeople(people){
 
 // ======== Helpers ========
 const rotate = (arr, idx) => arr.length ? arr.slice(idx).concat(arr.slice(0, idx)) : [];
-const eligible = (person, allowed) =>
+const isEligible = (person, allowed) =>
   Array.isArray(person.spec) && person.spec.some(s => allowed.includes(String(s).toLowerCase()));
-const nextFrom = (list, used) => {
-  for(const p of list){ if(p?.name && !used.has(p.name)) return p.name; }
-  return '-';
-};
 
-// ======== Rotasi (20s, aturan allowed per posisi) ========
+// ======== Rotasi 20s, kombinasi UNIK antar posisi ====
 async function stepRotation(){
   const snap = await get(peopleRef);
-  const all  = snap.val() || {};
-  const folks = Object.values(all);
+  const raw  = snap.val() || {};
+  const folks = Object.values(raw).map(p => ({
+    ...p,
+    spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toLowerCase()) : []
+  }));
 
+  // Buat pool kandidat per posisi (sudah di-rotate berdasar rotIdx agar adil)
+  const pools = positions.map((pos, idx) => {
+    const candidates = folks.filter(f => isEligible(f, pos.allowed));
+    const rot        = rotate(candidates, rotIdx[pos.id] % Math.max(candidates.length, 1));
+    return { pos, idx, list: rot };
+  });
+
+  // Urutkan: posisi dengan kandidat paling sedikit diproses dulu
+  pools.sort((a,b) => (a.list.length - b.list.length) || (a.idx - b.idx));
+
+  // Backtracking untuk mencari kombinasi unik (tanpa nama ganda)
   const used = new Set();
-  const assignments = {};
+  const result = {};
 
-  for(const p of positions){
-    // daftar kandidat untuk posisi p, dirotasi berdasarkan rotIdx posisi tsb
-    const pool = folks.filter(f => eligible(f, p.allowed));
-    const rot  = rotate(pool, rotIdx[p.id] % Math.max(pool.length,1));
-    const pick = nextFrom(rot, used);
-    assignments[p.id] = pick;
-    if(pick !== '-') used.add(pick);
+  function assign(i){
+    if(i === pools.length) return true;
+    const { pos, list } = pools[i];
 
-    // majukan indeks rotasi untuk posisi ini agar next cycle berganti orang
-    rotIdx[p.id] = (rotIdx[p.id] + 1) % Math.max(pool.length, 1);
+    if(list.length === 0){
+      // tidak ada kandidat yang sesuai spesifikasi untuk posisi ini
+      result[pos.id] = '-';
+      return assign(i+1);
+    }
+
+    for(const cand of list){
+      const name = cand?.name;
+      if(!name || used.has(name)) continue; // jaga keunikan di waktu yang sama
+      used.add(name);
+      result[pos.id] = name;
+      if(assign(i+1)) return true;
+      used.delete(name);
+    }
+
+    // tidak ketemu kombinasi unik untuk cabang ini
+    return false;
   }
 
-  await set(assignmentsRef, assignments);
+  // coba cari kombinasi unik penuh
+  const fullUnique = assign(0);
+
+  // kalau tidak bisa penuh unik, isi yang bisa saja (unik), sisanya '-'
+  if(!fullUnique){
+    used.clear();
+    for(const { pos, list } of pools){
+      const pick = list.find(p => p?.name && !used.has(p.name));
+      if(pick){ result[pos.id] = pick.name; used.add(pick.name); }
+      else if(list.length > 0){ result[pos.id] = '-'; }
+      else { result[pos.id] = '-'; }
+    }
+  }
+
+  // majukan indeks rotasi per posisi (agar prioritas kandidat bergilir adil)
+  for(const { pos, list } of pools){
+    const len = list.length;
+    if(len > 0) rotIdx[pos.id] = (rotIdx[pos.id] + 1) % len;
+  }
+
+  await set(assignmentsRef, result);
   countdowns = positions.map(p=>p.dur);
 }
 
@@ -131,15 +171,18 @@ startBtn.onclick = ()=>{
 stopBtn.onclick = ()=>{ if(timer) clearInterval(timer); timer = null; };
 nextBtn.onclick = stepRotation;
 
-// Tambah/orbit personil
+// Tambah personil
 addPersonBtn.onclick = async ()=>{
   const name = nameInput.value.trim(); if(!name) return;
   const specs = [];
   if(juniorSpec?.checked) specs.push('junior');
   if(basicSpec?.checked)  specs.push('basic');
-  if(seniorSpecEl?.checked) specs.push('senior'); // bila ditambahkan di HTML
+  if(seniorSpecEl?.checked) specs.push('senior'); // bila ada di HTML
   await update(ref(db, 'people/'+name.toLowerCase()), { name, spec: specs });
-  nameInput.value=''; if(juniorSpec) juniorSpec.checked=false; if(basicSpec) basicSpec.checked=false; if(seniorSpecEl) seniorSpecEl.checked=false;
+  nameInput.value='';
+  if(juniorSpec) juniorSpec.checked=false;
+  if(basicSpec)  basicSpec.checked=false;
+  if(seniorSpecEl) seniorSpecEl.checked=false;
 };
 
 // Toggle spec / hapus
