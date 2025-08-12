@@ -66,7 +66,7 @@ const stateRef       = ref(db, 'control/state');        // { running, nextAt, mo
 // ======== State & timing ========
 const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 };
 let running = false;
-let nextAtLocal = null;         // mirror dari RTDB untuk render
+let nextAtLocal = null;         // SELALU cermin RTDB; tampil di UI
 let mode2040State = false;      // mirror state.mode2040
 const CYCLE_MS = 20_000;
 
@@ -228,7 +228,7 @@ async function computeAndWriteAssignments(useCooldown){
 
 // ======== Mesin rotasi bersama (race-safe) ========
 async function tryAdvanceCycle(force = false){
-  // Gunakan transaction di /control/state agar hanya SATU klien yang menang ketika due
+  // Transaction di /control/state: hanya SATU klien yang menang ketika due/force
   const res = await runTransaction(stateRef, (cur) => {
     const now = Date.now();
     if(!cur || typeof cur !== 'object') return cur;
@@ -244,13 +244,11 @@ async function tryAdvanceCycle(force = false){
   });
 
   if(res.committed){
-    // Jika kita yang mengubah nextAt (force atau due), lakukan perhitungan & tulis assignments.
-    // Cara deteksi sederhana: saat force==true kita pasti committed; saat due==true
-    // klien lain mungkin menang lebih dulu—tapi itu oke, assignments tetap konsisten karena commit tunggal.
-    await computeAndWriteAssignments(!!mode2040State);
-    // mirror nextAt lokal dari state yang baru (hasil transaksi ada di res.snapshot)
+    // Kita (atau klien lain) telah memajukan nextAt; hitung assignments dan simpan.
     const st = res.snapshot.val()||{};
-    nextAtLocal = st.nextAt || null;
+    nextAtLocal = st.nextAt || null;  // mirror ke UI
+    mode2040State = !!st.mode2040;
+    await computeAndWriteAssignments(!!mode2040State);
   }
 }
 
@@ -264,12 +262,14 @@ startBtn.onclick = async ()=>{
     return;
   }
 
-  // Set state running=true, nextAt = now + 20s, mode2040 = sesuai checkbox
-  const now = Date.now();
-  await set(stateRef, { running:true, nextAt: now + CYCLE_MS, mode2040: want2040 });
-
-  // Tulis assignments awal segera
+  // Set running & nextAt di RTDB + set lokal nextAtLocal segera supaya tampil
+  const next = Date.now() + CYCLE_MS;
+  await set(stateRef, { running:true, nextAt: next, mode2040: want2040 });
   mode2040State = want2040;
+  nextAtLocal   = next;   // tampil langsung tanpa nunggu listener
+  renderClock();
+
+  // Tulis assignments awal
   await computeAndWriteAssignments(mode2040State);
 
   // UI lokal
@@ -277,7 +277,7 @@ startBtn.onclick = async ()=>{
 };
 
 stopBtn.onclick = async ()=>{
-  await update(stateRef, { running:false }); // biarkan nextAt tetap (agar tetap tampil)
+  await update(stateRef, { running:false }); // biarkan nextAt tetap tampil sebagai catatan terakhir
   setRunningUI(false);
 };
 
@@ -347,19 +347,23 @@ onValue(peopleRef, (snap)=>{
 });
 
 // State global (semua klien sinkron)
-onValue(stateRef, (snap)=>{
-  const st = snap.val() || {};
+onValue(stateRef, async (snap)=>{
+  const st  = snap.val() || {};
   const run = !!st.running;
-  const na  = st.nextAt|0;
+  let   na  = Number(st.nextAt) || 0;
   mode2040State = !!st.mode2040;
 
-  nextAtLocal = Number.isFinite(na) && na>0 ? na : null;
+  // Self-heal: running tapi nextAt kosong → isi sekarang +20s
+  if(run && !na){
+    na = Date.now() + CYCLE_MS;
+    await update(stateRef, { nextAt: na });
+  }
+
+  nextAtLocal = na || null;  // mirror untuk UI
   setRunningUI(run);
 
-  // Saat running, semua klien akan mencoba memutar bila due;
-  // hanya satu yang "menang" via transaction.
+  // Saat running & due, coba advance (transaction memastikan hanya satu klien yang sukses)
   if(run && nextAtLocal && Date.now() >= nextAtLocal){
-    // coba advance (due)
     tryAdvanceCycle(false);
   }
 });
