@@ -27,22 +27,33 @@ try {
   log('✅ Firebase init OK');
 } catch(e){ log('❌ Firebase init ERROR:', e.message||e); }
 
+// Indikator koneksi (bulatan hijau/merah)
+const connDot = document.getElementById('connDot');
+const setConn = ok => { if(connDot) connDot.classList.toggle('ok', !!ok); };
+
+// Pantau status koneksi realtime (lebih akurat daripada ping interval)
+try {
+  const connectedRef = ref(db, ".info/connected");
+  onValue(connectedRef, snap => setConn(!!snap.val()));
+} catch(e){ setConn(false); }
+
+// Ping sekali untuk diagnosa (opsional)
 try {
   const pingRef = ref(db, '__ping');
   await set(pingRef, { at: Date.now() });
-  log('✅ Tulis __ping OK');
-  const snap = await get(pingRef); log('✅ Baca __ping OK:', snap.val());
+  const snap = await get(pingRef);
+  log(snap.exists() ? '✅ Ping OK' : '❌ Ping gagal');
 } catch(e){ log('❌ Ping ERROR:', e.message||e); }
 
 // ======== UI refs ========
-const assignRows = document.getElementById('assignRows');
-const peopleRows = document.getElementById('peopleRows');
-const startBtn   = document.getElementById('startBtn');
-const stopBtn    = document.getElementById('stopBtn');
-const nextBtn    = document.getElementById('nextBtn');
-const nameInput  = document.getElementById('nameInput');
-const juniorSpec = document.getElementById('juniorSpec');
-const basicSpec  = document.getElementById('basicSpec');
+const assignRows   = document.getElementById('assignRows');
+const peopleRows   = document.getElementById('peopleRows');
+const startBtn     = document.getElementById('startBtn');
+const stopBtn      = document.getElementById('stopBtn');
+const nextBtn      = document.getElementById('nextBtn');
+const nameInput    = document.getElementById('nameInput');
+const juniorSpec   = document.getElementById('juniorSpec');
+const basicSpec    = document.getElementById('basicSpec');
 const addPersonBtn = document.getElementById('addPersonBtn');
 
 // ======== Data posisi & durasi (UI tetap) ========
@@ -62,15 +73,15 @@ let timer = null;
 let countdowns = positions.map(p=>p.dur);
 
 // Indeks rotasi terpisah
-let rotationIndexJunior = 0;  // untuk XRAY (dan pos2 jika >=2 junior)
+let rotationIndexJunior = 0;  // untuk XRAY (dan pos2 bila ≥2 junior)
 let rotationIndexBasic  = 0;  // untuk pos2 (jika pakai basic), pos3, pos4
 
 // ======== Render ========
 function renderAssignments(assignments){
   assignRows.innerHTML = '';
-  positions.forEach((pos, idx)=>{
+  positions.forEach((p, idx)=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${pos.name}</td><td>${pos.specLabel}</td><td>${assignments?.[pos.id]||'-'}</td><td>${countdowns[idx]}s</td>`;
+    tr.innerHTML = `<td>${p.name}</td><td>${p.specLabel}</td><td>${assignments?.[p.id]||'-'}</td><td>${countdowns[idx]}s</td>`;
     assignRows.appendChild(tr);
   });
 }
@@ -97,7 +108,7 @@ const pickNext = (list, used) => {
   return '-';
 };
 
-// ======== Rotasi dengan aturan pilihan baru ========
+// ======== Rotasi dengan aturan terbaru ========
 async function stepRotation(){
   const snap = await get(peopleRef);
   const all  = snap.val() || {};
