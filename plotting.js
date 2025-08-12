@@ -66,8 +66,8 @@ const stateRef       = ref(db, 'control/state');        // { running, nextAt, mo
 // ======== State & timing ========
 const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 };
 let running = false;
-let nextAtLocal = null;         // SELALU cermin RTDB; tampil di UI
-let mode2040State = false;      // mirror state.mode2040
+let nextAtLocal = null;         // cermin RTDB untuk UI
+let mode2040State = false;      // cermin state.mode2040
 const CYCLE_MS = 20_000;
 
 // Gating mode 20–40
@@ -253,6 +253,10 @@ async function tryAdvanceCycle(force = false){
 }
 
 // ======== EVENTS ========
+
+// Pastikan default TIDAK 20–40 saat load
+if (mode2040) mode2040.checked = false;
+
 startBtn.onclick = async ()=>{
   // Validasi mode 20–40 (hanya jika dicentang)
   const want2040 = !!(mode2040 && mode2040.checked);
@@ -277,8 +281,15 @@ startBtn.onclick = async ()=>{
 };
 
 stopBtn.onclick = async ()=>{
-  await update(stateRef, { running:false }); // biarkan nextAt tetap tampil sebagai catatan terakhir
+  // Reset total: berhenti + nextAt ke 0 + matikan 20–40 + kosongkan cooldown XRAY
+  await Promise.all([
+    update(stateRef, { running:false, nextAt: 0, mode2040: false }),
+    set(cooldownRef, {})
+  ]);
   setRunningUI(false);
+  nextAtLocal = null;              // tampil "-" di semua klien
+  if (mode2040) mode2040.checked = false; // UI checkbox balik OFF
+  renderClock();
 };
 
 nextBtn.onclick = async ()=>{
@@ -353,8 +364,13 @@ onValue(stateRef, async (snap)=>{
   const na  = Number(st.nextAt) || 0;
   mode2040State = !!st.mode2040;
 
-  nextAtLocal = na || null;  // mirror untuk UI
+  nextAtLocal = (na > 0) ? na : null;  // 0 → tampil "-"
   setRunningUI(run);
+
+  // Jika klien lain menekan Hentikan, pastikan checkbox lokal ikut OFF
+  if (!run && mode2040 && mode2040.checked !== false) {
+    mode2040.checked = false;
+  }
 });
 
 // ======== Heartbeat shared-control: cek due setiap 500ms ========
