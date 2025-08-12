@@ -2,17 +2,36 @@
   --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb;
   --border:#334; --btn-ok:#14532d; --btn-stop:#7f1d1d;
 }
-*{box-sizing:border-box}
-html,body{margin:0; padding:0}
+
+*{ box-sizing:border-box }
+html,body{ margin:0; padding:0 }
+
 body{
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-  background: var(--bg); color: var(--text);
+  background: var(--bg);
+  color: var(--text);
   padding: 20px;
 }
-h1{ margin-top:0 }
-h2{ margin-top:24px }
 
-.controls{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px }
+h1{ margin: 0 0 12px }
+h2{ margin: 20px 0 8px }
+
+/* Indikator koneksi (bulatan saja) */
+.conn-dot{
+  position: fixed;    /* ubah ke bottom:12px bila mau di bawah */
+  top: 12px;
+  right: 12px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ef4444; /* default merah = belum terhubung */
+  box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 0 10px rgba(0,0,0,.35);
+}
+.conn-dot.ok{ background: #22c55e; } /* hijau saat terhubung */
+
+.controls{
+  display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;
+}
 button{
   padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);
   background: #0b1324; color: var(--text); cursor: pointer;
@@ -32,6 +51,8 @@ input[type="text"]{
 }
 
 .diag{
-  white-space: pre-wrap; background:#0b1324; border:1px solid var(--border);
+  white-space: pre-wrap;
+  background:#0b1324; border:1px solid var(--border);
   padding:10px; border-radius:6px; max-height:240px; overflow:auto;
+  color: var(--muted);
 }
