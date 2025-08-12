@@ -21,7 +21,7 @@ body{
 }
 .conn-dot.ok{ background: #22c55e; } /* hijau saat terhubung */
 
-/* Header card with big clock */
+/* Header card dengan jam besar (center) */
 .header-card{
   background: var(--card);
   border: 1px solid var(--border);
@@ -29,6 +29,11 @@ body{
   padding: 16px 18px;
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
   margin-bottom: 14px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 .clock{
   font-variant-numeric: tabular-nums;
@@ -54,18 +59,26 @@ button{
 }
 button.start{ background: var(--btn-ok); border-color:#1a6a3a }
 button.stop{ background: var(--btn-stop); border-color:#9f1d1d }
+button:disabled{
+  opacity: .5;
+  cursor: not-allowed;
+  filter: grayscale(30%);
+}
 
+/* Checkbox mode */
 .mode-option{
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 14px; background: rgba(255,255,255,0.05);
   padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
 }
+.hidden{ display: none !important; }
 
-/* Assignments table (no countdown column) */
+/* Tabel penugasan */
 table{ width:100%; border-collapse: collapse; margin-top: 12px }
 th,td{ border:1px solid var(--border); padding:10px; text-align:left }
 th{ background: var(--panel) }
 
+/* Kelola personil */
 .manage{ display:grid; gap:12px; margin-top: 12px }
 .add-person{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
 input[type="text"]{
