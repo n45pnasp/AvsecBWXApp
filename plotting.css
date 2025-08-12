@@ -56,3 +56,32 @@ input[type="text"]{
   padding:10px; border-radius:6px; max-height:240px; overflow:auto;
   color: var(--muted);
 }
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.controls button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #334;
+}
+
+.mode-option input[type="checkbox"] {
+  transform: scale(1.1);
+}
