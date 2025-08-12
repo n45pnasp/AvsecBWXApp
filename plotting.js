@@ -76,8 +76,8 @@ const modeRef        = ref(db, 'control/mode2040');     // simpan pilihan mode g
 const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 };
 let running = false;            // status lokal UI
 let isLeader = false;           // apakah client ini leader
-let tickTimer = null;
-let nextAtLocal = null;         // mirror dari RTDB (untuk render di viewer)
+let tickTimer = null;           // interval rotasi (leader)
+let nextAtLocal = null;         // mirror dari RTDB (untuk render next-rotation di viewer)
 const CYCLE_MS = 20_000;
 const TICK_MS  = 200;
 
@@ -137,7 +137,7 @@ function renderPeople(people){
   });
 }
 
-// Clock
+// Clock — selalu jalan (real-time), tak tergantung running/leader
 const pad = n => String(n).padStart(2,'0');
 const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 function renderClock(){
@@ -146,6 +146,8 @@ function renderClock(){
   const na = nextAtLocal;
   nextEl.textContent = (running && na) ? fmt(new Date(na)) : '-';
 }
+// Ticker UI untuk jam: update terus menerus
+setInterval(renderClock, 250);
 
 // ======== Helpers ========
 const rotate = (arr, idx) => arr.length ? arr.slice(idx).concat(arr.slice(0, idx)) : [];
@@ -249,11 +251,11 @@ async function stepRotationAndPersist(){
 // ======== Main tick (leader saja yang memutar) ========
 async function tickLeader(){
   const now = Date.now();
-  if(!running || !isLeader) { renderClock(); return; }
+  if(!running || !isLeader) return;
   if(nextAtLocal && now >= nextAtLocal){
     await stepRotationAndPersist();
   }
-  renderClock();
+  // renderClock() ditangani oleh UI ticker 250ms
 }
 
 // ======== START/STOP as leader ========
@@ -295,8 +297,7 @@ async function stopAsLeaderOrViewer(){
   setRunningUI(false);
   if(tickTimer) clearInterval(tickTimer);
   tickTimer = null;
-  // biarkan nextAtLocal tetap untuk ditampilkan sebagai waktu terakhir
-  renderClock();
+  // nextAtLocal dibiarkan untuk tampilkan waktu terakhir; clock tetap jalan via UI ticker
 }
 
 // ======== Events ========
@@ -342,7 +343,10 @@ addPersonBtn.onclick = async ()=>{
   if(basicSpec?.checked)  specs.push('basic');
   if(seniorSpecEl?.checked) specs.push('senior');
   await update(ref(db, 'people/'+name.toLowerCase()), { name, spec: specs });
-  nameInput.value=''; if(juniorSpec) juniorSpec.checked=false; if(basicSpec) basicSpec.checked=false; if(seniorSpecEl) seniorSpecEl.checked=false;
+  nameInput.value='';
+  if(juniorSpec) juniorSpec.checked=false;
+  if(basicSpec)  basicSpec.checked=false;
+  if(seniorSpecEl) seniorSpecEl.checked=false;
 };
 
 peopleRows.addEventListener('change', async (e)=>{
@@ -399,7 +403,7 @@ onValue(stateRef, (snap)=>{
     // masih dalam jangka aktif, tampilkan sebagai berjalan
     nextAtLocal = nextAt;
     setRunningUI(true);
-    // hanya leader yang menjalankan tick; viewer cukup render clock
+    // hanya leader yang menjalankan tick; viewer cukup UI ticker
     if(!isLeader && tickTimer){ clearInterval(tickTimer); tickTimer = null; }
   } else {
     // lewat waktu atau run=false → dianggap berhenti
@@ -407,10 +411,8 @@ onValue(stateRef, (snap)=>{
     setRunningUI(false);
     if(tickTimer){ clearInterval(tickTimer); tickTimer = null; }
   }
-
-  renderClock();
 });
 
 // Initial
 setRunningUI(false);
-renderClock();
+renderClock(); // paint awal
