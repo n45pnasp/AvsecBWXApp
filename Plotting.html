@@ -4,27 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Plotting 1 Line – 4 Posisi</title>
-  <style>
-    body { font-family: sans-serif; background: #0f172a; color: #e5e7eb; margin: 0; padding: 20px; }
-    h1 { margin-top: 0; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-    th, td { border: 1px solid #334; padding: 8px; text-align: left; }
-    th { background: #111827; }
-    button { padding: 8px 12px; margin: 4px; border-radius: 6px; border: none; cursor: pointer; }
-    .start { background: #14532d; color: white; }
-    .stop { background: #7f1d1d; color: white; }
-    input[type="text"] { padding: 6px; border-radius: 4px; border: 1px solid #334; background: #0b1324; color: #e5e7eb; }
-  </style>
+  <link rel="stylesheet" href="plotting.css" />
 </head>
 <body>
   <h1>Plotting 1 Line – 4 Posisi</h1>
-  <div>
+
+  <div class="controls">
     <button id="startBtn" class="start">Mulai Rotasi</button>
     <button id="stopBtn" class="stop">Hentikan</button>
     <button id="nextBtn">Majukan 1x</button>
   </div>
 
-  <table>
+  <table class="assign">
     <thead>
       <tr>
         <th>Posisi</th>
@@ -37,181 +28,26 @@
   </table>
 
   <h2>Kelola Personil</h2>
-  <div>
-    <input id="nameInput" type="text" placeholder="Nama" />
-    <label><input type="checkbox" id="juniorSpec" /> Junior</label>
-    <label><input type="checkbox" id="basicSpec" /> Basic</label>
-    <button id="addPersonBtn">Tambah</button>
+  <div class="manage">
+    <div class="add-person">
+      <input id="nameInput" type="text" placeholder="Nama" />
+      <label><input type="checkbox" id="juniorSpec" /> Junior</label>
+      <label><input type="checkbox" id="basicSpec" /> Basic</label>
+      <button id="addPersonBtn">Tambah</button>
+    </div>
+
+    <table class="people">
+      <thead>
+        <tr><th>Nama</th><th>Junior</th><th>Basic</th><th>Aksi</th></tr>
+      </thead>
+      <tbody id="peopleRows"></tbody>
+    </table>
   </div>
-  <table>
-    <thead>
-      <tr><th>Nama</th><th>Junior</th><th>Basic</th><th>Aksi</th></tr>
-    </thead>
-    <tbody id="peopleRows"></tbody>
-  </table>
 
   <h2>Diagnostik Koneksi</h2>
-  <pre id="diag" style="white-space:pre-wrap; background:#0b1324; border:1px solid #334; padding:10px; border-radius:6px;">Menunggu...</pre>
+  <pre id="diag" class="diag">Menunggu...</pre>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getDatabase, ref, onValue, set, update, remove, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyCtJxtgVbMxZdVUMmFGDnqzt2LttxW9KOQ",
-      authDomain: "plotting-e9cb7.firebaseapp.com",
-      databaseURL: "https://plotting-e9cb7-default-rtdb.firebaseio.com",
-      projectId: "plotting-e9cb7",
-      storageBucket: "plotting-e9cb7.firebasestorage.app",
-      messagingSenderId: "518993555934",
-      appId: "1:518993555934:web:41e90375a565ab00776d4f",
-      measurementId: "G-GWBBDS8YZZ"
-    };
-
-    const log = (...a) => {
-      const el = document.getElementById('diag');
-      el.textContent += '\n' + a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ');
-    };
-
-    let app, db;
-    try {
-      app = initializeApp(firebaseConfig);
-      db  = getDatabase(app);
-      log('✅ Firebase init OK');
-    } catch(e){ log('❌ Firebase init ERROR:', e.message||e); }
-
-    try {
-      const pingRef = ref(db, '__ping');
-      await set(pingRef, { at: Date.now() });
-      log('✅ Tulis __ping OK');
-      const snap = await get(pingRef); log('✅ Baca __ping OK:', snap.val());
-    } catch(e){ log('❌ Ping ERROR:', e.message||e); }
-
-    const positions = [
-      { id: 'pos1', name: 'XRAY',             spec: ['junior'], dur: 40 },
-      { id: 'pos2', name: 'Pemeriksa Barang', spec: ['junior'], dur: 20 },
-      { id: 'pos3', name: 'Pemeriksa Orang',  spec: ['basic'],  dur: 20 },
-      { id: 'pos4', name: 'Pemeriksa Tiket',  spec: ['basic'],  dur: 20 }
-    ];
-
-    const assignRows = document.getElementById('assignRows');
-    const peopleRows = document.getElementById('peopleRows');
-
-    let timer = null;
-    let countdowns = positions.map(p=>p.dur);
-
-    // 👇 Tambahan: index rotasi per ring (tanpa ubah UX)
-    let rotationIndexJunior = 0;
-    let rotationIndexBasic  = 0;
-
-    function renderAssignments(assignments) {
-      assignRows.innerHTML = '';
-      positions.forEach((pos, idx) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `<td>${pos.name}</td><td>${pos.spec.join(',')}</td><td>${assignments[pos.id]||'-'}</td><td>${countdowns[idx]}s</td>`;
-        assignRows.appendChild(row);
-      });
-    }
-
-    function renderPeople(people) {
-      peopleRows.innerHTML = '';
-      Object.entries(people||{}).forEach(([id, p]) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${p.name}</td>
-          <td><input type="checkbox" ${p.spec?.includes('junior')?'checked':''} data-id="${id}" data-spec="junior" /></td>
-          <td><input type="checkbox" ${p.spec?.includes('basic')?'checked':''} data-id="${id}" data-spec="basic" /></td>
-          <td><button data-del="${id}">Hapus</button></td>`;
-        peopleRows.appendChild(row);
-      });
-    }
-
-    // ✅ Perbaikan: rotasi orang per panggilan tanpa mengubah cara pemilihan
-    async function stepRotation() {
-      const snap = await get(ref(db, 'people'));
-      const people = snap.val() || {};
-
-      const junior = Object.values(people).filter(p=>p.spec?.includes('junior'));
-      const basic  = Object.values(people).filter(p=>p.spec?.includes('basic'));
-
-      // putar array berdasar index rotasi (tidak mengubah aturan “ambil dua pertama”)
-      const jr = junior.length ? junior.slice(rotationIndexJunior).concat(junior.slice(0, rotationIndexJunior)) : [];
-      const bs = basic.length  ? basic.slice(rotationIndexBasic).concat(basic.slice(0, rotationIndexBasic))     : [];
-
-      const assignments = {
-        pos1: jr[0]?.name || '-',
-        pos2: jr[1]?.name || '-',
-        pos3: bs[0]?.name || '-',
-        pos4: bs[1]?.name || '-'
-      };
-
-      await set(ref(db, 'assignments'), assignments);
-      countdowns = positions.map(p=>p.dur);
-
-      // geser index untuk rotasi berikutnya
-      rotationIndexJunior = (rotationIndexJunior + 1) % Math.max(junior.length, 1);
-      rotationIndexBasic  = (rotationIndexBasic  + 1) % Math.max(basic.length,  1);
-    }
-
-    document.getElementById('startBtn').onclick = () => {
-      if(timer) clearInterval(timer);
-      timer = setInterval(()=>{
-        countdowns = countdowns.map((c,i)=>{
-          if(c>1) return c-1; else { stepRotation(); return positions[i].dur; }
-        });
-        get(ref(db, 'assignments')).then(snap=>renderAssignments(snap.val()||{}));
-      }, 1000);
-      stepRotation();
-    };
-
-    document.getElementById('stopBtn').onclick = () => {
-      if(timer) clearInterval(timer);
-      timer = null;
-    };
-
-    document.getElementById('nextBtn').onclick = stepRotation;
-
-    document.getElementById('addPersonBtn').onclick = async () => {
-      const name = document.getElementById('nameInput').value.trim();
-      if(!name) return;
-      const specs = [];
-      if(document.getElementById('juniorSpec').checked) specs.push('junior');
-      if(document.getElementById('basicSpec').checked) specs.push('basic');
-      await update(ref(db, 'people/'+name.toLowerCase()), { name, spec: specs });
-      document.getElementById('nameInput').value = '';
-      document.getElementById('juniorSpec').checked = false;
-      document.getElementById('basicSpec').checked = false;
-    };
-
-    peopleRows.addEventListener('change', async (e) => {
-      if(e.target.type === 'checkbox'){
-        const id = e.target.dataset.id;
-        const spec = e.target.dataset.spec;
-        const snap = await get(ref(db, 'people/'+id));
-        let person = snap.val();
-        if(!person) return;
-        if(e.target.checked){
-          if(!person.spec.includes(spec)) person.spec.push(spec);
-        } else {
-          person.spec = person.spec.filter(s=>s!==spec);
-        }
-        await update(ref(db, 'people/'+id), person);
-      }
-    });
-
-    peopleRows.addEventListener('click', async (e) => {
-      if(e.target.dataset.del){
-        await remove(ref(db, 'people/'+e.target.dataset.del));
-      }
-    });
-
-    onValue(ref(db, 'assignments'), (snap) => {
-      renderAssignments(snap.val()||{});
-    });
-
-    onValue(ref(db, 'people'), (snap) => {
-      renderPeople(snap.val()||{});
-    });
-  </script>
+  <!-- JS (module) -->
+  <script type="module" src="plotting.js"></script>
 </body>
 </html>
