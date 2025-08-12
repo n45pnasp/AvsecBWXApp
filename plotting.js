@@ -246,7 +246,7 @@ async function tryAdvanceCycle(force = false){
   if(res.committed){
     // Kita (atau klien lain) telah memajukan nextAt; hitung assignments dan simpan.
     const st = res.snapshot.val()||{};
-    nextAtLocal = st.nextAt || null;  // mirror ke UI
+    nextAtLocal   = st.nextAt || null;  // mirror ke UI
     mode2040State = !!st.mode2040;
     await computeAndWriteAssignments(!!mode2040State);
   }
@@ -350,23 +350,20 @@ onValue(peopleRef, (snap)=>{
 onValue(stateRef, async (snap)=>{
   const st  = snap.val() || {};
   const run = !!st.running;
-  let   na  = Number(st.nextAt) || 0;
+  const na  = Number(st.nextAt) || 0;
   mode2040State = !!st.mode2040;
-
-  // Self-heal: running tapi nextAt kosong → isi sekarang +20s
-  if(run && !na){
-    na = Date.now() + CYCLE_MS;
-    await update(stateRef, { nextAt: na });
-  }
 
   nextAtLocal = na || null;  // mirror untuk UI
   setRunningUI(run);
+});
 
-  // Saat running & due, coba advance (transaction memastikan hanya satu klien yang sukses)
-  if(run && nextAtLocal && Date.now() >= nextAtLocal){
+// ======== Heartbeat shared-control: cek due setiap 500ms ========
+setInterval(()=>{
+  if (running && nextAtLocal && Date.now() >= nextAtLocal) {
+    // Aman dari race-condition karena tryAdvanceCycle pakai runTransaction
     tryAdvanceCycle(false);
   }
-});
+}, 500);
 
 // Paint awal
 renderClock();
