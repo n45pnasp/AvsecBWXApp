@@ -68,13 +68,13 @@ function resolveDisplayName(user){
   return "Pengguna";
 }
 
-// ===== URL helpers =====
+// ===== URL helpers (Drive primary+fallback) =====
 function cleanURL(s) {
   if (!s) return "";
   return String(s).trim().replace(/^['"]+|['"]+$/g, "");
 }
 function normalizeDriveURL(u) {
-  if (!u) return "";
+  if (!u) return { primary: "", fallback: "" };
   const url = cleanURL(u);
   const m1 = url.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
   const m2 = url.match(/[?&]id=([^&]+)/i);
@@ -185,15 +185,40 @@ window.onLogout = function () {
   location.href = "index.html?logout=1";
 };
 
-// ===== Auth Gate =====
+// ===== Auth Gate (dengan re-check anti-bounce) =====
+async function renderForUser(u){
+  try {
+    const p = await fetchProfile(u);
+    applyProfile({ name: p.name, photoURL: p.photoURL });
+  } catch {
+    applyProfile({ name: resolveDisplayName(u), photoURL: DEFAULT_AVATAR });
+  }
+}
+
 function mountAuthGate() {
   onAuthStateChanged(auth, async (user) => {
-    if (!user) { location.href = "index.html"; return; }
-    try {
-      const p = await fetchProfile(user);
-      applyProfile({ name: p.name, photoURL: p.photoURL });
-    } catch {
-      applyProfile({ name: resolveDisplayName(user), photoURL: DEFAULT_AVATAR });
+    if (user) {
+      // Sudah login → render
+      renderForUser(user);
+      return;
+    }
+
+    // user null → bisa jadi hydrate belum selesai setelah redirect dari login
+    const justSignedIn = !!sessionStorage.getItem("authProfile");
+
+    if (justSignedIn) {
+      // Tunggu sebentar lalu cek ulang agar tidak “mantul” ke login
+      setTimeout(async () => {
+        const u = auth.currentUser;
+        if (u) {
+          renderForUser(u);
+        } else {
+          location.href = "index.html";
+        }
+      }, 900); // 800–1000ms biasanya cukup
+    } else {
+      // Memang belum login → balik ke index
+      location.href = "index.html";
     }
   });
 }
