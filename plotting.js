@@ -1,8 +1,11 @@
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getDatabase, ref, onValue, set, update, remove, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import {
+  getDatabase, ref, onValue, set, update, remove, get,
+  onDisconnect, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-// ======== Konfigurasi project (punyamu) ========
+// ======== Konfigurasi project ========
 const firebaseConfig = {
   apiKey: "AIzaSyCtJxtgVbMxZdVUMmFGDnqzt2LttxW9KOQ",
   authDomain: "plotting-e9cb7.firebaseapp.com",
@@ -18,10 +21,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 
-// Indikator koneksi (bulatan hijau/merah) — sekarang di dalam card
-const connDot = document.getElementById('connDot');
-const setConn = ok => { if (connDot) connDot.classList.toggle('ok', !!ok); };
-onValue(ref(db, ".info/connected"), snap => setConn(!!snap.val()));
+// ======== Client identity (leader tracking) ========
+const CLIENT_ID_KEY = "plotting_client_id";
+let clientId = localStorage.getItem(CLIENT_ID_KEY);
+if(!clientId){
+  clientId = "c_" + Math.random().toString(36).slice(2);
+  localStorage.setItem(CLIENT_ID_KEY, clientId);
+}
 
 // ======== UI refs ========
 const assignRows   = document.getElementById('assignRows');
@@ -46,7 +52,12 @@ const bottomSheet   = document.getElementById('bottomSheet');
 const sheetMsg      = document.getElementById('sheetMsg');
 const sheetClose    = document.getElementById('sheetClose');
 
-// ======== Posisi & aturan (semua 20s) ========
+// Indikator koneksi di card
+const connDot = document.getElementById('connDot');
+const setConn = ok => { if (connDot) connDot.classList.toggle('ok', !!ok); };
+onValue(ref(db, ".info/connected"), snap => setConn(!!snap.val()));
+
+// ======== Posisi & aturan (20s) ========
 const positions = [
   { id:'pos1', name:'XRAY',             specLabel:'senior|junior',       allowed:['senior','junior'] },
   { id:'pos2', name:'Pemeriksa Barang', specLabel:'senior|junior|basic', allowed:['senior','junior','basic'] },
@@ -55,23 +66,26 @@ const positions = [
 ];
 
 // ======== RTDB refs ========
-const assignmentsRef   = ref(db, 'assignments');
-const peopleRef        = ref(db, 'people');
-const xrayCooldownRef  = ref(db, 'control/xrayCooldown'); // untuk mode 20–40
+const assignmentsRef = ref(db, 'assignments');
+const peopleRef      = ref(db, 'people');
+const xrayCooldownRef= ref(db, 'control/xrayCooldown'); // untuk mode 20–40
+const stateRef       = ref(db, 'control/state');        // { running, nextAt, leaderId, updatedAt }
+const modeRef        = ref(db, 'control/mode2040');     // simpan pilihan mode global (true/false)
 
 // ======== State & timing ========
 const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 };
-let running = false;
+let running = false;            // status lokal UI
+let isLeader = false;           // apakah client ini leader
 let tickTimer = null;
-let nextAt = null;
-const CYCLE_MS = 20_000;  // 20 detik pasti
-const TICK_MS  = 200;     // render loop
+let nextAtLocal = null;         // mirror dari RTDB (untuk render di viewer)
+const CYCLE_MS = 20_000;
+const TICK_MS  = 200;
 
 // Gating mode 20–40
 let allow2040 = false;
 let lastJSCount = 0;
 
-// ======== UI State helper ========
+// ======== UI helpers ========
 function setRunningUI(isRunning){
   running = isRunning;
   startBtn.disabled = isRunning;   // Mulai tidak bisa ditekan saat jalan
@@ -82,14 +96,11 @@ function setModeBadgeAvailability(allowed){
   if(!modeBadge) return;
   modeBadge.classList.toggle('disabled', !allowed);
 }
-
-// Bottom sheet helpers
 function showSheet(msg){
   if(sheetMsg) sheetMsg.textContent = msg;
   sheetBackdrop?.classList.remove('hidden');
   bottomSheet?.classList.remove('hidden');
-
-  // Auto dismiss dalam 3 detik
+  // auto-dismiss 3s
   clearTimeout(showSheet._timer);
   showSheet._timer = setTimeout(hideSheet, 3000);
 }
@@ -124,13 +135,14 @@ function renderPeople(people){
   });
 }
 
-// ======== Clock (stabil) ========
+// Clock
 const pad = n => String(n).padStart(2,'0');
 const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 function renderClock(){
   const now = Date.now();
-  clockEl.textContent = fmt(new Date(now));
-  nextEl.textContent  = (running && nextAt) ? fmt(new Date(nextAt)) : '-';
+  document.getElementById('clock').textContent = fmt(new Date(now));
+  const na = nextAtLocal;
+  document.getElementById('nextRotation').textContent = (running && na) ? fmt(new Date(na)) : '-';
 }
 
 // ======== Helpers ========
@@ -164,12 +176,11 @@ async function buildPools(useCooldown){
     return { pos, idx, list: rot };
   });
 
-  // posisi paling ketat (sedikit kandidat) dikerjakan dulu
   pools.sort((a,b)=> (a.list.length - b.list.length) || (a.idx - b.idx));
   return { pools, cooldown };
 }
 
-// Backtracking: kombinasi unik penuh (tanpa duplikasi)
+// Backtracking anti-duplikasi
 function assignUnique(pools){
   const used = new Set();
   const result = {};
@@ -188,7 +199,6 @@ function assignUnique(pools){
   const ok = bt(0);
   return { ok, result };
 }
-// Unik semampunya; sisanya '-'
 function assignUniqueGreedy(pools){
   const used = new Set(); const result = {};
   for(const { pos, list } of pools){
@@ -204,8 +214,8 @@ function advanceRotIdx(pools){
   }
 }
 
-// ======== STEP ROTATION ========
-async function stepRotation(){
+// ======== ROTATION (hanya leader yang menjalankan) ========
+async function stepRotationAndPersist(){
   const useCooldown = !!(mode2040 && mode2040.checked);
   const { pools, cooldown } = await buildPools(useCooldown);
 
@@ -217,22 +227,74 @@ async function stepRotation(){
     const cd = { ...cooldown };
     for(const k of Object.keys(cd)){ cd[k] = Math.max(0, (cd[k]|0) - 1); }
     const xrayName = finalAssign.pos1;
-    if(xrayName && xrayName !== '-') cd[xrayName] = 2; // 2 siklus tidak boleh XRAY
-    await Promise.all([ set(assignmentsRef, finalAssign), set(xrayCooldownRef, cd) ]);
+    if(xrayName && xrayName !== '-') cd[xrayName] = 2;
+    await Promise.all([
+      set(assignmentsRef, finalAssign),
+      set(xrayCooldownRef, cd)
+    ]);
   } else {
     await set(assignmentsRef, finalAssign);
   }
 
   advanceRotIdx(pools);
+
+  // Tulis nextAt baru (20 detik ke depan) di RTDB
+  const nextAt = Date.now() + CYCLE_MS;
+  await update(stateRef, { nextAt, updatedAt: serverTimestamp() });
+  nextAtLocal = nextAt; // mirror untuk render cepat
 }
 
-// ======== Main tick (selalu +20 detik) ========
-async function tick(){
+// ======== Main tick (leader saja yang memutar) ========
+async function tickLeader(){
   const now = Date.now();
-  if(running && nextAt && now >= nextAt){
-    await stepRotation();
-    nextAt = Date.now() + CYCLE_MS; // langsung +20 detik dari momen rotasi ini
+  if(!running || !isLeader) return;
+  if(nextAtLocal && now >= nextAtLocal){
+    await stepRotationAndPersist();
   }
+  renderClock();
+}
+
+// ======== START/STOP as leader ========
+async function becomeLeaderAndStart(){
+  // tulis mode global agar viewer membaca mode yang sama
+  await set(modeRef, !!(mode2040 && mode2040.checked));
+
+  const nextAt = Date.now() + CYCLE_MS;
+  await set(stateRef, {
+    running: true,
+    nextAt,
+    leaderId: clientId,
+    updatedAt: serverTimestamp()
+  });
+
+  // onDisconnect: auto-matikan
+  const sLeader = ref(db, 'control/state/leaderId');
+  const sRunning= ref(db, 'control/state/running');
+  onDisconnect(sLeader).set(null);
+  onDisconnect(sRunning).set(false);
+
+  isLeader    = true;
+  setRunningUI(true);
+  nextAtLocal = nextAt;
+
+  if(tickTimer) clearInterval(tickTimer);
+  tickTimer = setInterval(tickLeader, TICK_MS);
+
+  // Putar rotasi awal + tulis assignments
+  await stepRotationAndPersist();
+}
+
+async function stopAsLeader(){
+  await update(stateRef, {
+    running: false,
+    leaderId: null,
+    updatedAt: serverTimestamp()
+  });
+  isLeader = false;
+  setRunningUI(false);
+  if(tickTimer) clearInterval(tickTimer);
+  tickTimer = null;
+  nextAtLocal = null;
   renderClock();
 }
 
@@ -244,33 +306,19 @@ startBtn.onclick = async ()=>{
     showSheet(`Metode 20–40 hanya bisa dipakai bila jumlah personil junior/senior tepat 3 orang (contoh: 1 senior + 2 junior, atau 3 junior). Saat ini: ${lastJSCount}.`);
     return;
   }
-
-  if(tickTimer) clearInterval(tickTimer);
-  setRunningUI(true); // nonaktifkan Mulai, aktifkan Hentikan, sembunyikan checkbox
-
-  // Rotasi awal → target 20 detik dari SEKARANG
-  await stepRotation();
-  nextAt = Date.now() + CYCLE_MS;
-
-  tickTimer = setInterval(tick, TICK_MS);
-  renderClock();
+  await becomeLeaderAndStart();
 };
 
-stopBtn.onclick = ()=>{
-  if(tickTimer) clearInterval(tickTimer);
-  tickTimer = null;
-  nextAt = null;
-  setRunningUI(false); // tampilkan kembali checkbox, aktifkan Mulai, nonaktifkan Hentikan
-  renderClock();
-};
+stopBtn.onclick = async ()=>{ await stopAsLeader(); };
 
 nextBtn.onclick = async ()=>{
-  await stepRotation();
-  nextAt = Date.now() + CYCLE_MS; // reset target ke +20 detik dari sekarang
-  renderClock();
+  // jika leader & running, langsung paksa rotasi sekarang dan tulis nextAt baru
+  if(isLeader && running){
+    await stepRotationAndPersist();
+  }
 };
 
-// Klik/ubah checkbox 20–40 → validasi komposisi
+// Toggle checkbox 20–40 saat idle (hanya mempengaruhi start berikutnya)
 mode2040?.addEventListener('change', ()=>{
   if(mode2040.checked && !allow2040){
     mode2040.checked = false;
@@ -278,55 +326,83 @@ mode2040?.addEventListener('change', ()=>{
   }
 });
 
-// Tambah personil
-addPersonBtn.onclick = async ()=>{
+// Tambah/hapus/ubah personil
+const addPerson = async ()=>{
   const name = nameInput.value.trim(); if(!name) return;
   const specs = [];
   if(juniorSpec?.checked) specs.push('junior');
   if(basicSpec?.checked)  specs.push('basic');
   if(seniorSpecEl?.checked) specs.push('senior');
   await update(ref(db, 'people/'+name.toLowerCase()), { name, spec: specs });
-  nameInput.value='';
-  if(juniorSpec) juniorSpec.checked=false;
-  if(basicSpec)  basicSpec.checked=false;
-  if(seniorSpecEl) seniorSpecEl.checked=false;
+  nameInput.value=''; if(juniorSpec) juniorSpec.checked=false; if(basicSpec) basicSpec.checked=false; if(seniorSpecEl) seniorSpecEl.checked=false;
 };
+addPersonBtn.onclick = addPerson;
 
-// Toggle spec / hapus
 peopleRows.addEventListener('change', async (e)=>{
   if(e.target.type !== 'checkbox') return;
   const id = e.target.dataset.id, spec = e.target.dataset.spec;
   const snap = await get(ref(db, 'people/'+id)); let person = snap.val(); if(!person) return;
   if(!Array.isArray(person.spec)) person.spec = [];
-  if(e.target.checked){
-    if(!person.spec.includes(spec)) person.spec.push(spec);
-  } else {
-    person.spec = person.spec.filter(s=>s!==spec);
-  }
+  if(e.target.checked){ if(!person.spec.includes(spec)) person.spec.push(spec); }
+  else { person.spec = person.spec.filter(s=>s!==spec); }
   await update(ref(db, 'people/'+id), person);
 });
-
 peopleRows.addEventListener('click', async (e)=>{
   if(!e.target.dataset.del) return;
   await remove(ref(db, 'people/'+e.target.dataset.del));
 });
 
 // ======== Live listeners ========
+// Assignments display
 onValue(assignmentsRef, (snap)=> renderAssignments(snap.val()||{}));
-onValue(peopleRef,      (snap)=> {
+
+// People + validasi komposisi 20–40
+onValue(peopleRef, (snap)=>{
   const people = snap.val()||{};
   renderPeople(people);
-
-  // Hitung jumlah personil kategori junior/senior
   const countJS = Object.values(people).filter(p =>
     Array.isArray(p?.spec) && p.spec.some(s => ['junior','senior'].includes(String(s).toLowerCase()))
   ).length;
-
   lastJSCount = countJS;
-  allow2040 = (countJS === 3);           // HANYA jika tepat 3 orang
-  setModeBadgeAvailability(allow2040);   // ubah tampilan badge (redup jika tak memenuhi)
+  allow2040 = (countJS === 3);
+  setModeBadgeAvailability(allow2040);
 });
 
-// Initial UI state
-setRunningUI(false);  // stopBtn disabled, checkbox tampil
+// Mode global (viewer ikut)
+onValue(modeRef, (snap)=>{
+  const v = !!snap.val();
+  // hanya update UI kalau tidak sedang running (agar tidak mengubah mode saat sedang berjalan)
+  if(!running && mode2040) mode2040.checked = v;
+});
+
+// State global
+onValue(stateRef, (snap)=>{
+  const st = snap.val() || {};
+  const { running:run = false, nextAt = null, leaderId = null } = st;
+
+  // Leader hanya jika ID sama
+  isLeader = (leaderId && leaderId === clientId) && run;
+
+  // UI running = true jika (run==true dan nextAt masih di masa depan)
+  const now = Date.now();
+  const future = nextAt && now < nextAt;
+
+  if(run && future){
+    // plotting sedang berjalan (oleh leader mana pun)
+    nextAtLocal = nextAt;
+    setRunningUI(true);
+    // viewer tidak menjalankan tickLeader; leader yang menjalankan
+    if(!isLeader && tickTimer){ clearInterval(tickTimer); tickTimer = null; }
+  } else {
+    // jika nextAt lewat atau run=false → tampil berhenti
+    nextAtLocal = nextAt; // tetap tampilkan waktu terakhir
+    setRunningUI(false);
+    if(tickTimer){ clearInterval(tickTimer); tickTimer = null; }
+  }
+
+  renderClock();
+});
+
+// Initial
+setRunningUI(false);
 renderClock();
