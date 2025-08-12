@@ -58,14 +58,14 @@ const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 };
 let running = false;
 let tickTimer = null;
 let nextAt = null;
-const CYCLE_MS = 20_000;  // 20 detik
+const CYCLE_MS = 20_000;  // 20 detik pasti
 const TICK_MS  = 200;     // render loop
 
 // ======== UI State helper ========
 function setRunningUI(isRunning){
   running = isRunning;
-  startBtn.disabled = isRunning;  // Mulai tidak bisa ditekan saat jalan
-  stopBtn.disabled  = !isRunning; // Hentikan hanya aktif saat jalan
+  startBtn.disabled = isRunning;   // Mulai tidak bisa ditekan saat jalan
+  stopBtn.disabled  = !isRunning;  // Hentikan hanya aktif saat jalan
   if(modeBadge){ modeBadge.classList.toggle('hidden', isRunning); } // sembunyikan checkbox saat jalan
 }
 
@@ -195,12 +195,12 @@ async function stepRotation(){
   advanceRotIdx(pools);
 }
 
-// ======== Main tick (satu timer) ========
+// ======== Main tick (selalu +20 detik) ========
 async function tick(){
   const now = Date.now();
   if(running && nextAt && now >= nextAt){
     await stepRotation();
-    nextAt += CYCLE_MS; // tambah 20 detik
+    nextAt = Date.now() + CYCLE_MS; // langsung +20 detik dari momen rotasi ini
   }
   renderClock();
 }
@@ -210,10 +210,9 @@ startBtn.onclick = async ()=>{
   if(tickTimer) clearInterval(tickTimer);
   setRunningUI(true); // nonaktifkan Mulai, aktifkan Hentikan, sembunyikan checkbox
 
-  // Rotasi awal → target 20s dari boundary detik berikutnya
+  // Rotasi awal → target 20 detik dari SEKARANG (bukan boundary detik)
   await stepRotation();
-  const now = Date.now();
-  nextAt = Math.ceil(now / 1000) * 1000 + CYCLE_MS;
+  nextAt = Date.now() + CYCLE_MS;
 
   tickTimer = setInterval(tick, TICK_MS);
   renderClock();
@@ -229,7 +228,7 @@ stopBtn.onclick = ()=>{
 
 nextBtn.onclick = async ()=>{
   await stepRotation();
-  nextAt = Math.ceil(Date.now() / 1000) * 1000 + CYCLE_MS;
+  nextAt = Date.now() + CYCLE_MS; // reset target ke +20 detik dari sekarang
   renderClock();
 };
 
