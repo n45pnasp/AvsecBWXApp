@@ -56,7 +56,7 @@ const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 }; // rotasi adil per posisi
 let running = false;
 let tickTimer = null;
 let nextAt = null;                // timestamp (ms) untuk perputaran berikutnya
-const CYCLE_MS = 20_000;          // 20 detik
+const CYCLE_MS = 20_000;          // *** 20 detik ***
 const TICK_MS  = 200;             // render/tick interval
 
 // ======== Render ========
@@ -97,7 +97,6 @@ const rotate = (arr, idx) => arr.length ? arr.slice(idx).concat(arr.slice(0, idx
 const isEligible = (person, allowed) =>
   Array.isArray(person.spec) && person.spec.some(s => allowed.includes(String(s).toLowerCase()));
 
-// susun pools kandidat per posisi (dengan/ tanpa cooldown XRAY)
 async function buildPools(useCooldown){
   const [pSnap, cdSnap] = await Promise.all([
     get(peopleRef),
@@ -124,12 +123,11 @@ async function buildPools(useCooldown){
     return { pos, idx, list: rot };
   });
 
-  // posisi "paling sempit" dulu
   pools.sort((a,b)=> (a.list.length - b.list.length) || (a.idx - b.idx));
   return { pools, cooldown };
 }
 
-// Backtracking: cari kombinasi unik penuh (tanpa duplikasi)
+// Backtracking: kombinasi unik penuh (tanpa duplikasi)
 function assignUnique(pools){
   const used = new Set();
   const result = {};
@@ -157,7 +155,6 @@ function assignUniqueGreedy(pools){
   }
   return result;
 }
-// rotasi prioritas kandidat agar adil
 function advanceRotIdx(pools){
   for(const { pos, list } of pools){
     const len = list.length;
@@ -171,12 +168,10 @@ async function stepRotation(){
 
   const { pools, cooldown } = await buildPools(useCooldown);
 
-  // Anti-duplikasi di kedua mode
   let finalAssign;
   const { ok, result } = assignUnique(pools);
   finalAssign = ok ? result : assignUniqueGreedy(pools);
 
-  // Kelola cooldown XRAY hanya untuk mode 20–40
   if(useCooldown){
     const cd = { ...cooldown };
     for(const k of Object.keys(cd)){ cd[k] = Math.max(0, (cd[k]|0) - 1); }
@@ -190,12 +185,12 @@ async function stepRotation(){
   advanceRotIdx(pools);
 }
 
-// ======== Main tick (satu timer untuk semuanya) ========
+// ======== Main tick (20 detik pasti, tidak 60) ========
 async function tick(){
   const now = Date.now();
   if(running && nextAt && now >= nextAt){
     await stepRotation();
-    nextAt += CYCLE_MS; // target berikutnya
+    nextAt += CYCLE_MS; // *** tambah 20 detik setiap kali ***
   }
   renderClock();
 }
@@ -205,7 +200,7 @@ startBtn.onclick = async ()=>{
   if(tickTimer) clearInterval(tickTimer);
   running = true;
 
-  // rotasi awal → jadwalkan target 20s dari boundary detik berikutnya
+  // Rotasi awal lalu set target 20s dari boundary detik berikutnya
   await stepRotation();
   const now = Date.now();
   nextAt = Math.ceil(now / 1000) * 1000 + CYCLE_MS;
