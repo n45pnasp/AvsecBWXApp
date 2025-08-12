@@ -1,10 +1,7 @@
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import {
-  getDatabase, ref, onValue, set, update, remove, get
-} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { getDatabase, ref, onValue, set, update, remove, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-// ======== Konfigurasi dari project kamu ========
 const firebaseConfig = {
   apiKey: "AIzaSyCtJxtgVbMxZdVUMmFGDnqzt2LttxW9KOQ",
   authDomain: "plotting-e9cb7.firebaseapp.com",
@@ -16,34 +13,16 @@ const firebaseConfig = {
   measurementId: "G-GWBBDS8YZZ"
 };
 
-// ======== Init & Diagnostik ========
-const diagEl = document.getElementById('diag');
-const log = (...a)=>{ if(diagEl){ diagEl.textContent += '\n' + a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' '); } };
+// Init
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
 
-let app, db;
-try {
-  app = initializeApp(firebaseConfig);
-  db  = getDatabase(app);
-  log('✅ Firebase init OK');
-} catch(e){ log('❌ Firebase init ERROR:', e.message||e); }
-
-// Indikator koneksi (bulatan hijau/merah)
+// Indikator koneksi (bulatan)
 const connDot = document.getElementById('connDot');
-const setConn = ok => { if(connDot) connDot.classList.toggle('ok', !!ok); };
+const setConn = ok => { if (connDot) connDot.classList.toggle('ok', !!ok); };
 
-// Pantau status koneksi realtime (lebih akurat daripada ping interval)
-try {
-  const connectedRef = ref(db, ".info/connected");
-  onValue(connectedRef, snap => setConn(!!snap.val()));
-} catch(e){ setConn(false); }
-
-// Ping sekali untuk diagnosa (opsional)
-try {
-  const pingRef = ref(db, '__ping');
-  await set(pingRef, { at: Date.now() });
-  const snap = await get(pingRef);
-  log(snap.exists() ? '✅ Ping OK' : '❌ Ping gagal');
-} catch(e){ log('❌ Ping ERROR:', e.message||e); }
+// Pantau status koneksi realtime
+onValue(ref(db, ".info/connected"), snap => setConn(!!snap.val()));
 
 // ======== UI refs ========
 const assignRows   = document.getElementById('assignRows');
