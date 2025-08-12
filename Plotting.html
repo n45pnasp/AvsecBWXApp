@@ -1,0 +1,325 @@
+<!DOCTYPE html><html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plotting – 1 Line, 4 Posisi (RTDB)</title>
+  <style>
+    :root{ --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --ok:#16a34a; --danger:#dc2626 }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--text)}
+    .wrap{max-width:1024px; margin:24px auto; padding:16px}
+    .card{background:var(--card); border:1px solid #223; border-radius:16px; padding:16px; box-shadow:0 12px 30px rgba(0,0,0,.25); margin-bottom:12px}
+    h1{margin:0 0 10px; font-size:20px}
+    h2{margin:0 0 8px; font-size:16px}
+    .btn{padding:10px 14px; border:0; border-radius:12px; cursor:pointer; font-weight:700}
+    .start{background:#14532d}
+    .stop{background:#7f1d1d}
+    .ghost{background:#0b1324; border:1px solid #334}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    table{width:100%; border-collapse:collapse; margin-top:8px}
+    th,td{border:1px solid #223; padding:8px 10px; text-align:left}
+    th{background:#0b1324}
+    .muted{color:var(--muted)}
+    .dot{width:10px; height:10px; border-radius:50%; display:inline-block; background:#64748b}
+    .on{background:#22c55e}
+    .off{background:#ef4444}
+    .mono{font-family:ui-monospace,SFMono-Regular,Consolas,Monaco; font-size:12px}
+    .pill{display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2a344a; background:#0c152a; font-size:12px}
+    input[type="text"]{width:100%; padding:8px 10px; border-radius:10px; border:1px solid #334; background:#0b1324; color:#e5e7eb}
+    .checkboxes{ display:flex; gap:12px; align-items:center; margin-top:8px }
+    .flex{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    .right{ text-align:right }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Plotting – 1 Line, 4 Posisi</h1>
+      <div class="row">
+        <div>
+          <button id="startBtn" class="btn start">Mulai</button>
+          <button id="stopBtn" class="btn stop">Hentikan</button>
+          <button id="forceBtn" class="btn ghost">Majukan 1x</button>
+          <div class="muted" style="margin-top:8px">Status: <span id="stDot" class="dot off"></span> <span id="stText">Berhenti</span></div>
+          <div class="muted">Terakhir update: <span id="lastUpdate">-</span></div>
+        </div>
+        <div>
+          <div class="muted mono">Durasi per posisi:</div>
+          <div class="mono">1) XRAY <span class="pill">40s</span> (junior)</div>
+          <div class="mono">2) Pemeriksa Barang <span class="pill">20s</span> (junior)</div>
+          <div class="mono">3) Pemeriksa Orang <span class="pill">20s</span> (basic)</div>
+          <div class="mono">4) Pemeriksa Tiket <span class="pill">20s</span> (basic)</div>
+        </div>
+      </div>
+    </div><div class="card">
+  <h2>Penugasan Aktif</h2>
+  <table>
+    <thead><tr><th>#</th><th>Posisi</th><th>Spec</th><th>Nama</th><th>Countdown</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="muted mono" style="margin-top:8px">RTDB: <span class="pill">assignments/line1</span> & <span class="pill">control/line1/(junior|basic)</span></div>
+</div>
+
+<div class="card">
+  <h2>Kelola Personil</h2>
+  <div class="row">
+    <div>
+      <div class="muted">Tambah personil baru</div>
+      <input id="nameInput" type="text" placeholder="Nama personil (mis. Andi)" />
+      <div class="checkboxes">
+        <label><input type="checkbox" id="specJunior"> Junior</label>
+        <label><input type="checkbox" id="specBasic"> Basic</label>
+      </div>
+      <div class="flex" style="margin-top:8px">
+        <button id="addBtn" class="btn ghost">Tambah</button>
+        <span class="muted mono">Tersimpan di RTDB: <span class="pill">people</span></span>
+      </div>
+    </div>
+    <div>
+      <div class="muted">Daftar personil</div>
+      <table>
+        <thead><tr><th>Nama</th><th>Spec</th><th class="right">Aksi</th></tr></thead>
+        <tbody id="peopleRows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+  </div>  <script type="module">
+    // ==== Firebase SDK v9 (modular) ====
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getDatabase, ref, child, get, set, update, onValue, runTransaction, serverTimestamp, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    // === Konfigurasi project plotting-e9cb7 (RTDB) ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyCtJxtgVbMxZdVUMmFGDnqzt2LttxW9KOQ",
+      authDomain: "plotting-e9cb7.firebaseapp.com",
+      databaseURL: "https://plotting-e9cb7-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "plotting-e9cb7",
+      storageBucket: "plotting-e9cb7.firebasestorage.app",
+      messagingSenderId: "518993555934",
+      appId: "1:518993555934:web:41e90375a565ab00776d4f",
+      measurementId: "G-GWBBDS8YZZ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+
+    // === Definisi 1 line, 4 posisi ===
+    const POSITIONS = [
+      { id:'pos1', name:'XRAY',             spec:'junior', dur:40 },
+      { id:'pos2', name:'Pemeriksa Barang', spec:'junior', dur:20 },
+      { id:'pos3', name:'Pemeriksa Orang',  spec:'basic',  dur:20 },
+      { id:'pos4', name:'Pemeriksa Tiket',  spec:'basic',  dur:20 },
+    ];
+
+    const lineAssignRef  = ref(db, 'assignments/line1');
+    const ctrlJuniorRef  = ref(db, 'control/line1/junior');
+    const ctrlBasicRef   = ref(db, 'control/line1/basic');
+    const peopleRef      = ref(db, 'people');
+
+    const rowsEl = document.getElementById('rows');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn  = document.getElementById('stopBtn');
+    const forceBtn = document.getElementById('forceBtn');
+    const stDot    = document.getElementById('stDot');
+    const stText   = document.getElementById('stText');
+    const lastUpdateEl = document.getElementById('lastUpdate');
+
+    const peopleRows = document.getElementById('peopleRows');
+    const nameInput  = document.getElementById('nameInput');
+    const specJunior = document.getElementById('specJunior');
+    const specBasic  = document.getElementById('specBasic');
+    const addBtn     = document.getElementById('addBtn');
+
+    let tick = null; // interval id (1s)
+
+    function setStatus(running){
+      stDot.classList.toggle('on', !!running);
+      stDot.classList.toggle('off', !running);
+      stText.textContent = running ? 'Berjalan' : 'Berhenti';
+    }
+
+    // Seed contoh bila belum ada data people
+    async function ensureSeed(){
+      const snap = await get(peopleRef);
+      if(!snap.exists()){
+        await set(peopleRef, {
+          andi: { name:'Andi', spec:['junior'] },
+          budi: { name:'Budi', spec:['junior'] },
+          cici: { name:'Cici', spec:['basic'] },
+          dina: { name:'Dina', spec:['basic'] }
+        });
+      }
+      const init = await get(lineAssignRef);
+      if(!init.exists()){
+        await set(lineAssignRef, { pos1:null, pos2:null, pos3:null, pos4:null, updatedAt: Date.now() });
+      }
+    }
+
+    function filterPeopleBySpec(all={}, spec){
+      return Object.values(all).filter(p => (p.spec||[]).map(s=>s.toLowerCase()).includes(spec));
+    }
+    function sortByName(list){ return list.sort((a,b)=>String(a.name).localeCompare(String(b.name),'id')); }
+
+    // Hitung countdown untuk posisi berdasarkan control state
+    async function computeCountdowns(){
+      const [cj, cb] = await Promise.all([get(ctrlJuniorRef), get(ctrlBasicRef)]);
+      const now = Date.now();
+      const cd = { pos1:'-', pos2:'-', pos3:'-', pos4:'-' };
+      const j = cj.val(); const b = cb.val();
+      if(j?.running && typeof j.stepIndex==='number' && j.lastChangeAt){
+        const dur = POSITIONS[j.stepIndex].dur * 1000; // stepIndex 0=>pos1, 1=>pos2
+        const left = Math.max(0, dur - (now - j.lastChangeAt));
+        const s = Math.ceil(left/1000);
+        cd[ POSITIONS[j.stepIndex].id ] = s + 's';
+      }
+      if(b?.running && typeof b.stepIndex==='number' && b.lastChangeAt){
+        const base = 2 + b.stepIndex; // 2->pos3, 3->pos4
+        const dur = POSITIONS[base].dur * 1000;
+        const left = Math.max(0, dur - (now - b.lastChangeAt));
+        const s = Math.ceil(left/1000);
+        cd[ POSITIONS[base].id ] = s + 's';
+      }
+      return cd;
+    }
+
+    function render(assign){
+      rowsEl.innerHTML = '';
+      computeCountdowns().then(cd => {
+        POSITIONS.forEach((p,i)=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${i+1}</td><td>${p.name}</td><td>${p.spec}</td><td>${assign?.[p.id]||'-'}</td><td>${cd[p.id]||'-'}</td>`;
+          rowsEl.appendChild(tr);
+        });
+      });
+    }
+
+    // ====== Kelola Personil ======
+    const slug = s => String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+    const hasSpec = (person, spec) => (person?.spec||[]).map(x=>x.toLowerCase()).includes(spec);
+
+    function renderPeople(all={}){
+      peopleRows.innerHTML = '';
+      const entries = Object.entries(all);
+      entries.sort((a,b)=>String(a[1].name).localeCompare(String(b[1].name),'id'));
+      entries.forEach(([id,p])=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.name||id}</td>
+          <td>
+            <label><input type="checkbox" ${hasSpec(p,'junior')?'checked':''} data-id="${id}" data-spec="junior" class="toggle-spec"> Junior</label>
+            &nbsp;
+            <label><input type="checkbox" ${hasSpec(p,'basic')?'checked':''} data-id="${id}" data-spec="basic" class="toggle-spec"> Basic</label>
+          </td>
+          <td class="right"><button class="btn stop del-btn" data-id="${id}">Hapus</button></td>`;
+        peopleRows.appendChild(tr);
+      });
+
+      // bind events
+      document.querySelectorAll('.toggle-spec').forEach(cb=>{
+        cb.addEventListener('change', async (e)=>{
+          const id = e.target.dataset.id; const spec = e.target.dataset.spec;
+          const snap = await get(child(peopleRef, id));
+          const cur = snap.val()||{}; const setSpec = new Set(cur.spec||[]);
+          if(e.target.checked) setSpec.add(spec); else setSpec.delete(spec);
+          await update(child(peopleRef, id), { spec: Array.from(setSpec) });
+        });
+      });
+      document.querySelectorAll('.del-btn').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const id = btn.dataset.id; await remove(child(peopleRef, id));
+        });
+      });
+    }
+
+    // ====== Scheduler per ring ======
+    async function stepRing(spec){
+      const ctrlRef = (spec==='junior') ? ctrlJuniorRef : ctrlBasicRef;
+      const posIdxBase = (spec==='junior') ? 0 : 2; // junior: pos1,pos2 | basic: pos3,pos4
+      const posLen = 2;
+
+      const all = (await get(peopleRef)).val()||{};
+      let group = sortByName(filterPeopleBySpec(all, spec));
+      if(group.length < 2){ group = [...group, ...Array(Math.max(0,2-group.length)).fill({name:null})]; }
+      if(group.length > 2){ group = group.slice(0,2); }
+
+      const { snapshot } = await runTransaction(ctrlRef, (cur)=>{
+        const now = Date.now();
+        if(!cur){ return { running:true, stepIndex:0, personIndex:0, lastChangeAt:now }; }
+        const idx  = (typeof cur.stepIndex==='number') ? cur.stepIndex : 0;
+        const pidx = (typeof cur.personIndex==='number') ? cur.personIndex : 0;
+        const last = cur.lastChangeAt || now;
+        const durMs = POSITIONS[posIdxBase + idx].dur * 1000;
+        if(now - last >= durMs || cur.forceAdvance){
+          return { running:true, stepIndex:(idx+1)%posLen, personIndex:(pidx+1)%group.length, lastChangeAt:now, forceAdvance:false };
+        }
+        return cur;
+      });
+
+      const st = snapshot.val();
+      const step = st.stepIndex||0;
+      const person = group[st.personIndex||0];
+      const pos = POSITIONS[posIdxBase + step];
+
+      await update(lineAssignRef, { [pos.id]: person?.name || null, updatedAt: Date.now() });
+      lastUpdateEl.textContent = new Date().toLocaleString('id-ID',{hour12:false});
+    }
+
+    function start(){
+      if(tick) clearInterval(tick);
+      setStatus(true);
+      Promise.all([
+        update(ctrlJuniorRef, { running:true, startedAt: serverTimestamp() }),
+        update(ctrlBasicRef,  { running:true, startedAt: serverTimestamp() })
+      ]).then(()=>{
+        stepRing('junior'); stepRing('basic');
+        tick = setInterval(()=>{ stepRing('junior'); stepRing('basic'); }, 1000);
+      });
+    }
+
+    function stop(){ if(tick) clearInterval(tick); tick=null; setStatus(false); }
+
+    function forceAdvance(){
+      Promise.all([
+        update(ctrlJuniorRef, { forceAdvance:true }),
+        update(ctrlBasicRef,  { forceAdvance:true })
+      ]);
+    }
+
+    // Events
+    startBtn.onclick = start;
+    stopBtn.onclick  = stop;
+    forceBtn.onclick = forceAdvance;
+
+    addBtn.onclick = async ()=>{
+      const name = nameInput.value.trim(); if(!name) return;
+      const specs = [ specJunior.checked?'junior':null, specBasic.checked?'basic':null ].filter(Boolean);
+      await update(child(peopleRef, slug(name)), { name, spec: specs });
+      nameInput.value=''; specJunior.checked=false; specBasic.checked=false;
+    };
+
+    // Listeners
+    onValue(lineAssignRef, (snap)=>{ render(snap.val()||{}) });
+    onValue(peopleRef, (snap)=>{ renderPeople(snap.val()||{}) });
+    onValue(ref(db, 'control/line1'), (snap)=>{
+      const v = snap.val()||{}; const running = (v.junior?.running || v.basic?.running) ? true : false; setStatus(running);
+    });
+
+    // Boot
+    (async function init(){
+      await ensureSeed();
+      render((await get(lineAssignRef)).val()||{});
+      renderPeople((await get(peopleRef)).val()||{});
+    })();
+  </script>  <!--
+  ======== RULES RTDB (UNTUK TESTING SAJA) ========
+  {
+    "rules": {
+      ".read": true,
+      ".write": true
+    }
+  }
+  (JANGAN gunakan di produksi)
+  --></body>
+</html>
