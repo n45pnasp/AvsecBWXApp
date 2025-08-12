@@ -51,11 +51,13 @@ const assignmentsRef   = ref(db, 'assignments');
 const peopleRef        = ref(db, 'people');
 const xrayCooldownRef  = ref(db, 'control/xrayCooldown'); // dipakai jika mode 20–40 aktif
 
-// ======== State ========
-let rotationTimer = null;     // timer siklus rotasi
-let running = false;          // status berjalan
-let remaining = 20;           // detik menuju rotasi berikutnya (global)
+// ======== State & timing ========
 const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 }; // rotasi adil per posisi
+let running = false;
+let tickTimer = null;
+let nextAt = null;                // timestamp (ms) untuk perputaran berikutnya
+const CYCLE_MS = 20_000;          // 20 detik
+const TICK_MS  = 200;             // render/tick interval
 
 // ======== Render ========
 function renderAssignments(assignments){
@@ -81,20 +83,14 @@ function renderPeople(people){
   });
 }
 
-// ======== Clock (selalu update) ========
-function pad(n){ return String(n).padStart(2,'0'); }
-function fmt(t){ return `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`; }
-function updateClock(){
-  const now = new Date();
-  clockEl.textContent = fmt(now);
-  if(running){
-    const next = new Date(now.getTime() + remaining * 1000);
-    nextEl.textContent = fmt(next);
-  } else {
-    nextEl.textContent = '-';
-  }
+// ======== Clock (stabil) ========
+const pad = n => String(n).padStart(2,'0');
+const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+function renderClock(){
+  const now = Date.now();
+  clockEl.textContent = fmt(new Date(now));
+  nextEl.textContent  = (running && nextAt) ? fmt(new Date(nextAt)) : '-';
 }
-setInterval(updateClock, 250); // smooth-enough; ringan
 
 // ======== Helpers ========
 const rotate = (arr, idx) => arr.length ? arr.slice(idx).concat(arr.slice(0, idx)) : [];
@@ -105,7 +101,7 @@ const isEligible = (person, allowed) =>
 async function buildPools(useCooldown){
   const [pSnap, cdSnap] = await Promise.all([
     get(peopleRef),
-    useCooldown ? get(xrayCooldownRef) : Promise.resolve({ val:()=>({}) })
+    useCooldown ? get(xrayCooldownRef) : Promise.resolve({ val: () => ({}) })
   ]);
   const raw  = pSnap.val() || {};
   const folks = Object.values(raw).map(p => ({
@@ -161,6 +157,7 @@ function assignUniqueGreedy(pools){
   }
   return result;
 }
+// rotasi prioritas kandidat agar adil
 function advanceRotIdx(pools){
   for(const { pos, list } of pools){
     const len = list.length;
@@ -191,38 +188,44 @@ async function stepRotation(){
   }
 
   advanceRotIdx(pools);
-  remaining = 20; // reset hitung menuju perputaran berikutnya
+}
+
+// ======== Main tick (satu timer untuk semuanya) ========
+async function tick(){
+  const now = Date.now();
+  if(running && nextAt && now >= nextAt){
+    await stepRotation();
+    nextAt += CYCLE_MS; // target berikutnya
+  }
+  renderClock();
 }
 
 // ======== Events ========
-startBtn.onclick = ()=>{
-  if(rotationTimer) clearInterval(rotationTimer);
+startBtn.onclick = async ()=>{
+  if(tickTimer) clearInterval(tickTimer);
   running = true;
-  remaining = 20; // mulai siklus baru
-  rotationTimer = setInterval(()=>{
-    if(remaining > 1){
-      remaining -= 1;
-    } else {
-      // 0 -> rotasi
-      stepRotation();
-      remaining = 20;
-    }
-    // assignments table dirender via listener; clock via setInterval terpisah
-  }, 1000);
-  // jalankan rotasi awal
-  stepRotation();
+
+  // rotasi awal → jadwalkan target 20s dari boundary detik berikutnya
+  await stepRotation();
+  const now = Date.now();
+  nextAt = Math.ceil(now / 1000) * 1000 + CYCLE_MS;
+
+  tickTimer = setInterval(tick, TICK_MS);
+  renderClock();
 };
 
 stopBtn.onclick = ()=>{
-  if(rotationTimer) clearInterval(rotationTimer);
+  if(tickTimer) clearInterval(tickTimer);
   running = false;
-  rotationTimer = null;
-  // nextRotation jadi '-' via updateClock()
+  tickTimer = null;
+  nextAt = null;
+  renderClock();
 };
 
-nextBtn.onclick = ()=>{
-  stepRotation();
-  remaining = 20;
+nextBtn.onclick = async ()=>{
+  await stepRotation();
+  nextAt = Math.ceil(Date.now() / 1000) * 1000 + CYCLE_MS;
+  renderClock();
 };
 
 // Tambah personil
@@ -263,4 +266,4 @@ onValue(assignmentsRef, (snap)=> renderAssignments(snap.val()||{}));
 onValue(peopleRef,      (snap)=> renderPeople(snap.val()||{}));
 
 // initial clock paint
-updateClock();
+renderClock();
