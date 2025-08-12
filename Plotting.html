@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="plotting.css" />
 </head>
 <body>
+  <!-- Indikator koneksi: bulatan tanpa teks -->
+  <div id="connDot" class="conn-dot" aria-hidden="true"></div>
+
   <h1>Plotting 1 Line – 4 Posisi</h1>
 
   <div class="controls">
@@ -44,10 +47,10 @@
     </table>
   </div>
 
+  <!-- Diagnostik (optional, tetap ada tapi tidak mengganggu UI indikator) -->
   <h2>Diagnostik Koneksi</h2>
   <pre id="diag" class="diag">Menunggu...</pre>
 
-  <!-- JS (module) -->
   <script type="module" src="plotting.js"></script>
 </body>
 </html>
