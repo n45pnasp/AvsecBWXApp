@@ -14,17 +14,16 @@ const firebaseConfig = {
   databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
 };
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
 
-// ===== Utils =====
+// ===== Utils & WIB =====
 const $ = (s, el = document) => el.querySelector(s);
 
 function getWIBDate(d = new Date()) {
   return new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
 }
-
 function bannerString() {
   const d = getWIBDate();
   const hari = d.toLocaleDateString('id-ID', { weekday: 'long' }).toLowerCase();
@@ -33,7 +32,6 @@ function bannerString() {
   const tahun = d.getFullYear();
   return `${hari}, ${tanggal} ${bulan} ${tahun}`;
 }
-
 function getGreetingID(d = getWIBDate()) {
   const h = d.getHours();
   if (h >= 4 && h < 11)  return "Selamat Pagi,";
@@ -41,7 +39,6 @@ function getGreetingID(d = getWIBDate()) {
   if (h >= 15 && h < 18) return "Selamat Sore,";
   return "Selamat Malam,";
 }
-
 function updateGreeting() {
   $("#greet").textContent = getGreetingID();
   const k = $("#greet").textContent.split(" ")[1];
@@ -71,52 +68,43 @@ function resolveDisplayName(user){
   return "Pengguna";
 }
 
-// ===== Helpers URL Foto =====
+// ===== URL helpers =====
 function cleanURL(s) {
   if (!s) return "";
   return String(s).trim().replace(/^['"]+|['"]+$/g, "");
 }
-
 function normalizeDriveURL(u) {
   if (!u) return "";
   const url = cleanURL(u);
   const m1 = url.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
   const m2 = url.match(/[?&]id=([^&]+)/i);
   const id = m1 ? m1[1] : (m2 ? m2[1] : null);
-  if (!id) return url;
+  if (!id) return { primary: url, fallback: "" };
   return {
-    id,
     primary: `https://drive.google.com/uc?export=view&id=${id}`,
     fallback: `https://drive.google.com/thumbnail?id=${id}&sz=w512`
   };
 }
-
 async function resolvePhotoURL(raw, user) {
   let url = cleanURL(raw || user?.photoURL || "");
   if (!url) return { primary: "", fallback: "" };
   if (location.protocol === "https:" && url.startsWith("http://"))
     return { primary: "", fallback: "" };
-
-  if (/drive\.google\.com/i.test(url)) {
-    const drv = normalizeDriveURL(url);
-    if (typeof drv === "string") return { primary: drv, fallback: "" };
-    return drv;
-  }
+  if (/drive\.google\.com/i.test(url)) return normalizeDriveURL(url);
   return { primary: url, fallback: "" };
 }
 
-// ===== Ambil profil dari RTDB =====
+// ===== Fetch profil dari RTDB =====
 async function fetchProfile(user){
   try{
     const root = ref(db);
-    const snaps = await Promise.all([
+    const [nameSnap, specSnap, roleSnap, isAdminSnap, photoSnap] = await Promise.all([
       get(child(root, `users/${user.uid}/name`)),
       get(child(root, `users/${user.uid}/spec`)),
       get(child(root, `users/${user.uid}/role`)),
       get(child(root, `users/${user.uid}/isAdmin`)),
       get(child(root, `users/${user.uid}/photoURL`)),
     ]);
-    const [nameSnap, specSnap, roleSnap, isAdminSnap, photoSnap] = snaps;
 
     const name = nameSnap.exists() ? String(nameSnap.val()).trim()
                : (user.displayName?.trim() || (user.email?.split("@")[0] ?? "Pengguna"));
@@ -126,14 +114,10 @@ async function fetchProfile(user){
     const isAdmin  = isAdminSnap.exists() ? !!isAdminSnap.val() : role === "admin";
 
     const rawPhoto = photoSnap.exists() ? photoSnap.val() : (user.photoURL || "");
-    console.log("[profile] rawPhoto from RTDB/Auth:", rawPhoto);
+    const photoURL = await resolvePhotoURL(rawPhoto, user);
 
-    const resolved = await resolvePhotoURL(rawPhoto, user);
-    console.log("[profile] resolved photoURL:", resolved);
-
-    return { name, spec, role, isAdmin, photoURL: resolved };
-  }catch(e){
-    console.warn("RTDB fetch error:", e?.message || e);
+    return { name, spec, role, isAdmin, photoURL };
+  }catch{
     return { name: resolveDisplayName(user), spec: "", role: "user", isAdmin: false, photoURL: { primary: DEFAULT_AVATAR, fallback: "" } };
   }
 }
@@ -152,21 +136,13 @@ function applyProfile({ name, photoURL }) {
   const avatar = $("#avatar");
   if (avatar) {
     avatar.referrerPolicy = "no-referrer";
-    let idx = 0;
+    let i = 0;
     const tryNext = () => {
-      const next = (srcs[idx] || "").trim();
-      if (!next) return;
-      console.log(`[profile] try load [${idx}]:`, next);
-      idx++;
-      avatar.src = next;
+      const next = (srcs[i] || "").trim();
+      i++;
+      avatar.src = next || DEFAULT_AVATAR;
     };
-    avatar.onerror = () => { 
-      console.warn("[profile] img error → try fallback"); 
-      tryNext(); 
-    };
-    avatar.onload  = () => { 
-      console.log("[profile] img loaded:", avatar.naturalWidth, "x", avatar.naturalHeight); 
-    };
+    avatar.onerror = tryNext;
     tryNext();
 
     avatar.addEventListener("load", () => {
@@ -175,7 +151,7 @@ function applyProfile({ name, photoURL }) {
   }
 }
 
-// ===== Toggle foto ↔ logout =====
+// ===== Toggle foto ↔ logout (TIDAK DIUBAH) =====
 (function setupGreetCard() {
   const card = $("#greetCard");
   const profileSlot = $("#profileSlot");
@@ -200,6 +176,7 @@ function applyProfile({ name, photoURL }) {
   });
 })();
 
+// ===== Logout hook =====
 window.onLogout = function () {
   try {
     localStorage.removeItem("tinydb_name");
@@ -211,14 +188,11 @@ window.onLogout = function () {
 // ===== Auth Gate =====
 function mountAuthGate() {
   onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      location.href = "index.html";
-      return;
-    }
+    if (!user) { location.href = "index.html"; return; }
     try {
       const p = await fetchProfile(user);
       applyProfile({ name: p.name, photoURL: p.photoURL });
-    } catch (e) {
+    } catch {
       applyProfile({ name: resolveDisplayName(user), photoURL: DEFAULT_AVATAR });
     }
   });
