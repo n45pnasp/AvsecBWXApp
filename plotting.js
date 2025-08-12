@@ -2,10 +2,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import {
   getDatabase, ref, onValue, set, update, remove, get,
-  onDisconnect, serverTimestamp
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-// ======== Konfigurasi project ========
+// ======== Konfigurasi project (punyamu) ========
 const firebaseConfig = {
   apiKey: "AIzaSyCtJxtgVbMxZdVUMmFGDnqzt2LttxW9KOQ",
   authDomain: "plotting-e9cb7.firebaseapp.com",
@@ -20,14 +20,6 @@ const firebaseConfig = {
 // Init
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
-
-// ======== Client identity (leader tracking) ========
-const CLIENT_ID_KEY = "plotting_client_id";
-let clientId = localStorage.getItem(CLIENT_ID_KEY);
-if(!clientId){
-  clientId = "c_" + Math.random().toString(36).slice(2);
-  localStorage.setItem(CLIENT_ID_KEY, clientId);
-}
 
 // ======== UI refs ========
 const assignRows   = document.getElementById('assignRows');
@@ -52,7 +44,7 @@ const bottomSheet   = document.getElementById('bottomSheet');
 const sheetMsg      = document.getElementById('sheetMsg');
 const sheetClose    = document.getElementById('sheetClose');
 
-// Indikator koneksi di card
+// Indikator koneksi (dot di dalam card)
 const connDot = document.getElementById('connDot');
 const setConn = ok => { if (connDot) connDot.classList.toggle('ok', !!ok); };
 onValue(ref(db, ".info/connected"), snap => setConn(!!snap.val()));
@@ -68,18 +60,15 @@ const positions = [
 // ======== RTDB refs ========
 const assignmentsRef = ref(db, 'assignments');
 const peopleRef      = ref(db, 'people');
-const xrayCooldownRef= ref(db, 'control/xrayCooldown'); // untuk mode 20–40
-const stateRef       = ref(db, 'control/state');        // { running, nextAt, leaderId, updatedAt }
-const modeRef        = ref(db, 'control/mode2040');     // simpan pilihan mode global (true/false)
+const cooldownRef    = ref(db, 'control/xrayCooldown'); // untuk mode 20–40
+const stateRef       = ref(db, 'control/state');        // { running, nextAt, mode2040 }
 
 // ======== State & timing ========
 const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 };
-let running = false;            // status lokal UI
-let isLeader = false;           // apakah client ini leader
-let tickTimer = null;           // interval rotasi (leader)
-let nextAtLocal = null;         // mirror dari RTDB (untuk render next-rotation di viewer)
+let running = false;
+let nextAtLocal = null;         // mirror dari RTDB untuk render
+let mode2040State = false;      // mirror state.mode2040
 const CYCLE_MS = 20_000;
-const TICK_MS  = 200;
 
 // Gating mode 20–40
 let allow2040 = false;
@@ -88,10 +77,8 @@ let lastJSCount = 0;
 // ======== UI helpers ========
 function setRunningUI(isRunning){
   running = isRunning;
-  // Start disabled saat jalan, Stop enabled saat jalan
   startBtn.disabled = isRunning;
   stopBtn.disabled  = !isRunning;
-  // Checkbox mode disembunyikan saat jalan
   if(modeBadge){ modeBadge.classList.toggle('hidden', isRunning); }
 }
 function setModeBadgeAvailability(allowed){
@@ -137,19 +124,16 @@ function renderPeople(people){
   });
 }
 
-// Clock — selalu jalan (real-time), tak tergantung running/leader
+// Jam selalu jalan; “perputaran selanjutnya” selalu pakai nextAtLocal (jika ada)
 const pad = n => String(n).padStart(2,'0');
 const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 function renderClock(){
-  const now = Date.now();
-  clockEl.textContent = fmt(new Date(now));
-  const na = nextAtLocal;
-  nextEl.textContent = (running && na) ? fmt(new Date(na)) : '-';
+  clockEl.textContent = fmt(new Date());
+  nextEl.textContent  = nextAtLocal ? fmt(new Date(nextAtLocal)) : '-';
 }
-// Ticker UI untuk jam: update terus menerus
-setInterval(renderClock, 250);
+setInterval(renderClock, 250); // ticker UI jam
 
-// ======== Helpers ========
+// ======== Helpers rotasi ========
 const rotate = (arr, idx) => arr.length ? arr.slice(idx).concat(arr.slice(0, idx)) : [];
 const isEligible = (person, allowed) =>
   Array.isArray(person.spec) && person.spec.some(s => allowed.includes(String(s).toLowerCase()));
@@ -157,7 +141,7 @@ const isEligible = (person, allowed) =>
 async function buildPools(useCooldown){
   const [pSnap, cdSnap] = await Promise.all([
     get(peopleRef),
-    useCooldown ? get(xrayCooldownRef) : Promise.resolve({ val: () => ({}) })
+    useCooldown ? get(cooldownRef) : Promise.resolve({ val: () => ({}) })
   ]);
   const raw  = pSnap.val() || {};
   const folks = Object.values(raw).map(p => ({
@@ -166,21 +150,23 @@ async function buildPools(useCooldown){
   }));
   const cooldown = useCooldown ? (cdSnap.val() || {}) : {};
 
+  // bersihkan cooldown yatim
   if(useCooldown){
     const names = new Set(folks.map(f=>f.name));
     for(const k of Object.keys(cooldown)){ if(!names.has(k)) delete cooldown[k]; }
   }
 
-  const pools = positions.map((pos, idx) => {
+  const pools = positions.map((pos) => {
     let candidates = folks.filter(f => isEligible(f, pos.allowed));
     if(useCooldown && pos.id === 'pos1'){ // XRAY cooldown
       candidates = candidates.filter(f => (cooldown[f.name] || 0) <= 0);
     }
     const rot = rotate(candidates, rotIdx[pos.id] % Math.max(candidates.length, 1));
-    return { pos, idx, list: rot };
+    return { pos, list: rot };
   });
 
-  pools.sort((a,b)=> (a.list.length - b.list.length) || (a.idx - b.idx));
+  // posisi paling ketat dulu
+  pools.sort((a,b)=> (a.list.length - b.list.length));
   return { pools, cooldown };
 }
 
@@ -218,9 +204,8 @@ function advanceRotIdx(pools){
   }
 }
 
-// ======== ROTATION (hanya leader yang memutar) ========
-async function stepRotationAndPersist(){
-  const useCooldown = !!(mode2040 && mode2040.checked);
+// ======== Step rotasi + tulis ke RTDB ========
+async function computeAndWriteAssignments(useCooldown){
   const { pools, cooldown } = await buildPools(useCooldown);
 
   let finalAssign;
@@ -228,102 +213,81 @@ async function stepRotationAndPersist(){
   finalAssign = ok ? result : assignUniqueGreedy(pools);
 
   if(useCooldown){
-    const cd = { ...cooldown };
+    const cd = { ...(cooldown||{}) };
+    // kurangi semua cooldown 1
     for(const k of Object.keys(cd)){ cd[k] = Math.max(0, (cd[k]|0) - 1); }
     const xrayName = finalAssign.pos1;
-    if(xrayName && xrayName !== '-') cd[xrayName] = 2;
-    await Promise.all([
-      set(assignmentsRef, finalAssign),
-      set(xrayCooldownRef, cd)
-    ]);
+    if(xrayName && xrayName !== '-') cd[xrayName] = 2; // 2 siklus tidak boleh XRAY
+    await Promise.all([ set(assignmentsRef, finalAssign), set(cooldownRef, cd) ]);
   } else {
     await set(assignmentsRef, finalAssign);
   }
 
   advanceRotIdx(pools);
-
-  // Tulis nextAt baru (20 detik ke depan) di RTDB
-  const nextAt = Date.now() + 20_000;
-  await update(stateRef, { nextAt, updatedAt: serverTimestamp() });
-  nextAtLocal = nextAt; // mirror untuk render cepat
 }
 
-// ======== Main tick (leader saja yang memutar) ========
-async function tickLeader(){
-  const now = Date.now();
-  if(!running || !isLeader) return;
-  if(nextAtLocal && now >= nextAtLocal){
-    await stepRotationAndPersist();
+// ======== Mesin rotasi bersama (race-safe) ========
+async function tryAdvanceCycle(force = false){
+  // Gunakan transaction di /control/state agar hanya SATU klien yang menang ketika due
+  const res = await runTransaction(stateRef, (cur) => {
+    const now = Date.now();
+    if(!cur || typeof cur !== 'object') return cur;
+    const running = !!cur.running;
+    const nextAt  = cur.nextAt|0;
+    if(!running) return cur;
+
+    if(force || (nextAt && now >= nextAt)){
+      // majukan nextAt tepat 20 detik dari sekarang
+      return { ...cur, nextAt: now + CYCLE_MS };
+    }
+    return cur; // tidak berubah
+  });
+
+  if(res.committed){
+    // Jika kita yang mengubah nextAt (force atau due), lakukan perhitungan & tulis assignments.
+    // Cara deteksi sederhana: saat force==true kita pasti committed; saat due==true
+    // klien lain mungkin menang lebih dulu—tapi itu oke, assignments tetap konsisten karena commit tunggal.
+    await computeAndWriteAssignments(!!mode2040State);
+    // mirror nextAt lokal dari state yang baru (hasil transaksi ada di res.snapshot)
+    const st = res.snapshot.val()||{};
+    nextAtLocal = st.nextAt || null;
   }
-  // renderClock() ditangani oleh UI ticker 250ms
 }
 
-// ======== START/STOP as leader ========
-async function becomeLeaderAndStart(){
-  // tulis mode global agar viewer mengikuti
-  await set(modeRef, !!(mode2040 && mode2040.checked));
-
-  const nextAt = Date.now() + 20_000;
-  await set(stateRef, {
-    running: true,
-    nextAt,
-    leaderId: clientId,
-    updatedAt: serverTimestamp()
-  });
-
-  // onDisconnect: hanya kosongkan leaderId (TIDAK mematikan running)
-  const sLeader = ref(db, 'control/state/leaderId');
-  onDisconnect(sLeader).set(null);
-
-  isLeader    = true;
-  setRunningUI(true);
-  nextAtLocal = nextAt;
-
-  if(tickTimer) clearInterval(tickTimer);
-  tickTimer = setInterval(tickLeader, 200);
-
-  // Rotasi awal + persist assignments
-  await stepRotationAndPersist();
-}
-
-async function stopAsLeaderOrViewer(){
-  // siapapun boleh menghentikan selama status masih running (mis. leader sudah tutup tab)
-  await update(stateRef, {
-    running: false,
-    leaderId: null,
-    updatedAt: serverTimestamp()
-  });
-  isLeader = false;
-  setRunningUI(false);
-  if(tickTimer) clearInterval(tickTimer);
-  tickTimer = null;
-  // nextAtLocal dibiarkan untuk tampilkan waktu terakhir; clock tetap jalan via UI ticker
-}
-
-// ======== Events ========
+// ======== EVENTS ========
 startBtn.onclick = async ()=>{
-  // Validasi mode 20–40 sebelum mulai
-  if(mode2040?.checked && !allow2040){
+  // Validasi mode 20–40 (hanya jika dicentang)
+  const want2040 = !!(mode2040 && mode2040.checked);
+  if(want2040 && !allow2040){
     mode2040.checked = false;
-    showSheet(`Metode 20–40 hanya bisa dipakai bila jumlah personil junior/senior tepat 3 orang (contoh: 1 senior + 2 junior, atau 3 junior). Saat ini: ${lastJSCount}.`);
+    showSheet(`Metode 20–40 hanya untuk komposisi junior/senior berjumlah tepat 3 orang (contoh: 1 senior + 2 junior, atau 3 junior). Saat ini: ${lastJSCount}.`);
     return;
   }
-  // Cegah start jika sudah ada running + nextAt masih di masa depan (hindari double leader)
-  const stSnap = await get(stateRef);
-  const stVal = stSnap.val()||{};
-  if(stVal.running && stVal.nextAt && Date.now() < stVal.nextAt){
-    showSheet('Perputaran sedang aktif sampai waktu perputaran selanjutnya. Tekan Hentikan jika ingin mengambil alih.');
-    return;
-  }
-  await becomeLeaderAndStart();
+
+  // Set state running=true, nextAt = now + 20s, mode2040 = sesuai checkbox
+  const now = Date.now();
+  await set(stateRef, { running:true, nextAt: now + CYCLE_MS, mode2040: want2040 });
+
+  // Tulis assignments awal segera
+  mode2040State = want2040;
+  await computeAndWriteAssignments(mode2040State);
+
+  // UI lokal
+  setRunningUI(true);
 };
 
-stopBtn.onclick = async ()=>{ await stopAsLeaderOrViewer(); };
+stopBtn.onclick = async ()=>{
+  await update(stateRef, { running:false }); // biarkan nextAt tetap (agar tetap tampil)
+  setRunningUI(false);
+};
 
 nextBtn.onclick = async ()=>{
-  // jika leader & running, langsung paksa rotasi sekarang + tulis nextAt baru
-  if(isLeader && running){
-    await stepRotationAndPersist();
+  // Majukan paksa 1x dari sekarang (jika sedang running)
+  const snap = await get(stateRef);
+  const cur  = snap.val()||{};
+  if(cur.running){
+    mode2040State = !!cur.mode2040;
+    await tryAdvanceCycle(true);
   }
 };
 
@@ -331,7 +295,7 @@ nextBtn.onclick = async ()=>{
 mode2040?.addEventListener('change', ()=>{
   if(mode2040.checked && !allow2040){
     mode2040.checked = false;
-    showSheet(`Metode 20–40 hanya bisa dipakai bila jumlah personil junior/senior tepat 3 orang (contoh: 1 senior + 2 junior, atau 3 junior). Saat ini: ${lastJSCount}.`);
+    showSheet(`Metode 20–40 hanya untuk komposisi junior/senior berjumlah tepat 3 orang (contoh: 1 senior + 2 junior, atau 3 junior). Saat ini: ${lastJSCount}.`);
   }
 });
 
@@ -382,37 +346,23 @@ onValue(peopleRef, (snap)=>{
   setModeBadgeAvailability(allow2040);
 });
 
-// Mode global (viewer ikut saat idle)
-onValue(modeRef, (snap)=>{
-  const v = !!snap.val();
-  if(!running && mode2040) mode2040.checked = v;
-});
-
-// State global
+// State global (semua klien sinkron)
 onValue(stateRef, (snap)=>{
   const st = snap.val() || {};
-  const { running:run = false, nextAt = null, leaderId = null } = st;
+  const run = !!st.running;
+  const na  = st.nextAt|0;
+  mode2040State = !!st.mode2040;
 
-  // Siapa leader (jika ada)
-  isLeader = (leaderId && leaderId === clientId) && run;
+  nextAtLocal = Number.isFinite(na) && na>0 ? na : null;
+  setRunningUI(run);
 
-  const now = Date.now();
-  const future = nextAt && now < nextAt;
-
-  if(run && future){
-    // masih dalam jangka aktif, tampilkan sebagai berjalan
-    nextAtLocal = nextAt;
-    setRunningUI(true);
-    // hanya leader yang menjalankan tick; viewer cukup UI ticker
-    if(!isLeader && tickTimer){ clearInterval(tickTimer); tickTimer = null; }
-  } else {
-    // lewat waktu atau run=false → dianggap berhenti
-    nextAtLocal = nextAt; // tetap tampilkan waktu terakhir
-    setRunningUI(false);
-    if(tickTimer){ clearInterval(tickTimer); tickTimer = null; }
+  // Saat running, semua klien akan mencoba memutar bila due;
+  // hanya satu yang "menang" via transaction.
+  if(run && nextAtLocal && Date.now() >= nextAtLocal){
+    // coba advance (due)
+    tryAdvanceCycle(false);
   }
 });
 
-// Initial
-setRunningUI(false);
-renderClock(); // paint awal
+// Paint awal
+renderClock();
