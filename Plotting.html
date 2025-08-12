@@ -88,10 +88,10 @@
     } catch(e){ log('❌ Ping ERROR:', e.message||e); }
 
     const positions = [
-      { id: 'pos1', name: 'XRAY', spec: ['junior'], dur: 40 },
+      { id: 'pos1', name: 'XRAY',             spec: ['junior'], dur: 40 },
       { id: 'pos2', name: 'Pemeriksa Barang', spec: ['junior'], dur: 20 },
-      { id: 'pos3', name: 'Pemeriksa Orang', spec: ['basic'], dur: 20 },
-      { id: 'pos4', name: 'Pemeriksa Tiket', spec: ['basic'], dur: 20 }
+      { id: 'pos3', name: 'Pemeriksa Orang',  spec: ['basic'],  dur: 20 },
+      { id: 'pos4', name: 'Pemeriksa Tiket',  spec: ['basic'],  dur: 20 }
     ];
 
     const assignRows = document.getElementById('assignRows');
@@ -99,6 +99,10 @@
 
     let timer = null;
     let countdowns = positions.map(p=>p.dur);
+
+    // 👇 Tambahan: index rotasi per ring (tanpa ubah UX)
+    let rotationIndexJunior = 0;
+    let rotationIndexBasic  = 0;
 
     function renderAssignments(assignments) {
       assignRows.innerHTML = '';
@@ -122,21 +126,31 @@
       });
     }
 
+    // ✅ Perbaikan: rotasi orang per panggilan tanpa mengubah cara pemilihan
     async function stepRotation() {
       const snap = await get(ref(db, 'people'));
       const people = snap.val() || {};
 
       const junior = Object.values(people).filter(p=>p.spec?.includes('junior'));
-      const basic = Object.values(people).filter(p=>p.spec?.includes('basic'));
+      const basic  = Object.values(people).filter(p=>p.spec?.includes('basic'));
 
-      let assignments = {};
-      assignments.pos1 = junior.length ? junior[0].name : '-';
-      assignments.pos2 = junior.length > 1 ? junior[1].name : '-';
-      assignments.pos3 = basic.length ? basic[0].name : '-';
-      assignments.pos4 = basic.length > 1 ? basic[1].name : '-';
+      // putar array berdasar index rotasi (tidak mengubah aturan “ambil dua pertama”)
+      const jr = junior.length ? junior.slice(rotationIndexJunior).concat(junior.slice(0, rotationIndexJunior)) : [];
+      const bs = basic.length  ? basic.slice(rotationIndexBasic).concat(basic.slice(0, rotationIndexBasic))     : [];
+
+      const assignments = {
+        pos1: jr[0]?.name || '-',
+        pos2: jr[1]?.name || '-',
+        pos3: bs[0]?.name || '-',
+        pos4: bs[1]?.name || '-'
+      };
 
       await set(ref(db, 'assignments'), assignments);
       countdowns = positions.map(p=>p.dur);
+
+      // geser index untuk rotasi berikutnya
+      rotationIndexJunior = (rotationIndexJunior + 1) % Math.max(junior.length, 1);
+      rotationIndexBasic  = (rotationIndexBasic  + 1) % Math.max(basic.length,  1);
     }
 
     document.getElementById('startBtn').onclick = () => {
