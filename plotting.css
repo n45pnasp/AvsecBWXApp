@@ -80,6 +80,9 @@ button:disabled{
   font-size: 14px; background: rgba(255,255,255,0.05);
   padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
 }
+.mode-option.disabled{
+  opacity: .6;
+}
 .hidden{ display: none !important; }
 
 /* Tabel penugasan & people */
@@ -94,3 +97,38 @@ input[type="text"]{
   padding: 8px 10px; border-radius: 8px; border:1px solid var(--border);
   background:#0b1324; color: var(--text);
 }
+
+/* Bottom sheet */
+.sheet-backdrop{
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.4);
+  backdrop-filter: blur(2px);
+  z-index: 30;
+}
+.sheet{
+  position: fixed; left:0; right:0; bottom:0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -10px 30px rgba(0,0,0,.35);
+  border-radius: 12px 12px 0 0;
+  padding: 12px 14px;
+  z-index: 31;
+  animation: slideUp .18s ease-out;
+}
+.sheet-header{
+  display:flex; justify-content:space-between; align-items:center;
+  gap:10px; margin-bottom:6px;
+}
+.sheet-body{ color: var(--muted); font-size: 14px; line-height: 1.4; }
+.sheet-close{
+  background: transparent; color: var(--text); border:1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; cursor:pointer;
+}
+
+@keyframes slideUp{
+  from{ transform: translateY(12px); opacity:.7; }
+  to  { transform: translateY(0);    opacity:1;  }
+}
+
+/* Hide utility */
+.hidden{ display:none !important; }
