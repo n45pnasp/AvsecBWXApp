@@ -1,0 +1,37 @@
+:root {
+  --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb;
+  --border:#334; --btn-ok:#14532d; --btn-stop:#7f1d1d;
+}
+*{box-sizing:border-box}
+html,body{margin:0; padding:0}
+body{
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  background: var(--bg); color: var(--text);
+  padding: 20px;
+}
+h1{ margin-top:0 }
+h2{ margin-top:24px }
+
+.controls{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px }
+button{
+  padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);
+  background: #0b1324; color: var(--text); cursor: pointer;
+}
+button.start{ background: var(--btn-ok); border-color:#1a6a3a }
+button.stop{ background: var(--btn-stop); border-color:#9f1d1d }
+
+table{ width:100%; border-collapse: collapse; margin-top: 12px }
+th,td{ border:1px solid var(--border); padding:8px 10px; text-align:left }
+th{ background: var(--panel) }
+
+.manage{ display:grid; gap:12px }
+.add-person{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+input[type="text"]{
+  padding: 6px 8px; border-radius: 6px; border:1px solid var(--border);
+  background:#0b1324; color: var(--text);
+}
+
+.diag{
+  white-space: pre-wrap; background:#0b1324; border:1px solid var(--border);
+  padding:10px; border-radius:6px; max-height:240px; overflow:auto;
+}
