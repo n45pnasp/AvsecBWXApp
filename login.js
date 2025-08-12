@@ -98,9 +98,21 @@ function show(sec){
   sec.classList.add("active");
   err(""); ok("");
 }
-function err(msg){ if (!msg){ errBox?.classList.remove("show"); if (errBox) errBox.textContent=""; } else { if (errBox){ errBox.textContent=msg; errBox.classList.add("show"); } } }
-function ok(msg){  if (!msg){ okBox?.classList.remove("show");  if (okBox) okBox.textContent=""; } else {  if (okBox){ okBox.textContent=msg;  okBox.classList.add("show"); } } }
-function disableForm(d){ if (loginBtn){ loginBtn.disabled = d; loginBtn.textContent = d ? "Memproses..." : "Masuk"; } }
+function err(msg){
+  if (!errBox) return;
+  if (!msg){ errBox.classList.remove("show"); errBox.textContent=""; }
+  else { errBox.textContent=msg; errBox.classList.add("show"); }
+}
+function ok(msg){
+  if (!okBox) return;
+  if (!msg){ okBox.classList.remove("show"); okBox.textContent=""; }
+  else { okBox.textContent=msg; okBox.classList.add("show"); }
+}
+function disableForm(d){
+  if (!loginBtn) return;
+  loginBtn.disabled = d;
+  loginBtn.textContent = d ? "Memproses..." : "Masuk";
+}
 
 /** NAV */
 goLoginBtn?.addEventListener("click", () => show(login));
@@ -256,6 +268,8 @@ async function notifyKodularAndGoHome(status, user){
       isAdmin: prof.isAdmin,
       ts: Date.now()
     }));
+    // tanda baru login untuk anti-bounce di home.js
+    sessionStorage.setItem("justSignedIn", "1");
   } catch (_) {}
 
   // 2) (opsional) kirim ke Kodular
@@ -280,8 +294,8 @@ async function notifyKodularAndGoHome(status, user){
   }
 
   ok(status==="success" ? "Login berhasil. Mengalihkan ke Home..." : "Sesi ditemukan. Mengalihkan ke Home...");
-  // 3) Arahkan ke Home
-  setTimeout(()=>{ location.href = "home.html"; }, 600);
+  // 3) Arahkan ke Home (pakai replace agar history bersih)
+  setTimeout(()=>{ location.replace("home.html"); }, 600);
 }
 
 /** LOGIN */
@@ -316,7 +330,7 @@ form?.addEventListener("submit", async (e)=>{
   }
 });
 
-/** AUTO-SKIP jika sudah login */
+/** AUTO-SKIP jika sudah login / handle logout */
 onAuthStateChanged(auth, async (user)=>{
   const params = new URLSearchParams(location.search);
   const wantLogout = params.get("logout") === "1";
@@ -334,12 +348,12 @@ onAuthStateChanged(auth, async (user)=>{
   }
 });
 
-/** LOGOUT (dipanggil dari login.html?logout=1 atau manual) */
+/** LOGOUT (dipanggil dari index.html?logout=1 atau manual) */
 window.logout = async function(){
   try{
     await signOut(auth);
-    // Bersihkan jejak local/session profile
     sessionStorage.removeItem("authProfile");
+    sessionStorage.removeItem("justSignedIn");
     ok("Berhasil keluar.");
     show(welcome);
   }catch(e){
@@ -347,7 +361,7 @@ window.logout = async function(){
   }
 };
 
-// (Opsional) contoh lupa password jika ada tombol dengan id #forgotBtn
+// Lupa password (butuh elemen #forgotBtn di HTML-mu)
 document.querySelector("#forgotBtn")?.addEventListener("click", async ()=>{
   const email = (emailEl?.value || "").trim();
   if (!email) return err("Masukkan email terlebih dahulu.");
