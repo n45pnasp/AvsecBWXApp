@@ -88,6 +88,10 @@ function showSheet(msg){
   if(sheetMsg) sheetMsg.textContent = msg;
   sheetBackdrop?.classList.remove('hidden');
   bottomSheet?.classList.remove('hidden');
+
+  // Auto dismiss dalam 3 detik
+  clearTimeout(showSheet._timer);
+  showSheet._timer = setTimeout(hideSheet, 3000);
 }
 function hideSheet(){
   sheetBackdrop?.classList.add('hidden');
