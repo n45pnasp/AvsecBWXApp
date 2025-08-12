@@ -88,9 +88,11 @@ let lastJSCount = 0;
 // ======== UI helpers ========
 function setRunningUI(isRunning){
   running = isRunning;
-  startBtn.disabled = isRunning;   // Mulai tidak bisa ditekan saat jalan
-  stopBtn.disabled  = !isRunning;  // Hentikan hanya aktif saat jalan
-  if(modeBadge){ modeBadge.classList.toggle('hidden', isRunning); } // sembunyikan checkbox saat jalan
+  // Start disabled saat jalan, Stop enabled saat jalan
+  startBtn.disabled = isRunning;
+  stopBtn.disabled  = !isRunning;
+  // Checkbox mode disembunyikan saat jalan
+  if(modeBadge){ modeBadge.classList.toggle('hidden', isRunning); }
 }
 function setModeBadgeAvailability(allowed){
   if(!modeBadge) return;
@@ -140,9 +142,9 @@ const pad = n => String(n).padStart(2,'0');
 const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 function renderClock(){
   const now = Date.now();
-  document.getElementById('clock').textContent = fmt(new Date(now));
+  clockEl.textContent = fmt(new Date(now));
   const na = nextAtLocal;
-  document.getElementById('nextRotation').textContent = (running && na) ? fmt(new Date(na)) : '-';
+  nextEl.textContent = (running && na) ? fmt(new Date(na)) : '-';
 }
 
 // ======== Helpers ========
@@ -214,7 +216,7 @@ function advanceRotIdx(pools){
   }
 }
 
-// ======== ROTATION (hanya leader yang menjalankan) ========
+// ======== ROTATION (hanya leader yang memutar) ========
 async function stepRotationAndPersist(){
   const useCooldown = !!(mode2040 && mode2040.checked);
   const { pools, cooldown } = await buildPools(useCooldown);
@@ -239,7 +241,7 @@ async function stepRotationAndPersist(){
   advanceRotIdx(pools);
 
   // Tulis nextAt baru (20 detik ke depan) di RTDB
-  const nextAt = Date.now() + CYCLE_MS;
+  const nextAt = Date.now() + 20_000;
   await update(stateRef, { nextAt, updatedAt: serverTimestamp() });
   nextAtLocal = nextAt; // mirror untuk render cepat
 }
@@ -247,7 +249,7 @@ async function stepRotationAndPersist(){
 // ======== Main tick (leader saja yang memutar) ========
 async function tickLeader(){
   const now = Date.now();
-  if(!running || !isLeader) return;
+  if(!running || !isLeader) { renderClock(); return; }
   if(nextAtLocal && now >= nextAtLocal){
     await stepRotationAndPersist();
   }
@@ -256,10 +258,10 @@ async function tickLeader(){
 
 // ======== START/STOP as leader ========
 async function becomeLeaderAndStart(){
-  // tulis mode global agar viewer membaca mode yang sama
+  // tulis mode global agar viewer mengikuti
   await set(modeRef, !!(mode2040 && mode2040.checked));
 
-  const nextAt = Date.now() + CYCLE_MS;
+  const nextAt = Date.now() + 20_000;
   await set(stateRef, {
     running: true,
     nextAt,
@@ -267,24 +269,23 @@ async function becomeLeaderAndStart(){
     updatedAt: serverTimestamp()
   });
 
-  // onDisconnect: auto-matikan
+  // onDisconnect: hanya kosongkan leaderId (TIDAK mematikan running)
   const sLeader = ref(db, 'control/state/leaderId');
-  const sRunning= ref(db, 'control/state/running');
   onDisconnect(sLeader).set(null);
-  onDisconnect(sRunning).set(false);
 
   isLeader    = true;
   setRunningUI(true);
   nextAtLocal = nextAt;
 
   if(tickTimer) clearInterval(tickTimer);
-  tickTimer = setInterval(tickLeader, TICK_MS);
+  tickTimer = setInterval(tickLeader, 200);
 
-  // Putar rotasi awal + tulis assignments
+  // Rotasi awal + persist assignments
   await stepRotationAndPersist();
 }
 
-async function stopAsLeader(){
+async function stopAsLeaderOrViewer(){
+  // siapapun boleh menghentikan selama status masih running (mis. leader sudah tutup tab)
   await update(stateRef, {
     running: false,
     leaderId: null,
@@ -294,7 +295,7 @@ async function stopAsLeader(){
   setRunningUI(false);
   if(tickTimer) clearInterval(tickTimer);
   tickTimer = null;
-  nextAtLocal = null;
+  // biarkan nextAtLocal tetap untuk ditampilkan sebagai waktu terakhir
   renderClock();
 }
 
@@ -306,19 +307,26 @@ startBtn.onclick = async ()=>{
     showSheet(`Metode 20–40 hanya bisa dipakai bila jumlah personil junior/senior tepat 3 orang (contoh: 1 senior + 2 junior, atau 3 junior). Saat ini: ${lastJSCount}.`);
     return;
   }
+  // Cegah start jika sudah ada running + nextAt masih di masa depan (hindari double leader)
+  const stSnap = await get(stateRef);
+  const stVal = stSnap.val()||{};
+  if(stVal.running && stVal.nextAt && Date.now() < stVal.nextAt){
+    showSheet('Perputaran sedang aktif sampai waktu perputaran selanjutnya. Tekan Hentikan jika ingin mengambil alih.');
+    return;
+  }
   await becomeLeaderAndStart();
 };
 
-stopBtn.onclick = async ()=>{ await stopAsLeader(); };
+stopBtn.onclick = async ()=>{ await stopAsLeaderOrViewer(); };
 
 nextBtn.onclick = async ()=>{
-  // jika leader & running, langsung paksa rotasi sekarang dan tulis nextAt baru
+  // jika leader & running, langsung paksa rotasi sekarang + tulis nextAt baru
   if(isLeader && running){
     await stepRotationAndPersist();
   }
 };
 
-// Toggle checkbox 20–40 saat idle (hanya mempengaruhi start berikutnya)
+// Toggle checkbox 20–40 saat idle
 mode2040?.addEventListener('change', ()=>{
   if(mode2040.checked && !allow2040){
     mode2040.checked = false;
@@ -327,7 +335,7 @@ mode2040?.addEventListener('change', ()=>{
 });
 
 // Tambah/hapus/ubah personil
-const addPerson = async ()=>{
+addPersonBtn.onclick = async ()=>{
   const name = nameInput.value.trim(); if(!name) return;
   const specs = [];
   if(juniorSpec?.checked) specs.push('junior');
@@ -336,15 +344,17 @@ const addPerson = async ()=>{
   await update(ref(db, 'people/'+name.toLowerCase()), { name, spec: specs });
   nameInput.value=''; if(juniorSpec) juniorSpec.checked=false; if(basicSpec) basicSpec.checked=false; if(seniorSpecEl) seniorSpecEl.checked=false;
 };
-addPersonBtn.onclick = addPerson;
 
 peopleRows.addEventListener('change', async (e)=>{
   if(e.target.type !== 'checkbox') return;
   const id = e.target.dataset.id, spec = e.target.dataset.spec;
   const snap = await get(ref(db, 'people/'+id)); let person = snap.val(); if(!person) return;
   if(!Array.isArray(person.spec)) person.spec = [];
-  if(e.target.checked){ if(!person.spec.includes(spec)) person.spec.push(spec); }
-  else { person.spec = person.spec.filter(s=>s!==spec); }
+  if(e.target.checked){
+    if(!person.spec.includes(spec)) person.spec.push(spec);
+  } else {
+    person.spec = person.spec.filter(s=>s!==spec);
+  }
   await update(ref(db, 'people/'+id), person);
 });
 peopleRows.addEventListener('click', async (e)=>{
@@ -368,10 +378,9 @@ onValue(peopleRef, (snap)=>{
   setModeBadgeAvailability(allow2040);
 });
 
-// Mode global (viewer ikut)
+// Mode global (viewer ikut saat idle)
 onValue(modeRef, (snap)=>{
   const v = !!snap.val();
-  // hanya update UI kalau tidak sedang running (agar tidak mengubah mode saat sedang berjalan)
   if(!running && mode2040) mode2040.checked = v;
 });
 
@@ -380,21 +389,20 @@ onValue(stateRef, (snap)=>{
   const st = snap.val() || {};
   const { running:run = false, nextAt = null, leaderId = null } = st;
 
-  // Leader hanya jika ID sama
+  // Siapa leader (jika ada)
   isLeader = (leaderId && leaderId === clientId) && run;
 
-  // UI running = true jika (run==true dan nextAt masih di masa depan)
   const now = Date.now();
   const future = nextAt && now < nextAt;
 
   if(run && future){
-    // plotting sedang berjalan (oleh leader mana pun)
+    // masih dalam jangka aktif, tampilkan sebagai berjalan
     nextAtLocal = nextAt;
     setRunningUI(true);
-    // viewer tidak menjalankan tickLeader; leader yang menjalankan
+    // hanya leader yang menjalankan tick; viewer cukup render clock
     if(!isLeader && tickTimer){ clearInterval(tickTimer); tickTimer = null; }
   } else {
-    // jika nextAt lewat atau run=false → tampil berhenti
+    // lewat waktu atau run=false → dianggap berhenti
     nextAtLocal = nextAt; // tetap tampilkan waktu terakhir
     setRunningUI(false);
     if(tickTimer){ clearInterval(tickTimer); tickTimer = null; }
