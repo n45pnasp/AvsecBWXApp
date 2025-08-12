@@ -34,6 +34,7 @@
   <div class="manage">
     <div class="add-person">
       <input id="nameInput" type="text" placeholder="Nama" />
+      <label><input type="checkbox" id="seniorSpec" /> Senior</label>
       <label><input type="checkbox" id="juniorSpec" /> Junior</label>
       <label><input type="checkbox" id="basicSpec" /> Basic</label>
       <button id="addPersonBtn">Tambah</button>
@@ -41,7 +42,7 @@
 
     <table class="people">
       <thead>
-        <tr><th>Nama</th><th>Junior</th><th>Basic</th><th>Aksi</th></tr>
+        <tr><th>Nama</th><th>Senior</th><th>Junior</th><th>Basic</th><th>Aksi</th></tr>
       </thead>
       <tbody id="peopleRows"></tbody>
     </table>
