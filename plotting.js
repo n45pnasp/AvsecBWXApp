@@ -52,7 +52,7 @@ onValue(ref(db, ".info/connected"), snap => setConn(!!snap.val()));
 // ======== Posisi & aturan (20s) ========
 const positions = [
   { id:'pos1', name:'Operator Xray',    allowed:['senior','junior'] },
-  { id:'pos2', name:'Pemeriksa Barang', allowed:['junior','basic'] },
+  { id:'pos2', name:'Pemeriksa Barang', allowed:['senior','junior','basic'] },
   { id:'pos3', name:'Pemeriksa Orang',  allowed:['junior','basic'] },
   { id:'pos4', name:'Flow Control',     allowed:['junior','basic'] },
 ];
