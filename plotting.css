@@ -30,8 +30,8 @@ body{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 88px;
+  height: 88px;
   background: transparent;    /* tanpa warna */
   border: none;               /* hilangkan border */
   color: var(--text);
@@ -41,7 +41,7 @@ body{
 
 .back-btn svg {
   display: block;
-  stroke-width: 3.2;          /* ketebalan panah */
+  stroke-width: 8;          /* ketebalan panah */
 }
 
 .back-btn:hover {
