@@ -27,7 +27,8 @@ const peopleRows   = document.getElementById('peopleRows');
 const startBtn     = document.getElementById('startBtn');
 const stopBtn      = document.getElementById('stopBtn');
 const nextBtn      = document.getElementById('nextBtn');
-// (HAPUS toggle 20-40; kalau elemen masih ada di HTML, kita sembunyikan saja)
+
+// (Toggle 20–40: sudah ditiadakan; jika elemen lama masih ada di HTML, kita sembunyikan)
 const modeBadge    = document.querySelector('.mode-option');
 if (modeBadge) modeBadge.classList.add('hidden');
 
@@ -38,6 +39,10 @@ const seniorSpecEl = document.getElementById('seniorSpec');
 const addPersonBtn = document.getElementById('addPersonBtn');
 const clockEl      = document.getElementById('clock');
 const nextEl       = document.getElementById('nextRotation');
+
+// ======== NEW: elemen untuk toggle tampilan tabel vs kelola personil ========
+const assignTable = document.querySelector('.assign'); // tabel penugasan
+const manageBox   = document.querySelector('.manage'); // panel kelola personil
 
 // Bottom sheet (sekarang untuk koneksi internet)
 const sheetBackdrop = document.getElementById('sheetBackdrop');
@@ -105,6 +110,11 @@ function setRunningUI(isRunning){
   running = isRunning;
   startBtn.disabled = isRunning;
   stopBtn.disabled  = !isRunning;
+
+  // Saat belum mulai: tabel hidden, kelola personil tampil
+  // Saat sudah mulai: tabel tampil, kelola personil hidden
+  if (assignTable) assignTable.classList.toggle('hidden', !isRunning);
+  if (manageBox)   manageBox.classList.toggle('hidden',  isRunning);
 }
 
 function renderAssignments(assignments){
@@ -362,9 +372,10 @@ onValue(stateRef, async (snap)=>{
 // ======== Heartbeat shared-control: cek due setiap 500ms ========
 setInterval(()=>{
   if (running && nextAtLocal && Date.now() >= nextAtLocal) {
-    tryAdvanceCycle(false); // runTransaction untuk safety
+    tryAdvanceCycle(false); // runTransaction safety
   }
 }, 500);
 
-// Paint awal
+// Paint awal: default belum mulai → tabel hidden, kelola personil tampil
+setRunningUI(false);
 renderClock();
