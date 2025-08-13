@@ -26,29 +26,30 @@ body{
   padding: 0 14px;
   margin: -20px -20px 16px; /* full-bleed */
 }
+
 .back-btn {
-/* Back button: ikon saja, tanpa kotak */
-.back-btn{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;               /* area klik nyaman */
+  width: 44px;                /* area klik */
   height: 44px;
-  background: transparent;   /* tanpa kotak */
-  border: none;              /* hilangkan border */
+  background: transparent;    /* tanpa warna kotak */
+  border: none;               /* hilangkan border */
   color: var(--text);
   cursor: pointer;
   flex: 0 0 auto;
 }
-
-.back-btn svg{
+.back-btn svg {
   display: block;
-  stroke-width: 2.2;         /* tipis seperti contohmu */
+  stroke-width: 2.2;          /* tipis seperti contoh */
+}
+.back-btn:hover { background: transparent; }
+.back-btn:active { transform: translateY(1px); }
+.back-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
-.back-btn:hover{ background: transparent; }
-.back-btn:active{ transform: translateY(1px); }
-.back-btn:focus-visible{ outline: none; box-shadow: none; }
 .app-title{
   font-size: 22px; font-weight: 300; letter-spacing: .3px;
   margin: 0; user-select: none;
@@ -65,7 +66,6 @@ body{
   padding: 18px 20px 16px;
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
   margin-bottom: 16px;
-
   display: flex; flex-direction: column; align-items: center; text-align: center;
 }
 .header-top{ width:100%; min-height: 10px; }
@@ -97,12 +97,11 @@ body{
 .controls{
   display: flex;
   align-items: center;
-  justify-content: space-between;  /* sebar rata */
+  justify-content: space-between;
   gap: 10px;
-  flex-wrap: nowrap;               /* tetap satu baris */
+  flex-wrap: nowrap;
   margin-bottom: 12px;
 }
-/* Tombol umum (TIDAK ada flex di sini) */
 button{
   padding: 10px 16px;
   border-radius: 10px;
@@ -112,10 +111,9 @@ button{
   transition: transform .06s ease, filter .15s ease, background .15s ease;
   margin: 0;
 }
-/* Flex hanya untuk tombol di dalam .controls */
 .controls button{
-  flex: 1 1 0;                     /* sama lebar */
-  white-space: nowrap;             /* teks 1 baris */
+  flex: 1 1 0;
+  white-space: nowrap;
 }
 button.start{ background: var(--btn-ok); border-color:#1a6a3a }
 button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
@@ -182,7 +180,7 @@ input[type="text"]{
    ========================= */
 @media (max-width: 480px){
   .app-title{ font-size: 20px; }
-  .back-btn{ width: 40px; height: 40px; border-radius: 10px; }
+  .back-btn{ width: 40px; height: 40px; }
   .controls{ gap:8px; }
   .controls button{ padding: 10px 14px; }
 }
