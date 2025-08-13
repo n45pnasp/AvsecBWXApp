@@ -61,9 +61,8 @@ body{
 
   display: flex; flex-direction: column; align-items: center; text-align: center;
 }
-.header-top{ width:100%; min-height: 10px; } /* tetap ada agar kompatibel */
+.header-top{ width:100%; min-height: 10px; }
 
-/* Indikator koneksi */
 .conn-dot{
   position: absolute; top: 12px; right: 14px;
   width: 12px; height: 12px; border-radius: 50%;
@@ -86,30 +85,15 @@ body{
 }
 
 /* =========================
-   CONTROLS (card)
+   CONTROLS (tanpa card, sejajar)
    ========================= */
-.controls-card{
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 12px 14px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
-  margin-bottom: 16px;
-  width: 100%;
-}
 .controls{
   display: flex;
   align-items: center;
+  justify-content: space-between; /* sebar rata */
   gap: 10px;
-  flex-wrap: nowrap;             /* Biar tidak turun ke bawah */
-  justify-content: space-between;/* Rata sebar */
-  margin-bottom: 10px;
-}
-
-.controls button{
-  flex: 1 1 0;                   /* Sama lebar */
-  text-align: center;
-  white-space: nowrap;           /* Teks tetap 1 baris */
+  flex-wrap: nowrap;              /* tetap satu baris */
+  margin-bottom: 12px;
 }
 button{
   padding: 10px 16px;
@@ -118,18 +102,16 @@ button{
   background: #0b1324; color: var(--text);
   cursor: pointer;
   transition: transform .06s ease, filter .15s ease, background .15s ease;
-  margin: 0; /* hilangkan margin supaya rapi mepet kanan */
+  margin: 0;
+  flex: 1 1 0;                    /* semua tombol sama lebar */
+  white-space: nowrap;            /* teks 1 baris */
 }
 button.start{ background: var(--btn-ok); border-color:#1a6a3a }
 button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
 button:hover{ filter: brightness(1.05); }
 button:active{ transform: translateY(1px); }
-button:disabled{
-  opacity:.55; cursor:not-allowed; filter: grayscale(30%);
-}
+button:disabled{ opacity:.55; cursor:not-allowed; filter: grayscale(30%); }
 
-/* (opsional) indikator mode lama */
-.mode-option{ display:none !important; }
 .hidden{ display:none !important; }
 
 /* =========================
