@@ -307,7 +307,7 @@ nextBtn.onclick = async ()=>{
 mode2040?.addEventListener('change', ()=>{
   if(mode2040.checked && !allow2040){
     mode2040.checked = false;
-    showSheet(`Metode 20–40 hanya untuk komposisi junior/senior berjumlah tepat 3 orang (contoh: 1 senior + 2 junior, atau 3 junior). Saat ini: ${lastJSCount}.`);
+    showSheet(`Metode 20–40 Menit hanya untuk komposisi jumlah junior dan senior minimal 3 orang. Saat ini: ${lastJSCount}.`);
   }
 });
 
