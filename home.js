@@ -189,7 +189,7 @@ window.onLogout = function () {
     localStorage.removeItem("tinydb_name");
     localStorage.removeItem("tinydb_photo");
   } catch (_) {}
-  location.href = "login.html?logout=1";
+  location.href = "index.html?logout=1";
 };
 
 // ======== KODULAR BRIDGE: Icon → WebViewString ========
