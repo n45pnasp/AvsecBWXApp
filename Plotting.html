@@ -7,6 +7,18 @@
   <link rel="stylesheet" href="plotting.css" />
 </head>
 <body>
+
+  <!-- App Bar: Tombol Kembali + Judul -->
+  <header class="app-bar" role="banner">
+    <button class="back-btn" aria-label="Kembali" onclick="history.back()">
+      <!-- Ikon panah kiri (SVG) -->
+      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15.5 19.5L8 12l7.5-7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <h1 class="app-title">Plotting</h1>
+  </header>
+
   <!-- Card Jam Utama -->
   <div class="header-card">
     <div class="header-top">
@@ -25,7 +37,7 @@
 
     <label class="mode-option">
       <input type="checkbox" id="mode2040" />
-      Metode 20–40 (XRAY Cooldown)
+      Metode 20–40 Menit
     </label>
   </div>
 
