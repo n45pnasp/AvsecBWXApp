@@ -189,7 +189,7 @@ window.onLogout = function () {
     localStorage.removeItem("tinydb_name");
     localStorage.removeItem("tinydb_photo");
   } catch (_) {}
-  location.href = "index.html?logout=1";
+  location.href = "login.html?logout=1";
 };
 
 // ======== KODULAR BRIDGE: Icon → WebViewString ========
@@ -248,16 +248,29 @@ function setupKodularIconBridge(){
   mo.observe(document.documentElement, { childList: true, subtree: true });
 }
 
+// ===== Pressed effect untuk dock (stabil di mobile) =====
+function enableDockPressedEffect(){
+  document.querySelectorAll('.dock-btn').forEach(btn=>{
+    const press = ()=> btn.classList.add('is-pressed');
+    const release = ()=> btn.classList.remove('is-pressed');
+    btn.addEventListener('pointerdown', press, {passive:true});
+    btn.addEventListener('pointerup', release, {passive:true});
+    btn.addEventListener('pointerleave', release, {passive:true});
+    btn.addEventListener('pointercancel', release, {passive:true});
+  });
+}
+
 // ===== Init =====
 function tick() { updateGreeting(); }
 tick();
 setInterval(tick, 60 * 1000);
 
 setupKodularIconBridge();
+enableDockPressedEffect();
 
-// Ambil profil user ketika state Auth siap (redirect ditangani oleh auth-guard.js)
+// Ambil profil user saat state Auth siap (redirect ditangani oleh auth-guard.js)
 onAuthStateChanged(auth, async (user) => {
-  if (!user) return; // kalau belum login, guard akan redirect
+  if (!user) return;
   try {
     const p = await fetchProfile(user);
     applyProfile({ name: p.name, photoURL: p.photoURL });
