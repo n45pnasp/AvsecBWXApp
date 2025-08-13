@@ -1,6 +1,6 @@
 // ===== Firebase =====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -189,7 +189,7 @@ window.onLogout = function () {
     localStorage.removeItem("tinydb_name");
     localStorage.removeItem("tinydb_photo");
   } catch (_) {}
-  location.href = "index.html?logout=1";
+  location.href = "login.html?logout=1";
 };
 
 // ======== KODULAR BRIDGE: Icon → WebViewString ========
@@ -255,15 +255,13 @@ setInterval(tick, 60 * 1000);
 
 setupKodularIconBridge();
 
-// Ambil profil user yang sudah dijamin login oleh auth-guard.js
-(async () => {
-  const user = auth.currentUser;
-  if (user) {
-    try {
-      const p = await fetchProfile(user);
-      applyProfile({ name: p.name, photoURL: p.photoURL });
-    } catch {
-      applyProfile({ name: resolveDisplayName(user), photoURL: DEFAULT_AVATAR });
-    }
+// Ambil profil user ketika state Auth siap (redirect ditangani oleh auth-guard.js)
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return; // kalau belum login, guard akan redirect
+  try {
+    const p = await fetchProfile(user);
+    applyProfile({ name: p.name, photoURL: p.photoURL });
+  } catch {
+    applyProfile({ name: resolveDisplayName(user), photoURL: DEFAULT_AVATAR });
   }
-})();
+});
