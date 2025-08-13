@@ -26,22 +26,35 @@ body{
   padding: 0 14px;
   margin: -20px -20px 16px; /* full-bleed */
 }
-.back-btn{
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px;
-  border-radius: 12px;
-  background: transparent;
-  border: 1px solid transparent;
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: transparent;    /* tanpa warna */
+  border: none;               /* hilangkan border */
   color: var(--text);
   cursor: pointer;
-  flex: 0 0 auto;               /* <- JANGAN melar */
+  flex: 0 0 auto;              /* tidak melar */
 }
-.back-btn svg{ display:block; stroke-width:8; } /* panah tebal */
-.back-btn:hover{ background: rgba(255,255,255,.05); }
-.back-btn:active{ transform: translateY(1px); }
-.back-btn:focus-visible{
-  outline: none; border-color: var(--border);
-  box-shadow: 0 0 0 3px rgba(255,255,255,.08);
+
+.back-btn svg {
+  display: block;
+  stroke-width: 3.2;          /* ketebalan panah */
+}
+
+.back-btn:hover {
+  background: transparent;    /* tidak ada efek hover */
+}
+
+.back-btn:active {
+  transform: translateY(1px);
+}
+
+.back-btn:focus-visible {
+  outline: none;              /* tidak ada outline kotak */
+  box-shadow: none;           /* hilangkan efek fokus */
 }
 .app-title{
   font-size: 22px; font-weight: 300; letter-spacing: .3px;
