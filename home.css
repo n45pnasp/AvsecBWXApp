@@ -51,31 +51,29 @@ body{
 /* ===== Container ===== */
 .page{ max-width: var(--container); margin: 0 auto; padding: 0 var(--g3); }
 
-/* (date-banner dihapus — tanggal dipindah ke dalam kartu sebagai overline) */
-
 /* ===== Layout utama ===== */
 .wrap{ padding: 12px 0 calc(96px + var(--safe-b)); min-height: 100dvh; }
 
 /* ===== Greeting Card ===== */
 .greet-card{
-  position: relative; /* untuk posisi overline */
+  position: relative;
   margin: var(--g4) 0 var(--g3);
   display:flex; align-items:center; gap: var(--g3);
   background:#0d0f13; border:1px solid var(--border);
   border-radius: clamp(18px, 4.5vw, 30px);
-  padding: clamp(20px, 5vw, 28px) clamp(14px, 4.4vw, 24px); /* top sedikit lebih besar */
+  padding: clamp(20px, 5vw, 28px) clamp(14px, 4.4vw, 24px);
   box-shadow: 0 10px 24px rgba(0,0,0,.28);
   cursor: pointer; user-select:none;
 }
 
-/* Overline tanggal di dalam kartu */
+/* Overline tanggal */
 .greet-overline{
   position: absolute; top: 10px; left: 16px; right: 16px;
   font-size: clamp(11px, 2.4vw, 12px);
   color: var(--muted);
   letter-spacing: .2px; font-weight: 700;
   text-transform: capitalize;
-  pointer-events: none; /* tidak mengganggu toggle kartu */
+  pointer-events: none;
 }
 
 .greet-text{ flex:1 1 auto; min-width:0; margin-top: 10px; }
@@ -112,10 +110,10 @@ body{
   box-shadow:0 0 14px var(--accent); flex:0 0 auto;
 }
 
-/* ===== Apps grid tanpa box ===== */
+/* ===== Apps grid ===== */
 .apps{
   display:grid;
-  grid-template-columns: repeat(4, 1fr); /* 4 kolom tetap */
+  grid-template-columns: repeat(4, 1fr);
   gap: clamp(14px, 3vw, 20px);
   padding-bottom: var(--g6);
 }
@@ -175,10 +173,17 @@ body{
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   border-radius: clamp(8px, 2.4vw, 12px); text-decoration:none; color:var(--text);
   font-size: clamp(15px, 3.8vw, 17px); line-height:1; user-select:none;
-  transition: background .2s ease, transform .12s ease, outline-color .2s ease;
   outline:1.5px solid transparent;
+  transition: background .2s ease, transform .12s ease, outline-color .2s ease, box-shadow .2s ease;
 }
 .dock-btn span{ display:block; font-size: clamp(9px, 2.4vw, 11px); line-height:1.1; margin-top:2px; }
 .dock-btn:hover{ background:rgba(255,255,255,.06) }
-.dock-btn:active{ transform:translateY(1px) scale(.98) }
-.dock-btn[aria-current="page"]{ outline-color: color-mix(in oklab, var(--accent) 40%, transparent); background: rgba(255,255,255,0.07); }
+.dock-btn:active{
+  transform:translateY(1px) scale(.98);
+  background: color-mix(in oklab, var(--accent) 35%, transparent);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--accent) 60%, transparent);
+}
+.dock-btn[aria-current="page"]{
+  outline-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  background: rgba(255,255,255,0.07);
+}
