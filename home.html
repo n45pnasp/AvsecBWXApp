@@ -10,13 +10,12 @@
   <div class="aurora"></div>
   <div class="grain"></div>
 
-  <!-- Banner tanggal (WIB, tanpa jam) -->
-  <div class="date-banner" id="dateBanner">-</div>
-
   <div class="wrap" role="application">
     <div class="page">
-      <!-- Greeting Card -->
+      <!-- Greeting Card (tanggal jadi overline di dalam card) -->
       <section class="greet-card" id="greetCard" role="button" aria-pressed="false">
+        <div class="greet-overline" id="dateBanner">-</div>
+
         <div class="greet-text">
           <div id="greet" class="greet-big">Selamat Pagi,</div>
           <div id="name" class="name-big">Pengguna</div>
@@ -34,7 +33,7 @@
         <span id="taglineText">Siap bantu aktivitasmu hari ini ✨</span>
       </section>
 
-      <!-- Apps grid (urut sesuai permintaan) -->
+      <!-- Apps grid -->
       <main class="apps" id="apps" aria-label="Aplikasi">
         <!-- Baris 1 -->
         <a class="app" href="javascript:void(0)" role="button" title="Chatbot" data-icon="CHATBOT">
@@ -109,7 +108,6 @@
     </div>
   </nav>
 
-  <!-- Pakai file JS (punya WIB, toggle logout, & Kodular bridge) -->
   <script type="module" src="home.js"></script>
 </body>
 </html>
