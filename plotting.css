@@ -34,6 +34,7 @@ body{
   border: 1px solid transparent;
   color: var(--text);
   cursor: pointer;
+  flex: 0 0 auto;               /* <- JANGAN melar */
 }
 .back-btn svg{ display:block; stroke-width:3.2; } /* panah tebal */
 .back-btn:hover{ background: rgba(255,255,255,.05); }
@@ -90,11 +91,12 @@ body{
 .controls{
   display: flex;
   align-items: center;
-  justify-content: space-between; /* sebar rata */
+  justify-content: space-between;  /* sebar rata */
   gap: 10px;
-  flex-wrap: nowrap;              /* tetap satu baris */
+  flex-wrap: nowrap;               /* tetap satu baris */
   margin-bottom: 12px;
 }
+/* Tombol umum (TIDAK ada flex di sini) */
 button{
   padding: 10px 16px;
   border-radius: 10px;
@@ -103,8 +105,11 @@ button{
   cursor: pointer;
   transition: transform .06s ease, filter .15s ease, background .15s ease;
   margin: 0;
-  flex: 1 1 0;                    /* semua tombol sama lebar */
-  white-space: nowrap;            /* teks 1 baris */
+}
+/* Flex hanya untuk tombol di dalam .controls */
+.controls button{
+  flex: 1 1 0;                     /* sama lebar */
+  white-space: nowrap;             /* teks 1 baris */
 }
 button.start{ background: var(--btn-ok); border-color:#1a6a3a }
 button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
@@ -173,5 +178,5 @@ input[type="text"]{
   .app-title{ font-size: 20px; }
   .back-btn{ width: 40px; height: 40px; border-radius: 10px; }
   .controls{ gap:8px; }
-  button{ padding: 10px 14px; }
+  .controls button{ padding: 10px 14px; }
 }
