@@ -8,7 +8,7 @@
 </head>
 <body>
 
-  <!-- App Bar: Tombol Kembali (panah tipis/runcing) + Judul -->
+  <!-- App Bar: Tombol Kembali (panah) + Judul -->
   <header class="app-bar" role="banner">
     <button class="back-btn" aria-label="Kembali" onclick="location.href='home.html'">
       <!-- Panah kiri tipis & runcing -->
@@ -45,12 +45,11 @@
     </label>
   </div>
 
-  <!-- Tabel penugasan (tanpa kolom countdown) -->
+  <!-- Tabel penugasan (tanpa kolom spesifikasi) -->
   <table class="assign">
     <thead>
       <tr>
         <th>Posisi</th>
-        <th>Spesifikasi</th>
         <th>Nama</th>
       </tr>
     </thead>
@@ -83,9 +82,7 @@
       <strong>Metode 20–40 tidak tersedia</strong>
       <button id="sheetClose" class="sheet-close" aria-label="Tutup">×</button>
     </div>
-    <div id="sheetMsg" class="sheet-body">
-      <!-- pesan akan diisi via JS -->
-    </div>
+    <div id="sheetMsg" class="sheet-body"></div>
   </div>
 
   <script type="module" src="plotting.js"></script>
