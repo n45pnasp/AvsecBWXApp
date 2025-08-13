@@ -74,7 +74,7 @@ body{
   font-size: clamp(11px, 2.4vw, 12px);
   color: var(--muted);
   letter-spacing: .2px; font-weight: 700;
-  text-transform: none;
+  text-transform: capitalize;
   pointer-events: none; /* tidak mengganggu toggle kartu */
 }
 
