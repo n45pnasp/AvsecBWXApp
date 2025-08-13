@@ -8,15 +8,17 @@
 </head>
 <body>
 
-  <!-- App Bar: Tombol Kembali + Judul -->
+  <!-- App Bar: Tombol Kembali (panah bold) + Judul -->
   <header class="app-bar" role="banner">
-  <button class="back-btn" onclick="history.back()" aria-label="Kembali">
-    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="15 18 9 12 15 6"></polyline>
-    </svg>
-  </button>
-  <h1 class="app-title">Plotting</h1>
-  </div>
+    <button class="back-btn" aria-label="Kembali" onclick="history.back()">
+      <!-- Panah kiri tebal -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
+    <h1 class="app-title">Logbook HBSCP</h1>
+  </header>
 
   <!-- Card Jam Utama -->
   <div class="header-card">
@@ -36,7 +38,7 @@
 
     <label class="mode-option">
       <input type="checkbox" id="mode2040" />
-      Metode 20–40 Menit
+      Metode 20–40 (XRAY Cooldown)
     </label>
   </div>
 
