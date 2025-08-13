@@ -25,14 +25,10 @@ body{
   padding: 0 14px;
   margin: -20px -20px 16px;     /* tarik full-bleed ke tepi body */
 }
-.back-btn{
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px;
-  border-radius: 8px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text);
-  cursor: pointer;
+/* Buat panah tebal */
+.back-btn svg {
+  display: block;
+  stroke-width: 3.2; /* tebal garis panah */
 }
 .back-btn:hover{ background: rgba(255,255,255,.04); }
 .back-btn:focus-visible{
