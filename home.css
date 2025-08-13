@@ -66,16 +66,17 @@ body{
   cursor: pointer; user-select:none;
 }
 
-/* Overline tanggal */
+/* Overline tanggal di dalam kartu */
 .greet-overline{
   position: absolute; top: 10px; left: 16px; right: 16px;
   font-size: clamp(11px, 2.4vw, 12px);
   color: var(--muted);
   letter-spacing: .2px; font-weight: 700;
-  text-transform: capitalize;
-  pointer-events: none;
+  text-transform: capitalize;     /* huruf awal tiap kata kapital */
+  pointer-events: none;           /* tidak mengganggu toggle kartu */
 }
 
+/* Konten salam digeser sedikit agar tidak menabrak overline */
 .greet-text{ flex:1 1 auto; min-width:0; margin-top: 10px; }
 .greet-big{ font-size: clamp(18px, 5.2vw, 28px); font-weight:800; color:#f1f5ff; }
 .name-big{  font-size: clamp(28px, 8.6vw, 40px); font-weight:900; color:#fff; line-height:1.08; letter-spacing:.2px; text-wrap: balance; }
@@ -174,15 +175,21 @@ body{
   border-radius: clamp(8px, 2.4vw, 12px); text-decoration:none; color:var(--text);
   font-size: clamp(15px, 3.8vw, 17px); line-height:1; user-select:none;
   outline:1.5px solid transparent;
-  transition: background .2s ease, transform .12s ease, outline-color .2s ease, box-shadow .2s ease;
+  -webkit-tap-highlight-color: transparent;    /* hilangkan flash biru default */
+  touch-action: manipulation;                  /* kurangi delay tap mobile */
+  transition: background .18s ease, transform .12s ease, outline-color .18s ease, box-shadow .18s ease;
 }
 .dock-btn span{ display:block; font-size: clamp(9px, 2.4vw, 11px); line-height:1.1; margin-top:2px; }
 .dock-btn:hover{ background:rgba(255,255,255,.06) }
-.dock-btn:active{
-  transform:translateY(1px) scale(.98);
+
+/* Efek tekan: dukung :active & class .is-pressed (JS) */
+.dock-btn:active,
+.dock-btn.is-pressed{
+  transform: translateY(1px) scale(.98);
   background: color-mix(in oklab, var(--accent) 35%, transparent);
   box-shadow: 0 0 10px color-mix(in oklab, var(--accent) 60%, transparent);
 }
+
 .dock-btn[aria-current="page"]{
   outline-color: color-mix(in oklab, var(--accent) 40%, transparent);
   background: rgba(255,255,255,0.07);
