@@ -116,9 +116,9 @@ function renderPeople(people){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${p.name}</td>
+      <td><input type="checkbox" ${has('senior')?'checked':''} data-id="${id}" data-spec="senior" /></td>
       <td><input type="checkbox" ${has('junior')?'checked':''} data-id="${id}" data-spec="junior" /></td>
       <td><input type="checkbox" ${has('basic')?'checked':''}  data-id="${id}" data-spec="basic"  /></td>
-      <td><input type="checkbox" ${has('senior')?'checked':''} data-id="${id}" data-spec="senior" /></td>
       <td><button data-del="${id}">Hapus</button></td>`;
     peopleRows.appendChild(tr);
   });
