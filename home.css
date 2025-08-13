@@ -51,32 +51,34 @@ body{
 /* ===== Container ===== */
 .page{ max-width: var(--container); margin: 0 auto; padding: 0 var(--g3); }
 
-/* ===== Banner tanggal (senin, 12 agustus 2025) ===== */
-.date-banner{
-  position: sticky; top: 0; z-index: 5;
-  padding: var(--g2) var(--g3) calc(8px + env(safe-area-inset-top,0px));
-  color: var(--text);
-  background: transparent; /* senada dengan dark background */
-  border-bottom: 1px solid var(--border);
-  text-align: center; font-weight: 700;
-  letter-spacing: .2px; text-transform: capitalize;
-  font-size: clamp(14px, 3.6vw, 18px);
-}
+/* (date-banner dihapus — tanggal dipindah ke dalam kartu sebagai overline) */
 
 /* ===== Layout utama ===== */
 .wrap{ padding: 12px 0 calc(96px + var(--safe-b)); min-height: 100dvh; }
 
 /* ===== Greeting Card ===== */
 .greet-card{
+  position: relative; /* untuk posisi overline */
   margin: var(--g4) 0 var(--g3);
   display:flex; align-items:center; gap: var(--g3);
   background:#0d0f13; border:1px solid var(--border);
   border-radius: clamp(18px, 4.5vw, 30px);
-  padding: clamp(14px, 4.4vw, 24px);
+  padding: clamp(20px, 5vw, 28px) clamp(14px, 4.4vw, 24px); /* top sedikit lebih besar */
   box-shadow: 0 10px 24px rgba(0,0,0,.28);
   cursor: pointer; user-select:none;
 }
-.greet-text{ flex:1 1 auto; min-width:0 }
+
+/* Overline tanggal di dalam kartu */
+.greet-overline{
+  position: absolute; top: 10px; left: 16px; right: 16px;
+  font-size: clamp(11px, 2.4vw, 12px);
+  color: var(--muted);
+  letter-spacing: .2px; font-weight: 700;
+  text-transform: none;
+  pointer-events: none; /* tidak mengganggu toggle kartu */
+}
+
+.greet-text{ flex:1 1 auto; min-width:0; margin-top: 10px; }
 .greet-big{ font-size: clamp(18px, 5.2vw, 28px); font-weight:800; color:#f1f5ff; }
 .name-big{  font-size: clamp(28px, 8.6vw, 40px); font-weight:900; color:#fff; line-height:1.08; letter-spacing:.2px; text-wrap: balance; }
 
@@ -153,7 +155,6 @@ body{
   text-overflow: ellipsis;
   max-width: 100%;
 }
-
 
 /* ===== Dock ===== */
 .dock{
