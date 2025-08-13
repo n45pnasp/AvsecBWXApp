@@ -40,16 +40,21 @@ function getGreetingID(d = getWIBDate()) {
   return "Selamat Malam,";
 }
 function updateGreeting() {
-  $("#greet").textContent = getGreetingID();
-  const k = $("#greet").textContent.split(" ")[1];
+  const greetEl = $("#greet");
+  if (greetEl) greetEl.textContent = getGreetingID();
+
+  const k = (greetEl?.textContent || "").split(" ")[1];
   const t = {
     Pagi:  "Fokus & semangat produktif ☕",
     Siang: "Jeda sejenak, tarik napas 🌤️",
     Sore:  "Akhiri dengan manis 🌇",
     Malam: "Santai, recharge energi 🌙"
   };
-  $("#taglineText").textContent = t[k] || "Siap bantu aktivitasmu hari ini ✨";
-  $("#dateBanner").textContent = bannerString();
+  const taglineEl = $("#taglineText");
+  if (taglineEl) taglineEl.textContent = t[k] || "Siap bantu aktivitasmu hari ini ✨";
+
+  const bannerEl = $("#dateBanner");
+  if (bannerEl) bannerEl.textContent = bannerString();
 }
 
 // ===== Avatar default =====
@@ -125,8 +130,9 @@ async function fetchProfile(user){
 // ===== Render profil =====
 function applyProfile({ name, photoURL }) {
   if (name) {
-    $("#name").textContent = name;
-    localStorage.setItem('tinydb_name', name);
+    const nameEl = $("#name");
+    if (nameEl) nameEl.textContent = name;
+    try { localStorage.setItem('tinydb_name', name); } catch(_) {}
   }
 
   const srcs = typeof photoURL === "object"
@@ -146,7 +152,7 @@ function applyProfile({ name, photoURL }) {
     tryNext();
 
     avatar.addEventListener("load", () => {
-      localStorage.setItem('tinydb_photo', avatar.src || DEFAULT_AVATAR);
+      try { localStorage.setItem('tinydb_photo', avatar.src || DEFAULT_AVATAR); } catch(_) {}
     }, { once: true });
   }
 }
@@ -155,6 +161,7 @@ function applyProfile({ name, photoURL }) {
 (function setupGreetCard() {
   const card = $("#greetCard");
   const profileSlot = $("#profileSlot");
+  if (!card || !profileSlot) return;
 
   card.addEventListener('click', () => {
     const active = card.getAttribute('aria-pressed') === 'true';
@@ -164,7 +171,7 @@ function applyProfile({ name, photoURL }) {
     if (next) {
       profileSlot.innerHTML =
         '<button id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">✖</button>';
-      $("#logoutBtn").addEventListener('click', (e) => {
+      $("#logoutBtn")?.addEventListener('click', (e) => {
         e.stopPropagation();
         if (typeof window.onLogout === 'function') window.onLogout();
       });
@@ -184,6 +191,75 @@ window.onLogout = function () {
   } catch (_) {}
   location.href = "index.html?logout=1";
 };
+
+// ======== KODULAR BRIDGE: Icon → WebViewString ========
+function sendToKodular(message){
+  try {
+    if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function") {
+      window.AppInventor.setWebViewString(String(message));
+    } else {
+      // fallback untuk debug di browser biasa
+      console.debug("[KodularBridge] ", message);
+      // optional: update title agar mudah dilihat saat testing
+      document.title = String(message);
+    }
+  } catch (e) {
+    console.warn("Gagal kirim ke Kodular:", e);
+  }
+}
+
+/**
+ * Pasang listener ke semua elemen yang memiliki:
+ *   - data-icon="NAMA_ICON"   → nama event yang dikirim ke Kodular
+ *   - (opsional) data-href="/tujuan.html" → setelah kirim, lakukan navigasi
+ *
+ * Catatan: Tidak mengganggu handler lain; aman jika dipanggil berkali-kali.
+ */
+function bindIcon(el){
+  if (!el || el.__kodularBound) return;
+  el.__kodularBound = true;
+
+  // aksesibilitas dasar
+  if (!el.hasAttribute("role")) el.setAttribute("role","button");
+  if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex","0");
+
+  const fire = () => {
+    const name = (el.getAttribute("data-icon") || "").trim();
+    if (!name) return;
+    sendToKodular(name);
+
+    const href = el.getAttribute("data-href");
+    if (href) {
+      // beri sedikit jeda agar Kodular sempat tangkap event
+      setTimeout(()=>{ location.href = href; }, 120);
+    }
+  };
+
+  el.addEventListener("click", fire);
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fire();
+    }
+  });
+}
+
+function setupKodularIconBridge(){
+  // 1) Pasang ke elemen yang sudah ada
+  document.querySelectorAll("[data-icon]").forEach(bindIcon);
+
+  // 2) Observe DOM untuk elemen baru (misal render dinamis)
+  const mo = new MutationObserver((muts) => {
+    for (const m of muts) {
+      m.addedNodes?.forEach(node => {
+        if (!(node instanceof HTMLElement)) return;
+        if (node.hasAttribute?.("data-icon")) bindIcon(node);
+        node.querySelectorAll?.("[data-icon]")?.forEach(bindIcon);
+      });
+    }
+  });
+  mo.observe(document.documentElement, { childList: true, subtree: true });
+}
 
 // ===== Auth Gate (dengan re-check anti-bounce) =====
 async function renderForUser(u){
@@ -228,3 +304,16 @@ function tick() { updateGreeting(); }
 tick();
 setInterval(tick, 60 * 1000);
 mountAuthGate();
+setupKodularIconBridge();
+
+/* ======== Contoh penggunaan di HTML ========
+  <div class="icon-card" data-icon="DASHBOARD" data-href="dashboard.html">
+    <img src="icons/dashboard.svg" alt="Dashboard">
+    <span>Dashboard</span>
+  </div>
+
+  <div class="icon-card" data-icon="ABSENSI">
+    <img src="icons/absen.svg" alt="Absensi">
+    <span>Absensi</span>
+  </div>
+============================================= */
