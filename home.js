@@ -1,6 +1,6 @@
 // ===== Firebase =====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -157,7 +157,7 @@ function applyProfile({ name, photoURL }) {
   }
 }
 
-// ===== Toggle foto ↔ logout (TIDAK DIUBAH) =====
+// ===== Toggle foto ↔ logout =====
 (function setupGreetCard() {
   const card = $("#greetCard");
   const profileSlot = $("#profileSlot");
@@ -189,7 +189,7 @@ window.onLogout = function () {
     localStorage.removeItem("tinydb_name");
     localStorage.removeItem("tinydb_photo");
   } catch (_) {}
-  location.href = "index.html?logout=1";
+  location.href = "login.html?logout=1";
 };
 
 // ======== KODULAR BRIDGE: Icon → WebViewString ========
@@ -198,9 +198,7 @@ function sendToKodular(message){
     if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function") {
       window.AppInventor.setWebViewString(String(message));
     } else {
-      // fallback untuk debug di browser biasa
       console.debug("[KodularBridge] ", message);
-      // optional: update title agar mudah dilihat saat testing
       document.title = String(message);
     }
   } catch (e) {
@@ -208,18 +206,10 @@ function sendToKodular(message){
   }
 }
 
-/**
- * Pasang listener ke semua elemen yang memiliki:
- *   - data-icon="NAMA_ICON"   → nama event yang dikirim ke Kodular
- *   - (opsional) data-href="/tujuan.html" → setelah kirim, lakukan navigasi
- *
- * Catatan: Tidak mengganggu handler lain; aman jika dipanggil berkali-kali.
- */
 function bindIcon(el){
   if (!el || el.__kodularBound) return;
   el.__kodularBound = true;
 
-  // aksesibilitas dasar
   if (!el.hasAttribute("role")) el.setAttribute("role","button");
   if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex","0");
 
@@ -230,7 +220,6 @@ function bindIcon(el){
 
     const href = el.getAttribute("data-href");
     if (href) {
-      // beri sedikit jeda agar Kodular sempat tangkap event
       setTimeout(()=>{ location.href = href; }, 120);
     }
   };
@@ -245,10 +234,8 @@ function bindIcon(el){
 }
 
 function setupKodularIconBridge(){
-  // 1) Pasang ke elemen yang sudah ada
   document.querySelectorAll("[data-icon]").forEach(bindIcon);
 
-  // 2) Observe DOM untuk elemen baru (misal render dinamis)
   const mo = new MutationObserver((muts) => {
     for (const m of muts) {
       m.addedNodes?.forEach(node => {
@@ -261,59 +248,22 @@ function setupKodularIconBridge(){
   mo.observe(document.documentElement, { childList: true, subtree: true });
 }
 
-// ===== Auth Gate (dengan re-check anti-bounce) =====
-async function renderForUser(u){
-  try {
-    const p = await fetchProfile(u);
-    applyProfile({ name: p.name, photoURL: p.photoURL });
-  } catch {
-    applyProfile({ name: resolveDisplayName(u), photoURL: DEFAULT_AVATAR });
-  }
-}
-
-function mountAuthGate() {
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      // Sudah login → render
-      renderForUser(user);
-      return;
-    }
-
-    // user null → bisa jadi hydrate belum selesai setelah redirect dari login
-    const justSignedIn = !!sessionStorage.getItem("authProfile");
-
-    if (justSignedIn) {
-      // Tunggu sebentar lalu cek ulang agar tidak “mantul” ke login
-      setTimeout(async () => {
-        const u = auth.currentUser;
-        if (u) {
-          renderForUser(u);
-        } else {
-          location.href = "index.html";
-        }
-      }, 900); // 800–1000ms biasanya cukup
-    } else {
-      // Memang belum login → balik ke index
-      location.href = "index.html";
-    }
-  });
-}
-
 // ===== Init =====
 function tick() { updateGreeting(); }
 tick();
 setInterval(tick, 60 * 1000);
-mountAuthGate();
+
 setupKodularIconBridge();
 
-/* ======== Contoh penggunaan di HTML ========
-  <div class="icon-card" data-icon="DASHBOARD" data-href="dashboard.html">
-    <img src="icons/dashboard.svg" alt="Dashboard">
-    <span>Dashboard</span>
-  </div>
-
-  <div class="icon-card" data-icon="ABSENSI">
-    <img src="icons/absen.svg" alt="Absensi">
-    <span>Absensi</span>
-  </div>
-============================================= */
+// Ambil profil user yang sudah dijamin login oleh auth-guard.js
+(async () => {
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      const p = await fetchProfile(user);
+      applyProfile({ name: p.name, photoURL: p.photoURL });
+    } catch {
+      applyProfile({ name: resolveDisplayName(user), photoURL: DEFAULT_AVATAR });
+    }
+  }
+})();
