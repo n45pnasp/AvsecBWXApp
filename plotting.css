@@ -27,35 +27,28 @@ body{
   margin: -20px -20px 16px; /* full-bleed */
 }
 .back-btn {
+/* Back button: ikon saja, tanpa kotak */
+.back-btn{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 88px;
-  height: 88px;
-  background: transparent;    /* tanpa warna */
-  border: none;               /* hilangkan border */
+  width: 44px;               /* area klik nyaman */
+  height: 44px;
+  background: transparent;   /* tanpa kotak */
+  border: none;              /* hilangkan border */
   color: var(--text);
   cursor: pointer;
-  flex: 0 0 auto;              /* tidak melar */
+  flex: 0 0 auto;
 }
 
-.back-btn svg {
+.back-btn svg{
   display: block;
-  stroke-width: 8;          /* ketebalan panah */
+  stroke-width: 2.2;         /* tipis seperti contohmu */
 }
 
-.back-btn:hover {
-  background: transparent;    /* tidak ada efek hover */
-}
-
-.back-btn:active {
-  transform: translateY(1px);
-}
-
-.back-btn:focus-visible {
-  outline: none;              /* tidak ada outline kotak */
-  box-shadow: none;           /* hilangkan efek fokus */
-}
+.back-btn:hover{ background: transparent; }
+.back-btn:active{ transform: translateY(1px); }
+.back-btn:focus-visible{ outline: none; box-shadow: none; }
 .app-title{
   font-size: 22px; font-weight: 300; letter-spacing: .3px;
   margin: 0; user-select: none;
