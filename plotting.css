@@ -12,6 +12,42 @@ body{
   padding: 20px;
 }
 
+/* =========================
+   APP BAR (Back + Title)
+   ========================= */
+.app-bar{
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 10px;
+  height: 56px;
+  background: var(--panel);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding: 0 14px;
+  margin: -20px -20px 16px;     /* tarik full-bleed ke tepi body */
+}
+.back-btn{
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.back-btn:hover{ background: rgba(255,255,255,.04); }
+.back-btn:focus-visible{
+  outline: none;
+  border-color: var(--border);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.08);
+}
+.app-title{
+  font-size: 22px;
+  font-weight: 300;
+  letter-spacing: .3px;
+  margin: 0;
+  user-select: none;
+}
+
 /* Card Jam Utama (center content) */
 .header-card{
   background: var(--card);
@@ -132,3 +168,9 @@ input[type="text"]{
 
 /* Hide utility */
 .hidden{ display:none !important; }
+
+/* Responsif kecil */
+@media (max-width: 420px){
+  .app-title{ font-size: 18px; }
+  .back-btn{ width: 36px; height: 36px; }
+}
