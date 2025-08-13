@@ -25,7 +25,7 @@ function getFb() {
  * - loginPath: file halaman login kamu (mis. "login.html" atau "index.html")
  * - hideWhileChecking: sembunyikan halaman sementara agar tidak FOUC
  */
-export function requireAuth({ loginPath = "login.html", hideWhileChecking = true } = {}) {
+export function requireAuth({ loginPath = "index.html", hideWhileChecking = true } = {}) {
   const { auth } = getFb();
 
   if (hideWhileChecking) {
