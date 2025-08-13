@@ -59,7 +59,7 @@ body{
   background: transparent; /* senada dengan dark background */
   border-bottom: 1px solid var(--border);
   text-align: center; font-weight: 700;
-  letter-spacing: .2px; text-transform: lowercase;
+  letter-spacing: .2px; text-transform: capitalize;
   font-size: clamp(14px, 3.6vw, 18px);
 }
 
