@@ -51,10 +51,10 @@ onValue(ref(db, ".info/connected"), snap => setConn(!!snap.val()));
 
 // ======== Posisi & aturan (20s) ========
 const positions = [
-  { id:'pos1', name:'XRAY',             specLabel:'senior|junior',       allowed:['senior','junior'] },
-  { id:'pos2', name:'Pemeriksa Barang', specLabel:'senior|junior|basic', allowed:['senior','junior','basic'] },
-  { id:'pos3', name:'Pemeriksa Orang',  specLabel:'junior|basic',        allowed:['junior','basic'] },
-  { id:'pos4', name:'Pemeriksa Tiket',  specLabel:'junior|basic',        allowed:['junior','basic'] },
+  { id:'pos1', name:'Operator Xray',    allowed:['senior','junior'] },
+  { id:'pos2', name:'Pemeriksa Barang', allowed:['junior','basic'] },
+  { id:'pos3', name:'Pemeriksa Orang',  allowed:['junior','basic'] },
+  { id:'pos4', name:'Flow Control',     allowed:['junior','basic'] },
 ];
 
 // ======== RTDB refs ========
@@ -105,7 +105,8 @@ function renderAssignments(assignments){
   assignRows.innerHTML = '';
   positions.forEach((p)=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${p.name}</td><td>${p.specLabel}</td><td>${assignments?.[p.id] ?? '-'}</td>`;
+    // hanya tampilkan Posisi & Nama (tanpa kolom spesifikasi)
+    tr.innerHTML = `<td>${p.name}</td><td>${assignments?.[p.id] ?? '-'}</td>`;
     assignRows.appendChild(tr);
   });
 }
@@ -158,7 +159,7 @@ async function buildPools(useCooldown){
 
   const pools = positions.map((pos) => {
     let candidates = folks.filter(f => isEligible(f, pos.allowed));
-    if(useCooldown && pos.id === 'pos1'){ // XRAY cooldown
+    if(useCooldown && pos.id === 'pos1'){ // Operator Xray cooldown (pos1)
       candidates = candidates.filter(f => (cooldown[f.name] || 0) <= 0);
     }
     const rot = rotate(candidates, rotIdx[pos.id] % Math.max(candidates.length, 1));
@@ -217,7 +218,7 @@ async function computeAndWriteAssignments(useCooldown){
     // kurangi semua cooldown 1
     for(const k of Object.keys(cd)){ cd[k] = Math.max(0, (cd[k]|0) - 1); }
     const xrayName = finalAssign.pos1;
-    if(xrayName && xrayName !== '-') cd[xrayName] = 2; // 2 siklus tidak boleh XRAY
+    if(xrayName && xrayName !== '-') cd[xrayName] = 2; // 2 siklus tidak boleh pos1 (Operator Xray)
     await Promise.all([ set(assignmentsRef, finalAssign), set(cooldownRef, cd) ]);
   } else {
     await set(assignmentsRef, finalAssign);
@@ -314,14 +315,14 @@ mode2040?.addEventListener('change', ()=>{
 addPersonBtn.onclick = async ()=>{
   const name = nameInput.value.trim(); if(!name) return;
   const specs = [];
+  if(seniorSpecEl?.checked) specs.push('senior');
   if(juniorSpec?.checked) specs.push('junior');
   if(basicSpec?.checked)  specs.push('basic');
-  if(seniorSpecEl?.checked) specs.push('senior');
   await update(ref(db, 'people/'+name.toLowerCase()), { name, spec: specs });
   nameInput.value='';
-  if(juniorSpec) juniorSpec.checked=false;
-  if(basicSpec)  basicSpec.checked=false;
   if(seniorSpecEl) seniorSpecEl.checked=false;
+  if(juniorSpec)   juniorSpec.checked=false;
+  if(basicSpec)    basicSpec.checked=false;
 };
 
 peopleRows.addEventListener('change', async (e)=>{
