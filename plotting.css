@@ -98,8 +98,18 @@ body{
   width: 100%;
 }
 .controls{
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;             /* Biar tidak turun ke bawah */
+  justify-content: space-between;/* Rata sebar */
+  margin-bottom: 10px;
+}
+
+.controls button{
+  flex: 1 1 0;                   /* Sama lebar */
+  text-align: center;
+  white-space: nowrap;           /* Teks tetap 1 baris */
 }
 button{
   padding: 10px 16px;
