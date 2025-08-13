@@ -1,4 +1,4 @@
-:root {
+:root{
   --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb;
   --border:#334; --btn-ok:#14532d; --btn-stop:#7f1d1d; --card:#0b1324;
 }
@@ -10,6 +10,7 @@ body{
   background: var(--bg);
   color: var(--text);
   padding: 20px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* =========================
@@ -23,114 +24,129 @@ body{
   color: var(--text);
   border-bottom: 1px solid var(--border);
   padding: 0 14px;
-  margin: -20px -20px 16px;     /* tarik full-bleed ke tepi body */
+  margin: -20px -20px 16px; /* full-bleed */
 }
-/* Buat panah tebal */
-.back-btn svg {
-  display: block;
-  stroke-width: 3.2; /* tebal garis panah */
+.back-btn{
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  cursor: pointer;
 }
-.back-btn:hover{ background: rgba(255,255,255,.04); }
+.back-btn svg{ display:block; stroke-width:3.2; } /* panah tebal */
+.back-btn:hover{ background: rgba(255,255,255,.05); }
+.back-btn:active{ transform: translateY(1px); }
 .back-btn:focus-visible{
-  outline: none;
-  border-color: var(--border);
+  outline: none; border-color: var(--border);
   box-shadow: 0 0 0 3px rgba(255,255,255,.08);
 }
 .app-title{
-  font-size: 22px;
-  font-weight: 300;
-  letter-spacing: .3px;
-  margin: 0;
-  user-select: none;
+  font-size: 22px; font-weight: 300; letter-spacing: .3px;
+  margin: 0; user-select: none;
 }
 
-/* Card Jam Utama (center content) */
+/* =========================
+   CARD JAM UTAMA
+   ========================= */
 .header-card{
+  position: relative;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px 18px;
+  border-radius: 16px;
+  padding: 18px 20px 16px;
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
 }
+.header-top{ width:100%; min-height: 10px; } /* tetap ada agar kompatibel */
 
-/* Bar atas card untuk menaruh dot di kanan */
-.header-top{
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  min-height: 10px;
-}
-
-/* Indikator koneksi (di dalam card) */
+/* Indikator koneksi */
 .conn-dot{
+  position: absolute; top: 12px; right: 14px;
   width: 12px; height: 12px; border-radius: 50%;
-  background: #ef4444;           /* merah = belum terhubung */
+  background:#ef4444;
   box-shadow: 0 0 0 2px rgba(0,0,0,.25), 0 0 10px rgba(0,0,0,.35);
 }
-.conn-dot.ok{ background: #22c55e; }  /* hijau saat terhubung */
+.conn-dot.ok{ background:#22c55e; }
 
 .clock{
   font-variant-numeric: tabular-nums;
-  font-weight: 800;
-  letter-spacing: 1px;
-  font-size: clamp(36px, 6vw, 64px);
+  font-weight: 800; letter-spacing: 1px;
+  font-size: clamp(40px, 7vw, 64px);
   line-height: 1;
+  margin-top: 2px;
 }
 .next-info{
   color: var(--muted);
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 14px;
 }
 
-/* Controls */
+/* =========================
+   CONTROLS
+   ========================= */
 .controls{
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 button{
-  padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
-  background: #0b1324; color: var(--text); cursor: pointer;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #0b1324; color: var(--text);
+  cursor: pointer;
+  transition: transform .06s ease, filter .15s ease, background .15s ease;
 }
 button.start{ background: var(--btn-ok); border-color:#1a6a3a }
-button.stop{ background: var(--btn-stop); border-color:#9f1d1d }
+button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
+button:hover{ filter: brightness(1.05); }
+button:active{ transform: translateY(1px); }
 button:disabled{
-  opacity: .5;
-  cursor: not-allowed;
-  filter: grayscale(30%);
+  opacity:.55; cursor:not-allowed; filter: grayscale(30%);
 }
 
 /* Checkbox mode */
 .mode-option{
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: 8px;
   font-size: 14px; background: rgba(255,255,255,0.05);
-  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+  padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border);
 }
-.mode-option.disabled{
-  opacity: .6;
+.mode-option.disabled{ opacity:.6; }
+.hidden{ display:none !important; }
+
+/* =========================
+   TABELS
+   ========================= */
+table{ width:100%; border-collapse: separate; border-spacing:0; margin-top: 12px; }
+th,td{ padding:12px 12px; text-align:left; }
+th{
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
 }
-.hidden{ display: none !important; }
+td{ border-bottom:1px solid var(--border); }
+table tr:last-child td{ border-bottom: none; }
+table{ border:1px solid var(--border); border-radius: 12px; overflow:hidden; }
+tbody tr:nth-child(odd){ background: rgba(255,255,255,0.02); }
+tbody tr:hover{ background: rgba(255,255,255,0.04); }
 
-/* Tabel penugasan & people */
-table{ width:100%; border-collapse: collapse; margin-top: 12px }
-th,td{ border:1px solid var(--border); padding:10px; text-align:left }
-th{ background: var(--panel) }
-
-/* Kelola personil */
-.manage{ display:grid; gap:12px; margin-top: 12px }
-.add-person{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+/* =========================
+   KELOLA PERSONIL
+   ========================= */
+.manage{ display:grid; gap:12px; margin-top: 14px; }
+.add-person{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 input[type="text"]{
-  padding: 8px 10px; border-radius: 8px; border:1px solid var(--border);
+  padding: 10px 12px; border-radius: 10px; border:1px solid var(--border);
   background:#0b1324; color: var(--text);
+  min-width: 220px;
 }
 
-/* Bottom sheet */
+/* =========================
+   BOTTOM SHEET
+   ========================= */
 .sheet-backdrop{
   position: fixed; inset: 0;
   background: rgba(0,0,0,.4);
@@ -162,11 +178,12 @@ input[type="text"]{
   to  { transform: translateY(0);    opacity:1;  }
 }
 
-/* Hide utility */
-.hidden{ display:none !important; }
-
-/* Responsif kecil */
-@media (max-width: 420px){
-  .app-title{ font-size: 18px; }
-  .back-btn{ width: 36px; height: 36px; }
+/* =========================
+   RESPONSIVE
+   ========================= */
+@media (max-width: 480px){
+  .app-title{ font-size: 20px; }
+  .back-btn{ width: 40px; height: 40px; border-radius: 10px; }
+  .controls{ gap:8px; }
+  button{ padding: 10px 14px; }
 }
