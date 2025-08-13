@@ -33,11 +33,13 @@
     <div class="next-info">Perputaran selanjutnya <span id="nextRotation">-</span></div>
   </div>
 
-  <!-- Kontrol -->
-  <div class="controls">
-    <button id="startBtn" class="start">Mulai Rotasi</button>
-    <button id="stopBtn" class="stop">Hentikan</button>
-    <button id="nextBtn">Majukan 1x</button>
+  <!-- Kontrol (dalam card agar full width & rapi) -->
+  <div class="controls-card">
+    <div class="controls">
+      <button id="startBtn" class="start">Mulai Rotasi</button>
+      <button id="stopBtn" class="stop">Hentikan</button>
+      <button id="nextBtn">Majukan 1x</button>
+    </div>
   </div>
 
   <!-- Tabel penugasan (tanpa kolom spesifikasi) -->
@@ -51,9 +53,9 @@
     <tbody id="assignRows"></tbody>
   </table>
 
-  <!-- Kelola Personil -->
+  <!-- Kelola Personil (judul dipindah ke dalam .manage supaya ikut hidden saat running) -->
   <div class="manage">
-  <h2>Kelola Personil</h2>
+    <h2>Kelola Personil</h2>
     <div class="add-person">
       <input id="nameInput" type="text" placeholder="Nama" />
       <label><input type="checkbox" id="seniorSpec" /> Senior</label>
@@ -62,7 +64,7 @@
       <button id="addPersonBtn">Tambah</button>
     </div>
 
-    <table class="people"
+    <table class="people">
       <thead>
         <tr><th>Nama</th><th>Senior</th><th>Junior</th><th>Basic</th><th>Aksi</th></tr>
       </thead>
