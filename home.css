@@ -88,8 +88,9 @@ body{
   background:#111a2a; border:2.5px solid #fff; box-shadow:0 8px 20px rgba(0,0,0,.35);
 }
 .logout-btn{
-  width:100%; height:100%; border-radius:18px; border:none; cursor:pointer;
-  background:#ff4d4f; color:#fff; font-size: clamp(24px, 6.4vw, 32px);
+  width:100%; height:100%; border:none; cursor:pointer;
+  border-radius:18px; background:#ff4d4f; color:#fff;
+  font-size: clamp(24px, 6.4vw, 32px);
   display:grid; place-items:center;
   box-shadow:0 10px 26px rgba(255,77,79,.35), inset 0 -4px 0 rgba(0,0,0,.25);
 }
@@ -118,41 +119,40 @@ body{
   gap: clamp(14px, 3vw, 20px);
   padding-bottom: var(--g6);
 }
-
 .app{
-  background: none;
-  border: none;
-  box-shadow: none;
-  padding: 0;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
+  background:none; border:none; box-shadow:none; padding:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
   gap: clamp(6px, 1.8vw, 10px);
-  text-align:center;
-  text-decoration:none;
-  color:var(--text);
+  text-align:center; text-decoration:none; color:var(--text);
+  transition: transform .12s ease;
 }
+.app:active{ transform:scale(.92); }
 
+/* ===== Ikon Hybrid: emoji/SVG & PNG ===== */
 .app-icon{
   width: clamp(44px, 9vw, 60px);
   height: clamp(44px, 9vw, 60px);
   border-radius: 14px;
-  display:grid;
-  place-items:center;
+  display:grid; place-items:center;
   font-size: clamp(20px, 5vw, 28px);
-  background:linear-gradient(135deg, var(--accent), var(--accent-2));
+  background:linear-gradient(135deg, var(--accent), var(--accent-2));  /* frame utk emoji/SVG & PNG */
   border:1px solid rgba(255,255,255,.12);
   box-shadow:0 6px 16px rgba(106,88,255,.35);
+  overflow:hidden;                                                     /* PNG rapi */
+}
+.app-icon img{
+  width:100%; height:100%; object-fit:contain;                         /* PNG proporsional */
+}
+/* Opsi: PNG polos tanpa gradient frame */
+.app-icon.no-bg{
+  background: rgba(255,255,255,.04);
+  border:none; box-shadow:none;
 }
 
 .app-name{
   font-size: clamp(11px, 2.8vw, 13px);
   color:#e1e7f5;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
 
 /* ===== Dock ===== */
@@ -175,8 +175,8 @@ body{
   border-radius: clamp(8px, 2.4vw, 12px); text-decoration:none; color:var(--text);
   font-size: clamp(15px, 3.8vw, 17px); line-height:1; user-select:none;
   outline:1.5px solid transparent;
-  -webkit-tap-highlight-color: transparent;    /* hilangkan flash biru default */
-  touch-action: manipulation;                  /* kurangi delay tap mobile */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   transition: background .18s ease, transform .12s ease, outline-color .18s ease, box-shadow .18s ease;
 }
 .dock-btn span{ display:block; font-size: clamp(9px, 2.4vw, 11px); line-height:1.1; margin-top:2px; }
@@ -190,6 +190,7 @@ body{
   box-shadow: 0 0 10px color-mix(in oklab, var(--accent) 60%, transparent);
 }
 
+/* Tab terpilih */
 .dock-btn[aria-current="page"]{
   outline-color: color-mix(in oklab, var(--accent) 40%, transparent);
   background: rgba(255,255,255,0.07);
