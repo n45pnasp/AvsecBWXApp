@@ -36,7 +36,7 @@ body{
   cursor: pointer;
   flex: 0 0 auto;               /* <- JANGAN melar */
 }
-.back-btn svg{ display:block; stroke-width:3.2; } /* panah tebal */
+.back-btn svg{ display:block; stroke-width:8; } /* panah tebal */
 .back-btn:hover{ background: rgba(255,255,255,.05); }
 .back-btn:active{ transform: translateY(1px); }
 .back-btn:focus-visible{
