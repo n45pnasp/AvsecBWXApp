@@ -9,6 +9,15 @@
   <title>Welcome & Login</title>
   <link rel="stylesheet" href="login.css" />
   <meta name="color-scheme" content="dark light" />
+
+  <!-- 1) Router untuk handle deep-link dari 404.html -->
+  <script type="module" src="router.js"></script>
+
+  <!-- 2) Auto-redirect kalau sudah login -->
+  <script type="module">
+    import { redirectIfAuthed } from "./auth-guard.js";
+    redirectIfAuthed({ homePath: "home.html" });
+  </script>
 </head>
 <body>
   <main class="wrap">
@@ -46,7 +55,6 @@
 
           <button id="loginBtn" type="submit" class="btn">Masuk</button>
 
-          <!-- Lupa Password sebagai teks/link kecil -->
           <p class="forgot-link">
             <button type="button" id="forgotBtn" class="link-btn">Lupa Password?</button>
           </p>
@@ -62,7 +70,7 @@
     </article>
   </main>
 
-  <!-- OPSIONAL: override logo default jika perlu -->
+  <!-- OPSIONAL: override logo default -->
   <!-- <script>window.LOGO_URL = "https://domainmu.com/logohome.png";</script> -->
 
   <script type="module" src="login.js"></script>
