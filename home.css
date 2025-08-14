@@ -20,6 +20,7 @@
   /* Ukuran ikon (apps & dock) */
   --icon-box: clamp(52px, 10vw, 64px);
   --icon-pad: clamp(6px, 1.4vw, 10px);
+  --dock-ico: clamp(20px, 4.8vw, 26px); /* <- tambahan untuk dock flat */
 }
 
 *{box-sizing:border-box}
@@ -148,8 +149,9 @@ body{
   padding: var(--icon-pad);                /* sisakan napas utk PNG */
   font-size: calc(var(--icon-box) * .48);  /* emoji/SVG tetap proporsional */
 }
-.app-icon img{
-  width:100%; height:100%; object-fit:contain; /* PNG proporsional */
+.app-icon img,
+.app-icon svg{
+  width:100%; height:100%; object-fit:contain; display:block; /* PNG/SVG proporsional */
 }
 /* Opsi: PNG polos tanpa frame */
 .app-icon.no-bg{ background: rgba(255,255,255,.05); border:none; box-shadow:none; }
@@ -164,7 +166,7 @@ body{
   min-height:1.2em;                       /* jaga tinggi baris minimum */
 }
 
-/* ===== Dock ===== */
+/* ===== Dock (ikon flat) ===== */
 .dock{
   position:fixed; left:0; right:0; bottom:0;
   padding: 10px 14px calc(10px + var(--safe-b));
@@ -188,15 +190,37 @@ body{
   touch-action: manipulation;
   transition: background .18s ease, transform .12s ease, outline-color .18s ease, box-shadow .18s ease;
 }
-.dock-btn span{ display:block; font-size: clamp(9px, 2.4vw, 11px); line-height:1.1; margin-top:2px; }
+.dock-btn span{ display:block; font-size: clamp(9px, 2.4vw, 11px); line-height:1.1; margin-top:4px; }
 .dock-btn:hover{ background:rgba(255,255,255,.06) }
+
+/* Slot ikon di dock: FLAT, tanpa frame */
+.dock-btn .app-icon{
+  width: var(--dock-ico);
+  height: var(--dock-ico);
+  padding: 0;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  overflow: visible;
+}
+/* PNG/SVG langsung di dock */
+.dock-btn .app-icon img,
+.dock-btn .app-icon svg{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+/* Jika pakai emoji langsung dalam .app-icon di dock */
+.dock-btn .app-icon{ font-size: var(--dock-ico); }
 
 /* Efek tekan: dukung :active & class .is-pressed (JS) */
 .dock-btn:active,
 .dock-btn.is-pressed{
   transform: translateY(1px) scale(.98);
-  background: color-mix(in oklab, var(--accent) 35%, transparent);
-  box-shadow: 0 0 10px color-mix(in oklab, var(--accent) 60%, transparent);
+  background: rgba(255,255,255,.15);
+  box-shadow: 0 0 10px rgba(255,255,255,.18);
 }
 
 /* Tab terpilih */
