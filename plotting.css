@@ -27,27 +27,31 @@ body{
   margin: -20px -20px 16px; /* full-bleed */
 }
 
+/* Back Button versi link/btn */
 .back-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;                /* area klik */
-  height: 44px;
-  background: transparent;    /* tanpa warna kotak */
-  border: none;               /* hilangkan border */
+  width: 44px; height: 44px;
+  background: transparent;
+  border: none;
   color: var(--text);
   cursor: pointer;
   flex: 0 0 auto;
+  text-decoration: none; /* hilangkan underline jika <a> */
+  border-radius: 8px;
+  transition: background 0.12s ease, transform 0.1s ease;
 }
 .back-btn svg {
   display: block;
-  stroke-width: 2.2;          /* tipis seperti contoh */
+  stroke: currentColor;
+  stroke-width: 2.2;
 }
-.back-btn:hover { background: transparent; }
-.back-btn:active { transform: translateY(1px); }
+.back-btn:hover { background: rgba(255,255,255,0.06); }
+.back-btn:active { background: rgba(0,0,0,0.25); transform: translateY(1px); }
 .back-btn:focus-visible {
-  outline: none;
-  box-shadow: none;
+  outline: 2px solid rgba(255,255,255,0.4);
+  outline-offset: 2px;
 }
 
 .app-title{
