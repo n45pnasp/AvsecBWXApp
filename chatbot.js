@@ -1,0 +1,359 @@
+// ================== KONFIG DATA ==================
+const SHEET_URL_ITEMS = "https://opensheet.elk.sh/1JUn922dfJ1Yb5xFmMcgAB8RHKON_vPdg7CTZ5yc51G0/Sheet1";
+const SHEET_URL_SOP   = "https://opensheet.elk.sh/1VcIU7UFgAzxap7MMfjtkGWcNPetN1F3xdLnOouK1ds8/Sheet1";
+
+// ================== STATE ==================
+let items = [];
+let sops  = [];
+let pendingChoices = null;
+let currentMode = ""; // "barang" | "sop"
+let readyItems = false, readySOP = false;
+
+const INPUT   = document.getElementById("userInput");
+const SENDBTN = document.querySelector(".send-btn");
+const BOX     = document.getElementById("chat-box");
+
+// ================== INIT: AMBIL DATA ==================
+Promise.allSettled([
+  fetch(SHEET_URL_ITEMS).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); }),
+  fetch(SHEET_URL_SOP).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); })
+]).then(([resItems, resSOP]) => {
+  if (resItems.status === "fulfilled" && Array.isArray(resItems.value)) {
+    items = resItems.value; readyItems = true;
+  }
+  if (resSOP.status === "fulfilled" && Array.isArray(resSOP.value)) {
+    sops = resSOP.value; readySOP = true;
+  }
+
+  if (!readyItems && !readySOP) {
+    appendMessage('bot', "Gagal memuat data. Coba muat ulang halaman.");
+    return;
+  }
+
+  INPUT.disabled = false;
+  SENDBTN.disabled = false;
+
+  greetAndAskMode();
+
+  try { INPUT.focus(); } catch {}
+}).catch(err => {
+  console.error(err);
+  appendMessage('bot', "Terjadi kesalahan saat memuat data. Coba muat ulang halaman.");
+});
+
+// ================== GREETING & MODE ==================
+function greetAndAskMode() {
+  const hello = "Halo! Saya asisten untuk *Barang Bawaan* dan *SOP*.\nSilakan pilih mode terlebih dahulu:";
+  appendMessage('bot', hello);
+  showModeChips({ caption: 'Pilih salah satu untuk mulai mencari.' });
+}
+
+function showModeChips(opts = {}) {
+  const { caption = 'Ganti mode?' } = opts;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'chips';
+
+  const chipBarang = document.createElement('button');
+  chipBarang.className = 'chip';
+  chipBarang.textContent = 'Mode Barang Bawaan';
+  chipBarang.addEventListener('click', () => setMode('barang'), { passive: true });
+
+  const chipSOP = document.createElement('button');
+  chipSOP.className = 'chip';
+  chipSOP.textContent = 'Mode SOP';
+  chipSOP.addEventListener('click', () => setMode('sop'), { passive: true });
+
+  wrap.appendChild(chipBarang);
+  wrap.appendChild(chipSOP);
+
+  const hint = document.createElement('div');
+  hint.className = 'hint';
+  hint.textContent = caption;
+
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('chat-message', 'bot');
+  const bubble = document.createElement('div');
+  bubble.classList.add('message');
+  bubble.appendChild(wrap);
+  bubble.appendChild(hint);
+  wrapper.appendChild(bubble);
+  BOX.appendChild(wrapper);
+  BOX.scrollTop = BOX.scrollHeight;
+}
+
+function setMode(mode) {
+  if (mode !== 'barang' && mode !== 'sop') return;
+  currentMode = mode;
+  pendingChoices = null;
+
+  const ok = (mode === 'barang')
+    ? (readyItems ? "Mode Barang Bawaan aktif. Tanyakan nama barangnya." : "Data Barang belum siap.")
+    : (readySOP   ? "Mode SOP aktif. Tanyakan judul/kata kunci SOP." : "Data SOP belum siap.");
+
+  appendMessage('bot', ok);
+}
+
+// ================== ASK / INPUT HANDLER ==================
+function ask() {
+  const question = INPUT.value.trim();
+  if (!question) return;
+
+  appendMessage('user', question, false);
+  INPUT.value = '';
+
+  const qLower = question.toLowerCase();
+  if (qLower === "mode sop" || qLower === "sop") { setMode('sop'); return; }
+  if (qLower === "mode barang" || qLower === "barang") { setMode('barang'); return; }
+
+  if (!currentMode) {
+    appendMessage('bot', "Silakan pilih mode terlebih dahulu: *Barang Bawaan* atau *SOP*.");
+    showModeChips({ caption: 'Pilih salah satu untuk mulai mencari.' });
+    return;
+  }
+
+  if (pendingChoices) {
+    const choiceNum = parseInt(question, 10);
+    if (!isNaN(choiceNum) && choiceNum >= 1 && choiceNum <= pendingChoices.length) {
+      const chosen = pendingChoices[choiceNum - 1];
+      appendMessage('bot',
+        currentMode === 'barang' ? buildResponseBarang(chosen) : buildResponseSOP(chosen),
+        true
+      );
+      pendingChoices = null;
+      showModeChips();
+    } else {
+      appendMessage('bot', "Mohon pilih nomor yang sesuai dari daftar di atas.");
+    }
+    return;
+  }
+
+  if (currentMode === 'barang') {
+    if (!readyItems || !items.length) { appendMessage('bot', "Data Barang belum siap. Coba lagi sebentar."); return; }
+    handleSearch(question, items, 'barang');
+  } else {
+    if (!readySOP || !sops.length) { appendMessage('bot', "Data SOP belum siap. Coba lagi sebentar."); return; }
+    handleSearch(question, sops, 'sop');
+  }
+}
+
+// ================== SEARCH GENERIC ==================
+function handleSearch(query, dataset, mode) {
+  const q = query.toLowerCase();
+  const keyName = (mode === 'barang') ? "Nama Barang" : "Judul SOP";
+
+  let exactMatches = [];
+  let partialMatches = [];
+
+  dataset.forEach(row => {
+    const name = (row[keyName] || "").toLowerCase().trim();
+    if (!name) return;
+
+    if (q === name || q.includes(name)) {
+      exactMatches.push(row);
+    } else {
+      const parts = name.split(/\s+/);
+      let score = 0;
+      parts.forEach(w => { if (w && q.includes(w)) score++; });
+
+      if (mode === 'sop') {
+        const ket = (row["Keterangan SOP"] || "").toLowerCase();
+        const isi = (row["Isi SOP"] || "").toLowerCase();
+        if (ket && ket.includes(q)) score += 2;
+        if (isi && isi.includes(q)) score += 2;
+      }
+      if (score > 0) partialMatches.push({ item: row, score });
+    }
+  });
+
+  if (exactMatches.length > 1) {
+    pendingChoices = exactMatches;
+    appendMessage('bot', buildChoiceMessage(exactMatches, keyName), false);
+    return;
+  }
+  if (exactMatches.length === 1) {
+    const res = (mode === 'barang') ? buildResponseBarang(exactMatches[0]) : buildResponseSOP(exactMatches[0]);
+    appendMessage('bot', res, true);
+    showModeChips();
+    return;
+  }
+
+  if (partialMatches.length > 0) {
+    partialMatches.sort((a, b) => b.score - a.score);
+    const topScore = partialMatches[0].score;
+    const bestMatches = partialMatches.filter(p => p.score === topScore).map(p => p.item);
+
+    if (bestMatches.length > 1) {
+      pendingChoices = bestMatches;
+      appendMessage('bot', buildChoiceMessage(bestMatches, keyName), false);
+    } else {
+      const res = (mode === 'barang') ? buildResponseBarang(bestMatches[0]) : buildResponseSOP(bestMatches[0]);
+      appendMessage('bot', res, true);
+      showModeChips();
+    }
+    return;
+  }
+
+  appendMessage('bot', "Maaf, saya tidak menemukan informasi yang cocok.", false);
+  showModeChips();
+}
+
+// ================== RENDER BARANG ==================
+function icon(status) {
+  const txt = (status || "").toLowerCase();
+  return txt.includes("tidak boleh") ? "❌" : "✅";
+}
+
+function buildResponseBarang(row) {
+  const nama = row["Nama Barang"] ?? "-";
+  const cabin = row["Status Cabin"] ?? "-";
+  const bagasi = row["Status Bagasi"] ?? "-";
+  const penjelasan = (row["Penjelasan"] || "").trim();
+
+  return `
+<strong>Nama Barang:</strong> ${escapeHTML(nama)}
+<div class="sep"></div>
+<strong>Status:</strong><br>
+&nbsp;&nbsp;Cabin&nbsp; = ${icon(cabin)} ${escapeHTML(cabin)}<br>
+&nbsp;&nbsp;Bagasi = ${icon(bagasi)} ${escapeHTML(bagasi)}
+<div class="sep"></div>
+<strong>Penjelasan:</strong><br>${escapeHTML(penjelasan).replace(/\n/g,'<br>')}`;
+}
+
+// ================== RENDER SOP ==================
+function buildResponseSOP(row) {
+  const judul = row["Judul SOP"] ?? "-";
+  const ket   = (row["Keterangan SOP"] || "-").trim();
+  const isi   = (row["Isi SOP"] || "-").trim();
+
+  const pdfUrl = looksLikeURL(isi) ? normalizeDriveLink(isi) : null;
+
+  if (pdfUrl) {
+    const viewer = makeViewerURL({ title: judul, src: pdfUrl });
+    return `
+<strong>Judul SOP:</strong> ${escapeHTML(judul)}
+<div class="sep"></div>
+<strong>Keterangan:</strong> ${escapeHTML(ket)}<br><br>
+<a class="btn" href="${viewer}">Buka SOP (PDF)</a>`;
+  }
+
+  return `
+<strong>Judul SOP:</strong> ${escapeHTML(judul)}
+<div class="sep"></div>
+<strong>Keterangan:</strong> ${escapeHTML(ket)}<br><br>
+<strong>Isi SOP:</strong><br>${escapeHTML(isi).replace(/\n/g,'<br>')}`;
+}
+
+// ================== PILIHAN AMBIGU ==================
+function buildChoiceMessage(list, keyName) {
+  let msg = "Saya menemukan beberapa pilihan:\n";
+  list.forEach((row, idx) => { msg += `${idx + 1}. ${row[keyName]}\n`; });
+  msg += "Ketik nomor pilihan Anda.";
+  return msg;
+}
+
+// ================== UI PESAN ==================
+function appendMessage(sender, text, asHTML = false) {
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('chat-message', sender);
+
+  const bubble = document.createElement('div');
+  bubble.classList.add('message');
+
+  if (asHTML) {
+    bubble.innerHTML = sanitizeLimitedHTML(text);
+  } else {
+    bubble.innerText = text;
+  }
+
+  wrapper.appendChild(bubble);
+  BOX.appendChild(wrapper);
+  BOX.scrollTop = BOX.scrollHeight;
+}
+
+// ================== HELPERS ==================
+function looksLikeURL(s) {
+  return /^https?:\/\/\S+/i.test(s);
+}
+
+function escapeHTML(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function sanitizeLimitedHTML(html) {
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = html;
+
+  const allowed = new Set(['A','BR','STRONG','EM','DIV','SPAN']);
+  wrapper.querySelectorAll('*').forEach(el => {
+    if (!allowed.has(el.tagName)) {
+      const text = document.createTextNode(el.textContent || '');
+      el.replaceWith(text);
+    } else if (el.tagName === 'A') {
+      const href = el.getAttribute('href') || '';
+      if (!/^https?:/i.test(href)) {
+        el.removeAttribute('href');
+      } else {
+        el.setAttribute('rel','noopener noreferrer');
+        el.setAttribute('target','_self');
+        el.classList.add('btn');
+      }
+    }
+  });
+  return wrapper.innerHTML;
+}
+
+function makeViewerURL({ title, src }) {
+  const u = new URL('sop-view.html', location.href);
+  u.searchParams.set('title', title || '');
+  u.searchParams.set('src', src || '');
+  return u.toString();
+}
+
+function normalizeDriveLink(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes('drive.google.com')) {
+      const m = u.pathname.match(/\/file\/d\/([^/]+)/);
+      if (m && m[1]) return `https://drive.google.com/file/d/${m[1]}/preview`;
+      if (u.pathname === '/uc' && u.searchParams.get('id')) {
+        const id = u.searchParams.get('id');
+        return `https://drive.google.com/file/d/${id}/preview`;
+      }
+    }
+    return url;
+  } catch { return url; }
+}
+
+// ================== EVENT ==================
+INPUT.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.keyCode === 13) { e.preventDefault(); ask(); }
+});
+
+const fireAsk = (e) => { e.preventDefault(); ask(); };
+SENDBTN.addEventListener('click', fireAsk, { passive: false });
+SENDBTN.addEventListener('touchend', fireAsk, { passive: false });
+
+INPUT.addEventListener('focus', () => {
+  setTimeout(() => {
+    try {
+      INPUT.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    } catch {}
+  }, 150);
+});
+
+if (window.visualViewport) {
+  visualViewport.addEventListener('resize', () => {
+    const inputArea = document.querySelector('.chat-input-area');
+    const viewport = visualViewport.height;
+    const windowHeight = window.innerHeight;
+    const offset = windowHeight - viewport;
+    inputArea.style.bottom = `${offset}px`;
+    BOX.scrollTop = BOX.scrollHeight;
+  });
+        }
