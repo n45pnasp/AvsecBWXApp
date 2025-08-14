@@ -16,6 +16,10 @@
   /* Layout scale */
   --container: 860px;
   --g1: 10px; --g2: 12px; --g3: 16px; --g4: 20px; --g5: 24px; --g6: 28px;
+
+  /* Ukuran ikon (apps & dock) */
+  --icon-box: clamp(52px, 10vw, 64px);
+  --icon-pad: clamp(6px, 1.4vw, 10px);
 }
 
 *{box-sizing:border-box}
@@ -72,11 +76,11 @@ body{
   font-size: clamp(11px, 2.4vw, 12px);
   color: var(--muted);
   letter-spacing: .2px; font-weight: 700;
-  text-transform: capitalize;     /* huruf awal tiap kata kapital */
-  pointer-events: none;           /* tidak mengganggu toggle kartu */
+  text-transform: capitalize; /* huruf awal tiap kata kapital */
+  pointer-events: none;       /* tidak mengganggu toggle kartu */
 }
 
-/* Konten salam digeser sedikit agar tidak menabrak overline */
+/* Konten salam */
 .greet-text{ flex:1 1 auto; min-width:0; margin-top: 10px; }
 .greet-big{ font-size: clamp(18px, 5.2vw, 28px); font-weight:800; color:#f1f5ff; }
 .name-big{  font-size: clamp(28px, 8.6vw, 40px); font-weight:900; color:#fff; line-height:1.08; letter-spacing:.2px; text-wrap: balance; }
@@ -119,40 +123,45 @@ body{
   gap: clamp(14px, 3vw, 20px);
   padding-bottom: var(--g6);
 }
+
 .app{
   background:none; border:none; box-shadow:none; padding:0;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
   gap: clamp(6px, 1.8vw, 10px);
   text-align:center; text-decoration:none; color:var(--text);
+  min-width:0;                             /* cegah label ketindih layout */
   transition: transform .12s ease;
 }
 .app:active{ transform:scale(.92); }
 
 /* ===== Ikon Hybrid: emoji/SVG & PNG ===== */
 .app-icon{
-  width: clamp(44px, 9vw, 60px);
-  height: clamp(44px, 9vw, 60px);
-  border-radius: 14px;
+  width: var(--icon-box);
+  height: var(--icon-box);
+  aspect-ratio: 1/1;
+  border-radius: 16px;
   display:grid; place-items:center;
-  font-size: clamp(20px, 5vw, 28px);
-  background:linear-gradient(135deg, var(--accent), var(--accent-2));  /* frame utk emoji/SVG & PNG */
-  border:1px solid rgba(255,255,255,.12);
-  box-shadow:0 6px 16px rgba(106,88,255,.35);
-  overflow:hidden;                                                     /* PNG rapi */
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); /* frame */
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 6px 16px rgba(106,88,255,.35);
+  overflow: hidden;
+  padding: var(--icon-pad);                /* sisakan napas utk PNG */
+  font-size: calc(var(--icon-box) * .48);  /* emoji/SVG tetap proporsional */
 }
 .app-icon img{
-  width:100%; height:100%; object-fit:contain;                         /* PNG proporsional */
+  width:100%; height:100%; object-fit:contain; /* PNG proporsional */
 }
-/* Opsi: PNG polos tanpa gradient frame */
-.app-icon.no-bg{
-  background: rgba(255,255,255,.04);
-  border:none; box-shadow:none;
-}
+/* Opsi: PNG polos tanpa frame */
+.app-icon.no-bg{ background: rgba(255,255,255,.05); border:none; box-shadow:none; }
 
+/* Label */
 .app-name{
+  display:block; margin-top:2px;
   font-size: clamp(11px, 2.8vw, 13px);
   color:#e1e7f5;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  max-width:100%;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  min-height:1.2em;                       /* jaga tinggi baris minimum */
 }
 
 /* ===== Dock ===== */
