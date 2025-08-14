@@ -57,6 +57,22 @@ body{
   font-weight:700;
 }
 
+/* Tombol panah kembali (ke home.html) */
+.back-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:40px; height:40px;
+  color:var(--text); text-decoration:none;
+  border-radius:10px;
+  background:transparent; /* tetap gelap seperti header */
+  margin-right:4px;
+  transition: background .12s ease, box-shadow .12s ease, transform .08s ease, opacity .12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.back-btn:hover{ background:rgba(255,255,255,.06) }          /* highlight ringan saat diarahkan */
+.back-btn:active{ background:rgba(0,0,0,.25); transform:translateY(1px) } /* tekan = gelap sedikit */
+.back-btn:focus-visible{ outline:2px solid var(--accent-3); outline-offset:2px }
+.back-btn svg{ width:24px; height:24px; stroke:currentColor }
+
 /* ---------- Kontainer utama ---------- */
 .chat-container{
   height:calc(100dvh - 56px);
