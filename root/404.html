@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Redirecting...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0b1020;
+      color: #e8ecf4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+  </style>
+  <script>
+    (function(){
+      // Base path project di GitHub Pages
+      var base = "/AvsecBWXApp/";
+
+      // Ambil path + query + hash dari URL yang error
+      var fullPath = location.pathname + location.search + location.hash;
+
+      // Hapus base dari path kalau ada
+      if (fullPath.startsWith(base)) {
+        fullPath = fullPath.substring(base.length);
+      }
+
+      // Redirect ke index.html sambil menyimpan path asli di hash (#)
+      location.replace(base + "index.html#" + fullPath);
+    })();
+  </script>
+</head>
+<body>
+  <div>
+    <h1>Memuat...</h1>
+    <p>Anda akan diarahkan kembali ke halaman utama.</p>
+  </div>
+</body>
+</html>
