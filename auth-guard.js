@@ -2,7 +2,6 @@
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-/** >>> GANTI dengan config kamu (sama seperti di home.js) <<< */
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
   authDomain: "avsecbwx-4229c.firebaseapp.com",
@@ -20,11 +19,12 @@ function getFb() {
   return { app, auth };
 }
 
-/**
- * Wajibkan user sudah login. Jika belum → redirect ke login.
- * - loginPath: file halaman login kamu (mis. "login.html" atau "index.html")
- * - hideWhileChecking: sembunyikan halaman sementara agar tidak FOUC
- */
+// Cari base path repo di GitHub Pages → "/AvsecBWXApp/"
+function getBasePrefix() {
+  const parts = location.pathname.split("/").filter(Boolean);
+  return parts.length > 0 ? `/${parts[0]}/` : "/";
+}
+
 export function requireAuth({ loginPath = "index.html", hideWhileChecking = true } = {}) {
   const { auth } = getFb();
 
@@ -35,21 +35,16 @@ export function requireAuth({ loginPath = "index.html", hideWhileChecking = true
   onAuthStateChanged(auth, (user) => {
     if (!user) {
       const next = encodeURIComponent(location.pathname + location.search + location.hash);
-      // Pakai replace agar pengguna tidak bisa "Back" ke halaman yang dilindungi
-      location.replace(`${loginPath}?next=${next}`);
+      const loginURL = new URL(loginPath, location.origin + getBasePrefix()).href;
+      location.replace(`${loginURL}?next=${next}`);
       return;
     }
-    // Sudah login → tampilkan halaman
     if (hideWhileChecking) {
       document.documentElement.style.visibility = "";
     }
   });
 }
 
-/**
- * Di halaman login: kalau SUDAH login → langsung lempar ke home.
- * - homePath: tujuan setelah login (mis. "home.html")
- */
 export function redirectIfAuthed({ homePath = "home.html" } = {}) {
   const { auth } = getFb();
 
@@ -57,7 +52,12 @@ export function redirectIfAuthed({ homePath = "home.html" } = {}) {
     if (user) {
       const params = new URLSearchParams(location.search);
       const next = params.get("next");
-      location.replace(next ? decodeURIComponent(next) : homePath);
+      if (next) {
+        location.replace(decodeURIComponent(next));
+      } else {
+        const homeURL = new URL(homePath, location.origin + getBasePrefix()).href;
+        location.replace(homeURL);
+      }
     }
   });
 }
