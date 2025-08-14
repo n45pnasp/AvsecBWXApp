@@ -20,17 +20,22 @@
   <script>
     (function(){
       // Base path project di GitHub Pages
-      var base = "/AvsecBWXApp/";
+      var parts = location.pathname.split("/").filter(Boolean);
+      var base = parts.length ? "/" + parts[0] + "/" : "/";
 
-      // Ambil path + query + hash dari URL yang error
+      // Ambil path asli
       var fullPath = location.pathname + location.search + location.hash;
 
-      // Hapus base dari path kalau ada
+      // Kalau URL berakhir .html → langsung ke index.html (tidak pakai hash)
+      if (fullPath.toLowerCase().endsWith(".html")) {
+        location.replace(base + "index.html");
+        return;
+      }
+
+      // Kalau bukan .html, kirim ke index.html#path-asli (biar router handle)
       if (fullPath.startsWith(base)) {
         fullPath = fullPath.substring(base.length);
       }
-
-      // Redirect ke index.html sambil menyimpan path asli di hash (#)
       location.replace(base + "index.html#" + fullPath);
     })();
   </script>
@@ -38,7 +43,7 @@
 <body>
   <div>
     <h1>Memuat...</h1>
-    <p>Anda akan diarahkan kembali ke halaman utama.</p>
+    <p>Anda akan diarahkan ke halaman utama.</p>
   </div>
 </body>
 </html>
