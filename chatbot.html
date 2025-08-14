@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
   <title>ChatBot Prohibited Items & SOP</title>
   <link rel="stylesheet" href="chatbot.css" />
+  <!-- Cegah flash konten sebelum status login diketahui -->
+  <style>html{visibility:hidden}</style>
 </head>
 <body>
   <!-- Header dengan tombol kembali -->
@@ -41,6 +43,24 @@
       </div>
     </div>
   </div>
+
+  <!-- Auth guard: pasang PALING ATAS sebelum script lain -->
+  <script type="module">
+    import { requireAuth } from "./auth-guard.js";
+    requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+  </script>
+
+  <!-- Setelah user terverifikasi, enable input -->
+  <script type="module">
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    const auth = getAuth();
+    onAuthStateChanged(auth, (user)=>{
+      if(user){
+        document.getElementById('userInput')?.removeAttribute('disabled');
+        document.querySelector('.send-btn')?.removeAttribute('disabled');
+      }
+    });
+  </script>
 
   <script src="chatbot.js"></script>
 </body>
