@@ -189,7 +189,7 @@ window.onLogout = function () {
     localStorage.removeItem("tinydb_name");
     localStorage.removeItem("tinydb_photo");
   } catch (_) {}
-  location.href = "login.html?logout=1";
+  location.href = "index.html?logout=1";
 };
 
 // ======== KODULAR BRIDGE: Icon → WebViewString ========
@@ -198,33 +198,72 @@ function sendToKodular(message){
     if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function") {
       window.AppInventor.setWebViewString(String(message));
     } else {
-      console.debug("[KodularBridge] ", message);
-      document.title = String(message);
+      console.debug("[KodularBridge]", message);
+      document.title = String(message); // fallback dev
     }
   } catch (e) {
     console.warn("Gagal kirim ke Kodular:", e);
   }
 }
 
+/**
+ * Bind elemen ber-atribut data-icon agar:
+ * - Mengirim WebViewString = nilai data-icon
+ * - Jika anchor punya href valid (bukan '#'), tetap navigasi setelah jeda singkat
+ * - Debounce agar tidak kirim ganda
+ * - Aksesibilitas: bisa di-trigger Enter/Space
+ */
 function bindIcon(el){
   if (!el || el.__kodularBound) return;
   el.__kodularBound = true;
 
+  // perbaiki role/tabindex untuk aksesibilitas
   if (!el.hasAttribute("role")) el.setAttribute("role","button");
   if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex","0");
 
+  // anti dobel
+  let firedAt = 0;
+  const DEBOUNCE_MS = 220;
+
   const fire = () => {
+    const now = Date.now();
+    if (now - firedAt < DEBOUNCE_MS) return;
+    firedAt = now;
+
     const name = (el.getAttribute("data-icon") || "").trim();
     if (!name) return;
+
+    // kirim ke Kodular
     sendToKodular(name);
 
-    const href = el.getAttribute("data-href");
-    if (href) {
-      setTimeout(()=>{ location.href = href; }, 120);
+    // Tentukan target navigasi:
+    // 1) gunakan href jika anchor dan bukan "#"
+    // 2) atau gunakan data-href jika ada
+    let target = "";
+    if (el instanceof HTMLAnchorElement) {
+      const href = (el.getAttribute("href") || "").trim();
+      if (href && href !== "#") target = href;
+    }
+    if (!target) {
+      const dh = (el.getAttribute("data-href") || "").trim();
+      if (dh) target = dh;
+    }
+
+    if (target) {
+      setTimeout(()=>{ location.href = target; }, 140);
     }
   };
 
-  el.addEventListener("click", fire);
+  // Interaksi utama
+  el.addEventListener("click", (ev) => {
+    // Jika anchor dengan href="#", cegah scroll ke atas
+    if (el instanceof HTMLAnchorElement) {
+      const href = (el.getAttribute("href") || "").trim();
+      if (!href || href === "#") ev.preventDefault();
+    }
+    fire();
+  });
+
   el.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -234,8 +273,10 @@ function bindIcon(el){
 }
 
 function setupKodularIconBridge(){
+  // Bind semua elemen yang punya data-icon (apps grid + dock)
   document.querySelectorAll("[data-icon]").forEach(bindIcon);
 
+  // Observasi DOM jika ada ikon baru dimasukkan dinamis
   const mo = new MutationObserver((muts) => {
     for (const m of muts) {
       m.addedNodes?.forEach(node => {
