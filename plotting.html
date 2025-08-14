@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Plotting</title>
   <link rel="stylesheet" href="plotting.css" />
+  <style>html{visibility:hidden}</style>
 </head>
 <body>
 
-<!-- App Bar: Tombol Kembali (panah) + Judul -->
 <header class="app-bar" role="banner">
   <a href="home.html" class="back-btn" aria-label="Kembali ke Home">
     <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" 
@@ -29,14 +29,14 @@
     <div class="next-info">Perputaran selanjutnya <span id="nextRotation">-</span></div>
   </div>
 
-  <!-- Kontrol (tanpa card, selalu sejajar) -->
+  <!-- Kontrol -->
   <div class="controls">
     <button id="startBtn" class="start">Mulai Rotasi</button>
     <button id="stopBtn" class="stop">Hentikan</button>
     <button id="nextBtn">Majukan 1x</button>
   </div>
 
-  <!-- Tabel penugasan (tanpa kolom spesifikasi) -->
+  <!-- Tabel penugasan -->
   <table class="assign">
     <thead>
       <tr>
@@ -47,7 +47,7 @@
     <tbody id="assignRows"></tbody>
   </table>
 
-  <!-- Kelola Personil (judul di dalam .manage supaya ikut hidden saat running) -->
+  <!-- Kelola Personil -->
   <div class="manage">
     <h2>Kelola Personil</h2>
     <div class="add-person">
@@ -74,6 +74,12 @@
     </div>
     <div id="sheetMsg" class="sheet-body"></div>
   </div>
+
+  <!-- Auth guard: load SEBELUM plotting.js -->
+  <script type="module">
+    import { requireAuth } from "./auth-guard.js";
+    requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+  </script>
 
   <script type="module" src="plotting.js"></script>
 </body>
