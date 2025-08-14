@@ -101,26 +101,43 @@
   </div>
 
   <!-- Dock bawah (emoji; jika mau PNG, beri <div class="app-icon"><img ...></div>) -->
+
   <nav class="dock" aria-label="Menu bawah">
-    <div class="dock-inner">
+  <div class="dock-inner">
       <a class="dock-btn" href="#" title="Schedule" data-icon="SCHEDULE" aria-current="page">
         📅<span>Schedule</span>
       </a>
-      <a class="dock-btn" href="#" title="ID Check" data-icon="ID_CHECK">
-        🪪<span>ID Check</span>
-      </a>
-      <a class="dock-btn" href="#" title="Key Map" data-icon="KEY_MAP">
-        🗺️<span>Key Map</span>
-      </a>
-      <a class="dock-btn" href="Plotting.html" title="Plotting" data-icon="PLOTTING">
-        📊<span>Plotting</span>
-      </a>
+    <!-- ID Check pakai SVG -->
+    <a class="dock-btn" href="#" data-icon="ID_CHECK">
+      <div class="app-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <rect width="24" height="24" rx="4" fill="#ffcc00"/>
+          <path d="M6 6h12v12H6z" fill="#fff"/>
+        </svg>
+      </div>
+      <span>ID Check</span>
+    </a>
+
+    <!-- Key Map pakai emoji -->
+    <a class="dock-btn" href="#" data-icon="KEY_MAP">
+      <div class="app-icon">🗺️</div>
+      <span>Key Map</span>
+    </a>
+
+    <!-- Plotting pakai PNG -->
+    <a class="dock-btn" href="Plotting.html" data-icon="PLOTTING">
+      <div class="app-icon"><img src="icons/plotting.png" alt="Plotting"></div>
+      <span>Plotting</span>
+    </a>
+
+    <!-- Daily Check pakai SVG -->
       <a class="dock-btn" href="#" title="Daily Check" data-icon="DAILY_CHECK">
         ✅<span>Daily Check</span>
       </a>
-    </div>
-  </nav>
+  </div>
+</nav>
 
+  
   <!-- Auth Guard: wajib login (panggil sebelum home.js) -->
   <script type="module">
     import { requireAuth } from "./auth-guard.js";
