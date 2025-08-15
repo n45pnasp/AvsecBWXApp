@@ -169,27 +169,30 @@ body{
   border-top:1px solid var(--border);
   padding:10px 12px calc(10px + var(--safe-b));
 }
+/* Ubah wrapper agar lebih membulat seperti chatgpt */
 .input-wrapper{
   display:flex; align-items:center; gap:8px;
   background:#0d1428;
   border:1px solid var(--border);
-  border-radius: calc(var(--radius) - 4px);
-  padding:6px;
+  border-radius:999px; /* FULL ROUND seperti chatgpt */
+  padding:4px 6px;
 }
+/* Textbox lebih lega */
 #userInput{
   flex:1; min-width:0;
   color:var(--text); background:transparent;
   border:none; outline:none;
   font-size:16px; line-height:1.4;
-  padding:10px 12px;
+  padding:10px 14px;
 }
 #userInput::placeholder{color: #6b7280}
 
-/* Tombol kirim */
+/* Tombol kirim bulat penuh */
 .send-btn{
   display:inline-flex; align-items:center; justify-content:center;
   width:42px; height:42px;
-  border:none; border-radius:12px;
+  border:none;
+  border-radius:50%; /* BUNDER PENUH */
   background:var(--accent);
   cursor:pointer;
   transition: transform .12s ease, background .12s ease, box-shadow .12s ease, opacity .12s ease;
