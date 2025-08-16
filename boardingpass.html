@@ -7,11 +7,7 @@
   <script src="https://unpkg.com/@zxing/library@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: 'Inter', sans-serif;
@@ -39,11 +35,20 @@
       align-items: center;
       width: 100%;
       margin-bottom: 16px;
+      gap: 10px; /* tambahan kecil agar rapi */
     }
 
-    h1 {
-      font-size: 1.5rem;
+    /* === Tombol Back (tambahan minimal) === */
+    .back-btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:36px; height:36px; border-radius:50%;
+      background:#2a2a2a; color:#eee; text-decoration:none;
+      transition:background .2s ease;
+      flex:0 0 auto;
     }
+    .back-btn:hover{ background:#3a3a3a; }
+
+    h1 { font-size: 1.5rem; }
 
     video {
       width: 100%;
@@ -94,42 +99,37 @@
       border-radius: 16px;
       border: none;
       cursor: pointer;
-      box-shadow:
-        8px 8px 15px #1e1e1e,
-        -8px -8px 15px #4a4a4a;
+      box-shadow: 8px 8px 15px #1e1e1e, -8px -8px 15px #4a4a4a;
       transition: all 0.25s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
       user-select: none;
     }
-
     .btn:hover {
       background: linear-gradient(145deg, #2f2f2f, #1a1a1a);
-      box-shadow:
-        4px 4px 10px #171717,
-        -4px -4px 10px #525252;
-      color: #eee;
-      transform: translateY(-2px);
+      box-shadow: 4px 4px 10px #171717, -4px -4px 10px #525252;
+      color: #eee; transform: translateY(-2px);
     }
-
     .btn:active {
       background: linear-gradient(145deg, #212121, #121212);
-      box-shadow: inset 4px 4px 8px #0d0d0d,
-        inset -4px -4px 8px #292929;
-      transform: translateY(0);
-      color: #ddd;
+      box-shadow: inset 4px 4px 8px #0d0d0d, inset -4px -4px 8px #292929;
+      transform: translateY(0); color: #ddd;
     }
 
-    #historyCard {
-      display: none;
-    }
+    #historyCard { display: none; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
+      <!-- Tombol back: pilih salah satu -->
+      <!-- A) Kembali ke halaman sebelumnya -->
+      <button class="back-btn" aria-label="Kembali" onclick="history.back()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <!-- B) Atau ke home.html: ganti tombol di atas dengan <a href="home.html" class="back-btn">...</a> -->
+
       <h1>📷 Boarding Pass Scanner</h1>
     </div>
 
@@ -170,8 +170,7 @@
     };
 
     function splitFromBack(str, maxSplits) {
-      const parts = [];
-      let remaining = str;
+      const parts = []; let remaining = str;
       for (let i = 0; i < maxSplits; i++) {
         const lastSpace = remaining.lastIndexOf(' ');
         if (lastSpace === -1) break;
@@ -232,22 +231,15 @@
 
     function loadScanHistory() {
       const history = JSON.parse(localStorage.getItem('scanHistory') || '[]');
-      if (history.length === 0) {
-        scanHistoryText.textContent = 'Belum ada riwayat.';
-        return;
-      }
+      if (history.length === 0) { scanHistoryText.textContent = 'Belum ada riwayat.'; return; }
       scanHistoryText.innerHTML = history
         .map((h, i) => `#${i + 1} (${h.time})<br>${h.text}`)
         .join('<br><br>');
     }
 
     function toggleHistory() {
-      if (historyCard.style.display === 'none') {
-        loadScanHistory();
-        historyCard.style.display = 'block';
-      } else {
-        historyCard.style.display = 'none';
-      }
+      if (historyCard.style.display === 'none') { loadScanHistory(); historyCard.style.display = 'block'; }
+      else { historyCard.style.display = 'none'; }
     }
 
     function clearHistory() {
