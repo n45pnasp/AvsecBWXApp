@@ -116,17 +116,15 @@ input:focus{
 }
 
 /* Lupa Password link */
-.link-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 8px 0 0;
-  color: var(--muted); /* Warna link, atur di tema */
-  font-size: 0.9rem;
-  text-decoration: underline;
-  cursor: pointer;
+.link-btn{
+  background:none !important;
+  border:none !important;
+  color:var(--muted);
+  font-weight:400 !important; /* normal */
+  text-decoration:underline;
+  cursor:pointer;
 }
-.link-btn:hover { opacity: 0.8; }
+.link-btn:hover{ color:var(--accent); }
 .forgot-link { text-align: center; }
 
 /* Logo */
