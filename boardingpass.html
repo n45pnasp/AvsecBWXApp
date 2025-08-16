@@ -18,8 +18,33 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
+      flex-direction: column;
     }
-    .container { display: flex; flex-direction: column; align-items: center; max-width: 420px; width: 100%; }
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto 16px auto;
+      padding: 10px 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #eee;
+    }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px; width: 36px;
+      border-radius: 50%;
+      color: #eee;
+      transition: background 0.2s ease;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.1); }
+    .back-btn:active { background: rgba(255,255,255,0.2); }
+
+    .container { display: flex; flex-direction: column; align-items: center; max-width: 420px; width: 100%; margin: auto; }
     .header { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 16px; }
     h1 { font-size: 1.5rem; }
     video { width: 100%; border-radius: 20px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); margin-bottom: 20px; }
@@ -49,8 +74,18 @@
   </style>
 </head>
 <body>
+  <!-- Header dengan tombol kembali -->
+  <div class="chat-header" role="banner" aria-label="ChatBot">
+    <a href="home.html" class="back-btn" aria-label="Kembali ke Home">
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </a>
+    <span>Boarding Pass Scanner</span>
+  </div>
+
   <div class="container">
-    <div class="header"><h1>📷 Boarding Pass Scanner</h1></div>
     <video id="video" autoplay></video>
 
     <div class="card">
