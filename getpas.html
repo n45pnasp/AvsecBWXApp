@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Lookup Kode Register (Bridge Kodular)</title>
+</head>
+<body>
+  <h1>Lookup Kode Register</h1>
+
+  <input id="kode" placeholder="KPBWX00001K" autocomplete="off">
+  <button id="btnCari">Cari</button>
+  <span id="status"></span>
+
+  <h3>JSON</h3>
+  <pre id="output">{}</pre>
+
+  <script>
+    // ====== GANTI bila perlu ======
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwxa0jzipEiXc_fF_c9oQsvihgrAwIpho9tFjQubmll0f9MiO4HzZrLd-K2tGTLYA/exec';
+
+    // ====== Elemen ======
+    const $ = s => document.querySelector(s);
+    const kodeInput = $('#kode');
+    const statusEl  = $('#status');
+    const outputEl  = $('#output');
+
+    // ====== Util ======
+    const setStatus = t => statusEl.textContent = t || '';
+    const pretty    = o => JSON.stringify(o, null, 2);
+    const getSheetFromURL = () => (new URLSearchParams(location.search)).get('sheet') || '';
+
+    // Format "31/Des/2025" -> "31-12-2025"
+    function formatIndoDate_DDMMYYYY(input){
+      if (!input) return '';
+      let s = String(input).trim();
+      const MM = {Jan:1,Feb:2,Mar:3,Apr:4,Mei:5,Jun:6,Jul:7,Agu:8,Ags:8,Aug:8,Sep:9,Okt:10,Oct:10,Nov:11,Des:12,Dec:12};
+      const pad2 = n => (n<10 ? '0'+n : ''+n);
+      let d, m, y;
+      if (/^\d{1,2}\/[A-Za-z]{3}\/\d{4}$/.test(s)){ const [dd, mmm, yyyy]=s.split('/'); d=+dd; m=MM[mmm]||null; y=+yyyy; }
+      else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)){ const [dd, mm, yyyy]=s.split('/'); d=+dd; m=+mm; y=+yyyy; }
+      else if (/^\d{4}-\d{2}-\d{2}$/.test(s)){ const [yyyy, mm, dd]=s.split('-'); d=+dd; m=+mm; y=+yyyy; }
+      else { const dt=new Date(s); if(!isNaN(dt)){ d=dt.getDate(); m=dt.getMonth()+1; y=dt.getFullYear(); } else return s; }
+      if (!d||!m||!y) return s;
+      return `${pad2(d)}-${pad2(m)}-${y}`;
+    }
+
+    // Kirim hasil balik ke Kodular (diterima di event WebViewer.WebViewString Changed)
+    function sendToKodular(obj){
+      try{
+        if (window.AppInventor && typeof window.AppInventor.setWebViewString === 'function'){
+          window.AppInventor.setWebViewString(JSON.stringify(obj));
+        }
+      }catch(_){}
+    }
+
+    async function fetchKode(kode, sheetOverride){
+      setStatus('Mengambil data…');
+      outputEl.textContent = '{}';
+      try{
+        const sheet = sheetOverride || getSheetFromURL();
+        const extra = sheet ? `&sheet=${encodeURIComponent(sheet)}` : '';
+        const url = `${SCRIPT_URL}?kode_register=${encodeURIComponent(kode)}${extra}`;
+        const res = await fetch(url, { cache:'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+
+        // Tambahkan field tanggal versi dd-mm-yyyy
+        let payload = { success: json.success, source: 'html', kode, sheet, ts: Date.now() };
+        if (json.success){
+          const data = Object.assign({}, json.data);
+          data['Masa Berlaku (dd-mm-yyyy)'] = formatIndoDate_DDMMYYYY(json.data['Masa Berlaku']);
+          payload.data = data;
+        } else {
+          payload.error = json.error || 'Gagal mengambil data';
+        }
+
+        outputEl.textContent = pretty(payload);
+        setStatus(json.success ? 'OK' : 'Error');
+        sendToKodular(payload); // kirim balik ke Kodular
+      }catch(err){
+        const payload = { success:false, error:String(err), source:'html', ts: Date.now() };
+        outputEl.textContent = pretty(payload);
+        setStatus('Error');
+        sendToKodular(payload);
+      }
+    }
+
+    // ====== Terima data dari Kodular lewat WebViewString ======
+    // Kirim dari Kodular string JSON, contoh:
+    // {"action":"lookup","kode":"KPBWX00001K","sheet":"Sheet1"}
+    // atau untuk hanya mengisi textbox (tanpa fetch):
+    // {"action":"set","fields":{"kode":"KPBWX00001K"}}
+    let _lastIn = '';
+    function handleFromKodular(str){
+      if (!str || str === _lastIn) return;
+      _lastIn = str;
+      let msg = null;
+      try { msg = JSON.parse(str); } catch { msg = { action:'lookup', kode: String(str) }; }
+
+      if (msg.action === 'lookup' && msg.kode){
+        const kode = String(msg.kode).toUpperCase().trim();
+        const sheet = msg.sheet ? String(msg.sheet) : '';
+        kodeInput.value = kode;
+        fetchKode(kode, sheet);
+      } else if (msg.action === 'set' && msg.fields && typeof msg.fields === 'object'){
+        Object.entries(msg.fields).forEach(([id,val]) => {
+          const el = document.getElementById(id);
+          if (el) el.value = String(val);
+        });
+        // Kirim ACK ke Kodular
+        sendToKodular({success:true, ack:'fields-set', fields: Object.keys(msg.fields), ts: Date.now()});
+      } else {
+        sendToKodular({success:false, error:'Unknown action', raw:str, ts: Date.now()});
+      }
+    }
+    function pollKodular(){
+      try{
+        if (window.AppInventor && typeof window.AppInventor.getWebViewString === 'function'){
+          const s = window.AppInventor.getWebViewString();
+          if (s) handleFromKodular(s);
+        }
+      }catch(_){}
+    }
+    setInterval(pollKodular, 300); // cek tiap 300ms
+
+    // ====== UI events ======
+    document.getElementById('btnCari').addEventListener('click', () => {
+      const kode = (kodeInput.value || '').trim().toUpperCase();
+      if (!kode){ setStatus('Isi kode dulu'); return; }
+      fetchKode(kode);
+    });
+    kodeInput.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btnCari').click(); });
+
+    // ====== Auto-run via ?kode=
+    (function init(){
+      const p = new URLSearchParams(location.search);
+      const kode = (p.get('kode') || '').toUpperCase();
+      if (kode){ kodeInput.value = kode; fetchKode(kode); }
+    })();
+  </script>
+</body>
+</html>
