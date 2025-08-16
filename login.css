@@ -121,7 +121,7 @@ input:focus{
   border: none;
   padding: 0;
   margin: 8px 0 0;
-  color: var(--accent); /* Warna link, atur di tema */
+  color: var(--muted); /* Warna link, atur di tema */
   font-size: 0.9rem;
   text-decoration: underline;
   cursor: pointer;
