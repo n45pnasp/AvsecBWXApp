@@ -38,20 +38,23 @@
       width:40px; height:40px;
       color:var(--text); text-decoration:none;
       border-radius:10px;
-      background:transparent; /* tetap gelap seperti header */
+      background:transparent;
       margin-right:4px;
       transition: background .12s ease, box-shadow .12s ease, transform .08s ease, opacity .12s ease;
       -webkit-tap-highlight-color: transparent;
     }
-    .back-btn:hover{ background:rgba(255,255,255,.06) }          /* highlight ringan saat diarahkan */
-    .back-btn:active{ background:rgba(0,0,0,.25); transform:translateY(1px) } /* tekan = gelap sedikit */
+    .back-btn:hover{ background:rgba(255,255,255,.06) }
+    .back-btn:active{ background:rgba(0,0,0,.25); transform:translateY(1px) }
     .back-btn:focus-visible{ outline:2px solid var(--accent-3); outline-offset:2px }
     .back-btn svg{ width:24px; height:24px; stroke:currentColor }
 
     .container { display: flex; flex-direction: column; align-items: center; max-width: 420px; width: 100%; margin: auto; }
     .header { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 16px; }
     h1 { font-size: 1.5rem; }
+
+    /* Style default video sebelumnya dibiarkan, tapi kita sembunyikan via ID */
     video { width: 100%; border-radius: 20px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); margin-bottom: 20px; }
+
     .card { background-color: #333; border-radius: 20px; padding: 20px; margin-bottom: 16px; width: 100%; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5); transition: background-color 0.3s ease; }
     .label { font-size: 1rem; font-weight: 600; color: #ccc; margin-bottom: 12px; border-bottom: 1px solid #555; padding-bottom: 6px; }
     .text { font-size: 1rem; white-space: pre-line; line-height: 1.6; }
@@ -75,6 +78,9 @@
       transform: translateY(0); color: #ddd;
     }
     #historyCard { display: none; }
+
+    /* === Sembunyikan tampilan kamera === */
+    #video { display: none !important; }
   </style>
 </head>
 <body>
@@ -90,6 +96,7 @@
   </div>
 
   <div class="container">
+    <!-- Video tetap ada agar JS tidak error, tapi disembunyikan via CSS -->
     <video id="video" autoplay></video>
 
     <div class="card">
