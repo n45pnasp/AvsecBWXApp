@@ -49,12 +49,14 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
 /** Inject custom color styles (Ungu) */
 (function injectCustomColors(){
   const style = document.createElement("style");
+  (function injectCustomColors(){
+  const style = document.createElement("style");
   style.textContent = `
-    .btn, button, .net-btn {
+    .btn, .net-btn {
       background-color: #9C27B0FF !important;
       color: #fff !important;
     }
-    .btn:hover, button:hover, .net-btn:hover {
+    .btn:hover, .net-btn:hover {
       background-color: #6A1B9A !important;
     }
     .avatar-dark { background-color: #6A1B9A !important; }
