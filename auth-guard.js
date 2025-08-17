@@ -29,11 +29,17 @@ function getBasePrefix() {
 }
 
 // --- Helper tampil/sembunyi dokumen (inline style > CSS eksternal) ---
-function hideDoc() {
-  document.documentElement.style.visibility = "hidden";
-}
-function showDoc() {
-  document.documentElement.style.visibility = "visible";
+function hideDoc() { document.documentElement.style.visibility = "hidden"; }
+function showDoc() { document.documentElement.style.visibility = "visible"; }
+
+// Cek apakah URL saat ini sudah sama dengan loginPath (hindari loop)
+function isOnLoginPage(loginPath) {
+  try {
+    const loginURL = new URL(loginPath, location.origin + getBasePrefix()).href;
+    return location.href.startsWith(loginURL);
+  } catch (_) {
+    return false;
+  }
 }
 
 /**
@@ -43,11 +49,17 @@ function showDoc() {
  *   import { requireAuth } from "./auth-guard.js";
  *   requireAuth({ loginPath: "index.html", hideWhileChecking: true });
  * </script>
+ *
+ * Opsi tambahan (opsional):
+ * - requireEmailVerified: boolean (default false). Jika true, user harus verified.
  */
-export function requireAuth({ loginPath = "index.html", hideWhileChecking = true } = {}) {
+export function requireAuth({
+  loginPath = "index.html",
+  hideWhileChecking = true,
+  requireEmailVerified = false
+} = {}) {
   const { auth } = getFb();
 
-  // Sembunyikan konten selama cek session (hindari flicker / bocor UI)
   let watchdog = null;
   if (hideWhileChecking) {
     hideDoc();
@@ -55,18 +67,36 @@ export function requireAuth({ loginPath = "index.html", hideWhileChecking = true
     watchdog = setTimeout(() => showDoc(), 3500);
   }
 
-  onAuthStateChanged(auth, (user) => {
-    if (!user) {
-      // Bawa rute sekarang sebagai ?next=… agar setelah login bisa balik
-      const next = encodeURIComponent(location.pathname + location.search + location.hash);
-      const loginURL = new URL(loginPath, location.origin + getBasePrefix()).href;
-      location.replace(`${loginURL}?next=${next}`);
-      return;
-    }
-    // User valid → tampilkan halaman
-    if (hideWhileChecking) {
-      clearTimeout(watchdog);
-      showDoc(); // PENTING: jangan "", harus "visible"
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    try {
+      // Tidak login → redirect ke halaman login (hindari loop)
+      if (!user) {
+        if (!isOnLoginPage(loginPath)) {
+          const next = encodeURIComponent(location.pathname + location.search + location.hash);
+          const loginURL = new URL(loginPath, location.origin + getBasePrefix()).href;
+          location.replace(`${loginURL}?next=${next}`);
+        } else {
+          // sudah di login page: tampilkan kontennya supaya user bisa login
+          showDoc();
+        }
+        return;
+      }
+
+      // Opsional: wajib email terverifikasi
+      if (requireEmailVerified && user.email && !user.emailVerified) {
+        // Tetap tampilkan halaman tapi kamu bisa tunjukkan banner/info di UI
+        // (Tidak redirect agar tidak mengganggu alur verifikasi email.)
+        showDoc();
+        return;
+      }
+
+      // User valid → tampilkan halaman
+      if (hideWhileChecking) showDoc();
+    } finally {
+      // Matikan listener agar tidak dipanggil berkali-kali
+      unsubscribe && unsubscribe();
+      // Pastikan tidak ada watchdog yang tertinggal
+      if (watchdog) clearTimeout(watchdog);
     }
   });
 }
@@ -80,16 +110,15 @@ export function requireAuth({ loginPath = "index.html", hideWhileChecking = true
 export function redirectIfAuthed({ homePath = "home.html" } = {}) {
   const { auth } = getFb();
 
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      const params = new URLSearchParams(location.search);
-      const next = params.get("next");
-      if (next) {
-        location.replace(decodeURIComponent(next));
-      } else {
-        const homeURL = new URL(homePath, location.origin + getBasePrefix()).href;
-        location.replace(homeURL);
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    try {
+      if (user) {
+        const params = new URLSearchParams(location.search);
+        const next = params.get("next");
+        location.replace(next ? decodeURIComponent(next) : new URL(homePath, location.origin + getBasePrefix()).href);
       }
+    } finally {
+      unsubscribe && unsubscribe();
     }
   });
 }
