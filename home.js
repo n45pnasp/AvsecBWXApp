@@ -40,22 +40,29 @@ function getGreetingID(d = getWIBDate()) {
   return "Selamat Malam,";
 }
 function updateGreeting() {
-  const greetEl = $("#greet");
-  if (greetEl) greetEl.textContent = getGreetingID();
+  // Tanggal/banner
+  $("#dateBanner")?.textContent = bannerString();
 
-  const k = (greetEl?.textContent || "").split(" ")[1];
-  const t = {
+  // Greeting (Pagi/Siang/Sore/Malam)
+  const greet = getGreetingID();              // "Selamat Siang," dll
+  $("#greet")?.textContent = greet;
+
+  // Ambil kata kuncinya langsung dari fungsi, bukan dari DOM
+  const key = /Pagi|Siang|Sore|Malam/.exec(greet)?.[0];  // "Siang"
+  const taglines = {
     Pagi:  "Fokus & semangat produktif ☕",
     Siang: "Jeda sejenak, tarik napas 🌤️",
     Sore:  "Akhiri dengan manis 🌇",
     Malam: "Santai, recharge energi 🌙"
   };
-  const taglineEl = $("#taglineText");
-  if (taglineEl) taglineEl.textContent = t[k] || "Siap bantu aktivitasmu hari ini ✨";
-
-  const bannerEl = $("#dateBanner");
-  if (bannerEl) bannerEl.textContent = bannerString();
+  $("#taglineText")?.textContent = taglines[key] || "Siap bantu aktivitasmu hari ini ✨";
 }
+
+// panggil rutin + update cepat saat tab kembali aktif
+function tick(){ updateGreeting(); }
+tick();
+setInterval(tick, 60 * 1000);
+document.addEventListener("visibilitychange", ()=> { if (!document.hidden) tick(); });
 
 // ===== Avatar default =====
 const DEFAULT_AVATAR =
