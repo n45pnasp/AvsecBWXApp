@@ -3,8 +3,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebas
 import {
   getDatabase, ref, child, onValue, set, update, remove, get, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-// (opsional) jika ingin tombol logout:
-// import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 // ======== Konfigurasi project (RTDB baru) ========
 const firebaseConfig = {
@@ -20,42 +18,43 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
-// const auth = getAuth(app); // kalau pakai tombol logout
 
 /* ========= Link PDF per site ========= */
 const SHEETS = {
-  PSCP: { id: '1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8', gid: '' },
-  HBSCP:{ id: '1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU', gid: '' },
+  PSCP: { id: "1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8", gid: "" },
+  HBSCP:{ id: "1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU", gid: "" },
 };
 
-/* ====== Jika Sheet di-"Publish to web", set true untuk /pub?output=pdf.
-         Jika hanya "Anyone with link – Viewer", biarkan false (pakai /export). */
+/* ====== Export PDF tanpa login Google ======
+   - Jika Sheet di "Publish to the web" → set USE_PUB = true (pakai /pub?output=pdf)
+   - Jika hanya "Anyone with the link – Viewer" → biarkan false (pakai /export?format=pdf)
+*/
 const USE_PUB = false;
 
 const PDF_DEFAULT_OPTS = {
-  format: 'pdf',
-  size: 'A4',
-  portrait: 'true',
-  scale: '2',               // 1=Normal, 2=Fit to width, 3=Fit to page
-  top_margin: '0.50',
-  bottom_margin: '0.50',
-  left_margin: '0.50',
-  right_margin: '0.50',
-  sheetnames: 'false',
-  printtitle: 'false',
-  pagenumbers: 'true',
-  gridlines: 'false',
-  fzr: 'true'
+  format: "pdf",
+  size: "A4",
+  portrait: "true",
+  scale: "2",               // 1=Normal, 2=Fit to width, 3=Fit to page
+  top_margin: "0.50",
+  bottom_margin: "0.50",
+  left_margin: "0.50",
+  right_margin: "0.50",
+  sheetnames: "false",
+  printtitle: "false",
+  pagenumbers: "true",
+  gridlines: "false",
+  fzr: "true",
 };
 
 function buildSheetPdfUrl(sheetId, gid, opts = {}) {
   const cacheBuster = { t: Date.now() };
   if (USE_PUB) {
-    const params = new URLSearchParams({ gid, single: 'true', output: 'pdf', ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
+    const params = new URLSearchParams({ gid, single: "true", output: "pdf", ...cacheBuster });
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params}`;
   } else {
     const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params}`;
   }
 }
 
@@ -65,62 +64,63 @@ const SITE_CONFIG = {
     enable2040: true,
     cycleMs: 20_000,
     positions: [
-      { id:'pos1', name:'Operator Xray',    allowed:['senior','junior'] },
-      { id:'pos2', name:'Pemeriksa Barang', allowed:['senior','junior','basic'] },
-      { id:'pos3', name:'Pemeriksa Orang',  allowed:['junior','basic'] },
-      { id:'pos4', name:'Flow Control',     allowed:['junior','basic'] },
+      { id:"pos1", name:"Operator Xray",    allowed:["senior","junior"] },
+      { id:"pos2", name:"Pemeriksa Barang", allowed:["senior","junior","basic"] },
+      { id:"pos3", name:"Pemeriksa Orang",  allowed:["junior","basic"] },
+      { id:"pos4", name:"Flow Control",     allowed:["junior","basic"] },
     ],
   },
   HBSCP: {
     enable2040: true, // ON bila jr/sr >= 3
     cycleMs: 20_000,
     positions: [
-      { id:'pos1',  name:'Operator Xray',       allowed:['senior','junior'] },
-      { id:'pos2a', name:'Pemeriksa Barang 1',  allowed:['senior','junior','basic'] },
-      { id:'pos2b', name:'Pemeriksa Barang 2',  allowed:['senior','junior','basic'] },
+      { id:"pos1",  name:"Operator Xray",       allowed:["senior","junior"] },
+      { id:"pos2a", name:"Pemeriksa Barang 1",  allowed:["senior","junior","basic"] },
+      { id:"pos2b", name:"Pemeriksa Barang 2",  allowed:["senior","junior","basic"] },
     ],
-  }
+  },
 };
 
 // ========= DOM refs =========
 const $ = (id)=>document.getElementById(id);
-const connDot      = $('connDot');
-const clockEl      = $('clock');
-const nextEl       = $('nextRotation');
-const startBtn     = $('startBtn');
-const stopBtn      = $('stopBtn');
-const nextBtn      = $('nextBtn');
-const downloadBtn  = $('downloadPdfBtn');
-const assignTable  = document.querySelector('table.assign');
-const assignRows   = $('assignRows');
-const manageBox    = document.querySelector('.manage');
-const nameInput    = $('nameInput');
-const seniorSpecEl = $('seniorSpec');
-const juniorSpec   = $('juniorSpec');
-const basicSpec    = $('basicSpec');
-const addPersonBtn = $('addPersonBtn');
-const peopleRows   = $('peopleRows');
-const btnPSCP      = $('pscpBtn');
-const btnHBSCP     = $('hbscpBtn');
-// const logoutBtn    = $('logoutBtn'); // kalau ingin tombol logout
+const connDot      = $("connDot");
+const clockEl      = $("clock");
+const nextEl       = $("nextRotation");
+const startBtn     = $("startBtn");
+const stopBtn      = $("stopBtn");
+const nextBtn      = $("nextBtn");
+const downloadBtn  = $("downloadPdfBtn");
+const assignTable  = document.querySelector("table.assign");
+const assignRows   = $("assignRows");
+const manageBox    = document.querySelector(".manage");
+const nameInput    = $("nameInput");
+const seniorSpecEl = $("seniorSpec");
+const juniorSpec   = $("juniorSpec");
+const basicSpec    = $("basicSpec");
+const addPersonBtn = $("addPersonBtn");
+const peopleRows   = $("peopleRows");
+const btnPSCP      = $("pscpBtn");
+const btnHBSCP     = $("hbscpBtn");
 
 // ========= Indikator koneksi =========
-onValue(ref(db, ".info/connected"), snap => { connDot?.classList.toggle('ok', !!snap.val()); });
+onValue(ref(db, ".info/connected"), (snap) => {
+  connDot?.classList.toggle("ok", !!snap.val());
+});
 
 // ========= Util =========
-const pad = n => String(n).padStart(2,'0');
-const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const pad = (n) => String(n).padStart(2,"0");
+const fmt = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
 // ========= Pewarnaan tombol berdasar status RTDB =========
 function paintSiteButton(btn, isRunning){
   if(!btn) return;
-  btn.classList.toggle('start', !!isRunning); // hijau
-  btn.classList.toggle('stop',  !isRunning);  // merah
+  btn.classList.toggle("start", !!isRunning); // hijau
+  btn.classList.toggle("stop",  !isRunning);  // merah
 }
-onValue(ref(db, "sites/PSCP/control/state"), snap=>{
+onValue(ref(db, "sites/PSCP/control/state"), (snap)=>{
   paintSiteButton(btnPSCP, !!(snap.val()?.running));
 });
-onValue(ref(db, "sites/HBSCP/control/state"), snap=>{
+onValue(ref(db, "sites/HBSCP/control/state"), (snap)=>{
   paintSiteButton(btnHBSCP, !!(snap.val()?.running));
 });
 
@@ -132,10 +132,10 @@ class SiteMachine {
     this.CYCLE_MS = this.cfg.cycleMs;
 
     this.baseRef        = ref(db, `sites/${siteKey}`);
-    this.peopleRef      = child(this.baseRef, 'people');
-    this.assignmentsRef = child(this.baseRef, 'assignments');
-    this.cooldownRef    = child(this.baseRef, 'control/xrayCooldown');
-    this.stateRef       = child(this.baseRef, 'control/state'); // {running,nextAt,mode2040,lastCycleAt}
+    this.peopleRef      = child(this.baseRef, "people");
+    this.assignmentsRef = child(this.baseRef, "assignments");
+    this.cooldownRef    = child(this.baseRef, "control/xrayCooldown");
+    this.stateRef       = child(this.baseRef, "control/state"); // {running,nextAt,mode2040,lastCycleAt}
 
     this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
     this.running = false;
@@ -151,7 +151,7 @@ class SiteMachine {
   mount(){
     this.clockTimer = setInterval(()=>{
       clockEl && (clockEl.textContent = fmt(new Date()));
-      nextEl  && (nextEl.textContent  = this.nextAtLocal ? fmt(new Date(this.nextAtLocal)) : '-');
+      nextEl  && (nextEl.textContent  = this.nextAtLocal ? fmt(new Date(this.nextAtLocal)) : "-");
     }, 250);
 
     this._listen(this.assignmentsRef, s => this.renderAssignments(s.val()||{}));
@@ -175,11 +175,10 @@ class SiteMachine {
     stopBtn.onclick  = ()=> this.onStop();
     nextBtn.onclick  = ()=> this.onNext();
     addPersonBtn.onclick = ()=> this.onAddPerson();
-    // logoutBtn?.addEventListener('click', ()=> signOut(auth));
 
     this.setRunningUI(false);
     clockEl && (clockEl.textContent = fmt(new Date()));
-    nextEl  && (nextEl.textContent  = '-');
+    nextEl  && (nextEl.textContent  = "-");
   }
 
   unmount(){
@@ -190,51 +189,70 @@ class SiteMachine {
     this._unsubs = [];
   }
 
-  _listen(r, cb){ const u = onValue(r, cb); this._unsubs.push(u); }
+  _listen(r, cb){
+    const unsubscribe = onValue(r, cb);
+    this._unsubs.push(unsubscribe);
+  }
 
   setRunningUI(isRunning){
     startBtn.disabled = isRunning;
     stopBtn.disabled  = !isRunning;
     nextBtn.disabled  = !isRunning;
-    assignTable.classList.toggle('hidden', !isRunning);
-    manageBox.classList.toggle('hidden',  isRunning);
-    document.body.classList.toggle('running', isRunning);
+    assignTable.classList.toggle("hidden", !isRunning);
+    manageBox.classList.toggle("hidden",  isRunning);
+    document.body.classList.toggle("running", isRunning);
   }
 
   renderAssignments(assignments){
-    assignRows.innerHTML = '';
+    assignRows.innerHTML = "";
     this.cfg.positions.forEach(p=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${p.name}</td><td>${assignments?.[p.id] ?? '-'}</td>`;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${p.name}</td><td>${assignments?.[p.id] ?? "-"}</td>`;
       assignRows.appendChild(tr);
     });
   }
 
   renderPeople(people){
-    peopleRows.innerHTML = '';
+    peopleRows.innerHTML = "";
     Object.entries(people||{}).forEach(([id,p])=>{
-      const has = s => Array.isArray(p.spec) && p.spec.includes(s);
-      const tr = document.createElement('tr');
+      const has = (s) => Array.isArray(p.spec) && p.spec.includes(s);
+      const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${p.name}</td>
-        <td><input type="checkbox" ${has('senior')?'checked':''} data-id="${id}" data-spec="senior"/></td>
-        <td><input type="checkbox" ${has('junior')?'checked':''} data-id="${id}" data-spec="junior"/></td>
-        <td><input type="checkbox" ${has('basic')?'checked':''}  data-id="${id}" data-spec="basic"/></td>
+        <td><input type="checkbox" ${has("senior")?'checked':''} data-id="${id}" data-spec="senior"/></td>
+        <td><input type="checkbox" ${has("junior")?'checked':''} data-id="${id}" data-spec="junior"/></td>
+        <td><input type="checkbox" ${has("basic")?'checked':''}  data-id="${id}" data-spec="basic"/></td>
         <td><button data-del="${id}">Hapus</button></td>`;
       peopleRows.appendChild(tr);
     });
+
     peopleRows.onchange = async (e)=>{
-      if(e.target.type!=='checkbox') return;
+      if(e.target.type!=="checkbox") return;
       const id=e.target.dataset.id, spec=e.target.dataset.spec;
-      const snap = await get(child(this.peopleRef,id)); let person=snap.val(); if(!person) return;
-      if(!Array.isArray(person.spec)) person.spec=[];
-      if(e.target.checked){ if(!person.spec.includes(spec)) person.spec.push(spec); }
-      else { person.spec = person.spec.filter(s=>s!==spec); }
-      await update(child(this.peopleRef,id), person);
+      try{
+        const snap = await get(child(this.peopleRef,id));
+        let person=snap.val(); if(!person) return;
+        if(!Array.isArray(person.spec)) person.spec=[];
+        if(e.target.checked){ if(!person.spec.includes(spec)) person.spec.push(spec); }
+        else { person.spec = person.spec.filter(s=>s!==spec); }
+        await update(child(this.peopleRef,id), person);
+      }catch(err){
+        console.error("Update spec gagal:", err);
+        alert("Update spesifikasi gagal: " + (err?.message || err));
+        e.target.checked = !e.target.checked; // revert UI
+      }
     };
+
     peopleRows.onclick = async (e)=>{
       if(!e.target.dataset.del) return;
-      await remove(child(this.peopleRef, e.target.dataset.del));
+      const id = e.target.dataset.del;
+      if(!confirm("Hapus personil ini?")) return;
+      try{
+        await remove(child(this.peopleRef, id));
+      }catch(err){
+        console.error("Hapus gagal:", err);
+        alert("Hapus gagal: " + (err?.message || err));
+      }
     };
   }
 
@@ -260,7 +278,7 @@ class SiteMachine {
 
     const pools = this.cfg.positions.map(pos=>{
       let candidates = folks.filter(f=>this.isEligible(f,pos.allowed));
-      if(useCooldown && pos.id==='pos1'){ // cooldown khusus Operator Xray
+      if(useCooldown && pos.id==="pos1"){ // cooldown khusus Operator Xray
         candidates = candidates.filter(f=>(cooldown[f.name]||0)<=0);
       }
       const rot = this.rotate(candidates, this.rotIdx[pos.id] % Math.max(candidates.length,1));
@@ -276,7 +294,7 @@ class SiteMachine {
     function bt(i){
       if(i===pools.length) return true;
       const {pos,list}=pools[i];
-      if(list.length===0){ result[pos.id]='-'; return bt(i+1); }
+      if(list.length===0){ result[pos.id]="-"; return bt(i+1); }
       for(const cand of list){
         const name=cand?.name; if(!name||used.has(name)) continue;
         used.add(name); result[pos.id]=name;
@@ -292,7 +310,7 @@ class SiteMachine {
     const used=new Set(); const result={};
     for(const {pos,list} of pools){
       const pick=list.find(p=>p?.name && !used.has(p.name));
-      result[pos.id]=pick ? (used.add(pick.name), pick.name) : '-';
+      result[pos.id]=pick ? (used.add(pick.name), pick.name) : "-";
     }
     return result;
   }
@@ -308,17 +326,22 @@ class SiteMachine {
     const { ok, result } = this.assignUnique(pools);
     const finalAssign = ok ? result : this.assignUniqueGreedy(pools);
 
-    if(useCooldown){
-      const cd = { ...(cooldown||{}) };
-      for(const k of Object.keys(cd)){ cd[k]=Math.max(0,(cd[k]|0)-1); }
-      const xrayName = finalAssign.pos1;
-      if(xrayName && xrayName!=='-') cd[xrayName]=2; // 2 siklus tak boleh pos1
-      await Promise.all([
-        set(this.assignmentsRef, finalAssign),
-        set(this.cooldownRef, cd)
-      ]);
-    } else {
-      await set(this.assignmentsRef, finalAssign);
+    try{
+      if(useCooldown){
+        const cd = { ...(cooldown||{}) };
+        for(const k of Object.keys(cd)){ cd[k]=Math.max(0,(cd[k]|0)-1); }
+        const xrayName = finalAssign.pos1;
+        if(xrayName && xrayName!=="-") cd[xrayName]=2; // 2 siklus tak boleh pos1
+        await Promise.all([
+          set(this.assignmentsRef, finalAssign),
+          set(this.cooldownRef, cd),
+        ]);
+      } else {
+        await set(this.assignmentsRef, finalAssign);
+      }
+    }catch(err){
+      console.error("Tulis assignments gagal:", err);
+      alert("Tulis assignments gagal: " + (err?.message || err));
     }
 
     // menulis assignments → trigger Cloud Functions → kirim ke Sheet
@@ -328,7 +351,7 @@ class SiteMachine {
   async tryAdvanceCycle(force=false){
     const res = await runTransaction(this.stateRef, (cur)=>{
       const now=Date.now();
-      if(!cur||typeof cur!=='object') return cur;
+      if(!cur||typeof cur!=="object") return cur;
       if(!cur.running) return cur;
       const nextAt=cur.nextAt|0;
       if(force || (nextAt && now>=nextAt)){
@@ -351,7 +374,7 @@ class SiteMachine {
       const pSnap=await get(this.peopleRef);
       const people=pSnap.val()||{};
       const jsCount=Object.values(people).filter(p =>
-        Array.isArray(p?.spec) && p.spec.some(s=>['junior','senior'].includes(String(s).toLowerCase()))
+        Array.isArray(p?.spec) && p.spec.some(s=>["junior","senior"].includes(String(s).toLowerCase()))
       ).length;
       enable2040Now = (jsCount>=3);
     }
@@ -359,22 +382,31 @@ class SiteMachine {
 
     const now  = Date.now();
     const next = now + this.CYCLE_MS;
-    await set(this.stateRef, { running:true, nextAt: next, mode2040: this.mode2040State, lastCycleAt: now });
-    this.nextAtLocal      = next;
-    this.lastCycleAtLocal = now;
-
-    await this.computeAndWriteAssignments(this.cfg.enable2040 && this.mode2040State);
-    this.setRunningUI(true);
+    try{
+      await set(this.stateRef, { running:true, nextAt: next, mode2040: this.mode2040State, lastCycleAt: now });
+      this.nextAtLocal      = next;
+      this.lastCycleAtLocal = now;
+      await this.computeAndWriteAssignments(this.cfg.enable2040 && this.mode2040State);
+      this.setRunningUI(true);
+    }catch(err){
+      console.error("Start gagal:", err);
+      alert("Memulai rotasi gagal: " + (err?.message || err));
+    }
   }
 
   async onStop(){
     const tasks=[ update(this.stateRef,{ running:false, nextAt:0, mode2040:false, lastCycleAt:0 }) ];
     if(this.cfg.enable2040) tasks.push(set(this.cooldownRef, {}));
-    await Promise.all(tasks);
-    this.setRunningUI(false);
-    this.nextAtLocal=null;
-    this.lastCycleAtLocal=null;
-    nextEl && (nextEl.textContent='-');
+    try{
+      await Promise.all(tasks);
+      this.setRunningUI(false);
+      this.nextAtLocal=null;
+      this.lastCycleAtLocal=null;
+      nextEl && (nextEl.textContent="-");
+    }catch(err){
+      console.error("Stop gagal:", err);
+      alert("Menghentikan rotasi gagal: " + (err?.message || err));
+    }
   }
 
   async onNext(){
@@ -389,11 +421,18 @@ class SiteMachine {
   async onAddPerson(){
     const name=nameInput?.value?.trim(); if(!name) return;
     const specs=[];
-    if(seniorSpecEl?.checked) specs.push('senior');
-    if(juniorSpec?.checked)   specs.push('junior');
-    if(basicSpec?.checked)    specs.push('basic');
-    await update(child(this.peopleRef, name.toLowerCase()), { name, spec: specs });
-    nameInput.value=''; seniorSpecEl.checked=false; juniorSpec.checked=false; basicSpec.checked=false;
+    if(seniorSpecEl?.checked) specs.push("senior");
+    if(juniorSpec?.checked)   specs.push("junior");
+    if(basicSpec?.checked)    specs.push("basic");
+
+    const key = name.toLowerCase(); // kunci node
+    try{
+      await update(child(this.peopleRef, key), { name, spec: specs });
+      nameInput.value=""; seniorSpecEl.checked=false; juniorSpec.checked=false; basicSpec.checked=false;
+    }catch(err){
+      console.error("Tambah personil gagal:", err);
+      alert("Tambah personil gagal: " + (err?.message || err));
+    }
   }
 }
 
@@ -402,18 +441,18 @@ let machine=null;
 let currentSite = null; // untuk download PDF
 
 function resetSurface(){
-  assignRows.innerHTML=''; peopleRows.innerHTML='';
-  nextEl && (nextEl.textContent='-');
+  assignRows.innerHTML=""; peopleRows.innerHTML="";
+  nextEl && (nextEl.textContent="-");
   clockEl && (clockEl.textContent=fmt(new Date()));
-  assignTable.classList.add('hidden');
-  manageBox.classList.remove('hidden');
+  assignTable.classList.add("hidden");
+  manageBox.classList.remove("hidden");
 }
 function selectSiteButtonUI(site){
-  btnPSCP?.classList.toggle('selected', site==='PSCP');
-  btnHBSCP?.classList.toggle('selected', site==='HBSCP');
+  btnPSCP?.classList.toggle("selected", site==="PSCP");
+  btnHBSCP?.classList.toggle("selected", site==="HBSCP");
 }
 function bootSite(siteKey){
-  try{ localStorage.setItem('siteSelected', siteKey); }catch(_){}
+  try{ localStorage.setItem("siteSelected", siteKey); }catch(_){}
   if(machine) machine.unmount();
   resetSurface();
   machine = new SiteMachine(siteKey);
@@ -423,14 +462,14 @@ function bootSite(siteKey){
   if (downloadBtn) downloadBtn.disabled = false;
 }
 
-// ====== Download PDF (tanpa login Google; pastikan share/publish sesuai) ======
+// ====== Download PDF (tanpa login Google) ======
 function openActiveSitePdf(){
   if(!currentSite || !SHEETS[currentSite]){
-    alert('Pilih lokasi dulu (PSCP / HBSCP).');
+    alert("Pilih lokasi dulu (PSCP / HBSCP).");
     return;
   }
   const { id, gid } = SHEETS[currentSite];
-  window.open(buildSheetPdfUrl(id, gid), '_blank');
+  window.open(buildSheetPdfUrl(id, gid), "_blank");
 }
 
 // ====== Init ======
@@ -438,14 +477,14 @@ function openActiveSitePdf(){
   if (downloadBtn) downloadBtn.disabled = true;
 
   const url = new URL(location.href);
-  const qsSite = url.searchParams.get('site');
-  let initial='PSCP';
-  try{ initial = qsSite || localStorage.getItem('siteSelected') || 'PSCP'; }catch(_){}
+  const qsSite = url.searchParams.get("site");
+  let initial="PSCP";
+  try{ initial = qsSite || localStorage.getItem("siteSelected") || "PSCP"; }catch(_){}
   bootSite(initial);
 
-  btnPSCP?.addEventListener('click', ()=> bootSite('PSCP'));
-  btnHBSCP?.addEventListener('click', ()=> bootSite('HBSCP'));
-  downloadBtn?.addEventListener('click', openActiveSitePdf);
+  btnPSCP?.addEventListener("click", ()=> bootSite("PSCP"));
+  btnHBSCP?.addEventListener("click", ()=> bootSite("HBSCP"));
+  downloadBtn?.addEventListener("click", openActiveSitePdf);
 
-  document.documentElement.style.visibility='visible';
+  document.documentElement.style.visibility="visible";
 })();
