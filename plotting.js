@@ -1,8 +1,7 @@
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import {
-  getDatabase, ref, onValue, set, update, remove, get,
-  runTransaction
+  getDatabase, ref, child, onValue, set, update, remove, get, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 // ======== Konfigurasi project (punyamu) ========
@@ -17,365 +16,409 @@ const firebaseConfig = {
   measurementId: "G-GWBBDS8YZZ"
 };
 
-// Init
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 
-// ======== UI refs ========
-const assignRows   = document.getElementById('assignRows');
-const peopleRows   = document.getElementById('peopleRows');
-const startBtn     = document.getElementById('startBtn');
-const stopBtn      = document.getElementById('stopBtn');
-const nextBtn      = document.getElementById('nextBtn');
-
-// (Toggle 20–40: sudah ditiadakan; jika elemen lama masih ada di HTML, kita sembunyikan)
-const modeBadge    = document.querySelector('.mode-option');
-if (modeBadge) modeBadge.classList.add('hidden');
-
-const nameInput    = document.getElementById('nameInput');
-const juniorSpec   = document.getElementById('juniorSpec');
-const basicSpec    = document.getElementById('basicSpec');
-const seniorSpecEl = document.getElementById('seniorSpec');
-const addPersonBtn = document.getElementById('addPersonBtn');
-const clockEl      = document.getElementById('clock');
-const nextEl       = document.getElementById('nextRotation');
-
-// ======== NEW: elemen untuk toggle tampilan tabel vs kelola personil ========
-const assignTable = document.querySelector('.assign'); // tabel penugasan
-const manageBox   = document.querySelector('.manage'); // panel kelola personil
-
-// Bottom sheet (sekarang untuk koneksi internet)
-const sheetBackdrop = document.getElementById('sheetBackdrop');
-const bottomSheet   = document.getElementById('bottomSheet');
-const sheetMsg      = document.getElementById('sheetMsg');
-const sheetClose    = document.getElementById('sheetClose');
-
-// Indikator koneksi (dot di dalam card) + bottom sheet koneksi
-const connDot = document.getElementById('connDot');
-const setConn = ok => { if (connDot) connDot.classList.toggle('ok', !!ok); };
-function showSheet(msg, { persistent = false } = {}){
-  if(sheetMsg) sheetMsg.textContent = msg;
-  sheetBackdrop?.classList.remove('hidden');
-  bottomSheet?.classList.remove('hidden');
-  clearTimeout(showSheet._timer);
-  if (!persistent){
-    showSheet._timer = setTimeout(hideSheet, 3000);
+// ========= Konfigurasi per site =========
+// PSCP: enable2040 = true; HBSCP: enable2040 = false & 2 slot Pemeriksa Barang
+const SITE_CONFIG = {
+  PSCP: {
+    enable2040: true,
+    cycleMs: 20_000,
+    positions: [
+      { id:'pos1', name:'Operator Xray',    allowed:['senior','junior'] },
+      { id:'pos2', name:'Pemeriksa Barang', allowed:['senior','junior','basic'] },
+      { id:'pos3', name:'Pemeriksa Orang',  allowed:['junior','basic'] },
+      { id:'pos4', name:'Flow Control',     allowed:['junior','basic'] },
+    ],
+  },
+  HBSCP: {
+    enable2040: false,
+    cycleMs: 20_000,
+    positions: [
+      { id:'pos1',  name:'Operator Xray',       allowed:['senior','junior'] },
+      { id:'pos2a', name:'Pemeriksa Barang 1',  allowed:['junior','basic'] },
+      { id:'pos2b', name:'Pemeriksa Barang 2',  allowed:['junior','basic'] },
+    ],
   }
-}
-function hideSheet(){
-  sheetBackdrop?.classList.add('hidden');
-  bottomSheet?.classList.add('hidden');
-}
-sheetBackdrop?.addEventListener('click', hideSheet);
-sheetClose?.addEventListener('click', hideSheet);
+};
 
-// Koneksi internet => tampilkan sheet PERSISTEN saat terputus
+// ========= DOM refs (ID generik; 1 site aktif di layar) =========
+const $ = (id)=>document.getElementById(id);
+const siteSelect   = $('siteSelect'); // <select><option>PSCP/HBSCP</option></select>
+const assignRows   = $('assignRows');
+const peopleRows   = $('peopleRows');
+const startBtn     = $('startBtn');
+const stopBtn      = $('stopBtn');
+const nextBtn      = $('nextBtn');
+const nameInput    = $('nameInput');
+const juniorSpec   = $('juniorSpec');
+const basicSpec    = $('basicSpec');
+const seniorSpecEl = $('seniorSpec');
+const addPersonBtn = $('addPersonBtn');
+const clockEl      = $('clock');
+const nextEl       = $('nextRotation');
+const assignTable  = $('assign'); // container tabel penugasan
+const manageBox    = $('manage'); // panel kelola personil
+const connDot      = $('connDot'); // opsional indikator koneksi
+
+// ========= Indikator koneksi (opsional) =========
 onValue(ref(db, ".info/connected"), snap => {
   const ok = !!snap.val();
-  setConn(ok);
-  if (!ok) {
-    showSheet('Koneksi internet terputus. Beberapa aksi mungkin tidak tersimpan.', { persistent: true });
-  } else {
-    hideSheet();
-  }
+  if (connDot) connDot.classList.toggle('ok', ok);
 });
 
-// ======== Posisi & aturan (20s) ========
-const positions = [
-  { id:'pos1', name:'Operator Xray',    allowed:['senior','junior'] },
-  { id:'pos2', name:'Pemeriksa Barang', allowed:['senior','junior','basic'] },
-  { id:'pos3', name:'Pemeriksa Orang',  allowed:['junior','basic'] },
-  { id:'pos4', name:'Flow Control',     allowed:['junior','basic'] },
-];
-
-// ======== RTDB refs ========
-const assignmentsRef = ref(db, 'assignments');
-const peopleRef      = ref(db, 'people');
-const cooldownRef    = ref(db, 'control/xrayCooldown'); // untuk mode 20–40
-const stateRef       = ref(db, 'control/state');        // { running, nextAt, mode2040 }
-
-// ======== State & timing ========
-const rotIdx = { pos1:0, pos2:0, pos3:0, pos4:0 };
-let running = false;
-let nextAtLocal = null;         // cermin RTDB untuk UI
-let mode2040State = false;      // cermin state.mode2040 (diset otomatis)
-const CYCLE_MS = 20_000;
-
-// Auto 20–40 jika jumlah junior+senior >= 3
-let allow2040 = false;          // true jika (junior+senior) >= 3
-let lastJSCount = 0;
-
-// ======== UI helpers ========
-function setRunningUI(isRunning){
-  running = isRunning;
-  startBtn.disabled = isRunning;
-  stopBtn.disabled  = !isRunning;
-
-  // Saat belum mulai: tabel hidden, kelola personil tampil
-  // Saat sudah mulai: tabel tampil, kelola personil hidden
-  if (assignTable) assignTable.classList.toggle('hidden', !isRunning);
-  if (manageBox)   manageBox.classList.toggle('hidden',  isRunning);
-}
-
-function renderAssignments(assignments){
-  assignRows.innerHTML = '';
-  positions.forEach((p)=>{
-    const tr = document.createElement('tr');
-    // hanya tampilkan Posisi & Nama (tanpa kolom spesifikasi)
-    tr.innerHTML = `<td>${p.name}</td><td>${assignments?.[p.id] ?? '-'}</td>`;
-    assignRows.appendChild(tr);
-  });
-}
-function renderPeople(people){
-  peopleRows.innerHTML = '';
-  Object.entries(people||{}).forEach(([id, p])=>{
-    const has = s => Array.isArray(p.spec) && p.spec.includes(s);
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${p.name}</td>
-      <td><input type="checkbox" ${has('senior')?'checked':''} data-id="${id}" data-spec="senior" /></td>
-      <td><input type="checkbox" ${has('junior')?'checked':''} data-id="${id}" data-spec="junior" /></td>
-      <td><input type="checkbox" ${has('basic')?'checked':''}  data-id="${id}" data-spec="basic"  /></td>
-      <td><button data-del="${id}">Hapus</button></td>`;
-    peopleRows.appendChild(tr);
-  });
-}
-
-// Jam & nextAt
+// ========= Util render =========
 const pad = n => String(n).padStart(2,'0');
 const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-function renderClock(){
-  clockEl.textContent = fmt(new Date());
-  nextEl.textContent  = nextAtLocal ? fmt(new Date(nextAtLocal)) : '-';
-}
-setInterval(renderClock, 250);
 
-// ======== Helpers rotasi ========
-const rotate = (arr, idx) => arr.length ? arr.slice(idx).concat(arr.slice(0, idx)) : [];
-const isEligible = (person, allowed) =>
-  Array.isArray(person.spec) && person.spec.some(s => allowed.includes(String(s).toLowerCase()));
+// ========= Mesin per-site dengan kemampuan switch =========
+class SiteMachine {
+  constructor(siteKey){
+    this.siteKey = siteKey;
+    this.cfg = SITE_CONFIG[siteKey];
+    this.CYCLE_MS = this.cfg.cycleMs;
 
-async function buildPools(useCooldown){
-  const [pSnap, cdSnap] = await Promise.all([
-    get(peopleRef),
-    useCooldown ? get(cooldownRef) : Promise.resolve({ val: () => ({}) })
-  ]);
-  const raw  = pSnap.val() || {};
-  const folks = Object.values(raw).map(p => ({
-    ...p,
-    spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toLowerCase()) : []
-  }));
-  const cooldown = useCooldown ? (cdSnap.val() || {}) : {};
+    // RTDB paths (dipisah per site)
+    this.baseRef        = ref(db, `sites/${siteKey}`);
+    this.peopleRef      = child(this.baseRef, 'people');
+    this.assignmentsRef = child(this.baseRef, 'assignments');
+    this.cooldownRef    = child(this.baseRef, 'control/xrayCooldown');
+    this.stateRef       = child(this.baseRef, 'control/state'); // {running,nextAt,mode2040}
 
-  // bersihkan cooldown yatim
-  if(useCooldown){
-    const names = new Set(folks.map(f=>f.name));
-    for(const k of Object.keys(cooldown)){ if(!names.has(k)) delete cooldown[k]; }
+    // state lokal
+    this.rotIdx = {};
+    this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
+    this.running = false;
+    this.nextAtLocal = null;
+    this.mode2040State = false;
+
+    // timers & unsub holders
+    this.clockTimer = null;
+    this.dueTimer   = null;
+    this._unsubFns  = [];
   }
 
-  const pools = positions.map((pos) => {
-    let candidates = folks.filter(f => isEligible(f, pos.allowed));
-    if(useCooldown && pos.id === 'pos1'){ // Operator Xray cooldown (pos1)
-      candidates = candidates.filter(f => (cooldown[f.name] || 0) <= 0);
+  // ---------- lifecycle ----------
+  mount(){
+    // clock UI
+    this.clockTimer = setInterval(()=> {
+      if (clockEl) clockEl.textContent = fmt(new Date());
+      if (nextEl)  nextEl.textContent  = this.nextAtLocal ? fmt(new Date(this.nextAtLocal)) : '-';
+    }, 250);
+
+    // live listeners
+    this._listen(this.assignmentsRef, (snap)=> this.renderAssignments(snap.val()||{}));
+    this._listen(this.peopleRef, (snap)=> this.renderPeople(snap.val()||{}));
+    this._listen(this.stateRef, async (snap)=>{
+      const st  = snap.val() || {};
+      this.running = !!st.running;
+      const na  = Number(st.nextAt) || 0;
+      this.mode2040State = !!st.mode2040;
+      this.nextAtLocal = (na > 0) ? na : null;
+      this.setRunningUI(this.running);
+    });
+
+    // due heartbeat
+    this.dueTimer = setInterval(()=>{
+      if (this.running && this.nextAtLocal && Date.now() >= this.nextAtLocal) {
+        this.tryAdvanceCycle(false);
+      }
+    }, 500);
+
+    // bind tombol
+    if (startBtn) startBtn.onclick = ()=> this.onStart();
+    if (stopBtn)  stopBtn.onclick  = ()=> this.onStop();
+    if (nextBtn)  nextBtn.onclick  = ()=> this.onNext();
+    if (addPersonBtn) addPersonBtn.onclick = ()=> this.onAddPerson();
+
+    // paint awal
+    this.setRunningUI(false);
+    if (clockEl) clockEl.textContent = fmt(new Date());
+    if (nextEl)  nextEl.textContent  = '-';
+  }
+
+  unmount(){
+    // timers
+    if (this.clockTimer) clearInterval(this.clockTimer);
+    if (this.dueTimer)   clearInterval(this.dueTimer);
+    this.clockTimer = this.dueTimer = null;
+
+    // unbind tombol
+    if (startBtn) startBtn.onclick = null;
+    if (stopBtn)  stopBtn.onclick  = null;
+    if (nextBtn)  nextBtn.onclick  = null;
+    if (addPersonBtn) addPersonBtn.onclick = null;
+
+    // detach listeners RTDB
+    this._unsubFns.forEach(fn => { try{ fn && fn(); }catch(_){} });
+    this._unsubFns = [];
+  }
+
+  _listen(r, cb){
+    // v9: onValue returns unsubscribe function
+    const unsub = onValue(r, cb);
+    this._unsubFns.push(unsub);
+  }
+
+  // ---------- UI ----------
+  setRunningUI(isRunning){
+    if (startBtn) startBtn.disabled = isRunning;
+    if (stopBtn)  stopBtn.disabled  = !isRunning;
+    if (assignTable) assignTable.classList.toggle('hidden', !isRunning);
+    if (manageBox)   manageBox.classList.toggle('hidden',  isRunning);
+  }
+
+  renderAssignments(assignments){
+    if (!assignRows) return;
+    assignRows.innerHTML = '';
+    this.cfg.positions.forEach((p)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${p.name}</td><td>${assignments?.[p.id] ?? '-'}</td>`;
+      assignRows.appendChild(tr);
+    });
+  }
+
+  renderPeople(people){
+    if (!peopleRows) return;
+    peopleRows.innerHTML = '';
+    Object.entries(people||{}).forEach(([id, p])=>{
+      const has = s => Array.isArray(p.spec) && p.spec.includes(s);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.name}</td>
+        <td><input type="checkbox" ${has('senior')?'checked':''} data-id="${id}" data-spec="senior" /></td>
+        <td><input type="checkbox" ${has('junior')?'checked':''} data-id="${id}" data-spec="junior" /></td>
+        <td><input type="checkbox" ${has('basic')?'checked':''}  data-id="${id}" data-spec="basic"  /></td>
+        <td><button data-del="${id}">Hapus</button></td>`;
+      peopleRows.appendChild(tr);
+    });
+
+    // attach handler per render (replace untuk hindari dobel)
+    peopleRows.onchange = async (e)=>{
+      if(e.target.type !== 'checkbox') return;
+      const id = e.target.dataset.id, spec = e.target.dataset.spec;
+      const snap = await get(child(this.peopleRef, id)); let person = snap.val(); if(!person) return;
+      if(!Array.isArray(person.spec)) person.spec = [];
+      if(e.target.checked){
+        if(!person.spec.includes(spec)) person.spec.push(spec);
+      } else {
+        person.spec = person.spec.filter(s=>s!==spec);
+      }
+      await update(child(this.peopleRef, id), person);
+    };
+    peopleRows.onclick = async (e)=>{
+      if(!e.target.dataset.del) return;
+      await remove(child(this.peopleRef, e.target.dataset.del));
+    };
+  }
+
+  // ---------- Rotasi ----------
+  rotate(arr, idx){ return arr.length ? arr.slice(idx).concat(arr.slice(0, idx)) : []; }
+  isEligible(person, allowed){
+    return Array.isArray(person.spec) && person.spec.some(s => allowed.includes(String(s).toLowerCase()));
+  }
+
+  async buildPools(useCooldown){
+    const [pSnap, cdSnap] = await Promise.all([
+      get(this.peopleRef),
+      useCooldown ? get(this.cooldownRef) : Promise.resolve({ val: () => ({}) })
+    ]);
+    const raw  = pSnap.val() || {};
+    const folks = Object.values(raw).map(p => ({
+      ...p,
+      spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toLowerCase()) : []
+    }));
+    const cooldown = useCooldown ? (cdSnap.val() || {}) : {};
+
+    // bersihkan cooldown yatim (PSCP)
+    if(useCooldown){
+      const names = new Set(folks.map(f=>f.name));
+      for(const k of Object.keys(cooldown)){ if(!names.has(k)) delete cooldown[k]; }
     }
-    const rot = rotate(candidates, rotIdx[pos.id] % Math.max(candidates.length, 1));
-    return { pos, list: rot };
+
+    const pools = this.cfg.positions.map((pos) => {
+      let candidates = folks.filter(f => this.isEligible(f, pos.allowed));
+      if(useCooldown && pos.id === 'pos1'){ // cooldown hanya untuk Operator Xray
+        candidates = candidates.filter(f => (cooldown[f.name] || 0) <= 0);
+      }
+      const rot = this.rotate(candidates, this.rotIdx[pos.id] % Math.max(candidates.length, 1));
+      return { pos, list: rot };
+    });
+
+    // posisi dengan kandidat lebih sedikit diproses dulu
+    pools.sort((a,b)=> (a.list.length - b.list.length));
+    return { pools, cooldown };
+  }
+
+  assignUnique(pools){
+    const used = new Set();
+    const result = {};
+    function bt(i){
+      if(i === pools.length) return true;
+      const { pos, list } = pools[i];
+      if(list.length === 0){ result[pos.id] = '-'; return bt(i+1); }
+      for(const cand of list){
+        const name = cand?.name; if(!name || used.has(name)) continue;
+        used.add(name); result[pos.id] = name;
+        if(bt(i+1)) return true;
+        used.delete(name);
+      }
+      return false;
+    }
+    const ok = bt(0);
+    return { ok, result };
+  }
+
+  assignUniqueGreedy(pools){
+    const used = new Set(); const result = {};
+    for(const { pos, list } of pools){
+      const pick = list.find(p => p?.name && !used.has(p.name));
+      result[pos.id] = pick ? (used.add(pick.name), pick.name) : '-';
+    }
+    return result;
+  }
+
+  advanceRotIdx(pools){
+    for(const { pos, list } of pools){
+      const len = list.length;
+      if(len > 0) this.rotIdx[pos.id] = (this.rotIdx[pos.id] + 1) % len;
+    }
+  }
+
+  // Step rotasi + tulis RTDB
+  async computeAndWriteAssignments(useCooldown){
+    const { pools, cooldown } = await this.buildPools(useCooldown);
+
+    let finalAssign;
+    const { ok, result } = this.assignUnique(pools);
+    finalAssign = ok ? result : this.assignUniqueGreedy(pools);
+
+    if(useCooldown){
+      const cd = { ...(cooldown||{}) };
+      // kurangi semua cooldown 1
+      for(const k of Object.keys(cd)){ cd[k] = Math.max(0, (cd[k]|0) - 1); }
+      const xrayName = finalAssign.pos1;
+      if(xrayName && xrayName !== '-') cd[xrayName] = 2; // 2 siklus tidak boleh pos1
+      await Promise.all([ set(this.assignmentsRef, finalAssign), set(this.cooldownRef, cd) ]);
+    } else {
+      await set(this.assignmentsRef, finalAssign);
+    }
+
+    this.advanceRotIdx(pools);
+  }
+
+  // Mesin bersama per-site (anti-race)
+  async tryAdvanceCycle(force = false){
+    const res = await runTransaction(this.stateRef, (cur) => {
+      const now = Date.now();
+      if(!cur || typeof cur !== 'object') return cur;
+      const isRun = !!cur.running;
+      const nextAt  = cur.nextAt|0;
+      if(!isRun) return cur;
+
+      if(force || (nextAt && now >= nextAt)){
+        return { ...cur, nextAt: now + this.CYCLE_MS };
+      }
+      return cur;
+    });
+
+    if(res.committed){
+      const st = res.snapshot.val()||{};
+      this.nextAtLocal   = st.nextAt || null;
+      this.mode2040State = !!st.mode2040;
+      await this.computeAndWriteAssignments(this.cfg.enable2040 && this.mode2040State);
+    }
+  }
+
+  // ---------- UI events ----------
+  async onStart(){
+    // PSCP: aktifkan 20–40 hanya jika jumlah jr/sr >= 3; HBSCP: selalu false
+    let enable2040Now = false;
+    if (this.cfg.enable2040){
+      const pSnap = await get(this.peopleRef);
+      const people = pSnap.val() || {};
+      const jsCount = Object.values(people).filter(p =>
+        Array.isArray(p?.spec) && p.spec.some(s => ['junior','senior'].includes(String(s).toLowerCase()))
+      ).length;
+      enable2040Now = (jsCount >= 3);
+    }
+    this.mode2040State = this.cfg.enable2040 && enable2040Now;
+
+    const next = Date.now() + this.CYCLE_MS;
+    await set(this.stateRef, { running:true, nextAt: next, mode2040: this.mode2040State });
+    this.nextAtLocal = next;
+
+    await this.computeAndWriteAssignments(this.cfg.enable2040 && this.mode2040State);
+    this.setRunningUI(true);
+  }
+
+  async onStop(){
+    const tasks = [ update(this.stateRef, { running:false, nextAt: 0, mode2040: false }) ];
+    if (this.cfg.enable2040) tasks.push(set(this.cooldownRef, {}));
+    await Promise.all(tasks);
+    this.setRunningUI(false);
+    this.nextAtLocal = null;
+    if (nextEl) nextEl.textContent = '-';
+  }
+
+  async onNext(){
+    const snap = await get(this.stateRef);
+    const cur  = snap.val()||{};
+    if(cur.running){
+      this.mode2040State = !!cur.mode2040;
+      await this.tryAdvanceCycle(true);
+    }
+  }
+
+  async onAddPerson(){
+    const name = nameInput?.value?.trim(); if(!name) return;
+    const specs = [];
+    if(seniorSpecEl?.checked) specs.push('senior');
+    if(juniorSpec?.checked)   specs.push('junior');
+    if(basicSpec?.checked)    specs.push('basic');
+    await update(child(this.peopleRef, name.toLowerCase()), { name, spec: specs });
+    if (nameInput) nameInput.value='';
+    if(seniorSpecEl) seniorSpecEl.checked=false;
+    if(juniorSpec)   juniorSpec.checked=false;
+    if(basicSpec)    basicSpec.checked=false;
+  }
+}
+
+// ====== Boot & switch site sesuai pilihan dropdown ======
+let machine = null;
+
+function resetSurface(){
+  if (assignRows) assignRows.innerHTML = '';
+  if (peopleRows) peopleRows.innerHTML = '';
+  if (nextEl) nextEl.textContent = '-';
+  if (clockEl) clockEl.textContent = fmt(new Date());
+  if (assignTable) assignTable.classList.add('hidden');
+  if (manageBox)   manageBox.classList.remove('hidden');
+}
+
+function bootSite(siteKey){
+  // simpan preferensi
+  try{ localStorage.setItem('siteSelected', siteKey); }catch(_){}
+  // bersihkan instance lama
+  if (machine){ machine.unmount(); }
+  resetSurface();
+  // buat instance baru
+  machine = new SiteMachine(siteKey);
+  machine.mount();
+}
+
+// default site dari localStorage atau PSCP
+const initial = (()=>{
+  try{ return localStorage.getItem('siteSelected') || 'PSCP'; }catch(_){ return 'PSCP'; }
+})();
+if (siteSelect) siteSelect.value = initial;
+bootSite(initial);
+
+// ganti site saat user memilih
+if (siteSelect){
+  siteSelect.addEventListener('change', (e)=>{
+    const siteKey = e.target.value || 'PSCP';
+    bootSite(siteKey);
   });
-
-  // posisi paling ketat dulu
-  pools.sort((a,b)=> (a.list.length - b.list.length));
-  return { pools, cooldown };
 }
-
-// Backtracking anti-duplikasi
-function assignUnique(pools){
-  const used = new Set();
-  const result = {};
-  function bt(i){
-    if(i === pools.length) return true;
-    const { pos, list } = pools[i];
-    if(list.length === 0){ result[pos.id] = '-'; return bt(i+1); }
-    for(const cand of list){
-      const name = cand?.name; if(!name || used.has(name)) continue;
-      used.add(name); result[pos.id] = name;
-      if(bt(i+1)) return true;
-      used.delete(name);
-    }
-    return false;
-  }
-  const ok = bt(0);
-  return { ok, result };
-}
-function assignUniqueGreedy(pools){
-  const used = new Set(); const result = {};
-  for(const { pos, list } of pools){
-    const pick = list.find(p => p?.name && !used.has(p.name));
-    result[pos.id] = pick ? (used.add(pick.name), pick.name) : '-';
-  }
-  return result;
-}
-function advanceRotIdx(pools){
-  for(const { pos, list } of pools){
-    const len = list.length;
-    if(len > 0) rotIdx[pos.id] = (rotIdx[pos.id] + 1) % len;
-  }
-}
-
-// ======== Step rotasi + tulis ke RTDB ========
-async function computeAndWriteAssignments(useCooldown){
-  const { pools, cooldown } = await buildPools(useCooldown);
-
-  let finalAssign;
-  const { ok, result } = assignUnique(pools);
-  finalAssign = ok ? result : assignUniqueGreedy(pools);
-
-  if(useCooldown){
-    const cd = { ...(cooldown||{}) };
-    // kurangi semua cooldown 1
-    for(const k of Object.keys(cd)){ cd[k] = Math.max(0, (cd[k]|0) - 1); }
-    const xrayName = finalAssign.pos1;
-    if(xrayName && xrayName !== '-') cd[xrayName] = 2; // 2 siklus tidak boleh pos1 (Operator Xray)
-    await Promise.all([ set(assignmentsRef, finalAssign), set(cooldownRef, cd) ]);
-  } else {
-    await set(assignmentsRef, finalAssign);
-  }
-
-  advanceRotIdx(pools);
-}
-
-// ======== Mesin rotasi bersama (race-safe) ========
-async function tryAdvanceCycle(force = false){
-  // Transaction di /control/state: hanya SATU klien yang menang ketika due/force
-  const res = await runTransaction(stateRef, (cur) => {
-    const now = Date.now();
-    if(!cur || typeof cur !== 'object') return cur;
-    const running = !!cur.running;
-    const nextAt  = cur.nextAt|0;
-    if(!running) return cur;
-
-    if(force || (nextAt && now >= nextAt)){
-      // majukan nextAt tepat 20 detik dari sekarang
-      return { ...cur, nextAt: now + CYCLE_MS };
-    }
-    return cur; // tidak berubah
-  });
-
-  if(res.committed){
-    const st = res.snapshot.val()||{};
-    nextAtLocal   = st.nextAt || null;  // mirror ke UI
-    mode2040State = !!st.mode2040;
-    await computeAndWriteAssignments(!!mode2040State);
-  }
-}
-
-// ======== EVENTS ========
-
-// Mulai: mode 20–40 otomatis berdasarkan komposisi (>=3 jr/sr)
-startBtn.onclick = async ()=>{
-  // hitung komposisi terkini dulu
-  const pSnap = await get(peopleRef);
-  const people = pSnap.val() || {};
-  const jsCount = Object.values(people).filter(p =>
-    Array.isArray(p?.spec) && p.spec.some(s => ['junior','senior'].includes(String(s).toLowerCase()))
-  ).length;
-
-  allow2040 = (jsCount >= 3);
-  mode2040State = allow2040;
-
-  const next = Date.now() + CYCLE_MS;
-  await set(stateRef, { running:true, nextAt: next, mode2040: mode2040State });
-  nextAtLocal = next;
-  renderClock();
-
-  await computeAndWriteAssignments(mode2040State);
-  setRunningUI(true);
-};
-
-stopBtn.onclick = async ()=>{
-  // Reset total: berhenti + nextAt=0 + matikan 20–40 + kosongkan cooldown XRAY
-  await Promise.all([
-    update(stateRef, { running:false, nextAt: 0, mode2040: false }),
-    set(cooldownRef, {})
-  ]);
-  setRunningUI(false);
-  nextAtLocal = null;
-  renderClock();
-};
-
-nextBtn.onclick = async ()=>{
-  // Majukan paksa 1x dari sekarang (jika sedang running)
-  const snap = await get(stateRef);
-  const cur  = snap.val()||{};
-  if(cur.running){
-    mode2040State = !!cur.mode2040;
-    await tryAdvanceCycle(true);
-  }
-};
-
-// Tambah/hapus/ubah personil
-addPersonBtn.onclick = async ()=>{
-  const name = nameInput.value.trim(); if(!name) return;
-  const specs = [];
-  if(seniorSpecEl?.checked) specs.push('senior');
-  if(juniorSpec?.checked)   specs.push('junior');
-  if(basicSpec?.checked)    specs.push('basic');
-  await update(ref(db, 'people/'+name.toLowerCase()), { name, spec: specs });
-  nameInput.value='';
-  if(seniorSpecEl) seniorSpecEl.checked=false;
-  if(juniorSpec)   juniorSpec.checked=false;
-  if(basicSpec)    basicSpec.checked=false;
-};
-
-peopleRows.addEventListener('change', async (e)=>{
-  if(e.target.type !== 'checkbox') return;
-  const id = e.target.dataset.id, spec = e.target.dataset.spec;
-  const snap = await get(ref(db, 'people/'+id)); let person = snap.val(); if(!person) return;
-  if(!Array.isArray(person.spec)) person.spec = [];
-  if(e.target.checked){
-    if(!person.spec.includes(spec)) person.spec.push(spec);
-  } else {
-    person.spec = person.spec.filter(s=>s!==spec);
-  }
-  await update(ref(db, 'people/'+id), person);
-});
-peopleRows.addEventListener('click', async (e)=>{
-  if(!e.target.dataset.del) return;
-  await remove(ref(db, 'people/'+e.target.dataset.del));
-});
-
-// ======== Live listeners ========
-// Assignments display
-onValue(assignmentsRef, (snap)=> renderAssignments(snap.val()||{}));
-
-// People: update komposisi (informasi saja; mode 20–40 ditentukan saat Start)
-onValue(peopleRef, (snap)=>{
-  const people = snap.val()||{};
-  renderPeople(people);
-  const countJS = Object.values(people).filter(p =>
-    Array.isArray(p?.spec) && p.spec.some(s => ['junior','senior'].includes(String(s).toLowerCase()))
-  ).length;
-  lastJSCount = countJS;
-  allow2040 = (countJS >= 3);
-});
-
-// State global (sinkron)
-onValue(stateRef, async (snap)=>{
-  const st  = snap.val() || {};
-  const run = !!st.running;
-  const na  = Number(st.nextAt) || 0;
-  mode2040State = !!st.mode2040;
-
-  nextAtLocal = (na > 0) ? na : null;  // 0 → tampil "-"
-  setRunningUI(run);
-});
-
-// ======== Heartbeat shared-control: cek due setiap 500ms ========
-setInterval(()=>{
-  if (running && nextAtLocal && Date.now() >= nextAtLocal) {
-    tryAdvanceCycle(false); // runTransaction safety
-  }
-}, 500);
-
-// Paint awal: default belum mulai → tabel hidden, kelola personil tampil
-setRunningUI(false);
-renderClock();
