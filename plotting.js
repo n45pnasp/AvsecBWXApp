@@ -20,7 +20,6 @@ const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 
 // ========= Konfigurasi per site =========
-// PSCP: enable2040 = true; HBSCP: enable2040 = false & 2 slot Pemeriksa Barang
 const SITE_CONFIG = {
   PSCP: {
     enable2040: true,
@@ -43,7 +42,7 @@ const SITE_CONFIG = {
   }
 };
 
-// ========= DOM refs dari HTML kamu =========
+// ========= DOM refs =========
 const $id = (id)=>document.getElementById(id);
 const connDot      = $id('connDot');
 const clockEl      = $id('clock');
@@ -61,57 +60,45 @@ const basicSpec    = $id('basicSpec');
 const addPersonBtn = $id('addPersonBtn');
 const peopleRows   = $id('peopleRows');
 
-// ========= Sisipkan dropdown pemilih lokasi ke area Kontrol =========
-(function injectSiteSelect(){
+// ========= Sisipkan 2 tombol lokasi (PSCP/HBSCP) =========
+let btnPSCP = null, btnHBSCP = null;
+(function injectSiteButtons(){
   const controls = document.querySelector('.controls');
   if(!controls) return;
-  const wrap = document.createElement('div');
-  wrap.style.display = 'flex';
-  wrap.style.alignItems = 'center';
-  wrap.style.gap = '10px';
-  wrap.style.flexWrap = 'wrap';
+  const bar = document.createElement('div');
+  bar.className = 'site-bar';           // CSS kecil ada di bawah (tambahkan ke plotting.css)
+  bar.setAttribute('aria-label','Lokasi');
 
-  const label = document.createElement('label');
-  label.textContent = 'Lokasi:';
-  label.style.fontWeight = '600';
+  btnPSCP = document.createElement('button');
+  btnHBSCP = document.createElement('button');
+  btnPSCP.className = 'site-btn stop';  // default merah (non-aktif)
+  btnHBSCP.className = 'site-btn stop';
+  btnPSCP.textContent = 'PSCP';
+  btnHBSCP.textContent = 'HBSCP';
 
-  const select = document.createElement('select');
-  select.id = 'siteSelect';
-  select.innerHTML = `
-    <option value="PSCP">PSCP</option>
-    <option value="HBSCP">HBSCP</option>
-  `;
-  select.style.padding = '6px 10px';
-  select.style.borderRadius = '10px';
-  select.style.border = '1px solid var(--border, #334)';
-
-  // tempel di depan tombol
-  wrap.appendChild(label);
-  wrap.appendChild(select);
-  controls.prepend(wrap);
+  bar.appendChild(btnPSCP);
+  bar.appendChild(btnHBSCP);
+  controls.prepend(bar);
 })();
 
-// setelah disisipkan, ambil referensinya
-const siteSelect = document.getElementById('siteSelect');
-
-// ========= Indikator koneksi (opsional) =========
+// ========= Koneksi indikator =========
 onValue(ref(db, ".info/connected"), snap => {
   const ok = !!snap.val();
   if (connDot) connDot.classList.toggle('ok', ok);
 });
 
-// ========= Util render =========
+// ========= Util =========
 const pad = n => String(n).padStart(2,'0');
 const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-// ========= Mesin per-site dengan kemampuan switch =========
+// ========= Mesin per-site =========
 class SiteMachine {
   constructor(siteKey){
     this.siteKey = siteKey;
     this.cfg = SITE_CONFIG[siteKey];
     this.CYCLE_MS = this.cfg.cycleMs;
 
-    // RTDB paths (dipisah per site)
+    // RTDB paths
     this.baseRef        = ref(db, `sites/${siteKey}`);
     this.peopleRef      = child(this.baseRef, 'people');
     this.assignmentsRef = child(this.baseRef, 'assignments');
@@ -125,21 +112,18 @@ class SiteMachine {
     this.nextAtLocal = null;
     this.mode2040State = false;
 
-    // timers & unsub holders
+    // timers & unsub
     this.clockTimer = null;
     this.dueTimer   = null;
     this._unsubFns  = [];
   }
 
-  // ---------- lifecycle ----------
   mount(){
-    // clock UI
     this.clockTimer = setInterval(()=> {
       if (clockEl) clockEl.textContent = fmt(new Date());
       if (nextEl)  nextEl.textContent  = this.nextAtLocal ? fmt(new Date(this.nextAtLocal)) : '-';
     }, 250);
 
-    // live listeners
     this._listen(this.assignmentsRef, (snap)=> this.renderAssignments(snap.val()||{}));
     this._listen(this.peopleRef, (snap)=> this.renderPeople(snap.val()||{}));
     this._listen(this.stateRef, async (snap)=>{
@@ -151,52 +135,45 @@ class SiteMachine {
       this.setRunningUI(this.running);
     });
 
-    // due heartbeat
     this.dueTimer = setInterval(()=>{
       if (this.running && this.nextAtLocal && Date.now() >= this.nextAtLocal) {
         this.tryAdvanceCycle(false);
       }
     }, 500);
 
-    // bind tombol
     if (startBtn) startBtn.onclick = ()=> this.onStart();
     if (stopBtn)  stopBtn.onclick  = ()=> this.onStop();
     if (nextBtn)  nextBtn.onclick  = ()=> this.onNext();
     if (addPersonBtn) addPersonBtn.onclick = ()=> this.onAddPerson();
 
-    // paint awal
     this.setRunningUI(false);
     if (clockEl) clockEl.textContent = fmt(new Date());
     if (nextEl)  nextEl.textContent  = '-';
   }
 
   unmount(){
-    // timers
     if (this.clockTimer) clearInterval(this.clockTimer);
     if (this.dueTimer)   clearInterval(this.dueTimer);
     this.clockTimer = this.dueTimer = null;
 
-    // unbind tombol
     if (startBtn) startBtn.onclick = null;
     if (stopBtn)  stopBtn.onclick  = null;
     if (nextBtn)  nextBtn.onclick  = null;
     if (addPersonBtn) addPersonBtn.onclick = null;
 
-    // detach listeners RTDB
     this._unsubFns.forEach(fn => { try{ fn && fn(); }catch(_){} });
     this._unsubFns = [];
   }
 
   _listen(r, cb){
-    // v9: onValue returns unsubscribe function
-    const unsub = onValue(r, cb);
+    const unsub = onValue(r, cb); // v9 returns unsubscribe
     this._unsubFns.push(unsub);
   }
 
-  // ---------- UI ----------
   setRunningUI(isRunning){
     if (startBtn) startBtn.disabled = isRunning;
     if (stopBtn)  stopBtn.disabled  = !isRunning;
+    if (nextBtn)  nextBtn.disabled  = !isRunning;
     if (assignTable) assignTable.classList.toggle('hidden', !isRunning);
     if (manageBox)   manageBox.classList.toggle('hidden',  isRunning);
   }
@@ -226,7 +203,6 @@ class SiteMachine {
       peopleRows.appendChild(tr);
     });
 
-    // attach handler per render (replace untuk hindari dobel)
     peopleRows.onchange = async (e)=>{
       if(e.target.type !== 'checkbox') return;
       const id = e.target.dataset.id, spec = e.target.dataset.spec;
@@ -245,7 +221,6 @@ class SiteMachine {
     };
   }
 
-  // ---------- Rotasi ----------
   rotate(arr, idx){ return arr.length ? arr.slice(idx).concat(arr.slice(0, idx)) : []; }
   isEligible(person, allowed){
     return Array.isArray(person.spec) && person.spec.some(s => allowed.includes(String(s).toLowerCase()));
@@ -263,7 +238,6 @@ class SiteMachine {
     }));
     const cooldown = useCooldown ? (cdSnap.val() || {}) : {};
 
-    // bersihkan cooldown yatim (PSCP)
     if(useCooldown){
       const names = new Set(folks.map(f=>f.name));
       for(const k of Object.keys(cooldown)){ if(!names.has(k)) delete cooldown[k]; }
@@ -271,14 +245,13 @@ class SiteMachine {
 
     const pools = this.cfg.positions.map((pos) => {
       let candidates = folks.filter(f => this.isEligible(f, pos.allowed));
-      if(useCooldown && pos.id === 'pos1'){ // cooldown hanya untuk Operator Xray
+      if(useCooldown && pos.id === 'pos1'){ // cooldown khusus Operator Xray
         candidates = candidates.filter(f => (cooldown[f.name] || 0) <= 0);
       }
       const rot = this.rotate(candidates, this.rotIdx[pos.id] % Math.max(candidates.length, 1));
       return { pos, list: rot };
     });
 
-    // posisi dengan kandidat lebih sedikit diproses dulu
     pools.sort((a,b)=> (a.list.length - b.list.length));
     return { pools, cooldown };
   }
@@ -318,7 +291,6 @@ class SiteMachine {
     }
   }
 
-  // Step rotasi + tulis RTDB
   async computeAndWriteAssignments(useCooldown){
     const { pools, cooldown } = await this.buildPools(useCooldown);
 
@@ -328,10 +300,9 @@ class SiteMachine {
 
     if(useCooldown){
       const cd = { ...(cooldown||{}) };
-      // kurangi semua cooldown 1
       for(const k of Object.keys(cd)){ cd[k] = Math.max(0, (cd[k]|0) - 1); }
       const xrayName = finalAssign.pos1;
-      if(xrayName && xrayName !== '-') cd[xrayName] = 2; // 2 siklus tak boleh pos1
+      if(xrayName && xrayName !== '-') cd[xrayName] = 2;
       await Promise.all([ set(this.assignmentsRef, finalAssign), set(this.cooldownRef, cd) ]);
     } else {
       await set(this.assignmentsRef, finalAssign);
@@ -340,7 +311,6 @@ class SiteMachine {
     this.advanceRotIdx(pools);
   }
 
-  // Mesin bersama per-site (anti-race)
   async tryAdvanceCycle(force = false){
     const res = await runTransaction(this.stateRef, (cur) => {
       const now = Date.now();
@@ -363,9 +333,7 @@ class SiteMachine {
     }
   }
 
-  // ---------- UI events ----------
   async onStart(){
-    // PSCP: aktifkan 20–40 hanya jika jumlah jr/sr >= 3; HBSCP: selalu false
     let enable2040Now = false;
     if (this.cfg.enable2040){
       const pSnap = await get(this.peopleRef);
@@ -417,7 +385,7 @@ class SiteMachine {
   }
 }
 
-// ====== Boot & switch site sesuai pilihan dropdown ======
+// ====== Boot & switch site dengan tombol ======
 let machine = null;
 
 function resetSurface(){
@@ -429,18 +397,28 @@ function resetSurface(){
   if (manageBox)   manageBox.classList.remove('hidden');
 }
 
-function bootSite(siteKey){
-  // simpan preferensi
-  try{ localStorage.setItem('siteSelected', siteKey); }catch(_){}
-  // bersihkan instance lama
-  if (machine){ machine.unmount(); }
-  resetSurface();
-  // buat instance baru
-  machine = new SiteMachine(siteKey);
-  machine.mount();
+// update UI tombol (aktif = hijau/start; non-aktif = merah/stop)
+function updateSiteButtonsUI(selected){
+  const setState = (btn, active)=>{
+    btn.classList.toggle('start', active);
+    btn.classList.toggle('stop', !active);
+  };
+  if (btnPSCP && btnHBSCP){
+    setState(btnPSCP, selected === 'PSCP');
+    setState(btnHBSCP, selected === 'HBSCP');
+  }
 }
 
-// default site dari localStorage, query ?site=, atau PSCP
+function bootSite(siteKey){
+  try{ localStorage.setItem('siteSelected', siteKey); }catch(_){}
+  if (machine){ machine.unmount(); }
+  resetSurface();
+  machine = new SiteMachine(siteKey);
+  machine.mount();
+  updateSiteButtonsUI(siteKey);
+}
+
+// default site dari ?site= atau localStorage
 (function initSite(){
   const url = new URL(location.href);
   const qsSite = url.searchParams.get('site');
@@ -448,17 +426,11 @@ function bootSite(siteKey){
   try{
     initial = qsSite || localStorage.getItem('siteSelected') || 'PSCP';
   }catch(_){}
-  if (siteSelect) siteSelect.value = initial;
   bootSite(initial);
+  // bind click tombol
+  if (btnPSCP) btnPSCP.onclick = ()=> bootSite('PSCP');
+  if (btnHBSCP) btnHBSCP.onclick = ()=> bootSite('HBSCP');
 })();
 
-// ganti site saat user memilih
-if (siteSelect){
-  siteSelect.addEventListener('change', (e)=>{
-    const siteKey = e.target.value || 'PSCP';
-    bootSite(siteKey);
-  });
-}
-
-// ====== Sedikit polish awal: tampilkan HTML setelah modul siap ======
+// tampilkan halaman setelah siap
 document.documentElement.style.visibility = 'visible';
