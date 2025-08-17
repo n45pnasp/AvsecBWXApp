@@ -25,8 +25,8 @@ const db  = getDatabase(app);
    - Ganti 'gid' sesuai tab masing-masing (lihat di URL Google Sheets -> ...#gid=XXXX)
 */
 const SHEETS = {
-  PSCP: { id: '1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8', gid: '0' }, // TODO: ganti gid tab PSCP
-  HBSCP:{ id: '1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU', gid: '0' }, // TODO: ganti gid tab HBSCP
+  PSCP: { id: '1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8', gid: '' }, // TODO: ganti gid tab PSCP
+  HBSCP:{ id: '1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU', gid: '' }, // TODO: ganti gid tab HBSCP
 };
 
 /* ====== Preferensi cara akses tanpa login ======
