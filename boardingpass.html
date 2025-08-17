@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>📷 Boarding Pass Scanner</title>
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     :root{
@@ -23,7 +22,7 @@
     }
 
     /* =========================
-       APP BAR (Back + Title)
+       APP BAR
        ========================= */
     .app-bar{
       position: sticky; top: 0; z-index: 40;
@@ -33,7 +32,7 @@
       color: var(--text);
       border-bottom: 1px solid var(--border);
       padding: 0 14px;
-      margin: -20px -20px 16px; /* full-bleed */
+      margin: -20px -20px 16px;
     }
     .back-btn{
       display:inline-flex; align-items:center; justify-content:center;
@@ -87,17 +86,23 @@
     button:active{ transform:translateY(1px) }
     button:disabled{ opacity:.55; cursor:not-allowed; filter:grayscale(30%) }
 
-    /* =========================
-       VIDEO (disembunyikan)
-       ========================= */
-    #video{ display:none !important; width:100%; border-radius:16px; margin-bottom:12px }
+    /* Tombol QR khusus (di atas card) */
+    .qr-row{ display:flex; gap:10px; margin-bottom:12px }
+    .qr-btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:8px; padding:12px 14px; border-radius:12px;
+      border:1px solid var(--border); background:#0b1324; font-weight:800;
+      letter-spacing:.2px;
+    }
+    .qr-btn .emo{ font-size:18px; line-height:1 }
+    .qr-btn small{ color:var(--muted); font-weight:600 }
 
     .hidden{ display:none !important; }
 
     @media (max-width: 480px){
       .app-title{ font-size:20px }
       .back-btn{ width:40px; height:40px }
-      button{ padding:10px 12px }
+      button,.qr-btn{ padding:10px 12px }
     }
   </style>
 </head>
@@ -113,10 +118,18 @@
   </div>
 
   <div class="container">
+    <!-- TOMBOL QR (meminta scan dari Kodular / input manual) -->
+    <div class="qr-row">
+      <button type="button" class="qr-btn" onclick="requestScanFromKodular()">
+        <span class="emo">� QR</span>
+        <span>Mulai/ Ambil Data<br><small>dari Scanner Kodular</small></span>
+      </button>
+    </div>
+
     <!-- HASIL PARSING DITARUH DI ATAS -->
     <section class="card" id="resultCard">
       <div class="label">📄 Informasi Boarding Pass</div>
-      <div class="text" id="parsedOutput">Menunggu scan...</div>
+      <div class="text" id="parsedOutput">Menunggu data dari scanner…</div>
     </section>
 
     <!-- Tombol tindakan -->
@@ -130,29 +143,104 @@
       <div class="label">📜 Riwayat Scan</div>
       <div class="text" id="scanHistoryText">Belum ada riwayat.</div>
     </section>
-
-    <!-- Video tetap ada agar library tidak error -->
-    <video id="video" autoplay></video>
   </div>
 
   <audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
-  <!-- JS eksternal (tetap) -->
-  <script src="boardingpass.js"></script>
-
-  <!-- Utility kecil: sinkron dengan kelas .hidden di atas -->
+  <!-- JS khusus penerimaan data dari Kodular -->
   <script>
-    // Jika boardingpass.js sudah punya toggleHistory/clearHistory, biarkan saja.
-    // Ini fallback minimal bila belum ada.
+    // ====== API yang dipanggil Kodular ======
+    // Di Kodular, kirim hasil scan lewat WebViewer.EvaluateJavascript:
+    // webViewString = JSON.stringify({ event:"scan_result", data:"<ISI_BARCODE>" })
+    // Lalu di halaman ini (opsional) bisa dipanggil window.receiveBarcode("<ISI_BARCODE>")
+    window.receiveBarcode = function(payload){
+      try{
+        // payload boleh string mentah / JSON string
+        let data = payload;
+        if (typeof payload === "string") {
+          try{
+            const j = JSON.parse(payload);
+            if (j && j.data) data = j.data;
+          }catch(_){}
+        }
+        if (!data) return;
+
+        // Tampilkan ke UI
+        const out = document.getElementById('parsedOutput');
+        out.textContent = formatBoardingPass(data);
+
+        // Bunyi beep kecil
+        const beep = document.getElementById('beep-sound');
+        if (beep) { beep.currentTime = 0; beep.play().catch(()=>{}); }
+
+        // Simpan riwayat sederhana
+        try{
+          const key = 'scanHistory';
+          const list = JSON.parse(localStorage.getItem(key) || "[]");
+          list.unshift({ ts: Date.now(), raw: data });
+          localStorage.setItem(key, JSON.stringify(list.slice(0,50)));
+          refreshHistory();
+        }catch(e){}
+      }catch(e){
+        console.error(e);
+      }
+    };
+
+    // ====== Kirim permintaan scan ke Kodular (atau fallback prompt) ======
+    function requestScanFromKodular(){
+      const message = JSON.stringify({ event: "scan_request" });
+      if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
+        window.AppInventor.setWebViewString(message);
+      } else {
+        // Fallback manual jika tidak dari Kodular
+        const manual = prompt("Masukkan/Tempel data barcode:");
+        if (manual) window.receiveBarcode(manual);
+      }
+    }
+
+    // ====== Util format sederhana (silakan ganti sesuai parsing kamu) ======
+    function formatBoardingPass(raw){
+      // Jika data raw berformat A|B|C, contoh parsing ringan:
+      // Kembangkan sesuai kebutuhanmu (PNR, Nama, Flight, dsb.)
+      if (raw.includes('|')){
+        const p = raw.split('|');
+        return [
+          `PNR / Kode: ${p[0]||'-'}`,
+          `Nama: ${p[1]||'-'}`,
+          `Penerbangan: ${p[2]||'-'}`,
+          `Tanggal/Jam: ${p[3]||'-'}`
+        ].join('\n');
+      }
+      return raw;
+    }
+
+    // ====== Riwayat ======
+    function refreshHistory(){
+      const box = document.getElementById('scanHistoryText');
+      try{
+        const list = JSON.parse(localStorage.getItem('scanHistory') || "[]");
+        if (!list.length){ box.textContent = "Belum ada riwayat."; return; }
+        box.textContent = list.map(it=>{
+          const d = new Date(it.ts);
+          return `${d.toLocaleString('id-ID')} — ${it.raw}`;
+        }).join('\n');
+      }catch(e){
+        box.textContent = "Belum ada riwayat.";
+      }
+    }
     window.toggleHistory = window.toggleHistory || function(){
       const card = document.getElementById('historyCard');
       card.classList.toggle('hidden');
+      if (!card.classList.contains('hidden')) refreshHistory();
     };
     window.clearHistory = window.clearHistory || function(){
       const el = document.getElementById('scanHistoryText');
       el.textContent = 'Belum ada riwayat.';
       try{ localStorage.removeItem('scanHistory'); }catch(e){}
     };
+
+    // Optional: auto-refresh jika dibuka pertama kali
+    refreshHistory();
   </script>
 </body>
 </html>
