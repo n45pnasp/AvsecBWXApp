@@ -1,8 +1,9 @@
 // auth-guard.js
-// Versi final: perbaikan unhide (visible), anti-blank, dan path aman untuk GitHub Pages project site.
+// Guard halaman yang wajib login (tanpa auto sign-in).
+// Diselaraskan ke Firebase Web v9.22.2.
 
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
@@ -28,7 +29,7 @@ function getBasePrefix() {
   return parts.length > 0 ? `/${parts[0]}/` : "/";
 }
 
-// --- Helper tampil/sembunyi dokumen (inline style > CSS eksternal) ---
+// --- Helper tampil/sembunyi dokumen ---
 function hideDoc() { document.documentElement.style.visibility = "hidden"; }
 function showDoc() { document.documentElement.style.visibility = "visible"; }
 
@@ -50,7 +51,7 @@ function isOnLoginPage(loginPath) {
  *   requireAuth({ loginPath: "index.html", hideWhileChecking: true });
  * </script>
  *
- * Opsi tambahan (opsional):
+ * Opsi:
  * - requireEmailVerified: boolean (default false). Jika true, user harus verified.
  */
 export function requireAuth({
@@ -69,6 +70,8 @@ export function requireAuth({
 
   const unsubscribe = onAuthStateChanged(auth, (user) => {
     try {
+      console.log(user ? `✅ Auth OK, UID: ${user.uid}` : "❌ Belum login Firebase");
+
       // Tidak login → redirect ke halaman login (hindari loop)
       if (!user) {
         if (!isOnLoginPage(loginPath)) {
@@ -84,8 +87,7 @@ export function requireAuth({
 
       // Opsional: wajib email terverifikasi
       if (requireEmailVerified && user.email && !user.emailVerified) {
-        // Tetap tampilkan halaman tapi kamu bisa tunjukkan banner/info di UI
-        // (Tidak redirect agar tidak mengganggu alur verifikasi email.)
+        // Tampilkan halaman; UI bisa menunjukkan banner/alert verifikasi.
         showDoc();
         return;
       }
@@ -95,7 +97,6 @@ export function requireAuth({
     } finally {
       // Matikan listener agar tidak dipanggil berkali-kali
       unsubscribe && unsubscribe();
-      // Pastikan tidak ada watchdog yang tertinggal
       if (watchdog) clearTimeout(watchdog);
     }
   });
@@ -113,6 +114,7 @@ export function redirectIfAuthed({ homePath = "home.html" } = {}) {
   const unsubscribe = onAuthStateChanged(auth, (user) => {
     try {
       if (user) {
+        console.log(`↪️ Sudah login, redirect… UID: ${user.uid}`);
         const params = new URLSearchParams(location.search);
         const next = params.get("next");
         location.replace(next ? decodeURIComponent(next) : new URL(homePath, location.origin + getBasePrefix()).href);
