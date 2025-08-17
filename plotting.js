@@ -1,41 +1,44 @@
 // ==== Firebase SDK v9 (modular) ====
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import {
   getDatabase, ref, child, onValue, set, update, remove, get, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-// ======== Konfigurasi project (RTDB baru) ========
+// ======== Konfigurasi project (HARUS sama persis dgn auth-guard) ========
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
   authDomain: "avsecbwx-4229c.firebaseapp.com",
   databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com",
   projectId: "avsecbwx-4229c",
-  storageBucket: "avsecbwx-4229c.firebasestorage.app",
+  storageBucket: "avsecbwx-4229c.appspot.com", // penting: samakan dengan auth-guard.js
   messagingSenderId: "1029406629258",
   appId: "1:1029406629258:web:53e8f09585cd77823efc73",
   measurementId: "G-P37F88HGFE"
 };
 
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
+// Singleton: jika app sudah di-init oleh auth-guard.js, pakai instance itu
+const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const db   = getDatabase(app);
+const auth = getAuth(app);
 
-/* ========= Link PDF per site ========= */
+/* ========= Link PDF per site =========
+   - Isi gid jika perlu (lihat #gid=... di URL sheet).
+*/
 const SHEETS = {
-  PSCP: { id: "1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8", gid: "" },
-  HBSCP:{ id: "1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU", gid: "" },
+  PSCP:  { id: "1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8", gid: "" },
+  HBSCP: { id: "1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU", gid: "" },
 };
 
-/* ====== Export PDF tanpa login Google ======
-   - Jika Sheet di "Publish to the web" → set USE_PUB = true (pakai /pub?output=pdf)
-   - Jika hanya "Anyone with the link – Viewer" → biarkan false (pakai /export?format=pdf)
-*/
+/* ====== Jika Sheet di-"Publish to web", set true untuk /pub?output=pdf.
+         Jika hanya "Anyone with link – Viewer", biarkan false (pakai /export). */
 const USE_PUB = false;
 
 const PDF_DEFAULT_OPTS = {
   format: "pdf",
   size: "A4",
   portrait: "true",
-  scale: "2",               // 1=Normal, 2=Fit to width, 3=Fit to page
+  scale: "2",
   top_margin: "0.50",
   bottom_margin: "0.50",
   left_margin: "0.50",
@@ -44,17 +47,17 @@ const PDF_DEFAULT_OPTS = {
   printtitle: "false",
   pagenumbers: "true",
   gridlines: "false",
-  fzr: "true",
+  fzr: "true"
 };
 
 function buildSheetPdfUrl(sheetId, gid, opts = {}) {
   const cacheBuster = { t: Date.now() };
   if (USE_PUB) {
     const params = new URLSearchParams({ gid, single: "true", output: "pdf", ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params}`;
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
   } else {
     const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params}`;
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
   }
 }
 
@@ -71,14 +74,14 @@ const SITE_CONFIG = {
     ],
   },
   HBSCP: {
-    enable2040: true, // ON bila jr/sr >= 3
+    enable2040: true, // aktif jika jr/sr >= 3
     cycleMs: 20_000,
     positions: [
       { id:"pos1",  name:"Operator Xray",       allowed:["senior","junior"] },
       { id:"pos2a", name:"Pemeriksa Barang 1",  allowed:["senior","junior","basic"] },
       { id:"pos2b", name:"Pemeriksa Barang 2",  allowed:["senior","junior","basic"] },
     ],
-  },
+  }
 };
 
 // ========= DOM refs =========
@@ -103,13 +106,11 @@ const btnPSCP      = $("pscpBtn");
 const btnHBSCP     = $("hbscpBtn");
 
 // ========= Indikator koneksi =========
-onValue(ref(db, ".info/connected"), (snap) => {
-  connDot?.classList.toggle("ok", !!snap.val());
-});
+onValue(ref(db, ".info/connected"), snap => { connDot?.classList.toggle("ok", !!snap.val()); });
 
 // ========= Util =========
-const pad = (n) => String(n).padStart(2,"0");
-const fmt = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const pad = n => String(n).padStart(2,"0");
+const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
 // ========= Pewarnaan tombol berdasar status RTDB =========
 function paintSiteButton(btn, isRunning){
@@ -117,10 +118,10 @@ function paintSiteButton(btn, isRunning){
   btn.classList.toggle("start", !!isRunning); // hijau
   btn.classList.toggle("stop",  !isRunning);  // merah
 }
-onValue(ref(db, "sites/PSCP/control/state"), (snap)=>{
+onValue(ref(db, "sites/PSCP/control/state"), snap=>{
   paintSiteButton(btnPSCP, !!(snap.val()?.running));
 });
-onValue(ref(db, "sites/HBSCP/control/state"), (snap)=>{
+onValue(ref(db, "sites/HBSCP/control/state"), snap=>{
   paintSiteButton(btnHBSCP, !!(snap.val()?.running));
 });
 
@@ -189,10 +190,7 @@ class SiteMachine {
     this._unsubs = [];
   }
 
-  _listen(r, cb){
-    const unsubscribe = onValue(r, cb);
-    this._unsubs.push(unsubscribe);
-  }
+  _listen(r, cb){ const u = onValue(r, cb); this._unsubs.push(u); }
 
   setRunningUI(isRunning){
     startBtn.disabled = isRunning;
@@ -215,43 +213,36 @@ class SiteMachine {
   renderPeople(people){
     peopleRows.innerHTML = "";
     Object.entries(people||{}).forEach(([id,p])=>{
-      const has = (s) => Array.isArray(p.spec) && p.spec.includes(s);
+      const has = s => Array.isArray(p.spec) && p.spec.includes(s);
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${p.name}</td>
-        <td><input type="checkbox" ${has("senior")?'checked':''} data-id="${id}" data-spec="senior"/></td>
-        <td><input type="checkbox" ${has("junior")?'checked':''} data-id="${id}" data-spec="junior"/></td>
-        <td><input type="checkbox" ${has("basic")?'checked':''}  data-id="${id}" data-spec="basic"/></td>
+        <td><input type="checkbox" ${has("senior")?"checked":""} data-id="${id}" data-spec="senior"/></td>
+        <td><input type="checkbox" ${has("junior")?"checked":""} data-id="${id}" data-spec="junior"/></td>
+        <td><input type="checkbox" ${has("basic")?"checked":""}  data-id="${id}" data-spec="basic"/></td>
         <td><button data-del="${id}">Hapus</button></td>`;
       peopleRows.appendChild(tr);
     });
-
     peopleRows.onchange = async (e)=>{
       if(e.target.type!=="checkbox") return;
       const id=e.target.dataset.id, spec=e.target.dataset.spec;
       try{
         const snap = await get(child(this.peopleRef,id));
-        let person=snap.val(); if(!person) return;
+        let person = snap.val(); if(!person) return;
         if(!Array.isArray(person.spec)) person.spec=[];
         if(e.target.checked){ if(!person.spec.includes(spec)) person.spec.push(spec); }
         else { person.spec = person.spec.filter(s=>s!==spec); }
         await update(child(this.peopleRef,id), person);
       }catch(err){
-        console.error("Update spec gagal:", err);
-        alert("Update spesifikasi gagal: " + (err?.message || err));
-        e.target.checked = !e.target.checked; // revert UI
+        alert("Update spesifikasi gagal: " + (err?.message||err));
       }
     };
-
     peopleRows.onclick = async (e)=>{
       if(!e.target.dataset.del) return;
-      const id = e.target.dataset.del;
-      if(!confirm("Hapus personil ini?")) return;
       try{
-        await remove(child(this.peopleRef, id));
+        await remove(child(this.peopleRef, e.target.dataset.del));
       }catch(err){
-        console.error("Hapus gagal:", err);
-        alert("Hapus gagal: " + (err?.message || err));
+        alert("Hapus personil gagal: " + (err?.message||err));
       }
     };
   }
@@ -334,17 +325,15 @@ class SiteMachine {
         if(xrayName && xrayName!=="-") cd[xrayName]=2; // 2 siklus tak boleh pos1
         await Promise.all([
           set(this.assignmentsRef, finalAssign),
-          set(this.cooldownRef, cd),
+          set(this.cooldownRef, cd)
         ]);
       } else {
         await set(this.assignmentsRef, finalAssign);
       }
     }catch(err){
-      console.error("Tulis assignments gagal:", err);
-      alert("Tulis assignments gagal: " + (err?.message || err));
+      alert("Tulis assignments gagal: " + (err?.message||err));
     }
 
-    // menulis assignments → trigger Cloud Functions → kirim ke Sheet
     this.advanceRotIdx(pools);
   }
 
@@ -369,6 +358,12 @@ class SiteMachine {
   }
 
   async onStart(){
+    // Pastikan sudah login (harusnya sudah dijaga auth-guard)
+    if(!auth.currentUser){
+      alert("Harus login terlebih dulu.");
+      return;
+    }
+
     let enable2040Now=false;
     if(this.cfg.enable2040){
       const pSnap=await get(this.peopleRef);
@@ -384,14 +379,15 @@ class SiteMachine {
     const next = now + this.CYCLE_MS;
     try{
       await set(this.stateRef, { running:true, nextAt: next, mode2040: this.mode2040State, lastCycleAt: now });
-      this.nextAtLocal      = next;
-      this.lastCycleAtLocal = now;
-      await this.computeAndWriteAssignments(this.cfg.enable2040 && this.mode2040State);
-      this.setRunningUI(true);
     }catch(err){
-      console.error("Start gagal:", err);
-      alert("Memulai rotasi gagal: " + (err?.message || err));
+      alert("Gagal memulai: " + (err?.message||err));
+      return;
     }
+    this.nextAtLocal      = next;
+    this.lastCycleAtLocal = now;
+
+    await this.computeAndWriteAssignments(this.cfg.enable2040 && this.mode2040State);
+    this.setRunningUI(true);
   }
 
   async onStop(){
@@ -399,14 +395,13 @@ class SiteMachine {
     if(this.cfg.enable2040) tasks.push(set(this.cooldownRef, {}));
     try{
       await Promise.all(tasks);
-      this.setRunningUI(false);
-      this.nextAtLocal=null;
-      this.lastCycleAtLocal=null;
-      nextEl && (nextEl.textContent="-");
     }catch(err){
-      console.error("Stop gagal:", err);
-      alert("Menghentikan rotasi gagal: " + (err?.message || err));
+      alert("Gagal menghentikan: " + (err?.message||err));
     }
+    this.setRunningUI(false);
+    this.nextAtLocal=null;
+    this.lastCycleAtLocal=null;
+    nextEl && (nextEl.textContent="-");
   }
 
   async onNext(){
@@ -419,20 +414,23 @@ class SiteMachine {
   }
 
   async onAddPerson(){
-    const name=nameInput?.value?.trim(); if(!name) return;
+    if(!auth.currentUser){
+      alert("Harus login terlebih dulu.");
+      return;
+    }
+    const name=nameInput?.value?.trim();
+    if(!name) return;
     const specs=[];
     if(seniorSpecEl?.checked) specs.push("senior");
     if(juniorSpec?.checked)   specs.push("junior");
     if(basicSpec?.checked)    specs.push("basic");
-
-    const key = name.toLowerCase(); // kunci node
     try{
-      await update(child(this.peopleRef, key), { name, spec: specs });
-      nameInput.value=""; seniorSpecEl.checked=false; juniorSpec.checked=false; basicSpec.checked=false;
+      await update(child(this.peopleRef, name.toLowerCase()), { name, spec: specs });
     }catch(err){
-      console.error("Tambah personil gagal:", err);
-      alert("Tambah personil gagal: " + (err?.message || err));
+      alert("Tambah personil gagal: " + (err?.message||err));
+      return;
     }
+    nameInput.value=""; seniorSpecEl.checked=false; juniorSpec.checked=false; basicSpec.checked=false;
   }
 }
 
@@ -462,7 +460,7 @@ function bootSite(siteKey){
   if (downloadBtn) downloadBtn.disabled = false;
 }
 
-// ====== Download PDF (tanpa login Google) ======
+// ====== Download PDF ======
 function openActiveSitePdf(){
   if(!currentSite || !SHEETS[currentSite]){
     alert("Pilih lokasi dulu (PSCP / HBSCP).");
