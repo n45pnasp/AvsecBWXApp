@@ -3,9 +3,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebas
 import {
   getDatabase, ref, child, onValue, set, update, remove, get, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-import {
-  getAuth, onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 // ======== Konfigurasi project (RTDB baru) ========
 const firebaseConfig = {
@@ -19,9 +16,8 @@ const firebaseConfig = {
   measurementId: "G-P37F88HGFE"
 };
 
-const app  = initializeApp(firebaseConfig);
-const db   = getDatabase(app);
-const auth = getAuth(app);
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
 
 /* ========= Link PDF per site ========= */
 const SHEETS = {
@@ -39,7 +35,7 @@ const PDF_DEFAULT_OPTS = {
   format: "pdf",
   size: "A4",
   portrait: "true",
-  scale: "2",
+  scale: "2",               // 1=Normal, 2=Fit to width, 3=Fit to page
   top_margin: "0.50",
   bottom_margin: "0.50",
   left_margin: "0.50",
@@ -335,7 +331,7 @@ class SiteMachine {
         const cd = { ...(cooldown||{}) };
         for(const k of Object.keys(cd)){ cd[k]=Math.max(0,(cd[k]|0)-1); }
         const xrayName = finalAssign.pos1;
-        if(xrayName && xrayName!=="-") cd[xrayName]=2;
+        if(xrayName && xrayName!=="-") cd[xrayName]=2; // 2 siklus tak boleh pos1
         await Promise.all([
           set(this.assignmentsRef, finalAssign),
           set(this.cooldownRef, cd),
@@ -348,6 +344,7 @@ class SiteMachine {
       alert("Tulis assignments gagal: " + (err?.message || err));
     }
 
+    // menulis assignments → trigger Cloud Functions → kirim ke Sheet
     this.advanceRotIdx(pools);
   }
 
@@ -428,7 +425,7 @@ class SiteMachine {
     if(juniorSpec?.checked)   specs.push("junior");
     if(basicSpec?.checked)    specs.push("basic");
 
-    const key = name.toLowerCase();
+    const key = name.toLowerCase(); // kunci node
     try{
       await update(child(this.peopleRef, key), { name, spec: specs });
       nameInput.value=""; seniorSpecEl.checked=false; juniorSpec.checked=false; basicSpec.checked=false;
@@ -475,28 +472,9 @@ function openActiveSitePdf(){
   window.open(buildSheetPdfUrl(id, gid), "_blank");
 }
 
-// ====== Init + Lock UI sampai login terdeteksi ======
+// ====== Init ======
 (function init(){
   if (downloadBtn) downloadBtn.disabled = true;
-
-  // Kunci semua aksi write sampai user ter-auth
-  const lockUI = (locked) => {
-    startBtn.disabled = locked;
-    stopBtn.disabled  = true;
-    nextBtn.disabled  = true;
-    addPersonBtn.disabled = locked;
-  };
-  lockUI(true);
-
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      console.log("✅ Login Firebase sebagai:", user.uid);
-      lockUI(false);
-    } else {
-      console.warn("❌ Belum login Firebase. Pastikan auth-guard.js mengarahkan ke login.");
-      lockUI(true);
-    }
-  });
 
   const url = new URL(location.href);
   const qsSite = url.searchParams.get("site");
