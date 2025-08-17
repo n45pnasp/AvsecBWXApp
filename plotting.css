@@ -27,7 +27,6 @@ body{
   margin: -20px -20px 16px; /* full-bleed */
 }
 
-/* Back Button versi link/btn */
 .back-btn {
   display: inline-flex;
   align-items: center;
@@ -38,7 +37,7 @@ body{
   color: var(--text);
   cursor: pointer;
   flex: 0 0 auto;
-  text-decoration: none; /* hilangkan underline jika <a> */
+  text-decoration: none;
   border-radius: 8px;
   transition: background 0.12s ease, transform 0.1s ease;
 }
@@ -53,7 +52,6 @@ body{
   outline: 2px solid rgba(255,255,255,0.4);
   outline-offset: 2px;
 }
-
 .app-title{
   font-size: 22px; font-weight: 300; letter-spacing: .3px;
   margin: 0; user-select: none;
@@ -96,7 +94,32 @@ body{
 }
 
 /* =========================
-   CONTROLS (tanpa card, sejajar)
+   BAR TOMBOL LOKASI
+   ========================= */
+.site-bar{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin-bottom:12px;  /* jarak dengan tombol Mulai/Henti */
+}
+.site-btn{
+  flex:1;
+  padding:10px 14px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  font-weight:600;
+  text-align:center;
+  cursor:pointer;
+  transition: transform .06s ease, filter .15s ease, background .15s ease;
+}
+/* aktif = hijau, nonaktif = merah */
+.site-btn.active{ background: var(--btn-ok); border-color:#1a6a3a; color:#fff; }
+.site-btn.inactive{ background: var(--btn-stop); border-color:#9f1d1d; color:#fff; }
+.site-btn:hover{ filter:brightness(1.05); }
+.site-btn:active{ transform: translateY(1px); }
+
+/* =========================
+   CONTROLS
    ========================= */
 .controls{
   display: flex;
@@ -128,7 +151,7 @@ button:disabled{ opacity:.55; cursor:not-allowed; filter: grayscale(30%); }
 .hidden{ display:none !important; }
 
 /* =========================
-   TABELS
+   TABEL
    ========================= */
 table{ width:100%; border-collapse: separate; border-spacing:0; margin-top: 12px; }
 th,td{ padding:12px 12px; text-align:left; }
