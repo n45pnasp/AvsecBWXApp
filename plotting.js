@@ -43,24 +43,56 @@ const SITE_CONFIG = {
   }
 };
 
-// ========= DOM refs (ID generik; 1 site aktif di layar) =========
-const $ = (id)=>document.getElementById(id);
-const siteSelect   = $('siteSelect'); // <select><option>PSCP/HBSCP</option></select>
-const assignRows   = $('assignRows');
-const peopleRows   = $('peopleRows');
-const startBtn     = $('startBtn');
-const stopBtn      = $('stopBtn');
-const nextBtn      = $('nextBtn');
-const nameInput    = $('nameInput');
-const juniorSpec   = $('juniorSpec');
-const basicSpec    = $('basicSpec');
-const seniorSpecEl = $('seniorSpec');
-const addPersonBtn = $('addPersonBtn');
-const clockEl      = $('clock');
-const nextEl       = $('nextRotation');
-const assignTable  = $('assign'); // container tabel penugasan
-const manageBox    = $('manage'); // panel kelola personil
-const connDot      = $('connDot'); // opsional indikator koneksi
+// ========= DOM refs dari HTML kamu =========
+const $id = (id)=>document.getElementById(id);
+const connDot      = $id('connDot');
+const clockEl      = $id('clock');
+const nextEl       = $id('nextRotation');
+const startBtn     = $id('startBtn');
+const stopBtn      = $id('stopBtn');
+const nextBtn      = $id('nextBtn');
+const assignTable  = document.querySelector('table.assign');
+const assignRows   = $id('assignRows');
+const manageBox    = document.querySelector('.manage');
+const nameInput    = $id('nameInput');
+const seniorSpecEl = $id('seniorSpec');
+const juniorSpec   = $id('juniorSpec');
+const basicSpec    = $id('basicSpec');
+const addPersonBtn = $id('addPersonBtn');
+const peopleRows   = $id('peopleRows');
+
+// ========= Sisipkan dropdown pemilih lokasi ke area Kontrol =========
+(function injectSiteSelect(){
+  const controls = document.querySelector('.controls');
+  if(!controls) return;
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.alignItems = 'center';
+  wrap.style.gap = '10px';
+  wrap.style.flexWrap = 'wrap';
+
+  const label = document.createElement('label');
+  label.textContent = 'Lokasi:';
+  label.style.fontWeight = '600';
+
+  const select = document.createElement('select');
+  select.id = 'siteSelect';
+  select.innerHTML = `
+    <option value="PSCP">PSCP</option>
+    <option value="HBSCP">HBSCP</option>
+  `;
+  select.style.padding = '6px 10px';
+  select.style.borderRadius = '10px';
+  select.style.border = '1px solid var(--border, #334)';
+
+  // tempel di depan tombol
+  wrap.appendChild(label);
+  wrap.appendChild(select);
+  controls.prepend(wrap);
+})();
+
+// setelah disisipkan, ambil referensinya
+const siteSelect = document.getElementById('siteSelect');
 
 // ========= Indikator koneksi (opsional) =========
 onValue(ref(db, ".info/connected"), snap => {
@@ -299,7 +331,7 @@ class SiteMachine {
       // kurangi semua cooldown 1
       for(const k of Object.keys(cd)){ cd[k] = Math.max(0, (cd[k]|0) - 1); }
       const xrayName = finalAssign.pos1;
-      if(xrayName && xrayName !== '-') cd[xrayName] = 2; // 2 siklus tidak boleh pos1
+      if(xrayName && xrayName !== '-') cd[xrayName] = 2; // 2 siklus tak boleh pos1
       await Promise.all([ set(this.assignmentsRef, finalAssign), set(this.cooldownRef, cd) ]);
     } else {
       await set(this.assignmentsRef, finalAssign);
@@ -408,12 +440,17 @@ function bootSite(siteKey){
   machine.mount();
 }
 
-// default site dari localStorage atau PSCP
-const initial = (()=>{
-  try{ return localStorage.getItem('siteSelected') || 'PSCP'; }catch(_){ return 'PSCP'; }
+// default site dari localStorage, query ?site=, atau PSCP
+(function initSite(){
+  const url = new URL(location.href);
+  const qsSite = url.searchParams.get('site');
+  let initial = 'PSCP';
+  try{
+    initial = qsSite || localStorage.getItem('siteSelected') || 'PSCP';
+  }catch(_){}
+  if (siteSelect) siteSelect.value = initial;
+  bootSite(initial);
 })();
-if (siteSelect) siteSelect.value = initial;
-bootSite(initial);
 
 // ganti site saat user memilih
 if (siteSelect){
@@ -422,3 +459,6 @@ if (siteSelect){
     bootSite(siteKey);
   });
 }
+
+// ====== Sedikit polish awal: tampilkan HTML setelah modul siap ======
+document.documentElement.style.visibility = 'visible';
