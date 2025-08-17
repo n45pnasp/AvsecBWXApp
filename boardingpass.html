@@ -91,22 +91,42 @@
    TOMBOL BARCODE (UNGU) FULL-WIDTH
    ========================= */
 .qr-card{ padding:0; }
+
 .qr-btn{
   width:100%;
-  display:flex; align-items:center; gap:12px;
+  display:flex; 
+  flex-direction:column;       /* ✅ ubah jadi kolom */
+  align-items:center;          /* ✅ biar ke tengah */
+  justify-content:center;      /* ✅ ratakan vertikal */
+  gap:6px;                     /* ✅ jarak ikon & teks */
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   border: 1px solid rgba(255,255,255,.12);
   border-radius:16px;
   padding:14px 16px;
-  font-weight:600; font-size:16px;
-  cursor:pointer; color:#fff;
+  font-weight:600; 
+  font-size:16px;
+  cursor:pointer; 
+  color:#fff;
   box-shadow:0 6px 16px rgba(106,88,255,.35);
+  text-align:center;           /* ✅ teks rata tengah */
   transition:filter .15s ease, transform .1s ease;
 }
+
 .qr-btn:hover{ filter:brightness(1.08) }
 .qr-btn:active{ transform:translateY(1px) }
-.qr-btn img{ width:24px; height:24px; display:block; filter:invert(1); }
-.qr-btn small{ color:rgba(255,255,255,.85); font-weight:400; display:block }
+
+.qr-btn img{ 
+  width:28px; 
+  height:28px; 
+  display:block; 
+  filter:invert(1); 
+}
+
+.qr-btn small{ 
+  color:rgba(255,255,255,.85); 
+  font-weight:400; 
+  display:block;
+}
 
 .hidden{ display:none !important; }
 
