@@ -112,9 +112,14 @@ body{
   cursor:pointer;
   transition: transform .06s ease, filter .15s ease, background .15s ease;
 }
-/* aktif = hijau, nonaktif = merah */
-.site-btn.active{ background: var(--btn-ok); border-color:#1a6a3a; color:#fff; }
-.site-btn.inactive{ background: var(--btn-stop); border-color:#9f1d1d; color:#fff; }
+/* Penanda site yang sedang DIPILIH user (viewer) */
+.site-btn.selected{
+  outline:3px solid #fff;
+  box-shadow:0 0 6px rgba(255,255,255,.5);
+}
+/* Warna dasar tombol mengikuti kelas global yang sudah ada */
+button.start{ background: var(--btn-ok); border-color:#1a6a3a }
+button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
 .site-btn:hover{ filter:brightness(1.05); }
 .site-btn:active{ transform: translateY(1px); }
 
@@ -142,8 +147,6 @@ button{
   flex: 1 1 0;
   white-space: nowrap;
 }
-button.start{ background: var(--btn-ok); border-color:#1a6a3a }
-button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
 button:hover{ filter: brightness(1.05); }
 button:active{ transform: translateY(1px); }
 button:disabled{ opacity:.55; cursor:not-allowed; filter: grayscale(30%); }
