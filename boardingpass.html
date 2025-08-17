@@ -87,33 +87,34 @@
     button:disabled{ opacity:.55; cursor:not-allowed; filter:grayscale(30%) }
 
     /* =========================
-       TOMBOL BARCODE (PNG) FULL-WIDTH
-       ========================= */
-    .qr-card{ padding:0; }                /* bungkus tombol agar lebarnya identik dgn card */
-    .qr-btn{
-      width:100%;
-      display:flex; align-items:center; gap:12px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius:16px;
-      padding:14px 16px;
-      font-weight:600; font-size:16px;
-      cursor:pointer;
-      box-shadow:0 6px 12px rgba(0,0,0,.4);
-      transition:filter .15s ease, transform .1s ease;
-    }
-    .qr-btn:hover{ filter:brightness(1.08) }
-    .qr-btn:active{ transform:translateY(1px) }
-    .qr-btn img{ width:24px; height:24px; display:block }
-    .qr-btn small{ color:var(--muted); font-weight:400; display:block }
+    /* =========================
+   TOMBOL BARCODE (UNGU) FULL-WIDTH
+   ========================= */
+.qr-card{ padding:0; }
+.qr-btn{
+  width:100%;
+  display:flex; align-items:center; gap:12px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius:16px;
+  padding:14px 16px;
+  font-weight:600; font-size:16px;
+  cursor:pointer; color:#fff;
+  box-shadow:0 6px 16px rgba(106,88,255,.35);
+  transition:filter .15s ease, transform .1s ease;
+}
+.qr-btn:hover{ filter:brightness(1.08) }
+.qr-btn:active{ transform:translateY(1px) }
+.qr-btn img{ width:24px; height:24px; display:block; filter:invert(1); }
+.qr-btn small{ color:rgba(255,255,255,.85); font-weight:400; display:block }
 
-    .hidden{ display:none !important; }
+.hidden{ display:none !important; }
 
-    @media (max-width: 480px){
-      .app-title{ font-size:20px }
-      .back-btn{ width:40px; height:40px }
-      button,.qr-btn{ padding:10px 12px }
-    }
+@media (max-width: 480px){
+  .app-title{ font-size:20px }
+  .back-btn{ width:40px; height:40px }
+  button,.qr-btn{ padding:10px 12px }
+}
   </style>
 </head>
 <body>
@@ -132,7 +133,7 @@
     <section class="card qr-card">
       <button type="button" class="qr-btn" onclick="requestScanFromKodular()">
         <img src="icons/qrcode.png" alt="QR">
-        <span>Mulai / Ambil Data<br><small>dari Scanner Kodular</small></span>
+        <span>Mulai / Ambil Data<br><small>dari Camera Scanner</small></span>
       </button>
     </section>
 
