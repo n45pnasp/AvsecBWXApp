@@ -91,25 +91,22 @@
    TOMBOL BARCODE (UNGU) FULL-WIDTH
    ========================= */
 .qr-card{ padding:0; }
-
 .qr-btn{
   width:100%;
   display:flex; 
-  flex-direction:column;       /* ✅ ubah jadi kolom */
-  align-items:center;          /* ✅ biar ke tengah */
-  justify-content:center;      /* ✅ ratakan vertikal */
-  gap:6px;                     /* ✅ jarak ikon & teks */
+  flex-direction:row;       /* ✅ balikin ke row */
+  align-items:center;       /* ✅ icon & teks sejajar tengah vertikal */
+  justify-content:center;   /* ✅ isi tombol rata tengah */
+  gap:12px;                 /* ✅ jarak icon & teks */
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   border: 1px solid rgba(255,255,255,.12);
   border-radius:16px;
   padding:14px 16px;
-  font-weight:600; 
-  font-size:16px;
-  cursor:pointer; 
-  color:#fff;
+  font-weight:600; font-size:16px;
+  cursor:pointer; color:#fff;
   box-shadow:0 6px 16px rgba(106,88,255,.35);
-  text-align:center;           /* ✅ teks rata tengah */
   transition:filter .15s ease, transform .1s ease;
+  text-align:left;          /* ✅ teks tetap rata kiri relatif ke group */
 }
 
 .qr-btn:hover{ filter:brightness(1.08) }
