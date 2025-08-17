@@ -86,16 +86,26 @@
     button:active{ transform:translateY(1px) }
     button:disabled{ opacity:.55; cursor:not-allowed; filter:grayscale(30%) }
 
-    /* Tombol QR khusus (di atas card) */
-    .qr-row{ display:flex; gap:10px; margin-bottom:12px }
+    /* =========================
+       TOMBOL BARCODE (PNG) FULL-WIDTH
+       ========================= */
+    .qr-card{ padding:0; }                /* bungkus tombol agar lebarnya identik dgn card */
     .qr-btn{
-      display:inline-flex; align-items:center; justify-content:center;
-      gap:8px; padding:12px 14px; border-radius:12px;
-      border:1px solid var(--border); background:#0b1324; font-weight:800;
-      letter-spacing:.2px;
+      width:100%;
+      display:flex; align-items:center; gap:12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius:16px;
+      padding:14px 16px;
+      font-weight:600; font-size:16px;
+      cursor:pointer;
+      box-shadow:0 6px 12px rgba(0,0,0,.4);
+      transition:filter .15s ease, transform .1s ease;
     }
-    .qr-btn .emo{ font-size:18px; line-height:1 }
-    .qr-btn small{ color:var(--muted); font-weight:600 }
+    .qr-btn:hover{ filter:brightness(1.08) }
+    .qr-btn:active{ transform:translateY(1px) }
+    .qr-btn img{ width:24px; height:24px; display:block }
+    .qr-btn small{ color:var(--muted); font-weight:400; display:block }
 
     .hidden{ display:none !important; }
 
@@ -118,13 +128,13 @@
   </div>
 
   <div class="container">
-    <!-- TOMBOL QR (meminta scan dari Kodular / input manual) -->
-    <div class="qr-row">
+    <!-- TOMBOL BARCODE (lebar identik card, pakai PNG) -->
+    <section class="card qr-card">
       <button type="button" class="qr-btn" onclick="requestScanFromKodular()">
-        <span class="emo">� QR</span>
-        <span>Mulai/ Ambil Data<br><small>dari Scanner Kodular</small></span>
+        <img src="icons/qrcode.png" alt="QR">
+        <span>Mulai / Ambil Data<br><small>dari Scanner Kodular</small></span>
       </button>
-    </div>
+    </section>
 
     <!-- HASIL PARSING DITARUH DI ATAS -->
     <section class="card" id="resultCard">
@@ -147,100 +157,7 @@
 
   <audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
-  <!-- JS khusus penerimaan data dari Kodular -->
-  <script>
-    // ====== API yang dipanggil Kodular ======
-    // Di Kodular, kirim hasil scan lewat WebViewer.EvaluateJavascript:
-    // webViewString = JSON.stringify({ event:"scan_result", data:"<ISI_BARCODE>" })
-    // Lalu di halaman ini (opsional) bisa dipanggil window.receiveBarcode("<ISI_BARCODE>")
-    window.receiveBarcode = function(payload){
-      try{
-        // payload boleh string mentah / JSON string
-        let data = payload;
-        if (typeof payload === "string") {
-          try{
-            const j = JSON.parse(payload);
-            if (j && j.data) data = j.data;
-          }catch(_){}
-        }
-        if (!data) return;
-
-        // Tampilkan ke UI
-        const out = document.getElementById('parsedOutput');
-        out.textContent = formatBoardingPass(data);
-
-        // Bunyi beep kecil
-        const beep = document.getElementById('beep-sound');
-        if (beep) { beep.currentTime = 0; beep.play().catch(()=>{}); }
-
-        // Simpan riwayat sederhana
-        try{
-          const key = 'scanHistory';
-          const list = JSON.parse(localStorage.getItem(key) || "[]");
-          list.unshift({ ts: Date.now(), raw: data });
-          localStorage.setItem(key, JSON.stringify(list.slice(0,50)));
-          refreshHistory();
-        }catch(e){}
-      }catch(e){
-        console.error(e);
-      }
-    };
-
-    // ====== Kirim permintaan scan ke Kodular (atau fallback prompt) ======
-    function requestScanFromKodular(){
-      const message = JSON.stringify({ event: "scan_request" });
-      if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
-        window.AppInventor.setWebViewString(message);
-      } else {
-        // Fallback manual jika tidak dari Kodular
-        const manual = prompt("Masukkan/Tempel data barcode:");
-        if (manual) window.receiveBarcode(manual);
-      }
-    }
-
-    // ====== Util format sederhana (silakan ganti sesuai parsing kamu) ======
-    function formatBoardingPass(raw){
-      // Jika data raw berformat A|B|C, contoh parsing ringan:
-      // Kembangkan sesuai kebutuhanmu (PNR, Nama, Flight, dsb.)
-      if (raw.includes('|')){
-        const p = raw.split('|');
-        return [
-          `PNR / Kode: ${p[0]||'-'}`,
-          `Nama: ${p[1]||'-'}`,
-          `Penerbangan: ${p[2]||'-'}`,
-          `Tanggal/Jam: ${p[3]||'-'}`
-        ].join('\n');
-      }
-      return raw;
-    }
-
-    // ====== Riwayat ======
-    function refreshHistory(){
-      const box = document.getElementById('scanHistoryText');
-      try{
-        const list = JSON.parse(localStorage.getItem('scanHistory') || "[]");
-        if (!list.length){ box.textContent = "Belum ada riwayat."; return; }
-        box.textContent = list.map(it=>{
-          const d = new Date(it.ts);
-          return `${d.toLocaleString('id-ID')} — ${it.raw}`;
-        }).join('\n');
-      }catch(e){
-        box.textContent = "Belum ada riwayat.";
-      }
-    }
-    window.toggleHistory = window.toggleHistory || function(){
-      const card = document.getElementById('historyCard');
-      card.classList.toggle('hidden');
-      if (!card.classList.contains('hidden')) refreshHistory();
-    };
-    window.clearHistory = window.clearHistory || function(){
-      const el = document.getElementById('scanHistoryText');
-      el.textContent = 'Belum ada riwayat.';
-      try{ localStorage.removeItem('scanHistory'); }catch(e){}
-    };
-
-    // Optional: auto-refresh jika dibuka pertama kali
-    refreshHistory();
-  </script>
+  <!-- Pindahkan semua JS ke file eksternal -->
+  <script src="boardingpass.js"></script>
 </body>
 </html>
