@@ -7,117 +7,152 @@
   <script src="https://unpkg.com/@zxing/library@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #1f1f1f, #2c2c2c);
-      color: #eee;
-      min-height: 100vh;
+    :root{
+      --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb;
+      --border:#334; --btn-ok:#14532d; --btn-stop:#7f1d1d; --card:#0b1324;
+    }
+
+    *{ box-sizing:border-box }
+    html,body{ margin:0; padding:0 }
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
       padding: 20px;
-      transition: all 0.3s ease;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      flex-direction: column;
-    }
-    .chat-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      width: 100%;
-      max-width: 420px;
-      margin: 0 auto 16px auto;
-      padding: 10px 0;
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: #eee;
-    }
-    /* Tombol panah kembali (ke home.html) */
-    .back-btn{
-      display:inline-flex; align-items:center; justify-content:center;
-      width:40px; height:40px;
-      color:var(--text); text-decoration:none;
-      border-radius:10px;
-      background:transparent;
-      margin-right:4px;
-      transition: background .12s ease, box-shadow .12s ease, transform .08s ease, opacity .12s ease;
       -webkit-tap-highlight-color: transparent;
     }
+
+    /* =========================
+       APP BAR (Back + Title)
+       ========================= */
+    .app-bar{
+      position: sticky; top: 0; z-index: 40;
+      display: flex; align-items: center; gap: 10px;
+      height: 56px;
+      background: var(--panel);
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      padding: 0 14px;
+      margin: -20px -20px 16px; /* full-bleed */
+    }
+    .back-btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:44px; height:44px;
+      background:transparent; border:none; color:var(--text);
+      cursor:pointer; flex:0 0 auto; text-decoration:none;
+      border-radius:8px; transition: background .12s ease, transform .1s ease;
+    }
+    .back-btn svg{ display:block; stroke:currentColor; stroke-width:2.2 }
     .back-btn:hover{ background:rgba(255,255,255,.06) }
     .back-btn:active{ background:rgba(0,0,0,.25); transform:translateY(1px) }
-    .back-btn:focus-visible{ outline:2px solid var(--accent-3); outline-offset:2px }
-    .back-btn svg{ width:24px; height:24px; stroke:currentColor }
+    .back-btn:focus-visible{ outline:2px solid rgba(255,255,255,.4); outline-offset:2px }
+    .app-title{ font-size:22px; font-weight:300; letter-spacing:.3px; margin:0; user-select:none }
 
-    .container { display: flex; flex-direction: column; align-items: center; max-width: 420px; width: 100%; margin: auto; }
-    .header { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 16px; }
-    h1 { font-size: 1.5rem; }
-
-    /* Style default video sebelumnya dibiarkan, tapi kita sembunyikan via ID */
-    video { width: 100%; border-radius: 20px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); margin-bottom: 20px; }
-
-    .card { background-color: #333; border-radius: 20px; padding: 20px; margin-bottom: 16px; width: 100%; box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5); transition: background-color 0.3s ease; }
-    .label { font-size: 1rem; font-weight: 600; color: #ccc; margin-bottom: 12px; border-bottom: 1px solid #555; padding-bottom: 6px; }
-    .text { font-size: 1rem; white-space: pre-line; line-height: 1.6; }
-    .button-row { display: flex; gap: 10px; margin-bottom: 16px; width: 100%; }
-    .btn {
-      flex: 1; padding: 14px 20px; font-weight: 700; font-size: 1rem;
-      color: #ccc; background: linear-gradient(145deg, #3a3a3a, #242424);
-      border-radius: 16px; border: none; cursor: pointer;
-      box-shadow: 8px 8px 15px #1e1e1e, -8px -8px 15px #4a4a4a;
-      transition: all 0.25s ease; display: flex; align-items: center;
-      justify-content: center; gap: 8px; user-select: none;
+    /* =========================
+       LAYOUT & CARD
+       ========================= */
+    .container{ max-width: 720px; margin: 0 auto; }
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      margin-bottom: 16px;
     }
-    .btn:hover {
-      background: linear-gradient(145deg, #2f2f2f, #1a1a1a);
-      box-shadow: 4px 4px 10px #171717, -4px -4px 10px #525252;
-      color: #eee; transform: translateY(-2px);
+    .label{
+      font-weight:700; border-bottom:1px solid var(--border);
+      padding-bottom:6px; margin-bottom:10px; color:var(--text);
     }
-    .btn:active {
-      background: linear-gradient(145deg, #212121, #121212);
-      box-shadow: inset 4px 4px 8px #0d0d0d, inset -4px -4px 8px #292929;
-      transform: translateY(0); color: #ddd;
-    }
-    #historyCard { display: none; }
+    .text{ color:var(--text); white-space:pre-line; line-height:1.5 }
 
-    /* === Sembunyikan tampilan kamera === */
-    #video { display: none !important; }
+    /* =========================
+       CONTROLS / BUTTONS
+       ========================= */
+    .controls{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; flex-wrap:nowrap; margin-bottom:12px;
+    }
+    button{
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0b1324; color: var(--text);
+      cursor: pointer;
+      transition: transform .06s ease, filter .15s ease, background .15s ease;
+      margin: 0; font-weight:700;
+    }
+    .controls button{ flex:1 1 0; white-space:nowrap }
+    button:hover{ filter:brightness(1.05) }
+    button:active{ transform:translateY(1px) }
+    button:disabled{ opacity:.55; cursor:not-allowed; filter:grayscale(30%) }
+
+    /* =========================
+       VIDEO (disembunyikan)
+       ========================= */
+    #video{ display:none !important; width:100%; border-radius:16px; margin-bottom:12px }
+
+    .hidden{ display:none !important; }
+
+    @media (max-width: 480px){
+      .app-title{ font-size:20px }
+      .back-btn{ width:40px; height:40px }
+      button{ padding:10px 12px }
+    }
   </style>
 </head>
 <body>
-  <!-- Header dengan tombol kembali -->
-  <div class="chat-header" role="banner" aria-label="ChatBot">
+  <!-- App Bar -->
+  <div class="app-bar" role="banner">
     <a href="home.html" class="back-btn" aria-label="Kembali ke Home">
-      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none">
         <polyline points="15 18 9 12 15 6"></polyline>
       </svg>
     </a>
-    <span>Boarding Pass Scanner</span>
+    <h1 class="app-title">Boarding Pass Scanner</h1>
   </div>
 
   <div class="container">
-    <!-- Video tetap ada agar JS tidak error, tapi disembunyikan via CSS -->
-    <video id="video" autoplay></video>
-
-    <div class="card">
+    <!-- HASIL PARSING DITARUH DI ATAS -->
+    <section class="card" id="resultCard">
       <div class="label">📄 Informasi Boarding Pass</div>
       <div class="text" id="parsedOutput">Menunggu scan...</div>
+    </section>
+
+    <!-- Tombol tindakan -->
+    <div class="controls">
+      <button type="button" onclick="toggleHistory()">📚 Riwayat</button>
+      <button type="button" onclick="clearHistory()">🗑️ Hapus</button>
     </div>
 
-    <div class="button-row">
-      <button class="btn" onclick="toggleHistory()">📚 Riwayat</button>
-      <button class="btn" onclick="clearHistory()">🗑️ Hapus</button>
-    </div>
-
-    <div class="card" id="historyCard">
+    <!-- Riwayat -->
+    <section class="card hidden" id="historyCard">
       <div class="label">📜 Riwayat Scan</div>
       <div class="text" id="scanHistoryText">Belum ada riwayat.</div>
-    </div>
+    </section>
+
+    <!-- Video tetap ada agar library tidak error -->
+    <video id="video" autoplay></video>
   </div>
 
   <audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
-  
-  <!-- File JS eksternal -->
+
+  <!-- JS eksternal (tetap) -->
   <script src="boardingpass.js"></script>
+
+  <!-- Utility kecil: sinkron dengan kelas .hidden di atas -->
+  <script>
+    // Jika boardingpass.js sudah punya toggleHistory/clearHistory, biarkan saja.
+    // Ini fallback minimal bila belum ada.
+    window.toggleHistory = window.toggleHistory || function(){
+      const card = document.getElementById('historyCard');
+      card.classList.toggle('hidden');
+    };
+    window.clearHistory = window.clearHistory || function(){
+      const el = document.getElementById('scanHistoryText');
+      el.textContent = 'Belum ada riwayat.';
+      try{ localStorage.removeItem('scanHistory'); }catch(e){}
+    };
+  </script>
 </body>
 </html>
