@@ -6,15 +6,16 @@ import {
 
 // ======== Konfigurasi project ========
 const firebaseConfig = {
-  apiKey: "AIzaSyCtJxtgVbMxZdVUMmFGDnqzt2LttxW9KOQ",
-  authDomain: "plotting-e9cb7.firebaseapp.com",
-  databaseURL: "https://plotting-e9cb7-default-rtdb.firebaseio.com",
-  projectId: "plotting-e9cb7",
-  storageBucket: "plotting-e9cb7.firebasestorage.app",
-  messagingSenderId: "518993555934",
-  appId: "1:518993555934:web:41e90375a565ab00776d4f",
-  measurementId: "G-GWBBDS8YZZ"
+  apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
+  authDomain: "avsecbwx-4229c.firebaseapp.com",
+  databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com",
+  projectId: "avsecbwx-4229c",
+  storageBucket: "avsecbwx-4229c.firebasestorage.app",
+  messagingSenderId: "1029406629258",
+  appId: "1:1029406629258:web:53e8f09585cd77823efc73",
+  measurementId: "G-P37F88HGFE"
 };
+
 
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
