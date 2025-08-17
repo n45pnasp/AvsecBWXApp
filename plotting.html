@@ -1,97 +1,103 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Plotting</title>
-  <link rel="stylesheet" href="plotting.css" />
-  <style>
-    html{visibility:hidden}        /* ditampilkan kembali oleh plotting.js */
-    .hidden{display:none!important}/* untuk toggle assign/manage */
-  </style>
-</head>
-<body>
+<!DOCTYPE html>  
+<html lang="id">  
+<head>  
+  <meta charset="UTF-8" />  
+  <meta name="viewport" content="width=device-width, initial-scale=1" />  
+  <title>Plotting</title>  
+  <link rel="stylesheet" href="plotting.css" />  
+  <style>  
+    html{visibility:hidden}        /* ditampilkan kembali oleh plotting.js */  
+    .hidden{display:none!important}/* untuk toggle assign/manage */  
+  </style>  
+</head>  
+<body>  
+  
+  <!-- App Bar -->  
+  <header class="app-bar" role="banner">  
+    <a href="home.html" class="back-btn" aria-label="Kembali ke Home">  
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26"   
+           viewBox="0 0 24 24" fill="none" stroke="currentColor"   
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">  
+        <polyline points="15 18 9 12 15 6"></polyline>  
+      </svg>  
+    </a>  
+    <h1 class="app-title">Plotting Tugas</h1>  
+  </header>  
+  
+  <!-- Kartu Jam & Next Rotation -->  
+  <div class="header-card">  
+    <div class="header-top">  
+      <span id="connDot" class="conn-dot" aria-hidden="true"></span>  
+    </div>  
+    <div id="clock" class="clock">00:00:00</div>  
+    <div class="next-info">Perputaran selanjutnya <span id="nextRotation">-</span></div>  
+  </div>  
 
-  <!-- App Bar -->
-  <header class="app-bar" role="banner">
-    <a href="home.html" class="back-btn" aria-label="Kembali ke Home">
-      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" 
-           viewBox="0 0 24 24" fill="none" stroke="currentColor" 
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="15 18 9 12 15 6"></polyline>
-      </svg>
-    </a>
-    <h1 class="app-title">Plotting Tugas</h1>
-  </header>
-
-  <!-- Kartu Jam & Next Rotation -->
-  <div class="header-card">
-    <div class="header-top">
-      <span id="connDot" class="conn-dot" aria-hidden="true"></span>
-    </div>
-    <div id="clock" class="clock">00:00:00</div>
-    <div class="next-info">Perputaran selanjutnya <span id="nextRotation">-</span></div>
-  </div>
-
-  <!-- Kontrol (dropdown lokasi disisipkan otomatis oleh plotting.js di sini) -->
-  <div class="controls">
-    <button id="startBtn" class="start">Mulai Rotasi</button>
-    <button id="stopBtn" class="stop" disabled>Hentikan</button>
-    <button id="nextBtn" disabled>Majukan 1x</button>
-  </div>
-
-  <!-- Tabel penugasan (disembunyikan saat belum start) -->
-  <table class="assign hidden" aria-label="Tabel Penugasan">
-    <thead>
-      <tr>
-        <th>Posisi</th>
-        <th>Nama</th>
-      </tr>
-    </thead>
-    <tbody id="assignRows"></tbody>
-  </table>
-
-  <!-- Kelola Personil (tampil saat belum start) -->
-  <div class="manage" aria-label="Kelola Personil">
-    <h2>Kelola Personil</h2>
-    <div class="add-person">
-      <input id="nameInput" type="text" placeholder="Nama" />
-      <label><input type="checkbox" id="seniorSpec" /> Senior</label>
-      <label><input type="checkbox" id="juniorSpec" /> Junior</label>
-      <label><input type="checkbox" id="basicSpec" /> Basic</label>
-      <button id="addPersonBtn">Tambah</button>
-    </div>
-
-    <table class="people" aria-label="Daftar Personil">
-      <thead>
-        <tr>
-          <th>Nama</th>
-          <th>Senior</th>
-          <th>Junior</th>
-          <th>Basic</th>
-          <th>Aksi</th>
-        </tr>
-      </thead>
-      <tbody id="peopleRows"></tbody>
-    </table>
-  </div>
-
-  <!-- Bottom Sheet Notification (opsional) -->
-  <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>
-  <div id="bottomSheet" class="sheet hidden" role="dialog" aria-live="polite" aria-modal="true">
-    <div class="sheet-header">
-      <strong>Internet Connection</strong>
-    </div>
-    <div id="sheetMsg" class="sheet-body"></div>
-  </div>
-
-  <!-- Auth guard: load SEBELUM plotting.js -->
-  <script type="module">
-    import { requireAuth } from "./auth-guard.js";
-    requireAuth({ loginPath: "index.html", hideWhileChecking: true });
-  </script>
-
-  <!-- Plotting logic -->
-  <script type="module" src="plotting.js"></script>
-</body>
+  <!-- Tombol Lokasi (PSCP / HBSCP) -->
+  <div class="site-bar">  
+    <button id="pscpBtn" class="site-btn start">PSCP</button>  
+    <button id="hbscpBtn" class="site-btn stop">HBSCP</button>  
+  </div>  
+  
+  <!-- Kontrol Rotasi -->
+  <div class="controls">  
+    <button id="startBtn" class="start">Mulai Rotasi</button>  
+    <button id="stopBtn" class="stop" disabled>Hentikan</button>  
+    <button id="nextBtn" disabled>Majukan 1x</button>  
+  </div>  
+  
+  <!-- Tabel penugasan (disembunyikan saat belum start) -->  
+  <table class="assign hidden" aria-label="Tabel Penugasan">  
+    <thead>  
+      <tr>  
+        <th>Posisi</th>  
+        <th>Nama</th>  
+      </tr>  
+    </thead>  
+    <tbody id="assignRows"></tbody>  
+  </table>  
+  
+  <!-- Kelola Personil (tampil saat belum start) -->  
+  <div class="manage" aria-label="Kelola Personil">  
+    <h2>Kelola Personil</h2>  
+    <div class="add-person">  
+      <input id="nameInput" type="text" placeholder="Nama" />  
+      <label><input type="checkbox" id="seniorSpec" /> Senior</label>  
+      <label><input type="checkbox" id="juniorSpec" /> Junior</label>  
+      <label><input type="checkbox" id="basicSpec" /> Basic</label>  
+      <button id="addPersonBtn">Tambah</button>  
+    </div>  
+  
+    <table class="people" aria-label="Daftar Personil">  
+      <thead>  
+        <tr>  
+          <th>Nama</th>  
+          <th>Senior</th>  
+          <th>Junior</th>  
+          <th>Basic</th>  
+          <th>Aksi</th>  
+        </tr>  
+      </thead>  
+      <tbody id="peopleRows"></tbody>  
+    </table>  
+  </div>  
+  
+  <!-- Bottom Sheet Notification (opsional) -->  
+  <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>  
+  <div id="bottomSheet" class="sheet hidden" role="dialog" aria-live="polite" aria-modal="true">  
+    <div class="sheet-header">  
+      <strong>Internet Connection</strong>  
+    </div>  
+    <div id="sheetMsg" class="sheet-body"></div>  
+  </div>  
+  
+  <!-- Auth guard: load SEBELUM plotting.js -->  
+  <script type="module">  
+    import { requireAuth } from "./auth-guard.js";  
+    requireAuth({ loginPath: "index.html", hideWhileChecking: true });  
+  </script>  
+  
+  <!-- Plotting logic -->  
+  <script type="module" src="plotting.js"></script>  
+</body>  
 </html>
