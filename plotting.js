@@ -3,8 +3,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebas
 import {
   getDatabase, ref, child, onValue, set, update, remove, get, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+// (opsional) jika ingin tombol logout:
+// import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-// ======== Konfigurasi project ========
+// ======== Konfigurasi project (RTDB baru) ========
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
   authDomain: "avsecbwx-4229c.firebaseapp.com",
@@ -16,28 +18,21 @@ const firebaseConfig = {
   measurementId: "G-P37F88HGFE"
 };
 
-
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
+// const auth = getAuth(app); // kalau pakai tombol logout
 
-/* ========= Link PDF per site =========
-   - PSCP: ID dari sheet yang sebelumnya kamu kirim
-   - HBSCP: ID dari sheet baru yang kamu kirim
-   - Ganti 'gid' sesuai tab masing-masing (lihat di URL Google Sheets -> ...#gid=XXXX)
-*/
+/* ========= Link PDF per site ========= */
 const SHEETS = {
-  PSCP: { id: '1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8', gid: '' }, // TODO: ganti gid tab PSCP
-  HBSCP:{ id: '1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU', gid: '' }, // TODO: ganti gid tab HBSCP
+  PSCP: { id: '1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8', gid: '' },
+  HBSCP:{ id: '1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU', gid: '' },
 };
 
-/* ====== Preferensi cara akses tanpa login ======
-   Jika kamu memakai "Publish to the web" di Google Sheets, set ke true untuk pakai /pub?output=pdf
-   Kalau hanya "Anyone with the link – Viewer", biarkan false (pakai /export?format=pdf)
-*/
+/* ====== Jika Sheet di-"Publish to web", set true untuk /pub?output=pdf.
+         Jika hanya "Anyone with link – Viewer", biarkan false (pakai /export). */
 const USE_PUB = false;
 
 const PDF_DEFAULT_OPTS = {
-  // export: format=pdf (di /export)
   format: 'pdf',
   size: 'A4',
   portrait: 'true',
@@ -54,23 +49,17 @@ const PDF_DEFAULT_OPTS = {
 };
 
 function buildSheetPdfUrl(sheetId, gid, opts = {}) {
-  // cache buster
   const cacheBuster = { t: Date.now() };
-
   if (USE_PUB) {
-    // Publish to web: /pub?gid=..&single=true&output=pdf
     const params = new URLSearchParams({ gid, single: 'true', output: 'pdf', ...cacheBuster });
     return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
   } else {
-    // Anyone with link (Viewer): /export?format=pdf&gid=..
     const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
     return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
   }
 }
 
 // ========= Konfigurasi per site =========
-// - HBSCP: 20–40 aktif bila jr/sr >= 3 (enable2040: true)
-// - HBSCP: pos2a & pos2b allowed -> ['senior','junior','basic']
 const SITE_CONFIG = {
   PSCP: {
     enable2040: true,
@@ -83,7 +72,7 @@ const SITE_CONFIG = {
     ],
   },
   HBSCP: {
-    enable2040: true, // hanya ON kalau jr/sr >= 3
+    enable2040: true, // ON bila jr/sr >= 3
     cycleMs: 20_000,
     positions: [
       { id:'pos1',  name:'Operator Xray',       allowed:['senior','junior'] },
@@ -113,6 +102,7 @@ const addPersonBtn = $('addPersonBtn');
 const peopleRows   = $('peopleRows');
 const btnPSCP      = $('pscpBtn');
 const btnHBSCP     = $('hbscpBtn');
+// const logoutBtn    = $('logoutBtn'); // kalau ingin tombol logout
 
 // ========= Indikator koneksi =========
 onValue(ref(db, ".info/connected"), snap => { connDot?.classList.toggle('ok', !!snap.val()); });
@@ -185,6 +175,7 @@ class SiteMachine {
     stopBtn.onclick  = ()=> this.onStop();
     nextBtn.onclick  = ()=> this.onNext();
     addPersonBtn.onclick = ()=> this.onAddPerson();
+    // logoutBtn?.addEventListener('click', ()=> signOut(auth));
 
     this.setRunningUI(false);
     clockEl && (clockEl.textContent = fmt(new Date()));
@@ -207,8 +198,6 @@ class SiteMachine {
     nextBtn.disabled  = !isRunning;
     assignTable.classList.toggle('hidden', !isRunning);
     manageBox.classList.toggle('hidden',  isRunning);
-
-    // Toggle kelas <body> untuk sembunyikan tombol download saat running (CSS handle)
     document.body.classList.toggle('running', isRunning);
   }
 
@@ -332,7 +321,7 @@ class SiteMachine {
       await set(this.assignmentsRef, finalAssign);
     }
 
-    // Penting: penulisan assignments memicu Cloud Functions → kirim ke Sheet.
+    // menulis assignments → trigger Cloud Functions → kirim ke Sheet
     this.advanceRotIdx(pools);
   }
 
@@ -380,7 +369,7 @@ class SiteMachine {
 
   async onStop(){
     const tasks=[ update(this.stateRef,{ running:false, nextAt:0, mode2040:false, lastCycleAt:0 }) ];
-    if(this.cfg.enable2040) tasks.push(set(this.cooldownRef, {})); // reset cooldown jika dipakai
+    if(this.cfg.enable2040) tasks.push(set(this.cooldownRef, {}));
     await Promise.all(tasks);
     this.setRunningUI(false);
     this.nextAtLocal=null;
@@ -430,26 +419,22 @@ function bootSite(siteKey){
   machine = new SiteMachine(siteKey);
   machine.mount();
   selectSiteButtonUI(siteKey);
-
-  // Atur site aktif untuk Download PDF
   currentSite = siteKey;
   if (downloadBtn) downloadBtn.disabled = false;
 }
 
-// ====== Handler Download PDF ======
+// ====== Download PDF (tanpa login Google; pastikan share/publish sesuai) ======
 function openActiveSitePdf(){
   if(!currentSite || !SHEETS[currentSite]){
     alert('Pilih lokasi dulu (PSCP / HBSCP).');
     return;
   }
   const { id, gid } = SHEETS[currentSite];
-  const url = buildSheetPdfUrl(id, gid);
-  window.open(url, '_blank'); // tidak butuh login jika share/publish benar
+  window.open(buildSheetPdfUrl(id, gid), '_blank');
 }
 
 // ====== Init ======
 (function init(){
-  // Awal: tombol download dinonaktifkan (akan di-enable saat bootSite)
   if (downloadBtn) downloadBtn.disabled = true;
 
   const url = new URL(location.href);
@@ -460,8 +445,6 @@ function openActiveSitePdf(){
 
   btnPSCP?.addEventListener('click', ()=> bootSite('PSCP'));
   btnHBSCP?.addEventListener('click', ()=> bootSite('HBSCP'));
-
-  // Klik Download PDF
   downloadBtn?.addEventListener('click', openActiveSitePdf);
 
   document.documentElement.style.visibility='visible';
