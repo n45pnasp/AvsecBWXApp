@@ -4,7 +4,7 @@ import {
   getDatabase, ref, child, onValue, set, update, remove, get, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-// ======== Konfigurasi project (punyamu) ========
+// ======== Konfigurasi project ========
 const firebaseConfig = {
   apiKey: "AIzaSyCtJxtgVbMxZdVUMmFGDnqzt2LttxW9KOQ",
   authDomain: "plotting-e9cb7.firebaseapp.com",
@@ -22,7 +22,7 @@ const db  = getDatabase(app);
 // ========= Konfigurasi per site =========
 const SITE_CONFIG = {
   PSCP: {
-    enable2040: true,
+    enable2040: true,            // ada cooldown op Xray
     cycleMs: 20_000,
     positions: [
       { id:'pos1', name:'Operator Xray',    allowed:['senior','junior'] },
@@ -32,7 +32,7 @@ const SITE_CONFIG = {
     ],
   },
   HBSCP: {
-    enable2040: false,
+    enable2040: false,           // tanpa cooldown
     cycleMs: 20_000,
     positions: [
       { id:'pos1',  name:'Operator Xray',       allowed:['senior','junior'] },
@@ -43,53 +43,48 @@ const SITE_CONFIG = {
 };
 
 // ========= DOM refs =========
-const $id = (id)=>document.getElementById(id);
-const connDot      = $id('connDot');
-const clockEl      = $id('clock');
-const nextEl       = $id('nextRotation');
-const startBtn     = $id('startBtn');
-const stopBtn      = $id('stopBtn');
-const nextBtn      = $id('nextBtn');
+const $ = (id)=>document.getElementById(id);
+const connDot      = $('connDot');
+const clockEl      = $('clock');
+const nextEl       = $('nextRotation');
+const startBtn     = $('startBtn');
+const stopBtn      = $('stopBtn');
+const nextBtn      = $('nextBtn');
 const assignTable  = document.querySelector('table.assign');
-const assignRows   = $id('assignRows');
+const assignRows   = $('assignRows');
 const manageBox    = document.querySelector('.manage');
-const nameInput    = $id('nameInput');
-const seniorSpecEl = $id('seniorSpec');
-const juniorSpec   = $id('juniorSpec');
-const basicSpec    = $id('basicSpec');
-const addPersonBtn = $id('addPersonBtn');
-const peopleRows   = $id('peopleRows');
+const nameInput    = $('nameInput');
+const seniorSpecEl = $('seniorSpec');
+const juniorSpec   = $('juniorSpec');
+const basicSpec    = $('basicSpec');
+const addPersonBtn = $('addPersonBtn');
+const peopleRows   = $('peopleRows');
+// tombol lokasi dari HTML
+const btnPSCP      = $('pscpBtn');
+const btnHBSCP     = $('hbscpBtn');
 
-// ========= Sisipkan 2 tombol lokasi (PSCP/HBSCP) =========
-let btnPSCP = null, btnHBSCP = null;
-(function injectSiteButtons(){
-  const controls = document.querySelector('.controls');
-  if(!controls) return;
-  const bar = document.createElement('div');
-  bar.className = 'site-bar';           // CSS kecil ada di bawah (tambahkan ke plotting.css)
-  bar.setAttribute('aria-label','Lokasi');
-
-  btnPSCP = document.createElement('button');
-  btnHBSCP = document.createElement('button');
-  btnPSCP.className = 'site-btn stop';  // default merah (non-aktif)
-  btnHBSCP.className = 'site-btn stop';
-  btnPSCP.textContent = 'PSCP';
-  btnHBSCP.textContent = 'HBSCP';
-
-  bar.appendChild(btnPSCP);
-  bar.appendChild(btnHBSCP);
-  controls.prepend(bar);
-})();
-
-// ========= Koneksi indikator =========
+// ========= Indikator koneksi =========
 onValue(ref(db, ".info/connected"), snap => {
-  const ok = !!snap.val();
-  if (connDot) connDot.classList.toggle('ok', ok);
+  connDot?.classList.toggle('ok', !!snap.val());
 });
 
-// ========= Util =========
+// ========= Util kecil =========
 const pad = n => String(n).padStart(2,'0');
 const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+// ========= Pewarnaan tombol berdasar status RTDB =========
+function paintSiteButton(btn, isRunning){
+  if(!btn) return;
+  btn.classList.toggle('start', !!isRunning); // hijau
+  btn.classList.toggle('stop',  !isRunning);  // merah
+}
+// pasang listener status untuk KEDUA site (global)
+onValue(ref(db, "sites/PSCP/control/state"), snap=>{
+  paintSiteButton(btnPSCP, !!(snap.val()?.running));
+});
+onValue(ref(db, "sites/HBSCP/control/state"), snap=>{
+  paintSiteButton(btnHBSCP, !!(snap.val()?.running));
+});
 
 // ========= Mesin per-site =========
 class SiteMachine {
@@ -106,32 +101,29 @@ class SiteMachine {
     this.stateRef       = child(this.baseRef, 'control/state'); // {running,nextAt,mode2040}
 
     // state lokal
-    this.rotIdx = {};
-    this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
+    this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
     this.running = false;
     this.nextAtLocal = null;
     this.mode2040State = false;
 
-    // timers & unsub
     this.clockTimer = null;
     this.dueTimer   = null;
-    this._unsubFns  = [];
+    this._unsubs    = [];
   }
 
   mount(){
-    this.clockTimer = setInterval(()=> {
+    this.clockTimer = setInterval(()=>{
       if (clockEl) clockEl.textContent = fmt(new Date());
       if (nextEl)  nextEl.textContent  = this.nextAtLocal ? fmt(new Date(this.nextAtLocal)) : '-';
     }, 250);
 
-    this._listen(this.assignmentsRef, (snap)=> this.renderAssignments(snap.val()||{}));
-    this._listen(this.peopleRef, (snap)=> this.renderPeople(snap.val()||{}));
-    this._listen(this.stateRef, async (snap)=>{
-      const st  = snap.val() || {};
-      this.running = !!st.running;
-      const na  = Number(st.nextAt) || 0;
+    this._listen(this.assignmentsRef, s => this.renderAssignments(s.val()||{}));
+    this._listen(this.peopleRef,      s => this.renderPeople(s.val()||{}));
+    this._listen(this.stateRef, s=>{
+      const st = s.val() || {};
+      this.running     = !!st.running;
+      this.nextAtLocal = (Number(st.nextAt)||0) > 0 ? Number(st.nextAt) : null;
       this.mode2040State = !!st.mode2040;
-      this.nextAtLocal = (na > 0) ? na : null;
       this.setRunningUI(this.running);
     });
 
@@ -141,10 +133,10 @@ class SiteMachine {
       }
     }, 500);
 
-    if (startBtn) startBtn.onclick = ()=> this.onStart();
-    if (stopBtn)  stopBtn.onclick  = ()=> this.onStop();
-    if (nextBtn)  nextBtn.onclick  = ()=> this.onNext();
-    if (addPersonBtn) addPersonBtn.onclick = ()=> this.onAddPerson();
+    startBtn.onclick = ()=> this.onStart();
+    stopBtn.onclick  = ()=> this.onStop();
+    nextBtn.onclick  = ()=> this.onNext();
+    addPersonBtn.onclick = ()=> this.onAddPerson();
 
     this.setRunningUI(false);
     if (clockEl) clockEl.textContent = fmt(new Date());
@@ -154,34 +146,24 @@ class SiteMachine {
   unmount(){
     if (this.clockTimer) clearInterval(this.clockTimer);
     if (this.dueTimer)   clearInterval(this.dueTimer);
-    this.clockTimer = this.dueTimer = null;
-
-    if (startBtn) startBtn.onclick = null;
-    if (stopBtn)  stopBtn.onclick  = null;
-    if (nextBtn)  nextBtn.onclick  = null;
-    if (addPersonBtn) addPersonBtn.onclick = null;
-
-    this._unsubFns.forEach(fn => { try{ fn && fn(); }catch(_){} });
-    this._unsubFns = [];
+    startBtn.onclick = stopBtn.onclick = nextBtn.onclick = addPersonBtn.onclick = null;
+    this._unsubs.forEach(u=>{ try{u&&u();}catch(e){} });
+    this._unsubs = [];
   }
 
-  _listen(r, cb){
-    const unsub = onValue(r, cb); // v9 returns unsubscribe
-    this._unsubFns.push(unsub);
-  }
+  _listen(r, cb){ const u = onValue(r, cb); this._unsubs.push(u); }
 
   setRunningUI(isRunning){
-    if (startBtn) startBtn.disabled = isRunning;
-    if (stopBtn)  stopBtn.disabled  = !isRunning;
-    if (nextBtn)  nextBtn.disabled  = !isRunning;
-    if (assignTable) assignTable.classList.toggle('hidden', !isRunning);
-    if (manageBox)   manageBox.classList.toggle('hidden',  isRunning);
+    startBtn.disabled = isRunning;
+    stopBtn.disabled  = !isRunning;
+    nextBtn.disabled  = !isRunning;
+    assignTable.classList.toggle('hidden', !isRunning);
+    manageBox.classList.toggle('hidden',  isRunning);
   }
 
   renderAssignments(assignments){
-    if (!assignRows) return;
     assignRows.innerHTML = '';
-    this.cfg.positions.forEach((p)=>{
+    this.cfg.positions.forEach(p=>{
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${p.name}</td><td>${assignments?.[p.id] ?? '-'}</td>`;
       assignRows.appendChild(tr);
@@ -189,31 +171,27 @@ class SiteMachine {
   }
 
   renderPeople(people){
-    if (!peopleRows) return;
     peopleRows.innerHTML = '';
-    Object.entries(people||{}).forEach(([id, p])=>{
+    Object.entries(people||{}).forEach(([id,p])=>{
       const has = s => Array.isArray(p.spec) && p.spec.includes(s);
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${p.name}</td>
-        <td><input type="checkbox" ${has('senior')?'checked':''} data-id="${id}" data-spec="senior" /></td>
-        <td><input type="checkbox" ${has('junior')?'checked':''} data-id="${id}" data-spec="junior" /></td>
-        <td><input type="checkbox" ${has('basic')?'checked':''}  data-id="${id}" data-spec="basic"  /></td>
+        <td><input type="checkbox" ${has('senior')?'checked':''} data-id="${id}" data-spec="senior"/></td>
+        <td><input type="checkbox" ${has('junior')?'checked':''} data-id="${id}" data-spec="junior"/></td>
+        <td><input type="checkbox" ${has('basic')?'checked':''}  data-id="${id}" data-spec="basic"/></td>
         <td><button data-del="${id}">Hapus</button></td>`;
       peopleRows.appendChild(tr);
     });
-
+    // handlers (replace setiap render)
     peopleRows.onchange = async (e)=>{
-      if(e.target.type !== 'checkbox') return;
-      const id = e.target.dataset.id, spec = e.target.dataset.spec;
-      const snap = await get(child(this.peopleRef, id)); let person = snap.val(); if(!person) return;
-      if(!Array.isArray(person.spec)) person.spec = [];
-      if(e.target.checked){
-        if(!person.spec.includes(spec)) person.spec.push(spec);
-      } else {
-        person.spec = person.spec.filter(s=>s!==spec);
-      }
-      await update(child(this.peopleRef, id), person);
+      if(e.target.type!=='checkbox') return;
+      const id=e.target.dataset.id, spec=e.target.dataset.spec;
+      const snap = await get(child(this.peopleRef,id)); let person=snap.val(); if(!person) return;
+      if(!Array.isArray(person.spec)) person.spec=[];
+      if(e.target.checked){ if(!person.spec.includes(spec)) person.spec.push(spec); }
+      else { person.spec = person.spec.filter(s=>s!==spec); }
+      await update(child(this.peopleRef,id), person);
     };
     peopleRows.onclick = async (e)=>{
       if(!e.target.dataset.del) return;
@@ -221,34 +199,32 @@ class SiteMachine {
     };
   }
 
-  rotate(arr, idx){ return arr.length ? arr.slice(idx).concat(arr.slice(0, idx)) : []; }
+  rotate(arr, idx){ return arr.length ? arr.slice(idx).concat(arr.slice(0,idx)) : []; }
   isEligible(person, allowed){
-    return Array.isArray(person.spec) && person.spec.some(s => allowed.includes(String(s).toLowerCase()));
+    return Array.isArray(person.spec) && person.spec.some(s=>allowed.includes(String(s).toLowerCase()));
   }
 
   async buildPools(useCooldown){
     const [pSnap, cdSnap] = await Promise.all([
       get(this.peopleRef),
-      useCooldown ? get(this.cooldownRef) : Promise.resolve({ val: () => ({}) })
+      useCooldown ? get(this.cooldownRef) : Promise.resolve({ val:()=>({}) })
     ]);
-    const raw  = pSnap.val() || {};
-    const folks = Object.values(raw).map(p => ({
-      ...p,
-      spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toLowerCase()) : []
+    const folks = Object.values(pSnap.val()||{}).map(p=>({
+      ...p, spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toLowerCase()) : []
     }));
-    const cooldown = useCooldown ? (cdSnap.val() || {}) : {};
+    const cooldown = useCooldown ? (cdSnap.val()||{}) : {};
 
     if(useCooldown){
       const names = new Set(folks.map(f=>f.name));
       for(const k of Object.keys(cooldown)){ if(!names.has(k)) delete cooldown[k]; }
     }
 
-    const pools = this.cfg.positions.map((pos) => {
-      let candidates = folks.filter(f => this.isEligible(f, pos.allowed));
-      if(useCooldown && pos.id === 'pos1'){ // cooldown khusus Operator Xray
-        candidates = candidates.filter(f => (cooldown[f.name] || 0) <= 0);
+    const pools = this.cfg.positions.map(pos=>{
+      let candidates = folks.filter(f=>this.isEligible(f,pos.allowed));
+      if(useCooldown && pos.id==='pos1'){ // only Operator Xray cooldown
+        candidates = candidates.filter(f=>(cooldown[f.name]||0)<=0);
       }
-      const rot = this.rotate(candidates, this.rotIdx[pos.id] % Math.max(candidates.length, 1));
+      const rot = this.rotate(candidates, this.rotIdx[pos.id] % Math.max(candidates.length,1));
       return { pos, list: rot };
     });
 
@@ -257,91 +233,82 @@ class SiteMachine {
   }
 
   assignUnique(pools){
-    const used = new Set();
-    const result = {};
+    const used=new Set(); const result={};
     function bt(i){
-      if(i === pools.length) return true;
-      const { pos, list } = pools[i];
-      if(list.length === 0){ result[pos.id] = '-'; return bt(i+1); }
+      if(i===pools.length) return true;
+      const {pos,list}=pools[i];
+      if(list.length===0){ result[pos.id]='-'; return bt(i+1); }
       for(const cand of list){
-        const name = cand?.name; if(!name || used.has(name)) continue;
-        used.add(name); result[pos.id] = name;
+        const name=cand?.name; if(!name||used.has(name)) continue;
+        used.add(name); result[pos.id]=name;
         if(bt(i+1)) return true;
         used.delete(name);
       }
       return false;
     }
-    const ok = bt(0);
+    const ok=bt(0);
     return { ok, result };
   }
-
   assignUniqueGreedy(pools){
-    const used = new Set(); const result = {};
-    for(const { pos, list } of pools){
-      const pick = list.find(p => p?.name && !used.has(p.name));
-      result[pos.id] = pick ? (used.add(pick.name), pick.name) : '-';
+    const used=new Set(); const result={};
+    for(const {pos,list} of pools){
+      const pick=list.find(p=>p?.name && !used.has(p.name));
+      result[pos.id]=pick ? (used.add(pick.name), pick.name) : '-';
     }
     return result;
   }
-
   advanceRotIdx(pools){
-    for(const { pos, list } of pools){
-      const len = list.length;
-      if(len > 0) this.rotIdx[pos.id] = (this.rotIdx[pos.id] + 1) % len;
+    for(const {pos,list} of pools){
+      const len=list.length;
+      if(len>0) this.rotIdx[pos.id]=(this.rotIdx[pos.id]+1)%len;
     }
   }
 
   async computeAndWriteAssignments(useCooldown){
     const { pools, cooldown } = await this.buildPools(useCooldown);
-
-    let finalAssign;
     const { ok, result } = this.assignUnique(pools);
-    finalAssign = ok ? result : this.assignUniqueGreedy(pools);
+    const finalAssign = ok ? result : this.assignUniqueGreedy(pools);
 
     if(useCooldown){
       const cd = { ...(cooldown||{}) };
-      for(const k of Object.keys(cd)){ cd[k] = Math.max(0, (cd[k]|0) - 1); }
+      for(const k of Object.keys(cd)){ cd[k]=Math.max(0,(cd[k]|0)-1); }
       const xrayName = finalAssign.pos1;
-      if(xrayName && xrayName !== '-') cd[xrayName] = 2;
+      if(xrayName && xrayName!=='-') cd[xrayName]=2; // 2 siklus tak boleh pos1
       await Promise.all([ set(this.assignmentsRef, finalAssign), set(this.cooldownRef, cd) ]);
     } else {
       await set(this.assignmentsRef, finalAssign);
     }
-
     this.advanceRotIdx(pools);
   }
 
-  async tryAdvanceCycle(force = false){
-    const res = await runTransaction(this.stateRef, (cur) => {
-      const now = Date.now();
-      if(!cur || typeof cur !== 'object') return cur;
-      const isRun = !!cur.running;
-      const nextAt  = cur.nextAt|0;
-      if(!isRun) return cur;
-
-      if(force || (nextAt && now >= nextAt)){
+  async tryAdvanceCycle(force=false){
+    const res = await runTransaction(this.stateRef, (cur)=>{
+      const now=Date.now();
+      if(!cur||typeof cur!=='object') return cur;
+      if(!cur.running) return cur;
+      const nextAt=cur.nextAt|0;
+      if(force || (nextAt && now>=nextAt)){
         return { ...cur, nextAt: now + this.CYCLE_MS };
       }
       return cur;
     });
-
     if(res.committed){
-      const st = res.snapshot.val()||{};
-      this.nextAtLocal   = st.nextAt || null;
-      this.mode2040State = !!st.mode2040;
+      const st=res.snapshot.val()||{};
+      this.nextAtLocal=st.nextAt||null;
+      this.mode2040State=!!st.mode2040;
       await this.computeAndWriteAssignments(this.cfg.enable2040 && this.mode2040State);
     }
   }
 
   async onStart(){
-    let enable2040Now = false;
-    if (this.cfg.enable2040){
-      const pSnap = await get(this.peopleRef);
-      const people = pSnap.val() || {};
-      const jsCount = Object.values(people).filter(p =>
-        Array.isArray(p?.spec) && p.spec.some(s => ['junior','senior'].includes(String(s).toLowerCase()))
+    let enable2040Now=false;
+    if(this.cfg.enable2040){
+      const pSnap=await get(this.peopleRef);
+      const people=pSnap.val()||{};
+      const jsCount=Object.values(people).filter(p =>
+        Array.isArray(p?.spec) && p.spec.some(s=>['junior','senior'].includes(String(s).toLowerCase()))
       ).length;
-      enable2040Now = (jsCount >= 3);
+      enable2040Now = (jsCount>=3);
     }
     this.mode2040State = this.cfg.enable2040 && enable2040Now;
 
@@ -354,83 +321,72 @@ class SiteMachine {
   }
 
   async onStop(){
-    const tasks = [ update(this.stateRef, { running:false, nextAt: 0, mode2040: false }) ];
-    if (this.cfg.enable2040) tasks.push(set(this.cooldownRef, {}));
+    const tasks=[ update(this.stateRef,{ running:false, nextAt:0, mode2040:false }) ];
+    if(this.cfg.enable2040) tasks.push(set(this.cooldownRef, {}));
     await Promise.all(tasks);
     this.setRunningUI(false);
-    this.nextAtLocal = null;
-    if (nextEl) nextEl.textContent = '-';
+    this.nextAtLocal=null;
+    if(nextEl) nextEl.textContent='-';
   }
 
   async onNext(){
-    const snap = await get(this.stateRef);
-    const cur  = snap.val()||{};
+    const snap=await get(this.stateRef);
+    const cur=snap.val()||{};
     if(cur.running){
-      this.mode2040State = !!cur.mode2040;
+      this.mode2040State=!!cur.mode2040;
       await this.tryAdvanceCycle(true);
     }
   }
 
   async onAddPerson(){
-    const name = nameInput?.value?.trim(); if(!name) return;
-    const specs = [];
+    const name=nameInput?.value?.trim(); if(!name) return;
+    const specs=[];
     if(seniorSpecEl?.checked) specs.push('senior');
     if(juniorSpec?.checked)   specs.push('junior');
     if(basicSpec?.checked)    specs.push('basic');
     await update(child(this.peopleRef, name.toLowerCase()), { name, spec: specs });
-    if (nameInput) nameInput.value='';
-    if(seniorSpecEl) seniorSpecEl.checked=false;
-    if(juniorSpec)   juniorSpec.checked=false;
-    if(basicSpec)    basicSpec.checked=false;
+    nameInput.value=''; seniorSpecEl.checked=false; juniorSpec.checked=false; basicSpec.checked=false;
   }
 }
 
-// ====== Boot & switch site dengan tombol ======
-let machine = null;
+// ====== Boot & switch viewer site ======
+let machine=null;
 
 function resetSurface(){
-  if (assignRows) assignRows.innerHTML = '';
-  if (peopleRows) peopleRows.innerHTML = '';
-  if (nextEl) nextEl.textContent = '-';
-  if (clockEl) clockEl.textContent = fmt(new Date());
-  if (assignTable) assignTable.classList.add('hidden');
-  if (manageBox)   manageBox.classList.remove('hidden');
+  assignRows.innerHTML=''; peopleRows.innerHTML='';
+  if(nextEl) nextEl.textContent='-';
+  if(clockEl) clockEl.textContent=fmt(new Date());
+  assignTable.classList.add('hidden');
+  manageBox.classList.remove('hidden');
 }
 
-// update UI tombol (aktif = hijau/start; non-aktif = merah/stop)
-function updateSiteButtonsUI(selected){
-  const setState = (btn, active)=>{
-    btn.classList.toggle('start', active);
-    btn.classList.toggle('stop', !active);
-  };
-  if (btnPSCP && btnHBSCP){
-    setState(btnPSCP, selected === 'PSCP');
-    setState(btnHBSCP, selected === 'HBSCP');
-  }
+function selectSiteButtonUI(site){
+  // hanya outline/selected (warna dasar diatur listener RTDB)
+  btnPSCP?.classList.toggle('selected', site==='PSCP');
+  btnHBSCP?.classList.toggle('selected', site==='HBSCP');
 }
 
 function bootSite(siteKey){
   try{ localStorage.setItem('siteSelected', siteKey); }catch(_){}
-  if (machine){ machine.unmount(); }
+  if(machine) machine.unmount();
   resetSurface();
   machine = new SiteMachine(siteKey);
   machine.mount();
-  updateSiteButtonsUI(siteKey);
+  selectSiteButtonUI(siteKey);
 }
 
-// default site dari ?site= atau localStorage
-(function initSite(){
+// default: dari ?site= atau localStorage
+(function init(){
   const url = new URL(location.href);
   const qsSite = url.searchParams.get('site');
-  let initial = 'PSCP';
-  try{
-    initial = qsSite || localStorage.getItem('siteSelected') || 'PSCP';
-  }catch(_){}
+  let initial='PSCP';
+  try{ initial = qsSite || localStorage.getItem('siteSelected') || 'PSCP'; }catch(_){}
   bootSite(initial);
-  // bind click tombol
-  if (btnPSCP) btnPSCP.onclick = ()=> bootSite('PSCP');
-  if (btnHBSCP) btnHBSCP.onclick = ()=> bootSite('HBSCP');
-})();
 
-// tampilkan halaman setelah siap
-document.documentElement.style.visibility = 'visible';
+  // klik: ganti viewer site
+  btnPSCP?.addEventListener('click', ()=> bootSite('PSCP'));
+  btnHBSCP?.addEventListener('click', ()=> bootSite('HBSCP'));
+
+  // tampilkan HTML
+  document.documentElement.style.visibility='visible';
+})();
