@@ -36,8 +36,8 @@ const SITE_CONFIG = {
     cycleMs: 20_000,
     positions: [
       { id:'pos1',  name:'Operator Xray',       allowed:['senior','junior'] },
-      { id:'pos2a', name:'Pemeriksa Barang 1',  allowed:['junior','basic'] },
-      { id:'pos2b', name:'Pemeriksa Barang 2',  allowed:['junior','basic'] },
+      { id:'pos2a', name:'Pemeriksa Barang 1',  allowed:['senior','junior','basic'] },
+      { id:'pos2b', name:'Pemeriksa Barang 2',  allowed:['senior','junior','basic'] },
     ],
   }
 };
