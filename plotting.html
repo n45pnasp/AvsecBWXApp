@@ -44,6 +44,9 @@
     <button id="startBtn" class="start">Mulai Rotasi</button>
     <button id="stopBtn"  class="stop" disabled>Hentikan</button>
     <button id="nextBtn"  disabled>Majukan 1x</button>
+
+    <!-- Tombol Download PDF (dinamis mengikuti lokasi aktif) -->
+    <button id="downloadPdfBtn" class="download" disabled>📄 Download PDF</button>
   </div>
 
   <!-- Tabel penugasan -->
@@ -86,7 +89,70 @@
     requireAuth({ loginPath: "index.html", hideWhileChecking: true });
   </script>
 
-  <!-- Plotting logic -->
+  <!-- Plotting logic utama -->
   <script type="module" src="plotting.js"></script>
+
+  <!-- Modul kecil untuk Download PDF dinamis (PSCP/HBSCP) -->
+  <script type="module">
+    // --- Sheet IDs (PSCP & HBSCP) ---
+    const SHEETS = {
+      pscp: {
+        id: '1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8', // Sheet ID PSCP
+        gid: '0' // TODO: ganti dg gid tab PSCP
+      },
+      hbscp: {
+        id: '1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU', // Sheet ID HBSCP
+        gid: '0' // TODO: ganti dg gid tab HBSCP
+      }
+    };
+
+    // Opsi default PDF export (bisa diubah sesuai kebutuhan)
+    const PDF_DEFAULT_OPTS = {
+      format: 'pdf',
+      size: 'A4',
+      portrait: 'true',
+      scale: '2',               // 1=Normal, 2=Fit to width, 3=Fit to page
+      top_margin: '0.50',
+      bottom_margin: '0.50',
+      left_margin: '0.50',
+      right_margin: '0.50',
+      sheetnames: 'false',
+      printtitle: 'false',
+      pagenumbers: 'true',
+      gridlines: 'false',
+      fzr: 'true'
+    };
+
+    function buildSheetPdfUrl(sheetId, gid, opts = {}) {
+      const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid });
+      return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
+    }
+
+    const downloadBtn = document.getElementById('downloadPdfBtn');
+    const pscpBtn     = document.getElementById('pscpBtn');
+    const hbscpBtn    = document.getElementById('hbscpBtn');
+
+    let currentSite = null;
+
+    function setActiveSite(siteKey){
+      currentSite = siteKey;
+      if (downloadBtn) downloadBtn.disabled = false;
+    }
+
+    function openActiveSitePdf(){
+      if (!currentSite || !SHEETS[currentSite]) {
+        alert('Pilih lokasi dulu (PSCP / HBSCP).');
+        return;
+      }
+      const { id, gid } = SHEETS[currentSite];
+      const url = buildSheetPdfUrl(id, gid);
+      window.open(url, '_blank');
+    }
+
+    // Pasang handler
+    pscpBtn?.addEventListener('click',  () => setActiveSite('pscp'));
+    hbscpBtn?.addEventListener('click', () => setActiveSite('hbscp'));
+    downloadBtn?.addEventListener('click', openActiveSitePdf);
+  </script>
 </body>
 </html>
