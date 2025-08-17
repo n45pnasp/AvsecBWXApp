@@ -20,9 +20,12 @@ const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 
 // ========= Konfigurasi per site =========
+// PERUBAHAN:
+// - HBSCP: enable2040 -> true (ikut 20–40 jika jr/sr >= 3)
+// - HBSCP: pos2a & pos2b allowed -> ['senior','junior','basic']
 const SITE_CONFIG = {
   PSCP: {
-    enable2040: true,            // ada cooldown op Xray
+    enable2040: true,
     cycleMs: 20_000,
     positions: [
       { id:'pos1', name:'Operator Xray',    allowed:['senior','junior'] },
@@ -32,12 +35,12 @@ const SITE_CONFIG = {
     ],
   },
   HBSCP: {
-    enable2040: false,           // tanpa cooldown
+    enable2040: true, // <-- diaktifkan; nanti hanya ON jika jr/sr >= 3
     cycleMs: 20_000,
     positions: [
       { id:'pos1',  name:'Operator Xray',       allowed:['senior','junior'] },
-      { id:'pos2a', name:'Pemeriksa Barang 1',  allowed:['senior','junior','basic'] },
-      { id:'pos2b', name:'Pemeriksa Barang 2',  allowed:['senior','junior','basic'] },
+      { id:'pos2a', name:'Pemeriksa Barang 1',  allowed:['senior','junior','basic'] }, // <-- tambah senior
+      { id:'pos2b', name:'Pemeriksa Barang 2',  allowed:['senior','junior','basic'] }, // <-- tambah senior
     ],
   }
 };
@@ -59,16 +62,13 @@ const juniorSpec   = $('juniorSpec');
 const basicSpec    = $('basicSpec');
 const addPersonBtn = $('addPersonBtn');
 const peopleRows   = $('peopleRows');
-// tombol lokasi dari HTML
 const btnPSCP      = $('pscpBtn');
 const btnHBSCP     = $('hbscpBtn');
 
 // ========= Indikator koneksi =========
-onValue(ref(db, ".info/connected"), snap => {
-  connDot?.classList.toggle('ok', !!snap.val());
-});
+onValue(ref(db, ".info/connected"), snap => { connDot?.classList.toggle('ok', !!snap.val()); });
 
-// ========= Util kecil =========
+// ========= Util =========
 const pad = n => String(n).padStart(2,'0');
 const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
@@ -78,7 +78,6 @@ function paintSiteButton(btn, isRunning){
   btn.classList.toggle('start', !!isRunning); // hijau
   btn.classList.toggle('stop',  !isRunning);  // merah
 }
-// pasang listener status untuk KEDUA site (global)
 onValue(ref(db, "sites/PSCP/control/state"), snap=>{
   paintSiteButton(btnPSCP, !!(snap.val()?.running));
 });
@@ -93,14 +92,12 @@ class SiteMachine {
     this.cfg = SITE_CONFIG[siteKey];
     this.CYCLE_MS = this.cfg.cycleMs;
 
-    // RTDB paths
     this.baseRef        = ref(db, `sites/${siteKey}`);
     this.peopleRef      = child(this.baseRef, 'people');
     this.assignmentsRef = child(this.baseRef, 'assignments');
     this.cooldownRef    = child(this.baseRef, 'control/xrayCooldown');
     this.stateRef       = child(this.baseRef, 'control/state'); // {running,nextAt,mode2040}
 
-    // state lokal
     this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
     this.running = false;
     this.nextAtLocal = null;
@@ -113,8 +110,8 @@ class SiteMachine {
 
   mount(){
     this.clockTimer = setInterval(()=>{
-      if (clockEl) clockEl.textContent = fmt(new Date());
-      if (nextEl)  nextEl.textContent  = this.nextAtLocal ? fmt(new Date(this.nextAtLocal)) : '-';
+      clockEl && (clockEl.textContent = fmt(new Date()));
+      nextEl  && (nextEl.textContent  = this.nextAtLocal ? fmt(new Date(this.nextAtLocal)) : '-');
     }, 250);
 
     this._listen(this.assignmentsRef, s => this.renderAssignments(s.val()||{}));
@@ -139,8 +136,8 @@ class SiteMachine {
     addPersonBtn.onclick = ()=> this.onAddPerson();
 
     this.setRunningUI(false);
-    if (clockEl) clockEl.textContent = fmt(new Date());
-    if (nextEl)  nextEl.textContent  = '-';
+    clockEl && (clockEl.textContent = fmt(new Date()));
+    nextEl  && (nextEl.textContent  = '-');
   }
 
   unmount(){
@@ -183,7 +180,6 @@ class SiteMachine {
         <td><button data-del="${id}">Hapus</button></td>`;
       peopleRows.appendChild(tr);
     });
-    // handlers (replace setiap render)
     peopleRows.onchange = async (e)=>{
       if(e.target.type!=='checkbox') return;
       const id=e.target.dataset.id, spec=e.target.dataset.spec;
@@ -221,7 +217,7 @@ class SiteMachine {
 
     const pools = this.cfg.positions.map(pos=>{
       let candidates = folks.filter(f=>this.isEligible(f,pos.allowed));
-      if(useCooldown && pos.id==='pos1'){ // only Operator Xray cooldown
+      if(useCooldown && pos.id==='pos1'){ // cooldown khusus Operator Xray
         candidates = candidates.filter(f=>(cooldown[f.name]||0)<=0);
       }
       const rot = this.rotate(candidates, this.rotIdx[pos.id] % Math.max(candidates.length,1));
@@ -301,6 +297,7 @@ class SiteMachine {
   }
 
   async onStart(){
+    // 20–40 hanya ON kalau jr/sr >= 3, untuk site yang enable2040
     let enable2040Now=false;
     if(this.cfg.enable2040){
       const pSnap=await get(this.peopleRef);
@@ -322,11 +319,11 @@ class SiteMachine {
 
   async onStop(){
     const tasks=[ update(this.stateRef,{ running:false, nextAt:0, mode2040:false }) ];
-    if(this.cfg.enable2040) tasks.push(set(this.cooldownRef, {}));
+    if(this.cfg.enable2040) tasks.push(set(this.cooldownRef, {})); // reset cooldown jika dipakai
     await Promise.all(tasks);
     this.setRunningUI(false);
     this.nextAtLocal=null;
-    if(nextEl) nextEl.textContent='-';
+    nextEl && (nextEl.textContent='-');
   }
 
   async onNext(){
@@ -354,18 +351,15 @@ let machine=null;
 
 function resetSurface(){
   assignRows.innerHTML=''; peopleRows.innerHTML='';
-  if(nextEl) nextEl.textContent='-';
-  if(clockEl) clockEl.textContent=fmt(new Date());
+  nextEl && (nextEl.textContent='-');
+  clockEl && (clockEl.textContent=fmt(new Date()));
   assignTable.classList.add('hidden');
   manageBox.classList.remove('hidden');
 }
-
 function selectSiteButtonUI(site){
-  // hanya outline/selected (warna dasar diatur listener RTDB)
   btnPSCP?.classList.toggle('selected', site==='PSCP');
   btnHBSCP?.classList.toggle('selected', site==='HBSCP');
 }
-
 function bootSite(siteKey){
   try{ localStorage.setItem('siteSelected', siteKey); }catch(_){}
   if(machine) machine.unmount();
@@ -375,7 +369,6 @@ function bootSite(siteKey){
   selectSiteButtonUI(siteKey);
 }
 
-// default: dari ?site= atau localStorage
 (function init(){
   const url = new URL(location.href);
   const qsSite = url.searchParams.get('site');
@@ -383,10 +376,8 @@ function bootSite(siteKey){
   try{ initial = qsSite || localStorage.getItem('siteSelected') || 'PSCP'; }catch(_){}
   bootSite(initial);
 
-  // klik: ganti viewer site
   btnPSCP?.addEventListener('click', ()=> bootSite('PSCP'));
   btnHBSCP?.addEventListener('click', ()=> bootSite('HBSCP'));
 
-  // tampilkan HTML
   document.documentElement.style.visibility='visible';
 })();
