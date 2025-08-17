@@ -20,8 +20,7 @@ const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 
 // ========= Konfigurasi per site =========
-// PERUBAHAN:
-// - HBSCP: enable2040 -> true (ikut 20–40 jika jr/sr >= 3)
+// - HBSCP: 20–40 aktif bila jr/sr >= 3 (enable2040: true)
 // - HBSCP: pos2a & pos2b allowed -> ['senior','junior','basic']
 const SITE_CONFIG = {
   PSCP: {
@@ -35,12 +34,12 @@ const SITE_CONFIG = {
     ],
   },
   HBSCP: {
-    enable2040: true, // <-- diaktifkan; nanti hanya ON jika jr/sr >= 3
+    enable2040: true, // hanya ON kalau jr/sr >= 3
     cycleMs: 20_000,
     positions: [
       { id:'pos1',  name:'Operator Xray',       allowed:['senior','junior'] },
-      { id:'pos2a', name:'Pemeriksa Barang 1',  allowed:['senior','junior','basic'] }, // <-- tambah senior
-      { id:'pos2b', name:'Pemeriksa Barang 2',  allowed:['senior','junior','basic'] }, // <-- tambah senior
+      { id:'pos2a', name:'Pemeriksa Barang 1',  allowed:['senior','junior','basic'] },
+      { id:'pos2b', name:'Pemeriksa Barang 2',  allowed:['senior','junior','basic'] },
     ],
   }
 };
@@ -96,11 +95,12 @@ class SiteMachine {
     this.peopleRef      = child(this.baseRef, 'people');
     this.assignmentsRef = child(this.baseRef, 'assignments');
     this.cooldownRef    = child(this.baseRef, 'control/xrayCooldown');
-    this.stateRef       = child(this.baseRef, 'control/state'); // {running,nextAt,mode2040}
+    this.stateRef       = child(this.baseRef, 'control/state'); // {running,nextAt,mode2040,lastCycleAt}
 
     this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
     this.running = false;
     this.nextAtLocal = null;
+    this.lastCycleAtLocal = null;
     this.mode2040State = false;
 
     this.clockTimer = null;
@@ -118,9 +118,10 @@ class SiteMachine {
     this._listen(this.peopleRef,      s => this.renderPeople(s.val()||{}));
     this._listen(this.stateRef, s=>{
       const st = s.val() || {};
-      this.running     = !!st.running;
-      this.nextAtLocal = (Number(st.nextAt)||0) > 0 ? Number(st.nextAt) : null;
-      this.mode2040State = !!st.mode2040;
+      this.running         = !!st.running;
+      this.nextAtLocal     = (Number(st.nextAt)||0) > 0 ? Number(st.nextAt) : null;
+      this.mode2040State   = !!st.mode2040;
+      this.lastCycleAtLocal= (Number(st.lastCycleAt)||0) > 0 ? Number(st.lastCycleAt) : null;
       this.setRunningUI(this.running);
     });
 
@@ -270,10 +271,15 @@ class SiteMachine {
       for(const k of Object.keys(cd)){ cd[k]=Math.max(0,(cd[k]|0)-1); }
       const xrayName = finalAssign.pos1;
       if(xrayName && xrayName!=='-') cd[xrayName]=2; // 2 siklus tak boleh pos1
-      await Promise.all([ set(this.assignmentsRef, finalAssign), set(this.cooldownRef, cd) ]);
+      await Promise.all([
+        set(this.assignmentsRef, finalAssign),
+        set(this.cooldownRef, cd)
+      ]);
     } else {
       await set(this.assignmentsRef, finalAssign);
     }
+
+    // Penting: penulisan assignments memicu Cloud Functions → kirim ke Sheet.
     this.advanceRotIdx(pools);
   }
 
@@ -284,20 +290,20 @@ class SiteMachine {
       if(!cur.running) return cur;
       const nextAt=cur.nextAt|0;
       if(force || (nextAt && now>=nextAt)){
-        return { ...cur, nextAt: now + this.CYCLE_MS };
+        return { ...cur, nextAt: now + this.CYCLE_MS, lastCycleAt: now };
       }
       return cur;
     });
     if(res.committed){
       const st=res.snapshot.val()||{};
-      this.nextAtLocal=st.nextAt||null;
-      this.mode2040State=!!st.mode2040;
+      this.nextAtLocal      = st.nextAt||null;
+      this.mode2040State    = !!st.mode2040;
+      this.lastCycleAtLocal = st.lastCycleAt||null;
       await this.computeAndWriteAssignments(this.cfg.enable2040 && this.mode2040State);
     }
   }
 
   async onStart(){
-    // 20–40 hanya ON kalau jr/sr >= 3, untuk site yang enable2040
     let enable2040Now=false;
     if(this.cfg.enable2040){
       const pSnap=await get(this.peopleRef);
@@ -309,20 +315,23 @@ class SiteMachine {
     }
     this.mode2040State = this.cfg.enable2040 && enable2040Now;
 
-    const next = Date.now() + this.CYCLE_MS;
-    await set(this.stateRef, { running:true, nextAt: next, mode2040: this.mode2040State });
-    this.nextAtLocal = next;
+    const now  = Date.now();
+    const next = now + this.CYCLE_MS;
+    await set(this.stateRef, { running:true, nextAt: next, mode2040: this.mode2040State, lastCycleAt: now });
+    this.nextAtLocal      = next;
+    this.lastCycleAtLocal = now;
 
     await this.computeAndWriteAssignments(this.cfg.enable2040 && this.mode2040State);
     this.setRunningUI(true);
   }
 
   async onStop(){
-    const tasks=[ update(this.stateRef,{ running:false, nextAt:0, mode2040:false }) ];
+    const tasks=[ update(this.stateRef,{ running:false, nextAt:0, mode2040:false, lastCycleAt:0 }) ];
     if(this.cfg.enable2040) tasks.push(set(this.cooldownRef, {})); // reset cooldown jika dipakai
     await Promise.all(tasks);
     this.setRunningUI(false);
     this.nextAtLocal=null;
+    this.lastCycleAtLocal=null;
     nextEl && (nextEl.textContent='-');
   }
 
