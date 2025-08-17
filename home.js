@@ -49,8 +49,8 @@ function updateGreeting() {
   const t = {
     Pagi:  "Fokus & semangat produktif ☕",
     Siang: "Jeda sejenak, tarik napas 🌤️",
-    Sore:  "Akhiri dengan manis 🌇",
-    Malam: "Santai, recharge energi 🌙"
+    Sore:  "Akhiri dengan yang manis ya 😄👍",
+    Malam: "Santai kawan, recharge energi dulu 🌙"
   };
   const taglineEl = $("#taglineText");
   if (taglineEl) taglineEl.textContent = t[k] || "Siap bantu aktivitasmu hari ini ✨";
