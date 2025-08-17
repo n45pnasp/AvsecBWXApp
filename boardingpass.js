@@ -1,9 +1,14 @@
-const video = document.getElementById('video');
-const parsedOutput = document.getElementById('parsedOutput');
-const beepSound = document.getElementById('beep-sound');
-const historyCard = document.getElementById('historyCard');
-const scanHistoryText = document.getElementById('scanHistoryText');
+// =======================
+// DOM refs (tanpa <video>)
+// =======================
+const parsedOutput   = document.getElementById('parsedOutput');
+const beepSound      = document.getElementById('beep-sound');
+const historyCard    = document.getElementById('historyCard');
+const scanHistoryText= document.getElementById('scanHistoryText');
 
+// =======================
+// Peta maskapai & helpers
+// =======================
 const airlineMap = {
   ID: 'BATIK AIR',
   IU: 'SUPER AIR JET',
@@ -32,8 +37,9 @@ function julianToDate(julianDay, year) {
   return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// Parser utama (dipertahankan dari versi kamu)
 function parseBoardingPass(data) {
-  if (!data.startsWith('M1')) return '❌ Format barcode tidak dikenali.';
+  if (!data || !data.startsWith('M1')) return '❌ Format barcode tidak dikenali.';
 
   const parts = splitFromBack(data, 5);
   if (parts.length < 6) return '⚠️ Data tidak lengkap.';
@@ -72,6 +78,9 @@ function parseBoardingPass(data) {
 💺 No Kursi : ${seat}`;
 }
 
+// =======================
+// History helpers
+// =======================
 function saveScanToHistory(parsedText) {
   let history = JSON.parse(localStorage.getItem('scanHistory') || '[]');
   history.unshift({ text: parsedText, time: new Date().toLocaleString('id-ID') });
@@ -91,11 +100,11 @@ function loadScanHistory() {
 }
 
 function toggleHistory() {
-  if (historyCard.style.display === 'none') {
+  if (historyCard.classList.contains('hidden')) {
     loadScanHistory();
-    historyCard.style.display = 'block';
+    historyCard.classList.remove('hidden');
   } else {
-    historyCard.style.display = 'none';
+    historyCard.classList.add('hidden');
   }
 }
 
@@ -105,36 +114,78 @@ function clearHistory() {
     scanHistoryText.textContent = 'Belum ada riwayat.';
   }
 }
+window.toggleHistory = toggleHistory;
+window.clearHistory  = clearHistory;
 
-const codeReader = new ZXing.BrowserMultiFormatReader();
-let lastResult = '';
-
+// =======================
+// Beep util
+// =======================
 function playBeepTwice() {
-  beepSound.play();
-  setTimeout(() => beepSound.play(), 300);
+  if (!beepSound) return;
+  try {
+    beepSound.currentTime = 0;
+    beepSound.play().catch(()=>{});
+    setTimeout(() => {
+      beepSound.currentTime = 0;
+      beepSound.play().catch(()=>{});
+    }, 300);
+  } catch (_) {}
 }
 
-function startCamera() {
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-    .then((stream) => {
-      video.srcObject = stream;
-      video.play();
-      codeReader.decodeFromVideoDevice(null, video, (result, err) => {
-        if (result) {
-          const scannedText = result.getText();
-          if (scannedText !== lastResult) {
-            lastResult = scannedText;
-            const parsed = parseBoardingPass(scannedText);
-            parsedOutput.innerHTML = parsed;
-            saveScanToHistory(parsed);
-            playBeepTwice();
-          }
-        }
-      });
-    })
-    .catch((err) => {
-      parsedOutput.textContent = `❌ Kamera tidak bisa diakses: ${err.message}`;
-    });
-}
+// =======================
+// Kodular integration
+// =======================
 
-startCamera();
+// Dipanggil tombol “QR” di HTML
+function requestScanFromKodular(){
+  const message = JSON.stringify({ event: "scan_request" });
+  if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function"){
+    window.AppInventor.setWebViewString(message);
+  } else {
+    // Fallback manual: input barcode
+    const manual = prompt("Masukkan/Tempel data barcode:");
+    if (manual) receiveBarcode(manual);
+  }
+}
+window.requestScanFromKodular = requestScanFromKodular;
+
+// Fungsi yang bisa dipanggil Kodular via EvaluateJavascript:
+//   evaluate javascript: window.receiveBarcode('<HASIL>')
+// Atau kirim JSON: {"event":"scan_result","data":"<HASIL>"}
+function receiveBarcode(payload){
+  try{
+    let data = payload;
+    if (typeof payload === "string") {
+      try {
+        const j = JSON.parse(payload);
+        if (j && j.data) data = j.data;
+      } catch(_) { /* bukan JSON, pakai string mentah */ }
+    }
+
+    if (!data || typeof data !== "string"){
+      parsedOutput.textContent = '⚠️ Data barcode tidak valid.';
+      return;
+    }
+
+    const parsed = parseBoardingPass(data);
+    parsedOutput.innerHTML = parsed;
+    saveScanToHistory(parsed);
+    playBeepTwice();
+
+  } catch (e){
+    console.error(e);
+    parsedOutput.textContent = '❌ Terjadi kesalahan saat memproses data.';
+  }
+}
+window.receiveBarcode = receiveBarcode;
+
+// =======================
+// Optional: dukung ?barcode= di URL untuk tes cepat
+// =======================
+(function initFromQuery(){
+  const params = new URLSearchParams(location.search);
+  const b = params.get('barcode');
+  if (b) receiveBarcode(b);
+})();
+
+// Tidak ada startCamera(); semua input berasal dari Kodular / manual
