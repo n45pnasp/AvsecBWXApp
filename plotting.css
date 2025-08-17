@@ -131,7 +131,7 @@ button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;           /* agar download bisa turun ke baris bawah */
   margin-bottom: 12px;
 }
 button{
@@ -150,6 +150,26 @@ button{
 button:hover{ filter: brightness(1.05); }
 button:active{ transform: translateY(1px); }
 button:disabled{ opacity:.55; cursor:not-allowed; filter: grayscale(30%); }
+
+/* Tombol Download PDF di baris bawah (full width) */
+.controls .download{
+  flex: 1 0 100%;
+  background: #374151;
+  border-color: #4b5563;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.controls .download:hover{ background:#4b5563; }
+.controls .download:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+  filter: grayscale(20%);
+}
+
+/* >>> Tambahan: sembunyikan tombol download pdf saat plotting berjalan <<< */
+body.running .controls .download {
+  display: none !important;
+}
 
 .hidden{ display:none !important; }
 
@@ -204,6 +224,14 @@ input[type="text"]{
   gap:10px; margin-bottom:6px;
 }
 .sheet-body{ color: var(--muted); font-size: 14px; line-height: 1.4; }
+
+/* =========================
+   ANIMATIONS
+   ========================= */
+@keyframes slideUp{
+  from{ transform: translateY(8px); opacity: 0; }
+  to{ transform: none; opacity: 1; }
+}
 
 /* =========================
    RESPONSIVE
