@@ -19,6 +19,35 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
 
+/* ========= Link PDF per site =========
+   - PSCP: ID dari sheet yang sebelumnya kamu kirim
+   - HBSCP: ID dari sheet baru yang kamu kirim
+   - Ganti 'gid' sesuai tab masing-masing (lihat di URL Google Sheets -> ...#gid=XXXX)
+*/
+const SHEETS = {
+  PSCP: { id: '1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8', gid: '0' }, // TODO: ganti gid tab PSCP
+  HBSCP:{ id: '1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU', gid: '0' }, // TODO: ganti gid tab HBSCP
+};
+const PDF_DEFAULT_OPTS = {
+  format: 'pdf',
+  size: 'A4',
+  portrait: 'true',
+  scale: '2',               // 1=Normal, 2=Fit to width, 3=Fit to page
+  top_margin: '0.50',
+  bottom_margin: '0.50',
+  left_margin: '0.50',
+  right_margin: '0.50',
+  sheetnames: 'false',
+  printtitle: 'false',
+  pagenumbers: 'true',
+  gridlines: 'false',
+  fzr: 'true'
+};
+function buildSheetPdfUrl(sheetId, gid, opts = {}) {
+  const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid });
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
+}
+
 // ========= Konfigurasi per site =========
 // - HBSCP: 20–40 aktif bila jr/sr >= 3 (enable2040: true)
 // - HBSCP: pos2a & pos2b allowed -> ['senior','junior','basic']
@@ -52,6 +81,7 @@ const nextEl       = $('nextRotation');
 const startBtn     = $('startBtn');
 const stopBtn      = $('stopBtn');
 const nextBtn      = $('nextBtn');
+const downloadBtn  = $('downloadPdfBtn');
 const assignTable  = document.querySelector('table.assign');
 const assignRows   = $('assignRows');
 const manageBox    = document.querySelector('.manage');
@@ -157,6 +187,9 @@ class SiteMachine {
     nextBtn.disabled  = !isRunning;
     assignTable.classList.toggle('hidden', !isRunning);
     manageBox.classList.toggle('hidden',  isRunning);
+
+    // Toggle kelas <body> untuk sembunyikan tombol download saat running (CSS handle)
+    document.body.classList.toggle('running', isRunning);
   }
 
   renderAssignments(assignments){
@@ -357,6 +390,7 @@ class SiteMachine {
 
 // ====== Boot & switch viewer site ======
 let machine=null;
+let currentSite = null; // untuk download PDF
 
 function resetSurface(){
   assignRows.innerHTML=''; peopleRows.innerHTML='';
@@ -365,10 +399,12 @@ function resetSurface(){
   assignTable.classList.add('hidden');
   manageBox.classList.remove('hidden');
 }
+
 function selectSiteButtonUI(site){
   btnPSCP?.classList.toggle('selected', site==='PSCP');
   btnHBSCP?.classList.toggle('selected', site==='HBSCP');
 }
+
 function bootSite(siteKey){
   try{ localStorage.setItem('siteSelected', siteKey); }catch(_){}
   if(machine) machine.unmount();
@@ -376,9 +412,28 @@ function bootSite(siteKey){
   machine = new SiteMachine(siteKey);
   machine.mount();
   selectSiteButtonUI(siteKey);
+
+  // Atur site aktif untuk Download PDF
+  currentSite = siteKey;
+  if (downloadBtn) downloadBtn.disabled = false;
 }
 
+// ====== Handler Download PDF ======
+function openActiveSitePdf(){
+  if(!currentSite || !SHEETS[currentSite]){
+    alert('Pilih lokasi dulu (PSCP / HBSCP).');
+    return;
+  }
+  const { id, gid } = SHEETS[currentSite];
+  const url = buildSheetPdfUrl(id, gid);
+  window.open(url, '_blank');
+}
+
+// ====== Init ======
 (function init(){
+  // Awal: tombol download dinonaktifkan (akan di-enable saat bootSite)
+  if (downloadBtn) downloadBtn.disabled = true;
+
   const url = new URL(location.href);
   const qsSite = url.searchParams.get('site');
   let initial='PSCP';
@@ -387,6 +442,9 @@ function bootSite(siteKey){
 
   btnPSCP?.addEventListener('click', ()=> bootSite('PSCP'));
   btnHBSCP?.addEventListener('click', ()=> bootSite('HBSCP'));
+
+  // Klik Download PDF
+  downloadBtn?.addEventListener('click', openActiveSitePdf);
 
   document.documentElement.style.visibility='visible';
 })();
