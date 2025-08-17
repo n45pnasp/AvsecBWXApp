@@ -28,7 +28,15 @@ const SHEETS = {
   PSCP: { id: '1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8', gid: '0' }, // TODO: ganti gid tab PSCP
   HBSCP:{ id: '1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU', gid: '0' }, // TODO: ganti gid tab HBSCP
 };
+
+/* ====== Preferensi cara akses tanpa login ======
+   Jika kamu memakai "Publish to the web" di Google Sheets, set ke true untuk pakai /pub?output=pdf
+   Kalau hanya "Anyone with the link – Viewer", biarkan false (pakai /export?format=pdf)
+*/
+const USE_PUB = false;
+
 const PDF_DEFAULT_OPTS = {
+  // export: format=pdf (di /export)
   format: 'pdf',
   size: 'A4',
   portrait: 'true',
@@ -43,9 +51,20 @@ const PDF_DEFAULT_OPTS = {
   gridlines: 'false',
   fzr: 'true'
 };
+
 function buildSheetPdfUrl(sheetId, gid, opts = {}) {
-  const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid });
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
+  // cache buster
+  const cacheBuster = { t: Date.now() };
+
+  if (USE_PUB) {
+    // Publish to web: /pub?gid=..&single=true&output=pdf
+    const params = new URLSearchParams({ gid, single: 'true', output: 'pdf', ...cacheBuster });
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
+  } else {
+    // Anyone with link (Viewer): /export?format=pdf&gid=..
+    const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
+  }
 }
 
 // ========= Konfigurasi per site =========
@@ -399,12 +418,10 @@ function resetSurface(){
   assignTable.classList.add('hidden');
   manageBox.classList.remove('hidden');
 }
-
 function selectSiteButtonUI(site){
   btnPSCP?.classList.toggle('selected', site==='PSCP');
   btnHBSCP?.classList.toggle('selected', site==='HBSCP');
 }
-
 function bootSite(siteKey){
   try{ localStorage.setItem('siteSelected', siteKey); }catch(_){}
   if(machine) machine.unmount();
@@ -426,7 +443,7 @@ function openActiveSitePdf(){
   }
   const { id, gid } = SHEETS[currentSite];
   const url = buildSheetPdfUrl(id, gid);
-  window.open(url, '_blank');
+  window.open(url, '_blank'); // tidak butuh login jika share/publish benar
 }
 
 // ====== Init ======
