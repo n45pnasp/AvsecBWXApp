@@ -7,7 +7,7 @@ const historyCard    = document.getElementById('historyCard');
 const scanHistoryText= document.getElementById('scanHistoryText');
 
 // =======================
-// Peta maskapai & helpers
+/* Peta maskapai & helpers */
 // =======================
 const airlineMap = {
   ID: 'BATIK AIR',
@@ -37,16 +37,19 @@ function julianToDate(julianDay, year) {
   return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-// Parser utama (dipertahankan dari versi kamu)
+// =======================
+// Parser boarding pass M1
+// =======================
 function parseBoardingPass(data) {
-  if (!data || !data.startsWith('M1')) return '❌ Format barcode tidak dikenali.';
+  if (!data || typeof data !== "string") return '⚠️ Data kosong / tidak valid.';
+  if (!data.startsWith('M1')) return data; // fallback: tampilkan apa adanya
 
   const parts = splitFromBack(data, 5);
-  if (parts.length < 6) return '⚠️ Data tidak lengkap.';
+  if (parts.length < 6) return '⚠️ Data barcode tidak lengkap.';
 
   const namaRaw = parts[0].substring(2);
   const slashIndex = namaRaw.indexOf('/');
-  let fullName = slashIndex === -1
+  const fullName = (slashIndex === -1)
     ? namaRaw.replace(/_/g, ' ').trim()
     : (namaRaw.substring(slashIndex + 1) + ' ' + namaRaw.substring(0, slashIndex)).replace(/_/g, ' ').trim();
 
@@ -107,7 +110,6 @@ function toggleHistory() {
     historyCard.classList.add('hidden');
   }
 }
-
 function clearHistory() {
   if (confirm('Yakin ingin menghapus semua riwayat scan?')) {
     localStorage.removeItem('scanHistory');
@@ -187,5 +189,4 @@ window.receiveBarcode = receiveBarcode;
   const b = params.get('barcode');
   if (b) receiveBarcode(b);
 })();
-
 // Tidak ada startCamera(); semua input berasal dari Kodular / manual
