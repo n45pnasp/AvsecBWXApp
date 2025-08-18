@@ -1,4 +1,3 @@
-<script type="module">
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import {
@@ -23,7 +22,7 @@ const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db   = getDatabase(app);
 const auth = getAuth(app);
 
-// ========= Cloud Functions download PDF =========
+// ========= Cloud Functions download PDF (endpoint) =========
 const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
 
 // ====== Utility: penamaan file ======
@@ -34,30 +33,31 @@ function makePdfFilename(siteKey){
   return `Plotting_${siteKey}_${dateStr}.pdf`;
 }
 
-async function downloadViaFunctions(siteKey){
+// ====== Panggil Functions (Authorization + Accept saja) ======
+async function downloadViaFunctions(siteKey) {
   const user = auth.currentUser;
-  if(!user){ alert("Harus login terlebih dulu."); return; }
+  if (!user) { alert("Harus login terlebih dulu."); return; }
 
   // paksa refresh agar token valid
   const idToken = await user.getIdToken(true);
 
   let resp;
-  try{
+  try {
     resp = await fetch(`${FN}?site=${encodeURIComponent(siteKey)}`, {
       method: "GET",
       headers: {
-        // penting: hanya Authorization agar preflight CORS minimal
         "Authorization": `Bearer ${idToken}`,
         "Accept": "application/pdf"
       }
+      // jangan kirim header custom lain supaya preflight CORS mulus
     });
-  }catch(e){
+  } catch (e) {
     alert("Gagal memanggil Functions: " + (e?.message || e));
     return;
   }
 
-  if(!resp.ok){
-    const txt = await resp.text().catch(()=>resp.statusText);
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => resp.statusText);
     alert(`Gagal download: ${resp.status} ${resp.statusText}\n${txt}`);
     return;
   }
@@ -70,7 +70,25 @@ async function downloadViaFunctions(siteKey){
   URL.revokeObjectURL(a.href);
 }
 
-/* ========= Info Sheets (hanya referensi; download via Functions) ========= */
+/* ========= (Opsional) export publik langsung — tidak dipakai karena via Functions ======== */
+const USE_PUB = false;
+const PDF_DEFAULT_OPTS = {
+  format: "pdf", size: "A4", portrait: "true", scale: "2",
+  top_margin: "0.50", bottom_margin: "0.50", left_margin: "0.50", right_margin: "0.50",
+  sheetnames: "false", printtitle: "false", pagenumbers: "true", gridlines: "false", fzr: "true"
+};
+function buildSheetPdfUrl(sheetId, gid, opts = {}) {
+  const cacheBuster = { t: Date.now() };
+  if (USE_PUB) {
+    const params = new URLSearchParams({ gid, single: "true", output: "pdf", ...cacheBuster });
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
+  } else {
+    const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
+  }
+}
+
+/* ========= Info Sheets (referensi; download via Functions) ========= */
 const SHEETS = {
   PSCP:  { id: "1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8", gid: "" },
   HBSCP: { id: "1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU", gid: "" },
@@ -89,7 +107,7 @@ const SITE_CONFIG = {
     ],
   },
   HBSCP: {
-    enable2040: true,
+    enable2040: true, // aktif jika jr/sr >= 3
     cycleMs: 20_000,
     positions: [
       { id:"pos1",  name:"Operator Xray",       allowed:["senior","junior"] },
@@ -124,14 +142,14 @@ const btnHBSCP     = $("hbscpBtn");
 onValue(ref(db, ".info/connected"), snap => { connDot?.classList.toggle("ok", !!snap.val()); });
 
 // ========= Util =========
-const zpad = n => String(n).padStart(2,"0");
-const fmt = d => `${zpad(d.getHours())}:${zpad(d.getMinutes())}:${zpad(d.getSeconds())}`;
+const pad = n => String(n).padStart(2,"0");
+const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
 // ========= Pewarnaan tombol berdasar status RTDB =========
 function paintSiteButton(btn, isRunning){
   if(!btn) return;
-  btn.classList.toggle("start", !!isRunning);
-  btn.classList.toggle("stop",  !isRunning);
+  btn.classList.toggle("start", !!isRunning); // hijau
+  btn.classList.toggle("stop",  !isRunning);  // merah
 }
 onValue(ref(db, "sites/PSCP/control/state"), snap=>{
   paintSiteButton(btnPSCP, !!(snap.val()?.running));
@@ -284,7 +302,7 @@ class SiteMachine {
 
     const pools = this.cfg.positions.map(pos=>{
       let candidates = folks.filter(f=>this.isEligible(f,pos.allowed));
-      if(useCooldown && pos.id==="pos1"){
+      if(useCooldown && pos.id==="pos1"){ // cooldown khusus Operator Xray
         candidates = candidates.filter(f=>(cooldown[f.name]||0)<=0);
       }
       const rot = this.rotate(candidates, this.rotIdx[pos.id] % Math.max(candidates.length,1));
@@ -496,4 +514,3 @@ function onClickDownload(){
 
   document.documentElement.style.visibility="visible";
 })();
-</script>
