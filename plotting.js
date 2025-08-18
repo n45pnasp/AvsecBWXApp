@@ -22,10 +22,8 @@ const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db   = getDatabase(app);
 const auth = getAuth(app);
 
-// ========= Cloud Functions download PDF =========
-const FUNCTION_REGION = "us-central1";
-const FUNCTION_NAME   = "downloadPdf";
-const FN_BASE = `https://${FUNCTION_REGION}-avsecbwx-4229c.cloudfunctions.net/${FUNCTION_NAME}`;
+// ========= Cloud Functions download PDF (endpoint) =========
+const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
 
 // ====== Utility: penamaan file ======
 function makePdfFilename(siteKey){
@@ -35,6 +33,7 @@ function makePdfFilename(siteKey){
   return `Plotting_${siteKey}_${dateStr}.pdf`;
 }
 
+// ====== Panggil Functions (Authorization + Accept saja) ======
 async function downloadViaFunctions(siteKey) {
   const user = auth.currentUser;
   if (!user) { alert("Harus login terlebih dulu."); return; }
@@ -42,14 +41,15 @@ async function downloadViaFunctions(siteKey) {
   // paksa refresh agar token valid
   const idToken = await user.getIdToken(true);
 
-  const url = `${FN_BASE}?site=${encodeURIComponent(siteKey)}`;
   let resp;
   try {
-    resp = await fetch(url, {
+    resp = await fetch(`${FN}?site=${encodeURIComponent(siteKey)}`, {
       method: "GET",
-      // Penting: hanya kirim Authorization supaya preflight CORS lolos
-      headers: { "Authorization": `Bearer ${idToken}` },
-      credentials: "omit",
+      headers: {
+        "Authorization": `Bearer ${idToken}`,
+        "Accept": "application/pdf"
+      }
+      // jangan kirim header custom lain supaya preflight CORS mulus
     });
   } catch (e) {
     alert("Gagal memanggil Functions: " + (e?.message || e));
@@ -57,8 +57,8 @@ async function downloadViaFunctions(siteKey) {
   }
 
   if (!resp.ok) {
-    const msg = await resp.text().catch(()=>resp.statusText);
-    alert(`Gagal download: ${resp.status} ${resp.statusText}\n${msg}`);
+    const txt = await resp.text().catch(() => resp.statusText);
+    alert(`Gagal download: ${resp.status} ${resp.statusText}\n${txt}`);
     return;
   }
 
