@@ -1,6 +1,8 @@
 :root{
   --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb;
   --border:#334; --btn-ok:#14532d; --btn-stop:#7f1d1d; --card:#0b1324;
+  /* aksen untuk spinner */
+  --accent:#7c9bff;
 }
 
 *{ box-sizing:border-box }
@@ -166,7 +168,7 @@ button:disabled{ opacity:.55; cursor:not-allowed; filter: grayscale(30%); }
   filter: grayscale(20%);
 }
 
-/* >>> Tambahan: sembunyikan tombol download pdf saat plotting berjalan <<< */
+/* >>> Sembunyikan tombol download pdf saat plotting berjalan <<< */
 body.running .controls .download {
   display: none !important;
 }
@@ -224,6 +226,33 @@ input[type="text"]{
   gap:10px; margin-bottom:6px;
 }
 .sheet-body{ color: var(--muted); font-size: 14px; line-height: 1.4; }
+
+/* =========================
+   LOADING OVERLAY + BLUR
+   (dipakai saat download PDF)
+   ========================= */
+body.blur-bg > *:not(#loadingOverlay){
+  filter: blur(5px);
+  pointer-events: none;
+  user-select: none;
+  transition: filter .2s ease;
+}
+#loadingOverlay{
+  position: fixed; inset: 0;
+  display: none;                 /* di-show via JS */
+  align-items: center; justify-content: center;
+  background: rgba(15,23,42,.55);/* gelap transparan */
+  z-index: 9999;                 /* di atas konten lain */
+  backdrop-filter: blur(2px);
+}
+#loadingOverlay .spin{
+  width: 52px; height: 52px;
+  border: 5px solid rgba(255,255,255,.15);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* =========================
    ANIMATIONS
