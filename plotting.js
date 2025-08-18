@@ -22,34 +22,44 @@ const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db   = getDatabase(app);
 const auth = getAuth(app);
 
-/* ========= Link PDF per site =========
-   - Isi gid jika perlu (lihat #gid=... di URL sheet).
+// ========= Cloud Functions download PDF (auth via Firebase ID token) =========
+const FUNCTION_REGION = "us-central1";
+const FUNCTION_NAME   = "downloadPdf";
+const FN_BASE = `https://${FUNCTION_REGION}-avsecbwx-4229c.cloudfunctions.net/${FUNCTION_NAME}`;
+
+async function downloadViaFunctions(siteKey) {
+  const user = auth.currentUser;
+  if (!user) { alert("Harus login terlebih dulu."); return; }
+  const idToken = await user.getIdToken();
+
+  const resp = await fetch(`${FN_BASE}?site=${encodeURIComponent(siteKey)}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${idToken}` }
+  });
+
+  if (!resp.ok) {
+    const msg = await resp.text().catch(()=>resp.statusText);
+    alert("Gagal download: " + msg);
+    return;
+  }
+
+  const blob = await resp.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${siteKey}.pdf`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ========= (Opsional) link PDF langsung — tidak dipakai lagi karena via Functions
+   Biarkan jika suatu saat mau fallback ke export publik.
 */
-const SHEETS = {
-  PSCP:  { id: "1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8", gid: "" },
-  HBSCP: { id: "1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU", gid: "" },
-};
-
-/* ====== Jika Sheet di-"Publish to web", set true untuk /pub?output=pdf.
-         Jika hanya "Anyone with link – Viewer", biarkan false (pakai /export). */
 const USE_PUB = false;
-
 const PDF_DEFAULT_OPTS = {
-  format: "pdf",
-  size: "A4",
-  portrait: "true",
-  scale: "2",
-  top_margin: "0.50",
-  bottom_margin: "0.50",
-  left_margin: "0.50",
-  right_margin: "0.50",
-  sheetnames: "false",
-  printtitle: "false",
-  pagenumbers: "true",
-  gridlines: "false",
-  fzr: "true"
+  format: "pdf", size: "A4", portrait: "true", scale: "2",
+  top_margin: "0.50", bottom_margin: "0.50", left_margin: "0.50", right_margin: "0.50",
+  sheetnames: "false", printtitle: "false", pagenumbers: "true", gridlines: "false", fzr: "true"
 };
-
 function buildSheetPdfUrl(sheetId, gid, opts = {}) {
   const cacheBuster = { t: Date.now() };
   if (USE_PUB) {
@@ -60,6 +70,14 @@ function buildSheetPdfUrl(sheetId, gid, opts = {}) {
     return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
   }
 }
+
+/* ========= Info Sheets (masih dipakai utk identifikasi site / kebutuhan lain)
+   gid biarkan kosong jika seluruh sheet.
+*/
+const SHEETS = {
+  PSCP:  { id: "1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8", gid: "" },
+  HBSCP: { id: "1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU", gid: "" },
+};
 
 // ========= Konfigurasi per site =========
 const SITE_CONFIG = {
@@ -358,7 +376,6 @@ class SiteMachine {
   }
 
   async onStart(){
-    // Pastikan sudah login (harusnya sudah dijaga auth-guard)
     if(!auth.currentUser){
       alert("Harus login terlebih dulu.");
       return;
@@ -460,14 +477,10 @@ function bootSite(siteKey){
   if (downloadBtn) downloadBtn.disabled = false;
 }
 
-// ====== Download PDF ======
-function openActiveSitePdf(){
-  if(!currentSite || !SHEETS[currentSite]){
-    alert("Pilih lokasi dulu (PSCP / HBSCP).");
-    return;
-  }
-  const { id, gid } = SHEETS[currentSite];
-  window.open(buildSheetPdfUrl(id, gid), "_blank");
+// ====== Download PDF (via Cloud Functions; tidak perlu login Google) ======
+function onClickDownload(){
+  if(!currentSite){ alert("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
+  downloadViaFunctions(currentSite);
 }
 
 // ====== Init ======
@@ -482,7 +495,7 @@ function openActiveSitePdf(){
 
   btnPSCP?.addEventListener("click", ()=> bootSite("PSCP"));
   btnHBSCP?.addEventListener("click", ()=> bootSite("HBSCP"));
-  downloadBtn?.addEventListener("click", openActiveSitePdf);
+  downloadBtn?.addEventListener("click", onClickDownload);
 
   document.documentElement.style.visibility="visible";
 })();
