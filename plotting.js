@@ -38,8 +38,7 @@ async function downloadViaFunctions(siteKey) {
   const user = auth.currentUser;
   if (!user) { alert("Harus login terlebih dulu."); return; }
 
-  // paksa refresh agar token valid
-  const idToken = await user.getIdToken(true);
+  const idToken = await user.getIdToken(true); // paksa refresh
 
   let resp;
   try {
@@ -49,7 +48,6 @@ async function downloadViaFunctions(siteKey) {
         "Authorization": `Bearer ${idToken}`,
         "Accept": "application/pdf"
       }
-      // jangan kirim header custom lain supaya preflight CORS mulus
     });
   } catch (e) {
     alert("Gagal memanggil Functions: " + (e?.message || e));
