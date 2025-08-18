@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-// ======== Konfigurasi project (SAMAKAN dengan auth-guard.js) ========
+// ======== Konfigurasi (samakan dgn auth-guard.js) ========
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
   authDomain: "avsecbwx-4229c.firebaseapp.com",
@@ -17,17 +17,17 @@ const firebaseConfig = {
   measurementId: "G-P37F88HGFE"
 };
 
-// Singleton: jika app sudah di-init oleh auth-guard.js, pakai instance itu
+// Singleton
 const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db   = getDatabase(app);
 const auth = getAuth(app);
 
-// ========= Cloud Functions download PDF (auth via Firebase ID token) =========
+// ========= Cloud Functions download PDF =========
 const FUNCTION_REGION = "us-central1";
 const FUNCTION_NAME   = "downloadPdf";
 const FN_BASE = `https://${FUNCTION_REGION}-avsecbwx-4229c.cloudfunctions.net/${FUNCTION_NAME}`;
 
-// ====== Utility: nama file PDF "Plotting_<SITE>_DD-MM-YYYY.pdf" ======
+// ====== Utility: penamaan file ======
 function makePdfFilename(siteKey){
   const d = new Date();
   const pad = (n)=> String(n).padStart(2, "0");
@@ -38,23 +38,35 @@ function makePdfFilename(siteKey){
 async function downloadViaFunctions(siteKey) {
   const user = auth.currentUser;
   if (!user) { alert("Harus login terlebih dulu."); return; }
-  const idToken = await user.getIdToken();
 
-  const resp = await fetch(`${FN_BASE}?site=${encodeURIComponent(siteKey)}`, {
-    method: "GET",
-    headers: { Authorization: `Bearer ${idToken}` }
-  });
+  // Paksa refresh token agar tidak expired
+  const idToken = await user.getIdToken(true);
+
+  const url = `${FN_BASE}?site=${encodeURIComponent(siteKey)}`;
+  let resp;
+  try {
+    resp = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${idToken}`,
+        "X-Firebase-ID-Token": idToken
+      }
+    });
+  } catch (e) {
+    alert("Gagal memanggil Functions: " + (e?.message || e));
+    return;
+  }
 
   if (!resp.ok) {
     const msg = await resp.text().catch(()=>resp.statusText);
-    alert("Gagal download: " + msg);
+    alert(`Gagal download: ${resp.status} ${resp.statusText}\n${msg}`);
     return;
   }
 
   const blob = await resp.blob();
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = makePdfFilename(siteKey); // ← penamaan file di sini
+  a.download = makePdfFilename(siteKey);
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -481,7 +493,7 @@ function bootSite(siteKey){
   if (downloadBtn) downloadBtn.disabled = false;
 }
 
-// ====== Download PDF (via Cloud Functions; auth Firebase saja) ======
+// ====== Download PDF ======
 function onClickDownload(){
   if(!currentSite){ alert("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
   downloadViaFunctions(currentSite);
