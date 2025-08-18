@@ -5,13 +5,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-// ======== Konfigurasi project (HARUS sama persis dgn auth-guard) ========
+// ======== Konfigurasi project (SAMAKAN dengan auth-guard.js) ========
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
   authDomain: "avsecbwx-4229c.firebaseapp.com",
   databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com",
   projectId: "avsecbwx-4229c",
-  storageBucket: "avsecbwx-4229c.appspot.com", // penting: samakan dengan auth-guard.js
+  storageBucket: "avsecbwx-4229c.appspot.com",
   messagingSenderId: "1029406629258",
   appId: "1:1029406629258:web:53e8f09585cd77823efc73",
   measurementId: "G-P37F88HGFE"
@@ -26,6 +26,14 @@ const auth = getAuth(app);
 const FUNCTION_REGION = "us-central1";
 const FUNCTION_NAME   = "downloadPdf";
 const FN_BASE = `https://${FUNCTION_REGION}-avsecbwx-4229c.cloudfunctions.net/${FUNCTION_NAME}`;
+
+// ====== Utility: nama file PDF "Plotting_<SITE>_DD-MM-YYYY.pdf" ======
+function makePdfFilename(siteKey){
+  const d = new Date();
+  const pad = (n)=> String(n).padStart(2, "0");
+  const dateStr = `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}`;
+  return `Plotting_${siteKey}_${dateStr}.pdf`;
+}
 
 async function downloadViaFunctions(siteKey) {
   const user = auth.currentUser;
@@ -46,14 +54,12 @@ async function downloadViaFunctions(siteKey) {
   const blob = await resp.blob();
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `${siteKey}.pdf`;
+  a.download = makePdfFilename(siteKey); // ← penamaan file di sini
   a.click();
   URL.revokeObjectURL(a.href);
 }
 
-/* ========= (Opsional) link PDF langsung — tidak dipakai lagi karena via Functions
-   Biarkan jika suatu saat mau fallback ke export publik.
-*/
+/* ========= (Opsional) export publik langsung — tidak dipakai karena via Functions ======== */
 const USE_PUB = false;
 const PDF_DEFAULT_OPTS = {
   format: "pdf", size: "A4", portrait: "true", scale: "2",
@@ -71,9 +77,7 @@ function buildSheetPdfUrl(sheetId, gid, opts = {}) {
   }
 }
 
-/* ========= Info Sheets (masih dipakai utk identifikasi site / kebutuhan lain)
-   gid biarkan kosong jika seluruh sheet.
-*/
+/* ========= Info Sheets (referensi; download via Functions) ========= */
 const SHEETS = {
   PSCP:  { id: "1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8", gid: "" },
   HBSCP: { id: "1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU", gid: "" },
@@ -477,7 +481,7 @@ function bootSite(siteKey){
   if (downloadBtn) downloadBtn.disabled = false;
 }
 
-// ====== Download PDF (via Cloud Functions; tidak perlu login Google) ======
+// ====== Download PDF (via Cloud Functions; auth Firebase saja) ======
 function onClickDownload(){
   if(!currentSite){ alert("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
   downloadViaFunctions(currentSite);
