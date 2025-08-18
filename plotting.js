@@ -39,7 +39,7 @@ async function downloadViaFunctions(siteKey) {
   const user = auth.currentUser;
   if (!user) { alert("Harus login terlebih dulu."); return; }
 
-  // Paksa refresh token agar tidak expired
+  // paksa refresh agar token valid
   const idToken = await user.getIdToken(true);
 
   const url = `${FN_BASE}?site=${encodeURIComponent(siteKey)}`;
@@ -47,10 +47,9 @@ async function downloadViaFunctions(siteKey) {
   try {
     resp = await fetch(url, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${idToken}`,
-        "X-Firebase-ID-Token": idToken
-      }
+      // Penting: hanya kirim Authorization supaya preflight CORS lolos
+      headers: { "Authorization": `Bearer ${idToken}` },
+      credentials: "omit",
     });
   } catch (e) {
     alert("Gagal memanggil Functions: " + (e?.message || e));
