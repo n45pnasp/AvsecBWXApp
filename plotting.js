@@ -33,41 +33,6 @@ function makePdfFilename(siteKey){
   return `Plotting_${siteKey}_${dateStr}.pdf`;
 }
 
-// ====== Panggil Functions (Authorization + Accept saja) ======
-async function downloadViaFunctions(siteKey) {
-  const user = auth.currentUser;
-  if (!user) { alert("Harus login terlebih dulu."); return; }
-
-  const idToken = await user.getIdToken(true); // paksa refresh
-
-  let resp;
-  try {
-    resp = await fetch(`${FN}?site=${encodeURIComponent(siteKey)}`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${idToken}`,
-        "Accept": "application/pdf"
-      }
-    });
-  } catch (e) {
-    alert("Gagal memanggil Functions: " + (e?.message || e));
-    return;
-  }
-
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => resp.statusText);
-    alert(`Gagal download: ${resp.status} ${resp.statusText}\n${txt}`);
-    return;
-  }
-
-  const blob = await resp.blob();
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = makePdfFilename(siteKey);
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
 /* ========= (Opsional) export publik langsung — tidak dipakai karena via Functions ======== */
 const USE_PUB = false;
 const PDF_DEFAULT_OPTS = {
@@ -135,6 +100,53 @@ const addPersonBtn = $("addPersonBtn");
 const peopleRows   = $("peopleRows");
 const btnPSCP      = $("pscpBtn");
 const btnHBSCP     = $("hbscpBtn");
+
+// ========= Loading Overlay + Blur (spinner di tengah) =========
+(function setupLoadingUI(){
+  const style = document.createElement("style");
+  style.textContent = `
+    body.blur-bg > *:not(#loadingOverlay){
+      filter: blur(5px);
+      pointer-events: none;
+      user-select: none;
+      transition: filter .2s ease;
+    }
+    #loadingOverlay{
+      position: fixed; inset: 0;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(15,23,42,.55);
+      z-index: 9999;
+      backdrop-filter: blur(2px);
+    }
+    #loadingOverlay .spin{
+      width: 52px; height: 52px;
+      border: 5px solid rgba(255,255,255,.15);
+      border-top-color: var(--accent,#7c9bff);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  `;
+  document.head.appendChild(style);
+
+  const overlay = document.createElement("div");
+  overlay.id = "loadingOverlay";
+  overlay.innerHTML = `<div class="spin"></div>`;
+  document.body.appendChild(overlay);
+
+  window.__loadingUI = {
+    show(){
+      document.getElementById("loadingOverlay").style.display = "flex";
+      document.body.classList.add("blur-bg");
+      try{ downloadBtn && (downloadBtn.disabled = true); }catch(_){}
+    },
+    hide(){
+      document.getElementById("loadingOverlay").style.display = "none";
+      document.body.classList.remove("blur-bg");
+      try{ downloadBtn && (downloadBtn.disabled = false); }catch(_){}
+    }
+  };
+})();
 
 // ========= Indikator koneksi =========
 onValue(ref(db, ".info/connected"), snap => { connDot?.classList.toggle("ok", !!snap.val()); });
@@ -490,7 +502,51 @@ function bootSite(siteKey){
   if (downloadBtn) downloadBtn.disabled = false;
 }
 
-// ====== Download PDF ======
+// ====== Download PDF (dengan spinner & blur) ======
+async function downloadViaFunctions(siteKey) {
+  const user = auth.currentUser;
+  if (!user) { alert("Harus login terlebih dulu."); return; }
+
+  const idToken = await user.getIdToken(true); // paksa refresh
+
+  let resp;
+  try {
+    __loadingUI.show(); // tampilkan spinner + blur
+    resp = await fetch(`${FN}?site=${encodeURIComponent(siteKey)}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${idToken}`,
+        "Accept": "application/pdf"
+      }
+    });
+  } catch (e) {
+    __loadingUI.hide();
+    alert("Gagal memanggil Functions: " + (e?.message || e));
+    return;
+  }
+
+  if (!resp.ok) {
+    __loadingUI.hide();
+    const txt = await resp.text().catch(() => resp.statusText);
+    alert(`Gagal download: ${resp.status} ${resp.statusText}\n${txt}`);
+    return;
+  }
+
+  const blob = await resp.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = makePdfFilename(siteKey);
+  document.body.appendChild(a);
+  a.click();
+
+  setTimeout(()=>{
+    URL.revokeObjectURL(a.href);
+    a.remove();
+    __loadingUI.hide(); // hilangkan spinner + blur
+  }, 0);
+}
+
+// ====== Handler klik tombol Download ======
 function onClickDownload(){
   if(!currentSite){ alert("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
   downloadViaFunctions(currentSite);
