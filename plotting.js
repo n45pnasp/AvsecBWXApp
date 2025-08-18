@@ -101,51 +101,60 @@ const peopleRows   = $("peopleRows");
 const btnPSCP      = $("pscpBtn");
 const btnHBSCP     = $("hbscpBtn");
 
-// ========= Loading Overlay + Blur (spinner di tengah) =========
+// ========= Loading Overlay + Card Popup =========
 (function setupLoadingUI(){
-  const style = document.createElement("style");
-  style.textContent = `
-    body.blur-bg > *:not(#loadingOverlay){
-      filter: blur(5px);
-      pointer-events: none;
-      user-select: none;
-      transition: filter .2s ease;
-    }
-    #loadingOverlay{
-      position: fixed; inset: 0;
-      display: none; align-items: center; justify-content: center;
-      background: rgba(15,23,42,.55);
-      z-index: 9999;
-      backdrop-filter: blur(2px);
-    }
-    #loadingOverlay .spin{
-      width: 52px; height: 52px;
-      border: 5px solid rgba(255,255,255,.15);
-      border-top-color: var(--accent,#7c9bff);
-      border-radius: 50%;
-      animation: spin 0.9s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  `;
-  document.head.appendChild(style);
-
+  // Elemen overlay/card dibuat via JS agar tidak perlu ubah HTML
   const overlay = document.createElement("div");
   overlay.id = "loadingOverlay";
-  overlay.innerHTML = `<div class="spin"></div>`;
+  overlay.innerHTML = `
+    <div class="load-card" role="status" aria-live="polite">
+      <div class="icon spinner" id="loadIcon" aria-hidden="true"></div>
+      <div class="texts">
+        <div class="title" id="loadTitle">Menyiapkan PDF…</div>
+        <div class="desc" id="loadDesc">Mohon tunggu sebentar</div>
+      </div>
+      <button class="close" id="loadClose" title="Tutup" aria-label="Tutup">&times;</button>
+    </div>
+  `;
   document.body.appendChild(overlay);
 
+  // Helper untuk toggle state (spinner / success / error)
+  function setState(state){
+    const icon = document.getElementById("loadIcon");
+    icon.classList.remove("spinner","success","error");
+    icon.classList.add(state);
+  }
+
   window.__loadingUI = {
-    show(){
-      document.getElementById("loadingOverlay").style.display = "flex";
+    show(title="Memproses…", desc="Mohon tunggu"){
+      document.getElementById("loadTitle").textContent = title;
+      document.getElementById("loadDesc").textContent  = desc;
+      setState("spinner");
+      overlay.style.display = "flex";
       document.body.classList.add("blur-bg");
       try{ downloadBtn && (downloadBtn.disabled = true); }catch(_){}
     },
+    update(title, desc){
+      if(title) document.getElementById("loadTitle").textContent = title;
+      if(desc)  document.getElementById("loadDesc").textContent  = desc;
+    },
+    success(title="PDF telah tersimpan", desc="Silakan cek folder unduhan Anda"){
+      this.update(title, desc);
+      setState("success");
+    },
+    error(title="Gagal", desc="Terjadi kendala saat mengunduh"){
+      this.update(title, desc);
+      setState("error");
+    },
     hide(){
-      document.getElementById("loadingOverlay").style.display = "none";
+      overlay.style.display = "none";
       document.body.classList.remove("blur-bg");
       try{ downloadBtn && (downloadBtn.disabled = false); }catch(_){}
     }
   };
+
+  // Tombol tutup (optional)
+  overlay.querySelector("#loadClose")?.addEventListener("click", ()=> __loadingUI.hide());
 })();
 
 // ========= Indikator koneksi =========
@@ -502,7 +511,7 @@ function bootSite(siteKey){
   if (downloadBtn) downloadBtn.disabled = false;
 }
 
-// ====== Download PDF (dengan spinner & blur) ======
+// ====== Download PDF (dengan card popup + status bertahap) ======
 async function downloadViaFunctions(siteKey) {
   const user = auth.currentUser;
   if (!user) { alert("Harus login terlebih dulu."); return; }
@@ -511,7 +520,7 @@ async function downloadViaFunctions(siteKey) {
 
   let resp;
   try {
-    __loadingUI.show(); // tampilkan spinner + blur
+    __loadingUI.show("Menyiapkan PDF…", "Menghubungkan ke server");
     resp = await fetch(`${FN}?site=${encodeURIComponent(siteKey)}`, {
       method: "GET",
       headers: {
@@ -520,30 +529,34 @@ async function downloadViaFunctions(siteKey) {
       }
     });
   } catch (e) {
-    __loadingUI.hide();
-    alert("Gagal memanggil Functions: " + (e?.message || e));
+    __loadingUI.error("Gagal terhubung", (e?.message || "Periksa koneksi Anda"));
+    setTimeout(()=> __loadingUI.hide(), 1400);
     return;
   }
 
   if (!resp.ok) {
-    __loadingUI.hide();
     const txt = await resp.text().catch(() => resp.statusText);
-    alert(`Gagal download: ${resp.status} ${resp.statusText}\n${txt}`);
+    __loadingUI.error("Gagal mengunduh", `${resp.status} ${resp.statusText}${txt ? " — "+txt : ""}`);
+    setTimeout(()=> __loadingUI.hide(), 1600);
     return;
   }
 
+  __loadingUI.update("Mendownload…", "Menyiapkan berkas PDF");
   const blob = await resp.blob();
+
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = makePdfFilename(siteKey);
   document.body.appendChild(a);
   a.click();
 
+  // Setelah link terpicu, anggap sukses — tampilkan status & auto-hide
+  __loadingUI.success("PDF telah tersimpan", "Cek folder unduhan Anda");
   setTimeout(()=>{
     URL.revokeObjectURL(a.href);
     a.remove();
-    __loadingUI.hide(); // hilangkan spinner + blur
-  }, 0);
+    __loadingUI.hide();
+  }, 1200);
 }
 
 // ====== Handler klik tombol Download ======
