@@ -1,8 +1,10 @@
 :root{
   --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb;
   --border:#334; --btn-ok:#14532d; --btn-stop:#7f1d1d; --card:#0b1324;
-  /* aksen untuk spinner */
-  --accent:#7c9bff;
+  --accent:#7c9bff;            /* aksen spinner/check */
+  --accent-2:#60a5fa;          /* aksen lembut */
+  --danger:#ef4444;            /* error icon */
+  --ok:#22c55e;                /* success icon */
 }
 
 *{ box-sizing:border-box }
@@ -228,8 +230,7 @@ input[type="text"]{
 .sheet-body{ color: var(--muted); font-size: 14px; line-height: 1.4; }
 
 /* =========================
-   LOADING OVERLAY + BLUR
-   (dipakai saat download PDF)
+   LOADING OVERLAY + CARD POPUP
    ========================= */
 body.blur-bg > *:not(#loadingOverlay){
   filter: blur(5px);
@@ -244,14 +245,85 @@ body.blur-bg > *:not(#loadingOverlay){
   background: rgba(15,23,42,.55);/* gelap transparan */
   z-index: 9999;                 /* di atas konten lain */
   backdrop-filter: blur(2px);
+  padding: 16px;
 }
-#loadingOverlay .spin{
-  width: 52px; height: 52px;
+
+/* Card */
+#loadingOverlay .load-card{
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 18px;
+  width: min(420px, 92vw);
+  box-shadow: 0 16px 40px rgba(0,0,0,.45);
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  animation: pop .18s ease-out both;
+}
+@keyframes pop{
+  from{ transform: translateY(6px) scale(.98); opacity: 0; }
+  to{ transform: none; opacity: 1; }
+}
+
+/* Icon states */
+#loadingOverlay .icon{
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+}
+#loadingOverlay .icon.spinner{
   border: 5px solid rgba(255,255,255,.15);
   border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
+  animation: spin .9s linear infinite;
 }
+#loadingOverlay .icon.success{
+  background: rgba(34,197,94,.12);
+  border: 2px solid var(--ok);
+}
+#loadingOverlay .icon.success::after{
+  content: "";
+  position: absolute;
+  left: 12px; top: 10px;
+  width: 14px; height: 24px;
+  border: solid var(--ok);
+  border-width: 0 4px 4px 0;
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+#loadingOverlay .icon.error{
+  background: rgba(239,68,68,.12);
+  border: 2px solid var(--danger);
+}
+#loadingOverlay .icon.error::before,
+#loadingOverlay .icon.error::after{
+  content:""; position:absolute; left: 22px; top: 10px;
+  width: 4px; height: 28px; background: var(--danger);
+  border-radius: 2px;
+}
+#loadingOverlay .icon.error::after{ transform: rotate(90deg); }
+
+/* Texts */
+#loadingOverlay .texts{ display:grid; gap:6px; }
+#loadingOverlay .title{ font-weight: 700; }
+#loadingOverlay .desc{ color: var(--muted); font-size: 14px; }
+
+/* Close button */
+#loadingOverlay .close{
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #111827;
+  color: var(--text);
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: filter .15s ease, transform .06s ease;
+}
+#loadingOverlay .close:hover{ filter: brightness(1.05); }
+#loadingOverlay .close:active{ transform: translateY(1px); }
+
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* =========================
@@ -270,4 +342,8 @@ body.blur-bg > *:not(#loadingOverlay){
   .back-btn{ width: 40px; height: 40px; }
   .controls{ gap:8px; }
   .controls button{ padding: 10px 14px; }
+  #loadingOverlay .load-card{
+    grid-template-columns: 48px 1fr auto;
+    padding: 14px;
+  }
 }
