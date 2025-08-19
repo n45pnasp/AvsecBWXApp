@@ -6,45 +6,32 @@
   <title>Viewer SOP</title>
   <link rel="stylesheet" href="chatbot.css" />
   <style>
-    .viewer-header {
-      position: fixed; top:0; left:0; right:0; z-index:100;
-      background: var(--panel, #111b21);
-      border-bottom: 1px solid var(--border, #2a3942);
-      height: 56px; display:flex; align-items:center; gap:10px;
-      padding: 0 12px; color: var(--text, #e9edef); font-weight:600;
-      -webkit-user-select: none; user-select: none;
-    }
-    .viewer-header .back-btn{ width: 44px; height: 44px; margin-right: 2px; }
-    .viewer-header .back-btn svg{ width: 26px; height: 26px; stroke: currentColor; }
-    .title { flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .viewer-header{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--panel,#111b21);border-bottom:1px solid var(--border,#2a3942);height:56px;display:flex;align-items:center;gap:10px;padding:0 12px;color:var(--text,#e9edef);font-weight:600;-webkit-user-select:none;user-select:none}
+    .viewer-header .back-btn{width:44px;height:44px;margin-right:2px}
+    .viewer-header .back-btn svg{width:26px;height:26px;stroke:currentColor}
+    .title{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+    .viewer-wrap{position:fixed;top:56px;bottom:0;left:0;right:0;background:var(--bg,#0b141a)}
+    .viewer-frame{width:100%;height:100%;border:0;background:#000}
 
-    .viewer-wrap { position: fixed; top:56px; bottom:0; left:0; right:0; background: var(--bg, #0b141a); }
-    .viewer-frame { width: 100%; height: 100%; border: 0; background: #000; }
-
-    /* pdf.js container (mobile) */
-    .pdf-root { position: absolute; inset: 0; overflow: auto; background: #000; padding: 8px; }
-    .pdf-page { display:block; margin: 8px auto; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.35); }
+    /* pdf.js (mobile) */
+    .pdf-root{position:absolute;inset:0;overflow:auto;background:#000;padding:8px}
+    .pdf-page{display:block;margin:8px auto;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
 
     /* Loading */
-    .loading {
-      position: fixed; left:0; right:0; top:56px; bottom:0; z-index:150;
-      background: rgba(11,20,26,.92); display:grid; place-items:center; backdrop-filter: blur(2px);
-    }
+    .loading{position:fixed;left:0;right:0;top:56px;bottom:0;z-index:150;background:rgba(11,20,26,.92);display:grid;place-items:center;backdrop-filter:blur(2px)}
     .loading[hidden]{display:none}
-    .loading .box{ text-align:center; color:#e9edef; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial }
-    .spinner{ width:48px;height:48px;margin:0 auto 12px;border:4px solid rgba(255,255,255,.25);border-top-color:#06cf9c;border-radius:50%;animation:spin .9s linear infinite }
+    .loading .box{text-align:center;color:#e9edef;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    .spinner{width:48px;height:48px;margin:0 auto 12px;border:4px solid rgba(255,255,255,.25);border-top-color:#06cf9c;border-radius:50%;animation:spin .9s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    body { -webkit-user-select:none; user-select:none }
-    * { -webkit-touch-callout:none }
+    body{-webkit-user-select:none;user-select:none}
+    *{-webkit-touch-callout:none}
   </style>
 </head>
 <body>
   <div class="viewer-header" role="banner">
     <a href="chatbot.html" class="back-btn" aria-label="Kembali ke Chatbot">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-           fill="none" stroke="currentColor" stroke-width="2"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <polyline points="15 18 9 12 15 6"></polyline>
       </svg>
     </a>
@@ -69,7 +56,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-    // === KONFIG FIREBASE ===
+    // === FIREBASE ===
     const firebaseConfig = {
       apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
       authDomain: "avsecbwx-4229c.firebaseapp.com",
@@ -84,18 +71,17 @@
     const auth = getAuth(app);
 
     // === PARAMS ===
-    const params = new URLSearchParams(location.search);
-    const title = params.get('title') || 'Viewer SOP';
-    const key   = params.get('key') || '';
-    const src   = params.get('src') || '';
+    const params   = new URLSearchParams(location.search);
+    const title    = params.get('title') || 'Viewer SOP';
+    const key      = params.get('key') || '';
+    const src      = params.get('src') || '';
 
-    // Elemen
-    const titleEl   = document.getElementById('docTitle');
-    const frame     = document.getElementById('pdfFrame');
-    const pdfRoot   = document.getElementById('pdfRoot');
-    const loadingEl = document.getElementById('loading');
-    const loadingMsg= document.getElementById('loadingMsg');
-
+    // Elements
+    const titleEl    = document.getElementById('docTitle');
+    const frame      = document.getElementById('pdfFrame');
+    const pdfRoot    = document.getElementById('pdfRoot');
+    const loadingEl  = document.getElementById('loading');
+    const loadingMsg = document.getElementById('loadingMsg');
     titleEl.textContent = title;
 
     // Functions v2 URL
@@ -104,35 +90,62 @@
     // Utils
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
                      window.matchMedia?.('(pointer:coarse)').matches;
-
-    function withViewerPrefs(url) {
-      const hash = '#page=1&zoom=page-width&view=FitH'
-                 + '&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&sidebar=0';
-      return url + hash;
-    }
-    function isSafeURL(u){ try{const x=new URL(u,location.href); return /^https?:$/i.test(x.protocol);}catch{return false;} }
+    const withViewerPrefs = (url) =>
+      url + '#page=1&zoom=page-width&view=FitH&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&sidebar=0';
+    const isSafeURL = (u) => { try { const x=new URL(u,location.href); return /^https?:$/i.test(x.protocol); } catch { return false; } };
     const startLoading = (m='Memuat dokumen…') => { loadingMsg.textContent=m; loadingEl.hidden=false; };
     const stopLoading  = () => { loadingEl.hidden=true; };
 
-    // pdf.js (ESM via CDN)
+    frame.addEventListener('load', () => stopLoading());
+
+    // === Loader pdf.js (ESM jsDelivr dgn fallback UMD) ===
+    async function loadPdfJs() {
+      const ver = '3.11.174';
+      try {
+        // ESM (paling ideal untuk module)
+        const mod = await import(`https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.min.mjs`);
+        // gunakan worker ESM juga
+        mod.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.worker.min.mjs`;
+        return mod;
+      } catch (e) {
+        // Fallback UMD (global pdfjsLib)
+        await new Promise((ok, err) => {
+          const s = document.createElement('script');
+          s.src = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.min.js`;
+          s.crossOrigin = 'anonymous';
+          s.onload = ok; s.onerror = err;
+          document.head.appendChild(s);
+        });
+        await new Promise((ok, err) => {
+          const s = document.createElement('script');
+          s.src = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.worker.min.js`;
+          s.crossOrigin = 'anonymous';
+          s.onload = ok; s.onerror = err;
+          document.head.appendChild(s);
+        });
+        // set worker (UMD)
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          `https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.worker.min.js`;
+        return window.pdfjsLib;
+      }
+    }
+
+    // Render dengan pdf.js (mobile)
     async function renderWithPdfJS(blob){
-      // import saat diperlukan saja (mobile)
-      const pdfjs = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.mjs');
-      pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const pdfjs = await loadPdfJs();
 
       frame.style.display = 'none';
       pdfRoot.hidden = false;
-      pdfRoot.innerHTML = ''; // bersihkan
+      pdfRoot.innerHTML = '';
 
       const data = await blob.arrayBuffer();
       const doc  = await pdfjs.getDocument({ data }).promise;
 
-      // render semua halaman, skala agar pas lebar layar
       for (let p = 1; p <= doc.numPages; p++) {
         const page = await doc.getPage(p);
         const vw   = page.getViewport({ scale: 1 });
-        const maxW = pdfRoot.clientWidth - 16; // padding
-        const scale= Math.max(0.5, Math.min(maxW / vw.width, 2)); // batasi
+        const maxW = pdfRoot.clientWidth - 16;
+        const scale= Math.max(0.5, Math.min(maxW / vw.width, 2));
         const vp   = page.getViewport({ scale });
 
         const canvas = document.createElement('canvas');
@@ -144,19 +157,6 @@
       }
       stopLoading();
     }
-
-    // Proteksi ringan
-    document.addEventListener("contextmenu", e => e.preventDefault());
-    document.addEventListener("dragstart", e => e.preventDefault());
-    document.addEventListener("keydown", e => {
-      const k = e.key.toLowerCase(), ctrl = e.ctrlKey || e.metaKey;
-      if (k === 'f12' || (ctrl && (k === 's' || k === 'p' || k === 'u' || k === 'c')) || (ctrl && e.shiftKey && (k === 'i' || k === 'j'))) {
-        e.preventDefault(); e.stopPropagation();
-      }
-    }, { capture: true });
-    document.addEventListener('selectstart', e => e.preventDefault(), { capture: true });
-
-    frame.addEventListener('load', () => stopLoading());
 
     // Main flow
     onAuthStateChanged(auth, async (u) => {
@@ -174,7 +174,7 @@
             stopLoading();
             frame.srcdoc = `<!doctype html><meta charset="utf-8">
               <body style="background:#0b141a;color:#e9edef;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100%;text-align:center;padding:16px;">
-                <div><h3>Gagal memuat PDF</h3><p>Status: ${res.status}</p>
+                <div><h3>Terjadi kesalahan</h3><p>Status: ${res.status}</p>
                 <pre style="white-space:pre-wrap;text-align:left">${msg}</pre>
                 <p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>
               </body>`;
@@ -183,15 +183,14 @@
           const blob = await res.blob();
 
           if (isMobile) {
-            await renderWithPdfJS(blob);     // tampil inline tanpa “Buka”
+            await renderWithPdfJS(blob);           // inline di hp
           } else {
-            const url = URL.createObjectURL(blob);
+            const url = URL.createObjectURL(blob); // cepat di desktop
             frame.src = withViewerPrefs(url);
             frame.addEventListener('load', () => setTimeout(() => URL.revokeObjectURL(url), 2000), { once:true });
           }
 
         } else if (isSafeURL(src)) {
-          // sumber publik → desktop pakai iframe, mobile tetap bisa pakai viewer bawaan
           startLoading('Memuat dokumen…');
           frame.src = withViewerPrefs(src);
         } else {
@@ -213,6 +212,17 @@
           </body>`;
       }
     });
+
+    // Proteksi ringan
+    document.addEventListener("contextmenu", e => e.preventDefault());
+    document.addEventListener("dragstart", e => e.preventDefault());
+    document.addEventListener("keydown", e => {
+      const k = e.key.toLowerCase(), ctrl = e.ctrlKey || e.metaKey;
+      if (k === 'f12' || (ctrl && (k === 's' || k === 'p' || k === 'u' || k === 'c')) || (ctrl && e.shiftKey && (k === 'i' || k === 'j'))) {
+        e.preventDefault(); e.stopPropagation();
+      }
+    }, { capture: true });
+    document.addEventListener('selectstart', e => e.preventDefault(), { capture: true });
   </script>
 </body>
 </html>
