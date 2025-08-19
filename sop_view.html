@@ -82,6 +82,13 @@
         </body>`;
     }
 
+    // NEW: tambahkan preferensi viewer agar page langsung lebar & tanpa sidebar
+    function withViewerPrefs(url) {
+      const hash = '#page=1&zoom=page-width&view=FitH'
+                 + '&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&sidebar=0';
+      return url + hash;
+    }
+
     // Proteksi ringan (best effort)
     document.addEventListener("contextmenu", e => e.preventDefault());
     document.addEventListener("dragstart", e => e.preventDefault());
@@ -110,10 +117,11 @@
             return;
           }
           const blob = await res.blob();
-          frame.src = URL.createObjectURL(blob);
+          const url = URL.createObjectURL(blob);
+          frame.src = withViewerPrefs(url);              <!-- NEW -->
         } else if (isSafeURL(src)) {
           // Fallback: link publik (sementara)
-          frame.src = src;
+          frame.src = withViewerPrefs(src);              <!-- NEW -->
         } else {
           showDoc(`<div><h3>PDF tidak tersedia</h3>
                    <p>Param <code>key</code> kosong dan <code>src</code> tidak valid.</p>
