@@ -132,30 +132,45 @@
 
     // Render dengan pdf.js (mobile)
     async function renderWithPdfJS(blob){
-      const pdfjs = await loadPdfJs();
+  const pdfjs = await loadPdfJs();
 
-      frame.style.display = 'none';
-      pdfRoot.hidden = false;
-      pdfRoot.innerHTML = '';
+  frame.style.display = 'none';
+  pdfRoot.hidden = false;
+  pdfRoot.innerHTML = '';
 
-      const data = await blob.arrayBuffer();
-      const doc  = await pdfjs.getDocument({ data }).promise;
+  const data = await blob.arrayBuffer();
+  const doc  = await pdfjs.getDocument({ data }).promise;
 
-      for (let p = 1; p <= doc.numPages; p++) {
-        const page = await doc.getPage(p);
-        const vw   = page.getViewport({ scale: 1 });
-        const maxW = pdfRoot.clientWidth - 16;
-        const scale= Math.max(0.5, Math.min(maxW / vw.width, 2));
-        const vp   = page.getViewport({ scale });
+  // batas aman untuk menghindari boros memori
+  const DPR_MAX = 2.5;
+  const dpr = Math.min(window.devicePixelRatio || 1, DPR_MAX);
 
-        const canvas = document.createElement('canvas');
-        canvas.width = vp.width; canvas.height = vp.height;
-        canvas.className = 'pdf-page';
-        pdfRoot.appendChild(canvas);
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
 
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-      }
-      stopLoading();
+    // Fit-lebar layar (CSS pixels)
+    const vw     = page.getViewport({ scale: 1 });
+    const cssW   = Math.max(320, pdfRoot.clientWidth - 16); // padding container
+    const base   = cssW / vw.width;                         // skala dasar agar pas lebar
+    const vp     = page.getViewport({ scale: base });       // viewport untuk CSS
+
+    // Siapkan canvas: ukuran **pixel** mengikuti DPR, CSS size tetap vp.width/height
+    const canvas = document.createElement('canvas');
+    canvas.className = 'pdf-page';
+    canvas.style.width  = `${vp.width}px`;
+    canvas.style.height = `${vp.height}px`;
+    canvas.width  = Math.floor(vp.width  * dpr);
+    canvas.height = Math.floor(vp.height * dpr);
+
+    const ctx = canvas.getContext('2d', { alpha: false });
+    // Render pada resolusi tinggi
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    pdfRoot.appendChild(canvas);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  }
+
+  stopLoading();
     }
 
     // Main flow
