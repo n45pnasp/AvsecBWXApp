@@ -1,81 +1,129 @@
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <title>Viewer SOP</title>
+  <link rel="stylesheet" href="chatbot.css" />
+  <style>
+    .viewer-header {
+      position: fixed; top:0; left:0; right:0; z-index:100;
+      background: var(--panel, #111b21);
+      border-bottom: 1px solid var(--border, #2a3942);
+      height: 56px; display:flex; align-items:center; gap:10px;
+      padding: 0 12px; color: var(--text, #e9edef); font-weight:600;
+      -webkit-user-select: none; user-select: none;
+    }
+    .viewer-header .back-btn{ width: 44px; height: 44px; margin-right: 2px; }
+    .viewer-header .back-btn svg{ width: 26px; height: 26px; stroke: currentColor; }
+    .title { flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .viewer-wrap { position: fixed; top:56px; bottom:0; left:0; right:0; background: var(--bg, #0b141a); -webkit-user-select: none; user-select: none; }
+    .viewer-frame { width: 100%; height: 100%; border: 0; background: #000; }
+    body { -webkit-user-select: none; user-select: none; }
+    * { -webkit-touch-callout: none; }
+  </style>
+</head>
+<body>
+  <div class="viewer-header" role="banner">
+    <a href="chatbot.html" class="back-btn" aria-label="Kembali ke Chatbot">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </a>
+    <div class="title" id="docTitle">Viewer SOP</div>
+  </div>
 
-  // ==== KONFIG FIREBASE (punyamu) ====
-  const firebaseConfig = {
-    apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
-    authDomain: "avsecbwx-4229c.firebaseapp.com",
-    databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com",
-    projectId: "avsecbwx-4229c",
-    storageBucket: "avsecbwx-4229c.firebasestorage.app",
-    messagingSenderId: "1029406629258",
-    appId: "1:1029406629258:web:53e8f09585cd77823efc73",
-    measurementId: "G-P37F88HGFE"
-  };
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+  <div class="viewer-wrap">
+    <iframe id="pdfFrame" class="viewer-frame" src="about:blank" allow="fullscreen"></iframe>
+  </div>
 
-  // ==== PARAM URL ====
-  const params = new URLSearchParams(location.search);
-  const title = params.get('title') || 'Viewer SOP';
-  const key   = params.get('key') || "";   // pakai DriveKey (jalur aman)
-  const src   = params.get('src') || "";   // fallback publik (jika ada)
-  const frame = document.getElementById('pdfFrame');
-  document.getElementById('docTitle').textContent = title;
+  <!-- Script utama -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-  // ==== URL Cloud Function drivePdf (punyamu) ====
-  // region default dari index.js: us-central1
-  const DRIVE_PDF_URL = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/drivePdf";
+    // === KONFIG FIREBASE (punyamu) ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
+      authDomain: "avsecbwx-4229c.firebaseapp.com",
+      databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com",
+      projectId: "avsecbwx-4229c",
+      storageBucket: "avsecbwx-4229c.firebasestorage.app",
+      messagingSenderId: "1029406629258",
+      appId: "1:1029406629258:web:53e8f09585cd77823efc73",
+      measurementId: "G-P37F88HGFE"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
 
-  // ==== Util ====
-  function isSafeURL(u) {
-    try { const x = new URL(u, location.href); return /^https?:$/i.test(x.protocol); }
-    catch { return false; }
-  }
-  function showDoc(html) {
-    frame.srcdoc = `<!doctype html><meta charset="utf-8"><body style="background:#0b141a;color:#e9edef;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100%;text-align:center;padding:16px;">${html}</body>`;
-  }
+    // === PARAMETER URL ===
+    const params = new URLSearchParams(location.search);
+    const title = params.get('title') || 'Viewer SOP';
+    const key   = params.get('key') || '';   // DriveKey (jalur aman via Cloud Function)
+    const src   = params.get('src') || '';   // fallback publik (kalau ada)
 
-  // ==== Alur ====
-  onAuthStateChanged(auth, async (u) => {
-    if (!u) { location.href = "./login.html"; return; }
+    // Pastikan elemen ada sebelum dipakai (mencegah error null)
+    const titleEl = document.getElementById('docTitle');
+    if (titleEl) titleEl.textContent = title;
+    const frame = document.getElementById('pdfFrame');
+    if (!frame) throw new Error('Elemen #pdfFrame tidak ditemukan');
 
-    try {
-      if (key) {
-        // Ambil idToken, fetch PDF sebagai blob via Cloud Function, tampilkan di iframe
-        const idToken = await u.getIdToken(true);
-        const url = `${DRIVE_PDF_URL}?key=${encodeURIComponent(key)}`;
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
-        if (!res.ok) {
-          const msg = await res.text().catch(()=>"");
-          showDoc(`<div><h3>Gagal memuat PDF</h3><p>${res.status} ${msg}</p><p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>`);
-          return;
-        }
-        const blob = await res.blob();
-        frame.src = URL.createObjectURL(blob);
-      } else if (isSafeURL(src)) {
-        // Fallback: jika masih pakai URL publik dari kolom "Isi SOP"
-        frame.src = src;
-      } else {
-        showDoc(`<div><h3>PDF tidak tersedia</h3><p>Param <code>key</code> kosong dan <code>src</code> tidak valid.</p><p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>`);
+    // URL Cloud Function-mu
+    const DRIVE_PDF_URL = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/drivePdf";
+
+    // Util
+    function isSafeURL(u){ try{const x=new URL(u,location.href); return /^https?:$/i.test(x.protocol);}catch{return false;} }
+    function showDoc(html){
+      frame.srcdoc = `<!doctype html><meta charset="utf-8">
+        <body style="background:#0b141a;color:#e9edef;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100%;text-align:center;padding:16px;">
+          ${html}
+        </body>`;
+    }
+
+    // Proteksi ringan (best effort)
+    document.addEventListener("contextmenu", e => e.preventDefault());
+    document.addEventListener("dragstart", e => e.preventDefault());
+    document.addEventListener("keydown", e => {
+      const k = e.key.toLowerCase(), ctrl = e.ctrlKey || e.metaKey;
+      if (k === 'f12' || (ctrl && (k === 's' || k === 'p' || k === 'u' || k === 'c')) || (ctrl && e.shiftKey && (k === 'i' || k === 'j'))) {
+        e.preventDefault(); e.stopPropagation();
       }
-    } catch (e) {
-      showDoc(`<div><h3>Terjadi kesalahan</h3><p>${String(e.message || e)}</p><p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>`);
-    }
-  });
+    }, { capture: true });
+    document.addEventListener('selectstart', e => e.preventDefault(), { capture: true });
 
-  // ====== Proteksi ringan (best effort) ======
-  document.addEventListener("contextmenu", e => e.preventDefault());
-  document.addEventListener("dragstart", e => e.preventDefault());
-  document.addEventListener("keydown", e => {
-    const k = e.key.toLowerCase(), ctrl = e.ctrlKey || e.metaKey;
-    if (k === 'f12' || (ctrl && (k === 's' || k === 'p' || k === 'u' || k === 'c')) || (ctrl && e.shiftKey && (k === 'i' || k === 'j'))) {
-      e.preventDefault(); e.stopPropagation();
-    }
-  }, { capture: true });
-  document.addEventListener('selectstart', e => e.preventDefault(), { capture: true });
+    // Alur auth → fetch PDF
+    onAuthStateChanged(auth, async (u) => {
+      if (!u) { location.href = "./login.html"; return; }
 
-  const STRICT_VIEW_ONLY = false;
-  if (STRICT_VIEW_ONLY) document.getElementById('noInteract').style.display = 'block';
-</script>
+      try {
+        if (key) {
+          const idToken = await u.getIdToken(true);
+          const res = await fetch(`${DRIVE_PDF_URL}?key=${encodeURIComponent(key)}`, {
+            headers: { Authorization: `Bearer ${idToken}` }
+          });
+          if (!res.ok) {
+            const msg = await res.text().catch(()=>"");
+            showDoc(`<div><h3>Gagal memuat PDF</h3><p>Status: ${res.status}</p><pre style="white-space:pre-wrap">${msg}</pre>
+                     <p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>`);
+            return;
+          }
+          const blob = await res.blob();
+          frame.src = URL.createObjectURL(blob);
+        } else if (isSafeURL(src)) {
+          // Fallback: link publik (sementara)
+          frame.src = src;
+        } else {
+          showDoc(`<div><h3>PDF tidak tersedia</h3>
+                   <p>Param <code>key</code> kosong dan <code>src</code> tidak valid.</p>
+                   <p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>`);
+        }
+      } catch (e) {
+        showDoc(`<div><h3>Terjadi kesalahan</h3><pre style="white-space:pre-wrap">${String(e?.message||e)}</pre>
+                 <p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>`);
+      }
+    });
+  </script>
+</body>
+</html>
