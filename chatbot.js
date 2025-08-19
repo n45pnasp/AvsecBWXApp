@@ -158,9 +158,10 @@ function handleSearch(query, dataset, mode) {
 
       if (mode === 'sop') {
         const ket = (row["Keterangan SOP"] || "").toLowerCase();
+        // kolom "Isi SOP" boleh tetap dinilai untuk fallback text
         const isi = (row["Isi SOP"] || "").toLowerCase();
         if (ket && ket.includes(q)) score += 2;
-        if (isi && isi.includes(q)) score += 2;
+        if (isi && isi.includes(q)) score += 1;
       }
       if (score > 0) partialMatches.push({ item: row, score });
     }
@@ -220,12 +221,24 @@ function buildResponseBarang(row) {
 <strong>Penjelasan:</strong><br>${escapeHTML(penjelasan).replace(/\n/g,'<br>')}`;
 }
 
-// ================== RENDER SOP ==================
+// ================== RENDER SOP (pakai DriveKey → viewer) ==================
 function buildResponseSOP(row) {
   const judul = row["Judul SOP"] ?? "-";
   const ket   = (row["Keterangan SOP"] || "-").trim();
-  const isi   = (row["Isi SOP"] || "-").trim();
+  const driveKey = (row["DriveKey"] || "").trim();   // <<— kolom baru di sheet
 
+  // Jalur aman: pakai DriveKey → sop_view.html akan ambil via Cloud Function drivePdf
+  if (driveKey) {
+    const viewer = makeViewerURL({ title: judul, key: driveKey });
+    return `
+<strong>Judul SOP:</strong> ${escapeHTML(judul)}
+<div class="sep"></div>
+<strong>Keterangan:</strong> ${escapeHTML(ket)}<br><br>
+<a class="btn" href="${viewer}">Buka SOP (PDF)</a>`;
+  }
+
+  // Fallback (tidak direkomendasikan untuk privat): jika ada URL di "Isi SOP"
+  const isi   = (row["Isi SOP"] || "").trim();
   const pdfUrl = looksLikeURL(isi) ? normalizeDriveLink(isi) : null;
 
   if (pdfUrl) {
@@ -240,8 +253,7 @@ function buildResponseSOP(row) {
   return `
 <strong>Judul SOP:</strong> ${escapeHTML(judul)}
 <div class="sep"></div>
-<strong>Keterangan:</strong> ${escapeHTML(ket)}<br><br>
-<strong>Isi SOP:</strong><br>${escapeHTML(isi).replace(/\n/g,'<br>')}`;
+<strong>Keterangan:</strong> ${escapeHTML(ket)}`;
 }
 
 // ================== PILIHAN AMBIGU ==================
@@ -308,10 +320,11 @@ function sanitizeLimitedHTML(html) {
   return wrapper.innerHTML;
 }
 
-function makeViewerURL({ title, src }) {
-  const u = new URL('sop-view.html', location.href);
+function makeViewerURL({ title, src, key }) {
+  const u = new URL('sop_view.html', location.href);
   u.searchParams.set('title', title || '');
-  u.searchParams.set('src', src || '');
+  if (key) u.searchParams.set('key', key);   // <<— jalur aman via Cloud Function
+  if (src) u.searchParams.set('src', src);   // fallback (publik)
   return u.toString();
 }
 
@@ -356,4 +369,4 @@ if (window.visualViewport) {
     inputArea.style.bottom = `${offset}px`;
     BOX.scrollTop = BOX.scrollHeight;
   });
-        }
+}
