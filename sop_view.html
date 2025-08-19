@@ -17,8 +17,29 @@
     .viewer-header .back-btn{ width: 44px; height: 44px; margin-right: 2px; }
     .viewer-header .back-btn svg{ width: 26px; height: 26px; stroke: currentColor; }
     .title { flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+
     .viewer-wrap { position: fixed; top:56px; bottom:0; left:0; right:0; background: var(--bg, #0b141a); -webkit-user-select: none; user-select: none; }
     .viewer-frame { width: 100%; height: 100%; border: 0; background: #000; }
+
+    /* ====== LOADING OVERLAY ====== */
+    .loading {
+      position: fixed; left:0; right:0; top:56px; bottom:0; z-index:150;
+      background: rgba(11,20,26,.92);
+      display: grid; place-items: center;
+      backdrop-filter: blur(2px);
+    }
+    .loading[hidden] { display: none; }
+    .loading .box { text-align:center; color:#e9edef; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    .loading .spinner {
+      width: 48px; height: 48px; margin: 0 auto 12px;
+      border: 4px solid rgba(255,255,255,.25);
+      border-top-color: #06cf9c;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    .loading .msg { opacity:.9; font-size:14px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     body { -webkit-user-select: none; user-select: none; }
     * { -webkit-touch-callout: none; }
   </style>
@@ -37,6 +58,13 @@
 
   <div class="viewer-wrap">
     <iframe id="pdfFrame" class="viewer-frame" src="about:blank" allow="fullscreen"></iframe>
+    <!-- LOADING -->
+    <div id="loading" class="loading" aria-live="polite" hidden>
+      <div class="box">
+        <div class="spinner"></div>
+        <div class="msg" id="loadingMsg">Memuat dokumen…</div>
+      </div>
+    </div>
   </div>
 
   <!-- Script utama -->
@@ -61,21 +89,24 @@
     // === PARAMETER URL ===
     const params = new URLSearchParams(location.search);
     const title = params.get('title') || 'Viewer SOP';
-    const key   = params.get('key') || '';   // DriveKey (harus cocok dengan ALLOWED_FILES di Cloud Function)
-    const src   = params.get('src') || '';   // fallback publik (opsional)
+    const key   = params.get('key') || '';   // DriveKey (harus cocok dengan ALLOWED_FILES)
+    const src   = params.get('src') || '';   // Fallback publik (opsional)
 
-    const titleEl = document.getElementById('docTitle');
-    if (titleEl) titleEl.textContent = title;
-    const frame = document.getElementById('pdfFrame');
-    if (!frame) throw new Error('Elemen #pdfFrame tidak ditemukan');
+    // Elemen
+    const titleEl   = document.getElementById('docTitle');
+    const frame     = document.getElementById('pdfFrame');
+    const loadingEl = document.getElementById('loading');
+    const loadingMsg= document.getElementById('loadingMsg');
+
+    titleEl.textContent = title;
 
     // === URL Functions v2 (run.app) ===
-    // pakai URL yang muncul di output deploy-mu
-    const DRIVE_PDF_URL = "https://drivepdf-vqmkygi2rq-uc.a.run.app";
+    const DRIVE_PDF_URL = "https://drivepdf-vqmkygi2rq-uc.a.run.app"; // ganti jika URL berubah
 
     // Util
     function isSafeURL(u){ try{const x=new URL(u,location.href); return /^https?:$/i.test(x.protocol);}catch{return false;} }
     function showDoc(html){
+      stopLoading();
       frame.srcdoc = `<!doctype html><meta charset="utf-8">
         <body style="background:#0b141a;color:#e9edef;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100%;text-align:center;padding:16px;">
           ${html}
@@ -85,6 +116,15 @@
       const hash = '#page=1&zoom=page-width&view=FitH'
                  + '&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&sidebar=0';
       return url + hash;
+    }
+
+    // ====== LOADER helpers ======
+    function startLoading(msg='Memuat dokumen…') {
+      if (loadingMsg) loadingMsg.textContent = msg;
+      loadingEl.hidden = false;
+    }
+    function stopLoading() {
+      loadingEl.hidden = true;
     }
 
     // Proteksi ringan
@@ -98,15 +138,19 @@
     }, { capture: true });
     document.addEventListener('selectstart', e => e.preventDefault(), { capture: true });
 
+    // Sembunyikan loader ketika iframe selesai render PDF (blob atau URL publik)
+    frame.addEventListener('load', () => stopLoading());
+
     // Alur auth → fetch PDF
     onAuthStateChanged(auth, async (u) => {
       if (!u) { location.href = "./login.html"; return; }
 
       try {
         if (key) {
+          startLoading('Memuat SOP dari Drive…');
           const idToken = await u.getIdToken(true);
           const res = await fetch(`${DRIVE_PDF_URL}?key=${encodeURIComponent(key)}`, {
-            headers: { Authorization: `Bearer ${idToken}` } // penting: jangan pakai mode: 'no-cors'
+            headers: { Authorization: `Bearer ${idToken}` }
           });
           if (!res.ok) {
             const msg = await res.text().catch(()=>"");
@@ -118,8 +162,10 @@
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
           frame.src = withViewerPrefs(url);
+          // Revoke URL setelah iframe selesai load (sedikit jeda agar aman)
+          frame.addEventListener('load', () => setTimeout(() => URL.revokeObjectURL(url), 2000), { once:true });
         } else if (isSafeURL(src)) {
-          // Fallback link publik (tidak butuh token)
+          startLoading('Memuat dokumen…');
           frame.src = withViewerPrefs(src);
         } else {
           showDoc(`<div><h3>PDF tidak tersedia</h3>
