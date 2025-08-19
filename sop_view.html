@@ -44,7 +44,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-    // === KONFIG FIREBASE (punyamu) ===
+    // === KONFIG FIREBASE ===
     const firebaseConfig = {
       apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
       authDomain: "avsecbwx-4229c.firebaseapp.com",
@@ -61,17 +61,17 @@
     // === PARAMETER URL ===
     const params = new URLSearchParams(location.search);
     const title = params.get('title') || 'Viewer SOP';
-    const key   = params.get('key') || '';   // DriveKey (jalur aman via Cloud Function)
-    const src   = params.get('src') || '';   // fallback publik (kalau ada)
+    const key   = params.get('key') || '';   // DriveKey (harus cocok dengan ALLOWED_FILES di Cloud Function)
+    const src   = params.get('src') || '';   // fallback publik (opsional)
 
-    // Pastikan elemen ada sebelum dipakai (mencegah error null)
     const titleEl = document.getElementById('docTitle');
     if (titleEl) titleEl.textContent = title;
     const frame = document.getElementById('pdfFrame');
     if (!frame) throw new Error('Elemen #pdfFrame tidak ditemukan');
 
-    // URL Cloud Function-mu
-    const DRIVE_PDF_URL = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/drivePdf";
+    // === URL Functions v2 (run.app) ===
+    // pakai URL yang muncul di output deploy-mu
+    const DRIVE_PDF_URL = "https://drivepdf-vqmkygi2rq-uc.a.run.app";
 
     // Util
     function isSafeURL(u){ try{const x=new URL(u,location.href); return /^https?:$/i.test(x.protocol);}catch{return false;} }
@@ -81,15 +81,13 @@
           ${html}
         </body>`;
     }
-
-    // NEW: tambahkan preferensi viewer agar page langsung lebar & tanpa sidebar
     function withViewerPrefs(url) {
       const hash = '#page=1&zoom=page-width&view=FitH'
                  + '&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&sidebar=0';
       return url + hash;
     }
 
-    // Proteksi ringan (best effort)
+    // Proteksi ringan
     document.addEventListener("contextmenu", e => e.preventDefault());
     document.addEventListener("dragstart", e => e.preventDefault());
     document.addEventListener("keydown", e => {
@@ -108,27 +106,29 @@
         if (key) {
           const idToken = await u.getIdToken(true);
           const res = await fetch(`${DRIVE_PDF_URL}?key=${encodeURIComponent(key)}`, {
-            headers: { Authorization: `Bearer ${idToken}` }
+            headers: { Authorization: `Bearer ${idToken}` } // penting: jangan pakai mode: 'no-cors'
           });
           if (!res.ok) {
             const msg = await res.text().catch(()=>"");
-            showDoc(`<div><h3>Gagal memuat PDF</h3><p>Status: ${res.status}</p><pre style="white-space:pre-wrap">${msg}</pre>
+            showDoc(`<div><h3>Gagal memuat PDF</h3><p>Status: ${res.status}</p>
+                     <pre style="white-space:pre-wrap;text-align:left">${msg}</pre>
                      <p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>`);
             return;
           }
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
-          frame.src = withViewerPrefs(url);              <!-- NEW -->
+          frame.src = withViewerPrefs(url);
         } else if (isSafeURL(src)) {
-          // Fallback: link publik (sementara)
-          frame.src = withViewerPrefs(src);              <!-- NEW -->
+          // Fallback link publik (tidak butuh token)
+          frame.src = withViewerPrefs(src);
         } else {
           showDoc(`<div><h3>PDF tidak tersedia</h3>
                    <p>Param <code>key</code> kosong dan <code>src</code> tidak valid.</p>
                    <p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>`);
         }
       } catch (e) {
-        showDoc(`<div><h3>Terjadi kesalahan</h3><pre style="white-space:pre-wrap">${String(e?.message||e)}</pre>
+        showDoc(`<div><h3>Terjadi kesalahan</h3>
+                 <pre style="white-space:pre-wrap;text-align:left">${String(e?.message||e)}</pre>
                  <p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>`);
       }
     });
