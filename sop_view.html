@@ -2,18 +2,19 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <!-- IZINKAN ZOOM BROWSER -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, user-scalable=yes" />
   <title>Viewer SOP</title>
   <link rel="stylesheet" href="chatbot.css" />
   <style>
-    .viewer-header{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--panel,#111b21);border-bottom:1px solid var(--border,#2a3942);height:56px;display:flex;align-items:center;gap:10px;padding:0 12px;color:var(--text,#e9edef);font-weight:600;-webkit-user-select:none;user-select:none}
+    .viewer-header{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--panel,#111b21);border-bottom:1px solid var(--border,#2a3942);height:56px;display:flex;align-items:center;gap:10px;padding:0 12px;color:var(--text,#e9edef);font-weight:600}
     .viewer-header .back-btn{width:44px;height:44px;margin-right:2px}
     .viewer-header .back-btn svg{width:26px;height:26px;stroke:currentColor}
     .title{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
     .viewer-wrap{position:fixed;top:56px;bottom:0;left:0;right:0;background:var(--bg,#0b141a)}
     .viewer-frame{width:100%;height:100%;border:0;background:#000}
 
-    /* pdf.js (mobile) */
+    /* pdf.js container (mobile) */
     .pdf-root{position:absolute;inset:0;overflow:auto;background:#000;padding:8px}
     .pdf-page{display:block;margin:8px auto;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
 
@@ -23,6 +24,12 @@
     .loading .box{text-align:center;color:#e9edef;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
     .spinner{width:48px;height:48px;margin:0 auto 12px;border:4px solid rgba(255,255,255,.25);border-top-color:#06cf9c;border-radius:50%;animation:spin .9s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ZOOM TOOLBAR (mobile) */
+    .zoombar{position:fixed;right:10px;bottom:10px;z-index:160;background:rgba(17,27,33,.85);border:1px solid #2a3942;border-radius:14px;backdrop-filter:blur(4px);display:flex;align-items:center;gap:6px;padding:6px 8px}
+    .zoombar[hidden]{display:none}
+    .zoombar button{appearance:none;border:1px solid #2a3942;background:#0b141a;color:#e9edef;border-radius:10px;padding:6px 10px;font-size:14px}
+    .zoombar .pct{min-width:56px;text-align:center;font-variant-numeric:tabular-nums;color:#06cf9c}
 
     body{-webkit-user-select:none;user-select:none}
     *{-webkit-touch-callout:none}
@@ -43,12 +50,18 @@
     <iframe id="pdfFrame" class="viewer-frame" src="about:blank" allow="fullscreen"></iframe>
     <!-- Mobile viewer (pdf.js) -->
     <div id="pdfRoot" class="pdf-root" hidden></div>
+
     <!-- Loader -->
     <div id="loading" class="loading" aria-live="polite">
-      <div class="box">
-        <div class="spinner"></div>
-        <div id="loadingMsg">Memuat dokumen…</div>
-      </div>
+      <div class="box"><div class="spinner"></div><div id="loadingMsg">Memuat dokumen…</div></div>
+    </div>
+
+    <!-- ZOOM BAR (mobile) -->
+    <div id="zoomBar" class="zoombar" hidden>
+      <button id="zoomOut" aria-label="Perkecil">–</button>
+      <div class="pct" id="zoomPct">100%</div>
+      <button id="zoomIn" aria-label="Perbesar">+</button>
+      <button id="zoomFit" aria-label="Pas Lebar">Fit</button>
     </div>
   </div>
 
@@ -56,7 +69,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-    // === FIREBASE ===
+    // FIREBASE
     const firebaseConfig = {
       apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
       authDomain: "avsecbwx-4229c.firebaseapp.com",
@@ -67,29 +80,31 @@
       appId: "1:1029406629258:web:53e8f09585cd77823efc73",
       measurementId: "G-P37F88HGFE"
     };
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+    initializeApp(firebaseConfig);
+    const auth = getAuth();
 
-    // === PARAMS ===
-    const params   = new URLSearchParams(location.search);
-    const title    = params.get('title') || 'Viewer SOP';
-    const key      = params.get('key') || '';
-    const src      = params.get('src') || '';
+    // PARAMS
+    const params = new URLSearchParams(location.search);
+    const title  = params.get('title') || 'Viewer SOP';
+    const key    = params.get('key') || '';
+    const src    = params.get('src') || '';
 
-    // Elements
-    const titleEl    = document.getElementById('docTitle');
-    const frame      = document.getElementById('pdfFrame');
-    const pdfRoot    = document.getElementById('pdfRoot');
-    const loadingEl  = document.getElementById('loading');
-    const loadingMsg = document.getElementById('loadingMsg');
-    titleEl.textContent = title;
+    // ELEMS
+    const titleEl   = document.getElementById('docTitle');   titleEl.textContent = title;
+    const frame     = document.getElementById('pdfFrame');
+    const pdfRoot   = document.getElementById('pdfRoot');
+    const loadingEl = document.getElementById('loading');
+    const loadingMsg= document.getElementById('loadingMsg');
+    const zoomBar   = document.getElementById('zoomBar');
+    const zoomPctEl = document.getElementById('zoomPct');
+    const btnIn     = document.getElementById('zoomIn');
+    const btnOut    = document.getElementById('zoomOut');
+    const btnFit    = document.getElementById('zoomFit');
 
-    // Functions v2 URL
-    const DRIVE_PDF_URL = "https://drivepdf-vqmkygi2rq-uc.a.run.app"; // sesuaikan jika berubah
+    // CONFIG
+    const DRIVE_PDF_URL = "https://drivepdf-vqmkygi2rq-uc.a.run.app"; // ganti jika berubah
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia?.('(pointer:coarse)').matches;
 
-    // Utils
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-                     window.matchMedia?.('(pointer:coarse)').matches;
     const withViewerPrefs = (url) =>
       url + '#page=1&zoom=page-width&view=FitH&toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&sidebar=0';
     const isSafeURL = (u) => { try { const x=new URL(u,location.href); return /^https?:$/i.test(x.protocol); } catch { return false; } };
@@ -98,82 +113,84 @@
 
     frame.addEventListener('load', () => stopLoading());
 
-    // === Loader pdf.js (ESM jsDelivr dgn fallback UMD) ===
+    // ====== pdf.js loader (ESM + fallback UMD) ======
     async function loadPdfJs() {
       const ver = '3.11.174';
       try {
-        // ESM (paling ideal untuk module)
         const mod = await import(`https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.min.mjs`);
-        // gunakan worker ESM juga
         mod.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.worker.min.mjs`;
         return mod;
-      } catch (e) {
-        // Fallback UMD (global pdfjsLib)
-        await new Promise((ok, err) => {
-          const s = document.createElement('script');
-          s.src = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.min.js`;
-          s.crossOrigin = 'anonymous';
-          s.onload = ok; s.onerror = err;
-          document.head.appendChild(s);
-        });
-        await new Promise((ok, err) => {
-          const s = document.createElement('script');
-          s.src = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.worker.min.js`;
-          s.crossOrigin = 'anonymous';
-          s.onload = ok; s.onerror = err;
-          document.head.appendChild(s);
-        });
-        // set worker (UMD)
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          `https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.worker.min.js`;
+      } catch {
+        await new Promise((ok, err) => { const s=document.createElement('script'); s.src=`https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.min.js`; s.onload=ok; s.onerror=err; document.head.appendChild(s); });
+        await new Promise((ok, err) => { const s=document.createElement('script'); s.src=`https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.worker.min.js`; s.onload=ok; s.onerror=err; document.head.appendChild(s); });
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${ver}/build/pdf.worker.min.js`;
         return window.pdfjsLib;
       }
     }
 
-    // Render dengan pdf.js (mobile)
-    async function renderWithPdfJS(blob){
-  const pdfjs = await loadPdfJs();
+    // ====== STATE untuk zoom rendering ======
+    let pdfjs, pdfDoc, pages = [];
+    let baseScale = 1;        // skala agar pas-lebar (CSS)
+    let scale = 1;            // faktor zoom user
+    const DPR_MAX = 2.5;      // batasi DPI
+    const dpr = Math.min(window.devicePixelRatio || 1, DPR_MAX);
 
-  frame.style.display = 'none';
-  pdfRoot.hidden = false;
-  pdfRoot.innerHTML = '';
+    function updateZoomLabel(){ zoomPctEl.textContent = Math.round(scale*100) + '%'; }
 
-  const data = await blob.arrayBuffer();
-  const doc  = await pdfjs.getDocument({ data }).promise;
+    async function renderPage(i){
+      const page = await pdfDoc.getPage(i);
+      const vw = page.getViewport({ scale: 1 });
 
-  // batas aman untuk menghindari boros memori
-  const DPR_MAX = 2.5;
-  const dpr = Math.min(window.devicePixelRatio || 1, DPR_MAX);
+      const cssW = Math.max(320, pdfRoot.clientWidth - 16);
+      baseScale  = cssW / vw.width;                  // fit width
+      const cssScale = baseScale * scale;            // total skala CSS
+      const vp  = page.getViewport({ scale: cssScale });
 
-  for (let p = 1; p <= doc.numPages; p++) {
-    const page = await doc.getPage(p);
+      // Canvas & context
+      let holder = pages[i];
+      if (!holder) { holder = pages[i] = {}; }
+      if (!holder.canvas) {
+        holder.canvas = document.createElement('canvas');
+        holder.canvas.className = 'pdf-page';
+        pdfRoot.appendChild(holder.canvas);
+      }
+      const canvas = holder.canvas;
+      canvas.style.width  = `${vp.width}px`;
+      canvas.style.height = `${vp.height}px`;
+      canvas.width  = Math.floor(vp.width  * dpr);
+      canvas.height = Math.floor(vp.height * dpr);
 
-    // Fit-lebar layar (CSS pixels)
-    const vw     = page.getViewport({ scale: 1 });
-    const cssW   = Math.max(320, pdfRoot.clientWidth - 16); // padding container
-    const base   = cssW / vw.width;                         // skala dasar agar pas lebar
-    const vp     = page.getViewport({ scale: base });       // viewport untuk CSS
+      const ctx = canvas.getContext('2d', { alpha:false });
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Siapkan canvas: ukuran **pixel** mengikuti DPR, CSS size tetap vp.width/height
-    const canvas = document.createElement('canvas');
-    canvas.className = 'pdf-page';
-    canvas.style.width  = `${vp.width}px`;
-    canvas.style.height = `${vp.height}px`;
-    canvas.width  = Math.floor(vp.width  * dpr);
-    canvas.height = Math.floor(vp.height * dpr);
-
-    const ctx = canvas.getContext('2d', { alpha: false });
-    // Render pada resolusi tinggi
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    pdfRoot.appendChild(canvas);
-    await page.render({ canvasContext: ctx, viewport: vp }).promise;
-  }
-
-  stopLoading();
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
     }
 
-    // Main flow
+    async function renderAllPages(){
+      pdfRoot.innerHTML = ''; pages = [];
+      for (let i = 1; i <= pdfDoc.numPages; i++){
+        await renderPage(i);
+      }
+      stopLoading();
+      zoomBar.hidden = false;     // tampilkan toolbar zoom setelah render pertama
+      updateZoomLabel();
+    }
+
+    async function setScale(newScale){
+      scale = Math.max(0.5, Math.min(newScale, 3)); // clamp
+      startLoading('Mengatur zoom…');
+      await renderAllPages();
+    }
+
+    // Resize/orientasi → render ulang pada lebar baru
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      if (!pdfDoc || pdfRoot.hidden) return;
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => setScale(scale), 150);
+    });
+
+    // ====== Main flow ======
     onAuthStateChanged(auth, async (u) => {
       if (!u) { location.href = "./login.html"; return; }
 
@@ -198,9 +215,17 @@
           const blob = await res.blob();
 
           if (isMobile) {
-            await renderWithPdfJS(blob);           // inline di hp
+            // pdf.js mode
+            pdfjs = await loadPdfJs();
+            frame.style.display = 'none';
+            pdfRoot.hidden = false;
+            const data = await blob.arrayBuffer();
+            pdfDoc = await pdfjs.getDocument({ data }).promise;
+            scale = 1; // mulai dari Fit width
+            await renderAllPages();
           } else {
-            const url = URL.createObjectURL(blob); // cepat di desktop
+            // desktop iframe
+            const url = URL.createObjectURL(blob);
             frame.src = withViewerPrefs(url);
             frame.addEventListener('load', () => setTimeout(() => URL.revokeObjectURL(url), 2000), { once:true });
           }
@@ -227,6 +252,11 @@
           </body>`;
       }
     });
+
+    // ZOOM controls
+    btnIn.addEventListener('click',  () => setScale(scale * 1.2));
+    btnOut.addEventListener('click', () => setScale(scale / 1.2));
+    btnFit.addEventListener('click', () => setScale(1));
 
     // Proteksi ringan
     document.addEventListener("contextmenu", e => e.preventDefault());
