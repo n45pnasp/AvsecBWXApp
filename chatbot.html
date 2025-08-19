@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
   <title>ChatBot Prohibited Items & SOP</title>
   <link rel="stylesheet" href="chatbot.css" />
-  <!-- Cegah flash konten sebelum status login diketahui -->
+  <!-- Sembunyikan sampai status login dicek -->
   <style>html{visibility:hidden}</style>
 </head>
 <body>
-  <!-- Header dengan tombol kembali -->
+  <!-- Header -->
   <div class="chat-header" role="banner" aria-label="ChatBot">
     <a href="home.html" class="back-btn" aria-label="Kembali ke Home">
       <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -44,24 +44,57 @@
     </div>
   </div>
 
-  <!-- Auth guard: pasang PALING ATAS sebelum script lain -->
+  <!-- 1) INIT FIREBASE: WAJIB PALING AWAL -->
   <script type="module">
-    import { requireAuth } from "./auth-guard.js";
-    requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+    // Config proyekmu
+    const firebaseConfig = {
+      apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
+      authDomain: "avsecbwx-4229c.firebaseapp.com",
+      databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com",
+      projectId: "avsecbwx-4229c",
+      storageBucket: "avsecbwx-4229c.firebasestorage.app",
+      messagingSenderId: "1029406629258",
+      appId: "1:1029406629258:web:53e8f09585cd77823efc73",
+      measurementId: "G-P37F88HGFE"
+    };
+
+    // Buat app DEFAULT
+    const app = initializeApp(firebaseConfig);
+    // (opsional) inisialisasi auth supaya instance default tersedia
+    getAuth(app);
+
+    // Expose sedikit kalau modul lain butuh
+    window.__fbAppReady = true;
   </script>
 
-  <!-- Setelah user terverifikasi, enable input -->
+  <!-- 2) AUTH GUARD: jalan setelah init -->
+  <script type="module">
+    import { requireAuth } from "./auth-guard.js";
+    // Jika auth-guard.js memanggil getApp()/getAuth, sekarang sudah aman
+    await requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+    // Tampilkan halaman setelah guard selesai
+    document.documentElement.style.visibility = "visible";
+  </script>
+
+  <!-- 3) Enable input setelah user login -->
   <script type="module">
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    const auth = getAuth();
-    onAuthStateChanged(auth, (user)=>{
-      if(user){
+    const auth = getAuth(); // pakai app DEFAULT yang sudah dibuat
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
         document.getElementById('userInput')?.removeAttribute('disabled');
         document.querySelector('.send-btn')?.removeAttribute('disabled');
+      } else {
+        // Tetap sembunyikan halaman jika butuh paksa login
+        // location.href = "index.html";
       }
     });
   </script>
 
+  <!-- 4) Chatbot logic -->
   <script src="chatbot.js"></script>
 </body>
 </html>
