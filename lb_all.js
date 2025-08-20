@@ -1,5 +1,5 @@
 /* ===== KONFIG ===== */
-const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // Worker kamu
+const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev";
 const SHARED_TOKEN = "N45p";
 
 /* ===== DOM ===== */
@@ -18,13 +18,13 @@ const activityEl  = document.getElementById("activity");
 const rowsTbody   = document.getElementById("rows");
 
 /* ===== STATE ===== */
-let uploaded = null;   // {fileId, url, name}
+let uploaded = null;   // {fileId, url, name} (saat tambah)
 let uploading = false;
+let editingId = null;  // ← id baris sheet ketika edit
 
 /* ===== UTIL ===== */
 const pad2 = (n)=> String(n).padStart(2,"0");
 
-/* Format tampilan waktu -> "HH:MM WIB" */
 function fmtTimeWIB(s){
   if (!s) return "-";
   const m = /^(\d{1,2}):(\d{2})$/.exec(s);
@@ -35,7 +35,7 @@ function fmtTimeWIB(s){
   const d = new Date(s);
   if (!isNaN(d)){
     try{
-      const str = new Intl.DateTimeFormat("id-ID", {hour:"2-digit", minute:"2-digit", hour12:false, timeZone:"Asia/Jakarta"}).format(d);
+      const str = new Intl.DateTimeFormat("id-ID",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Asia/Jakarta"}).format(d);
       return `${str} WIB`;
     }catch(_){
       return `${pad2(d.getHours())}:${pad2(d.getMinutes())} WIB`;
@@ -59,8 +59,40 @@ function showOverlay(state, title, desc){
   if (state !== "loading") setTimeout(() => overlay.classList.add("hidden"), 1200);
 }
 
+/* ===== MODE (tambah / edit) ===== */
+function setModeEdit(on){
+  // ubah tombol & disable upload saat edit
+  submitBtn.textContent = on ? "✏️ Edit" : "✅ Kirim Data";
+  pickPhoto.disabled = !!on;
+  fileInput.disabled = !!on;
+  if (on){
+    uploadInfo.classList.add("hidden");
+    uploaded = null; // foto tidak boleh diganti saat edit
+  }
+  setSubmitEnabled();
+}
+function enterEditMode(id, hhmm, activity){
+  editingId = id;
+  timeInput.value = hhmm || "";
+  timeLabel.textContent = hhmm || "Pilih Waktu";
+  activityEl.value = activity || "";
+  setModeEdit(true);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function exitEditMode(){
+  editingId = null;
+  timeInput.value = "";
+  timeLabel.textContent = "Pilih Waktu";
+  activityEl.value = "";
+  setModeEdit(false);
+}
+
 function setSubmitEnabled(){
-  const ok = !!timeInput.value && !!activityEl.value.trim() && !!uploaded?.fileId && !uploading;
+  const timeOk = !!timeInput.value;
+  const actOk  = !!activityEl.value.trim();
+  const photoOk= !!uploaded?.fileId;
+  const ok = editingId ? (timeOk && actOk && !uploading)
+                       : (timeOk && actOk && photoOk && !uploading);
   submitBtn.disabled = !ok;
 }
 activityEl.addEventListener("input", setSubmitEnabled);
@@ -94,12 +126,9 @@ function buildWheel(el, count){
   el.innerHTML = "";
   el.appendChild(frag);
 }
-
 function snapTopFor(el, value){ el.scrollTop = SPACER + value*ITEM_H; }
 function nearestVal(el, max){ return Math.min(Math.max(Math.round((el.scrollTop - SPACER)/ITEM_H), 0), max); }
-
 function enableWheel(el, max, setSel){
-  // Drag/geser
   let dragging = false, startY = 0, startTop = 0, pid = 0, timer = null;
   el.addEventListener("pointerdown", (e)=>{
     dragging = true; startY = e.clientY; startTop = el.scrollTop; pid = e.pointerId;
@@ -117,8 +146,6 @@ function enableWheel(el, max, setSel){
   }
   el.addEventListener("pointerup", endDrag);
   el.addEventListener("pointercancel", endDrag);
-
-  // Scroll biasa (mouse/touch)
   el.addEventListener("scroll", ()=>{
     clearTimeout(timer);
     timer = setTimeout(()=>{
@@ -126,14 +153,11 @@ function enableWheel(el, max, setSel){
       snapTopFor(el, v); setSel(v);
     }, 80);
   }, {passive:true});
-
-  // Klik item → loncat
   el.addEventListener("click", (e)=>{
     const it = e.target.closest(".item"); if (!it) return;
     const v = +it.dataset.val; snapTopFor(el, v); setSel(v);
   });
 }
-
 function openTimePicker(){
   if (!wheelsBuilt){
     buildWheel(wheelHour, 24);
@@ -166,14 +190,13 @@ timeBtn.addEventListener("click", openTimePicker);
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave.addEventListener("click",   () => closeTimePicker(true));
 
-/* ===== UPLOAD FOTO ===== */
+/* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
 pickPhoto.addEventListener("click", () => fileInput.click());
-
 fileInput.addEventListener("change", async (ev) => {
+  if (editingId) return; // di mode edit abaikan upload
   const file = ev.target.files?.[0];
   if (!file) return;
 
-  // PREVIEW langsung (pakai objectURL agar stabil & cepat)
   uploadInfo.classList.remove("hidden");
   uploadName.textContent = file.name;
   uploadStatus.textContent = "Mengunggah foto…";
@@ -184,7 +207,6 @@ fileInput.addEventListener("change", async (ev) => {
     uploading = true; setSubmitEnabled();
     showOverlay("loading", "Mengunggah foto…", "Mohon tunggu sebentar");
 
-    // kirim base64 ke server
     const base64 = await fileToBase64(file);
     const payload = { token: SHARED_TOKEN, action: "upload", filename: file.name, mimeType: file.type || "image/jpeg", dataUrl: base64 };
 
@@ -201,12 +223,10 @@ fileInput.addEventListener("change", async (ev) => {
     uploadStatus.textContent = "Upload gagal ❌";
     showOverlay("err", "Gagal mengunggah", err.message || "Coba lagi");
   }finally{
-    // bersihkan objectURL
     URL.revokeObjectURL(objectUrl);
     uploading = false; setSubmitEnabled();
   }
 });
-
 async function fileToBase64(file){
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -216,13 +236,40 @@ async function fileToBase64(file){
   });
 }
 
-/* ===== SUBMIT LOG ===== */
-document.getElementById("submitBtn").addEventListener("click", async () => {
+/* ===== SUBMIT (Create / Update) ===== */
+submitBtn.addEventListener("click", async () => {
   if (submitBtn.disabled) return;
   const timeStr = timeInput.value;
   const activity = activityEl.value.trim();
-  if (!timeStr || !activity || !uploaded?.fileId) return;
+  if (!timeStr || !activity) return;
 
+  // MODE EDIT → updateLog
+  if (editingId){
+    try{
+      submitBtn.disabled = true;
+      showOverlay("loading","Menyimpan perubahan…","");
+
+      const res = await fetch(SCRIPT_URL, {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ token: SHARED_TOKEN, action: "updateLog", id: editingId, time: timeStr, activity })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "Gagal mengubah");
+
+      showOverlay("ok","Tersimpan","Perubahan berhasil");
+      exitEditMode();
+      await loadRows();
+    }catch(err){
+      console.error(err);
+      showOverlay("err","Gagal menyimpan", err.message||"Coba lagi");
+    }finally{
+      submitBtn.disabled = false;
+    }
+    return;
+  }
+
+  // MODE TAMBAH → createLog (butuh foto)
+  if (!uploaded?.fileId) return;
   try{
     submitBtn.disabled = true;
     showOverlay("loading", "Menyimpan logbook…", "Mengirim data ke Spreadsheet");
@@ -236,9 +283,9 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
 
     showOverlay("ok", "Tersimpan", "Logbook berhasil ditambahkan");
 
-    // reset
     timeInput.value = ""; timeLabel.textContent = "Pilih Waktu";
-    activityEl.value = ""; uploaded = null;
+    activityEl.value = "";
+    uploaded = null;
     uploadInfo.classList.add("hidden"); preview.removeAttribute("src");
     setSubmitEnabled();
 
@@ -270,8 +317,7 @@ async function loadRows(){
     }
 
     for (const r of json.rows){
-      // backend sebaiknya mengembalikan r.id (string/angka) → dipakai untuk edit/hapus
-      const id = r.id ?? r.rowId ?? r._id ?? "";
+      const id = r.id ?? "";
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${fmtTimeWIB(r.time || r.createdAt || "")}</td>
@@ -306,45 +352,28 @@ rowsTbody.addEventListener("click", async (e) => {
   if (view){ openPhoto(view.dataset.url); return; }
 
   if (edit){
-    if (!edit.dataset.id){ alert("Tidak ada ID data dari server."); return; }
-    // prompt sederhana: waktu & kegiatan
-    const oldTime = edit.dataset.time || "";
-    const oldAct  = decodeHTMLEntities(edit.dataset.activity || "");
-    const newTime = prompt("Ubah waktu (format HH:MM 24 jam):", oldTime || "08:00");
-    if (!newTime) return;
-    if (!/^\d{1,2}:\d{2}$/.test(newTime)){ alert("Format waktu tidak valid."); return; }
-    const newAct  = prompt("Ubah kegiatan:", oldAct);
-    if (newAct == null) return;
-
-    try{
-      showOverlay("loading","Mengubah data…","Menyimpan perubahan");
-      const res = await fetch(SCRIPT_URL, {
-        method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ token:SHARED_TOKEN, action:"updateLog", id:edit.dataset.id, time:newTime, activity:newAct })
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || "Gagal mengubah");
-      showOverlay("ok","Tersimpan","Perubahan berhasil");
-      await loadRows();
-    }catch(err){
-      console.error(err);
-      showOverlay("err","Gagal mengubah", err.message||"Coba lagi");
-    }
+    const id = edit.dataset.id;
+    if (!id){ alert("Tidak ada ID data dari server."); return; }
+    const t  = edit.dataset.time || "";
+    const a  = decodeHTMLEntities(edit.dataset.activity || "");
+    enterEditMode(id, t, a);
     return;
   }
 
   if (del){
-    if (!del.dataset.id){ alert("Tidak ada ID data dari server."); return; }
+    const id = del.dataset.id;
+    if (!id){ alert("Tidak ada ID data dari server."); return; }
     if (!confirm("Hapus entri ini?")) return;
     try{
       showOverlay("loading","Menghapus data…","");
       const res = await fetch(SCRIPT_URL, {
         method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ token:SHARED_TOKEN, action:"deleteLog", id:del.dataset.id })
+        body: JSON.stringify({ token:SHARED_TOKEN, action:"deleteLog", id })
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || "Gagal menghapus");
       showOverlay("ok","Terhapus","Data dihapus");
+      if (editingId && editingId == id) exitEditMode();
       await loadRows();
     }catch(err){
       console.error(err);
@@ -352,9 +381,7 @@ rowsTbody.addEventListener("click", async (e) => {
     }
   }
 });
-function decodeHTMLEntities(s){
-  const el = document.createElement("textarea"); el.innerHTML = s; return el.value;
-}
+function decodeHTMLEntities(s){ const el = document.createElement("textarea"); el.innerHTML = s; return el.value; }
 
 /* ===== MODAL FOTO ===== */
 const photoModal = document.getElementById("photoModal");
@@ -367,6 +394,6 @@ function closePhoto(){ photoModal.classList.add("hidden"); photoImg.removeAttrib
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
   timeLabel.textContent = "Pilih Waktu";
-  setSubmitEnabled();
+  setModeEdit(false); // default mode tambah
   await loadRows();
 });
