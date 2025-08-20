@@ -1,6 +1,5 @@
 /* ===== KONFIG ===== */
-// GANTI ke URL Cloudflare Worker kamu (bukan URL Apps Script langsung!)
-const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev/"; // <-- ganti ini
+const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // URL WORKER kamu
 const SHARED_TOKEN = "N45p";
 
 /* ===== DOM ===== */
@@ -43,29 +42,27 @@ function setSubmitEnabled(){
 }
 
 /* ===== UI BINDINGS ===== */
-// 1) Time picker: buka picker secara paksa saat label diklik
-document.querySelector(".btn-like").addEventListener("click", (e) => {
-  // biar tidak klik dobel ketika picker sudah terbuka
-  if (document.activeElement === timeInput) return;
+// Buka time picker walau input disembunyikan
+const timeBtnLike = document.querySelector(".btn-like");
+timeBtnLike.addEventListener("click", () => {
   if (typeof timeInput.showPicker === "function") timeInput.showPicker();
-  else timeInput.focus(); // fallback
+  else timeInput.focus();
 });
-timeInput.addEventListener("change", () => {
-  timeLabel.textContent = timeInput.value || "Pilih Waktu";
-  setSubmitEnabled();
-});
+// Sebagian browser emit 'input' (bukan 'change') saat memilih waktu
+function syncTimeLabel(){ timeLabel.textContent = timeInput.value || "Pilih Waktu"; setSubmitEnabled(); }
+timeInput.addEventListener("input",  syncTimeLabel);
+timeInput.addEventListener("change", syncTimeLabel);
 
-// 2) Enable/Disable tombol Kirim saat user mengetik kegiatan
+// Enable tombol saat user mengetik kegiatan
 activityEl.addEventListener("input", setSubmitEnabled);
 
-// 3) Upload foto
+// Upload foto
 pickPhoto.addEventListener("click", () => fileInput.click());
 
 fileInput.addEventListener("change", async (ev) => {
   const file = ev.target.files?.[0];
   if (!file) return;
 
-  // Preview kecil
   uploadInfo.classList.remove("hidden");
   uploadName.textContent = file.name;
   uploadStatus.textContent = "Mengunggah foto…";
@@ -77,7 +74,7 @@ fileInput.addEventListener("change", async (ev) => {
     uploading = true; setSubmitEnabled();
     showOverlay("loading", "Mengunggah foto…", "Mohon tunggu sebentar");
 
-    const base64 = await fileToBase64(file); // dataURL
+    const base64 = await fileToBase64(file);
     const payload = {
       token: SHARED_TOKEN,
       action: "upload",
@@ -97,7 +94,6 @@ fileInput.addEventListener("change", async (ev) => {
     uploaded = { fileId: json.fileId, url: json.url, name: file.name };
     uploadStatus.textContent = "Upload selesai ✅";
     showOverlay("ok", "Berhasil diunggah", "Foto tersimpan di Drive");
-
   }catch(err){
     console.error(err);
     uploaded = null;
@@ -111,7 +107,7 @@ fileInput.addEventListener("change", async (ev) => {
 async function fileToBase64(file){
   return new Promise((resolve, reject) => {
     const r = new FileReader();
-    r.onload = () => resolve(r.result); // dataURL
+    r.onload = () => resolve(r.result);
     r.onerror = reject;
     r.readAsDataURL(file);
   });
@@ -143,7 +139,6 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
     if (!res.ok || !json.success) throw new Error(json.error || "Gagal menyimpan");
 
     showOverlay("ok", "Tersimpan", "Logbook berhasil ditambahkan");
-    // Reset form
     timeInput.value = "";
     timeLabel.textContent = "Pilih Waktu";
     activityEl.value = "";
