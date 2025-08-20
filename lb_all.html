@@ -1,108 +1,76 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>LOGBOOK</title>
-  <link rel="stylesheet" href="lb_all.css"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Logbook</title>
+  <link rel="stylesheet" href="lb_all.css" />
 </head>
 <body>
   <main class="container">
-    <!-- CARD: FORM -->
     <section class="card">
-      <h1>Input Kegiatan</h1>
-      <p class="muted">Maksimal 10 entri. Disimpan tepat di <b>A18:C28</b> pada Sheet (privat).</p>
+      <h1 class="card-title">Input Logbook</h1>
 
-      <form id="kForm" class="form-grid" autocomplete="off">
-        <!-- Waktu -->
-        <div class="field">
-          <label for="timeHHMM">Waktu (HH:MM)</label>
-          <div class="pin-time">
-            <input id="timeHHMM" name="timeHHMM" type="text" inputmode="none" placeholder="HH:MM" readonly />
-            <button id="btnPickTime" type="button" class="btn">Pilih Waktu</button>
-          </div>
-          <small class="hint">Tekan tombol untuk membuka pemilih waktu.</small>
-        </div>
+      <div class="row-2">
+        <!-- Kiri: Time Picker -->
+        <label class="btn-like" aria-label="Pilih Waktu">
+          <input id="timeInput" type="time" required />
+          <span id="timeLabel">Pilih Waktu</span>
+        </label>
 
-        <!-- Kegiatan -->
-        <div class="field">
-          <label for="activity">Kegiatan</label>
-          <input id="activity" name="activity" type="text" placeholder="Tulis kegiatan…" required />
-        </div>
-
-        <!-- Foto -->
-        <div class="field">
-          <label>Foto (kompres JPG ≤ 300px & di-upload otomatis)</label>
-
-          <!-- input galeri (tanpa capture) -->
-          <input id="photoFile" name="photoFile" type="file" accept="image/*" hidden/>
-
-          <!-- input kamera (dengan capture) -->
-          <input id="photoCam"  name="photoCam"  type="file" accept="image/*" capture="environment" hidden/>
-
-          <div class="upload-row">
-            <button id="btnPickGallery" type="button" class="btn">Dari Galeri</button>
-            <button id="btnPickCamera"  type="button" class="btn">Buka Kamera</button>
-            <span id="uploadInfo" class="muted">Belum ada gambar</span>
-          </div>
-
-          <canvas id="previewCanvas" class="preview" width="0" height="0" hidden></canvas>
-
-          <details class="link-fallback">
-            <summary>Atau pakai link/ID Google Drive</summary>
-            <input id="photoLink" name="photoLink" type="text" placeholder="https://drive.google.com/file/d/ID/view … atau ID file" />
-            <small class="hint">Jika diisi, sistem memakai link/ID ini (tanpa upload).</small>
-          </details>
-        </div>
-
-        <button id="submitBtn" type="submit">Kirim</button>
-      </form>
-
-      <div id="statusOk"  class="status ok"  role="alert"></div>
-      <div id="statusErr" class="status err" role="alert"></div>
-    </section>
-
-    <!-- CARD: TABEL HASIL -->
-    <section class="card">
-      <div class="card-head">
-        <h2>Daftar Entri (A18:C28)</h2>
-        <button id="refreshBtn" class="ghost" type="button">Segarkan</button>
+        <!-- Kanan: Upload Foto -->
+        <button id="pickPhotoBtn" type="button" class="btn">
+          📷 Ambil / Pilih Foto
+        </button>
+        <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
       </div>
 
+      <!-- Preview & status upload -->
+      <div id="uploadInfo" class="upload-info hidden">
+        <img id="preview" alt="Preview" />
+        <div class="meta">
+          <div id="uploadStatus">Menunggu foto…</div>
+          <div id="uploadName" class="muted"></div>
+        </div>
+      </div>
+
+      <!-- Kegiatan -->
+      <div class="field">
+        <label for="activity">Kegiatan</label>
+        <textarea id="activity" rows="3" placeholder="Tuliskan kegiatan…"></textarea>
+      </div>
+
+      <button id="submitBtn" class="btn primary" type="button" disabled>✅ Kirim Data</button>
+    </section>
+
+    <!-- Tabel hasil -->
+    <section class="card">
+      <div class="card-title">Riwayat Logbook</div>
       <div class="table-wrap">
-        <table class="sheet-table" id="resultTable" aria-label="Hasil entri A18:C28">
+        <table>
           <thead>
             <tr>
-              <th style="width:110px">Waktu</th>
+              <th>Waktu</th>
               <th>Kegiatan</th>
-              <th style="width:120px">Foto</th>
+              <th>Foto</th>
+              <th>Dibuat</th>
             </tr>
           </thead>
-          <tbody id="resultTBody">
-            <tr><td colspan="3" class="empty">Memuat data…</td></tr>
-          </tbody>
+          <tbody id="rows"></tbody>
         </table>
       </div>
     </section>
   </main>
 
-  <!-- PIN Time Picker Modal (hanya via tombol) -->
-  <div id="timeModal" class="modal" hidden>
-    <div class="modal-card">
-      <div class="modal-head">
-        <h3>Set Waktu</h3>
-        <button id="timeClose" class="icon-btn" aria-label="Tutup">✕</button>
+  <!-- Overlay upload -->
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet">
+      <div class="icon spinner" id="ovIcon"></div>
+      <div class="texts">
+        <div class="title" id="ovTitle">Mengunggah foto…</div>
+        <div class="desc" id="ovDesc">Mohon tunggu sebentar</div>
       </div>
-      <div class="time-display" id="timeDisplay">--:--</div>
-      <div class="keypad" id="keypad">
-        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
-        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
-        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
-        <button data-k="back" class="sub">⌫</button><button data-k="0">0</button><button data-k="clear" class="sub">C</button>
-      </div>
-      <div class="modal-actions">
-        <button id="timeSet" class="btn">Pakai</button>
-      </div>
+      <button id="ovClose" class="close hidden" type="button">Tutup</button>
     </div>
   </div>
 
