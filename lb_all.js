@@ -20,11 +20,12 @@ const rowsTbody   = document.getElementById("rows");
 /* ===== STATE ===== */
 let uploaded = null;   // {fileId, url, name} (saat tambah)
 let uploading = false;
-let editingId = null;  // ← id baris sheet ketika edit
+let editingId = null;  // id baris sheet ketika edit
 
 /* ===== UTIL ===== */
 const pad2 = (n)=> String(n).padStart(2,"0");
 
+/* Format "HH:MM WIB" untuk tampilan */
 function fmtTimeWIB(s){
   if (!s) return "-";
   const m = /^(\d{1,2}):(\d{2})$/.exec(s);
@@ -61,7 +62,6 @@ function showOverlay(state, title, desc){
 
 /* ===== MODE (tambah / edit) ===== */
 function setModeEdit(on){
-  // ubah tombol & disable upload saat edit
   submitBtn.textContent = on ? "✏️ Edit" : "✅ Kirim Data";
   pickPhoto.disabled = !!on;
   fileInput.disabled = !!on;
@@ -189,6 +189,13 @@ function closeTimePicker(save){
 timeBtn.addEventListener("click", openTimePicker);
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave.addEventListener("click",   () => closeTimePicker(true));
+
+/* Matikan native time-picker di mobile: sembunyikan input */
+function disableNativeTimePicker(){
+  try{
+    timeInput.setAttribute("type","hidden"); // tetap dipakai sebagai storage value
+  }catch(_){}
+}
 
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
 pickPhoto.addEventListener("click", () => fileInput.click());
@@ -319,15 +326,22 @@ async function loadRows(){
     for (const r of json.rows){
       const id = r.id ?? "";
       const tr = document.createElement("tr");
+      const safeAct = escapeHtml(r.activity || "-");
+      const fileId  = r.fileId || "";
+      const fileUrl = r.fileUrl || "";
       tr.innerHTML = `
         <td>${fmtTimeWIB(r.time || r.createdAt || "")}</td>
-        <td>${escapeHtml(r.activity || "-")}</td>
-        <td>${r.fileUrl ? `<button class="icon-btn btn-view" data-url="${r.fileUrl}" title="Lihat foto">
-              <svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>` : "-"}</td>
+        <td>${safeAct}</td>
+        <td>${
+          (fileId || fileUrl)
+          ? `<button class="icon-btn btn-view" data-id="${fileId}" data-url="${fileUrl}" title="Lihat foto">
+               <svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+             </button>`
+          : "-"
+        }</td>
         <td>
           <div class="actions">
-            <button class="icon-btn btn-edit" data-id="${id}" data-time="${r.time||''}" data-activity="${escapeHtml(r.activity||'')}" title="Edit">
+            <button class="icon-btn btn-edit" data-id="${id}" data-time="${r.time||''}" data-activity="${safeAct}" title="Edit">
               <svg viewBox="0 0 24 24"><path d="M3 21h4l11-11-4-4L3 17v4Z"/><path d="M15 5l4 4"/></svg>
             </button>
             <button class="icon-btn btn-del" data-id="${id}" title="Hapus">
@@ -349,7 +363,10 @@ rowsTbody.addEventListener("click", async (e) => {
   const view = e.target.closest(".btn-view");
   const edit = e.target.closest(".btn-edit");
   const del  = e.target.closest(".btn-del");
-  if (view){ openPhoto(view.dataset.url); return; }
+  if (view){
+    openPhoto(normalizeDriveUrl(view.dataset.url, view.dataset.id));
+    return;
+  }
 
   if (edit){
     const id = edit.dataset.id;
@@ -388,12 +405,30 @@ const photoModal = document.getElementById("photoModal");
 const photoImg   = document.getElementById("photoImg");
 document.getElementById("photoClose").addEventListener("click", closePhoto);
 photoModal.addEventListener("click", (e)=>{ if(e.target===photoModal) closePhoto(); });
-function openPhoto(url){ photoImg.src = url; photoModal.classList.remove("hidden"); }
-function closePhoto(){ photoModal.classList.add("hidden"); photoImg.removeAttribute("src"); }
+
+function normalizeDriveUrl(url, fileId){
+  // Prioritaskan fileId → direct view URL
+  if (fileId) return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  if (!url) return "";
+  // Ubah /file/d/<id>/view → uc?export=view&id=<id>
+  const m = url.match(/\/file\/d\/([^/]+)/);
+  if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+  return url; // jika sudah direct image/dataURL/URL lain
+}
+function openPhoto(src){
+  if (!src) return;
+  photoImg.src = src;
+  photoModal.classList.remove("hidden");
+}
+function closePhoto(){
+  photoModal.classList.add("hidden");
+  photoImg.removeAttribute("src");
+}
 
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
+  disableNativeTimePicker();          // cegah picker bawaan
   timeLabel.textContent = "Pilih Waktu";
-  setModeEdit(false); // default mode tambah
+  setModeEdit(false);                 // default mode tambah
   await loadRows();
 });
