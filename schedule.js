@@ -1,6 +1,6 @@
 // ===== KONFIGURASI =====
 // Ganti URL_WEB_APP sesuai deployment Google Apps Script kamu (Deploy > New Deployment)
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbw6AVNm62yMKfV3JSDsn6rkxM5NlQv3fK9pny7Z5TBOI3PCULVuwAumaos-VwtnJVXq/exec"; // harus /exec
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycby8Fca079ujQUPFAaURh-WmwqiPOoEgFllQDRlxIsYY1IK31urzSgzrgyIlezkpgJG5/exec"; // harus /exec
 const SHARED_TOKEN = "N45p"; // sama dengan di code.gs
 
 const ALLOWED_SECTIONS = ["HBSCP", "PSCP", "POS1", "PATROLI", "MALAM"];
