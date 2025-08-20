@@ -194,6 +194,37 @@ body.blur-bg > *:not(#loadingOverlay){
 .net-btn:hover{ background:var(--accent-2) }
 
 /* =========================
+   judul schedule
+   ========================= */
+/* Judul 3 baris */
+.header-title .title-multi{
+  margin: 0;
+  font-weight: 800;
+  line-height: 1.1;
+  font-size: clamp(20px, 3.8vw, 28px);
+  letter-spacing: .2px;
+}
+.header-title .title-multi span{
+  display: block; /* setiap span tampil di baris baru */
+}
+
+/* Tanggal di bawah judul */
+.subdate{
+  color: var(--muted);
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+/* Label Chief/Assistant Chief/Supervisor CCTV lebih menonjol */
+.ident-list{ margin-top: 8px; display: grid; gap: 6px; }
+.ident-line strong{
+  text-transform: uppercase;
+  font-weight: 800;
+  font-size: clamp(14px, 2.7vw, 18px);
+  letter-spacing: .3px;
+}
+
+/* =========================
    Responsif
    ========================= */
 @media (max-width: 480px){
