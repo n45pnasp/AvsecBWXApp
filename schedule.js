@@ -130,7 +130,7 @@ async function fetchData(){
 
 async function init(){
   try{
-    Overlay.show("Mengambil data…", "Memuat daftar tugas dari Google Sheet");
+    Overlay.show("Mengambil data…", "Memuat daftar tugas");
     const data = await fetchData();
 
     // Header
