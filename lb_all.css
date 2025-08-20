@@ -26,9 +26,9 @@
   border-radius:10px; cursor:pointer; text-decoration:none;
   transition: background .12s ease, transform .08s ease;
 }
-.back-btn:hover{ background: rgba(255,255,255,.06); }
-.back-btn:active{ background: rgba(0,0,0,.25); transform: translateY(1px); }
-.back-btn:focus-visible{ outline: 2px solid rgba(255,255,255,.4); outline-offset: 2px; }
+.back-btn:hover{ background: rgba(255,255,255,.06) }
+.back-btn:active{ background: rgba(0,0,0,.25); transform: translateY(1px) }
+.back-btn:focus-visible{ outline: 2px solid rgba(255,255,255,.4); outline-offset: 2px }
 .back-btn svg, .back-btn svg *{
   stroke: currentColor; stroke-width: 2.2; fill: none;
   stroke-linecap: round; stroke-linejoin: round;
@@ -46,7 +46,7 @@ body{
 }
 .container{
   max-width:900px; margin:24px auto; padding:0 16px; display:grid; gap:16px;
-  padding-top:8px; /* beri jarak dari app bar */
+  padding-top:8px; /* jarak dari app bar */
 }
 .card{
   background: var(--card); border:1px solid var(--border);
@@ -70,6 +70,9 @@ textarea, input[type="time"]{
   border:1px solid var(--border); border-radius:12px; padding:12px;
 }
 
+/* =========================
+   BUTTONS
+   ========================= */
 .btn, .btn-like{
   display:inline-flex; align-items:center; justify-content:center;
   background:#1f2937; color:#fff; border:1px solid var(--border);
@@ -82,8 +85,8 @@ textarea, input[type="time"]{
 .btn.primary{ background:#2563eb; border-color:#1e40af }
 .btn:disabled{ opacity:.55; cursor:not-allowed }
 
-/* Tombol waktu bergaya tombol, input time disembunyikan
-   (native picker tidak muncul, kita pakai modal custom) */
+/* Tombol waktu bergaya tombol; input time disembunyikan
+   (native picker tidak muncul, pakai modal custom) */
 .btn-like{ position:relative }
 .btn-like input[type="time"]{
   position:absolute; inset:0; opacity:0; pointer-events:none;
@@ -116,7 +119,7 @@ th{ background:#111827 }
 tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
 
 /* =========================
-   OVERLAY UPLOAD (card melayang)
+   OVERLAY (Upload & Umum)
    ========================= */
 .overlay{
   position:fixed; inset:0; display:grid; place-items:center;
@@ -148,12 +151,12 @@ tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
 }
 
 /* =========================
-   TIME PICKER (WHEEL MODAL)
+   TIME PICKER (Wheel Modal)
    ========================= */
 #timeModal.overlay{ z-index:10000 } /* di atas overlay lain */
 .time-sheet{
   background:var(--card); border:1px solid var(--border); border-radius:16px;
-  width:min(420px,92vw); padding:10px 12px 14px; box-shadow:0 16px 40px rgba(0,0,0,.45);
+  width:min(440px,92vw); padding:10px 12px 14px; box-shadow:0 16px 40px rgba(0,0,0,.45);
 }
 .time-header{
   display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;
@@ -171,9 +174,10 @@ tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
   gap:12px; padding:8px 4px;
 }
 .wheel{
-  height:180px; /* 5 baris (36px) */
+  height:180px; /* 5 baris x 36px */
   overflow-y:auto; scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch;
   border:1px solid var(--border); border-radius:12px; background:#0b1324;
+  touch-action: pan-y; cursor: ns-resize; user-select:none;
 }
 .wheel::-webkit-scrollbar{ width:0; height:0 } /* sembunyikan scrollbar */
 .item{
@@ -187,10 +191,22 @@ tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
 }
 
 /* =========================
+   PHOTO MODAL (Preview Foto)
+   ========================= */
+.photo-sheet{
+  position:relative; background:var(--card); border:1px solid var(--border); border-radius:16px;
+  padding:10px; max-width:min(92vw, 720px); max-height:92vh; box-shadow:0 16px 40px rgba(0,0,0,.45);
+}
+.photo-sheet img{ display:block; max-width:100%; max-height:calc(92vh - 40px); border-radius:12px }
+.photo-close{
+  position:absolute; top:8px; right:8px; width:36px; height:36px;
+  background:#111827; color:#fff; border:1px solid var(--border); border-radius:10px; cursor:pointer;
+}
+
+/* =========================
    UTIL
    ========================= */
 .hidden{ display:none !important }
-
 @keyframes spin{ to{ transform:rotate(360deg) } }
 @keyframes pop{ from{ transform:translateY(6px) scale(.98); opacity:0 } to{ transform:none; opacity:1 } }
 
