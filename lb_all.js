@@ -24,10 +24,30 @@ let uploading = false;
 /* ===== UTIL ===== */
 const pad2 = (n)=> String(n).padStart(2,"0");
 
+/* Format tampilan waktu -> "HH:MM WIB" */
+function fmtTimeWIB(s){
+  if (!s) return "-";
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s);
+  if (m){
+    const hh = (+m[1])%24, mm = (+m[2])%60;
+    return `${pad2(hh)}:${pad2(mm)} WIB`;
+  }
+  const d = new Date(s);
+  if (!isNaN(d)){
+    try{
+      const str = new Intl.DateTimeFormat("id-ID", {hour:"2-digit", minute:"2-digit", hour12:false, timeZone:"Asia/Jakarta"}).format(d);
+      return `${str} WIB`;
+    }catch(e){
+      return `${pad2(d.getHours())}:${pad2(d.getMinutes())} WIB`;
+    }
+  }
+  return s;
+}
+
 /* ===== TIME PICKER (WHEEL) ===== */
 const ITEM_H = 36;
 const VISIBLE = 5;
-const SPACER = ((VISIBLE-1)/2) * ITEM_H; // 2 * 36 = 72
+const SPACER = ((VISIBLE-1)/2) * ITEM_H;
 
 const timeModal = document.getElementById("timeModal");
 const wheelHour = document.getElementById("wheelHour");
@@ -35,72 +55,67 @@ const wheelMin  = document.getElementById("wheelMin");
 const btnCancel = timeModal.querySelector(".t-cancel");
 const btnSave   = timeModal.querySelector(".t-save");
 
-let selHour = 0, selMin = 0;
-let wheelsBuilt = false;
+let selHour = 0, selMin = 0, wheelsBuilt = false;
 
 function buildWheel(el, count){
-  el.innerHTML = ""; // spacer atas
+  const frag = document.createDocumentFragment();
   const top = document.createElement("div"); top.style.height = SPACER+"px";
   const bottom = document.createElement("div"); bottom.style.height = SPACER+"px";
-  el.appendChild(top);
+  frag.appendChild(top);
   for (let i=0;i<count;i++){
     const it = document.createElement("div");
     it.className = "item";
     it.textContent = pad2(i);
     it.dataset.val = i;
-    el.appendChild(it);
+    frag.appendChild(it);
   }
-  el.appendChild(bottom);
+  frag.appendChild(bottom);
+  el.innerHTML = "";
+  el.appendChild(frag);
 }
 
-function snapTo(el, value){
-  el.scrollTo({ top: SPACER + value*ITEM_H, behavior: "instant" in el ? "instant" : "auto" });
-}
+function snapTopFor(el, value){ el.scrollTop = SPACER + value*ITEM_H; }
+function nearestVal(el, max){ return Math.min(Math.max(Math.round((el.scrollTop - SPACER)/ITEM_H), 0), max); }
 
-function nearestVal(el){
-  const raw = Math.round((el.scrollTop - SPACER)/ITEM_H);
-  return Math.min(Math.max(raw, 0), el === wheelHour ? 23 : 59);
-}
-let scrollTimerH, scrollTimerM;
-function watchWheel(el, isHour){
+function enableScroll(el, max, setSel){
+  let timer = null;
   el.addEventListener("scroll", () => {
-    clearTimeout(isHour ? scrollTimerH : scrollTimerM);
-    const t = setTimeout(() => {
-      const v = nearestVal(el);
-      snapTo(el, v);             // snap halus ke tengah
-      if (isHour) selHour = v; else selMin = v;
-    }, 120);
-    if (isHour) scrollTimerH = t; else scrollTimerM = t;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const v = nearestVal(el, max);
+      snapTopFor(el, v);
+      setSel(v);
+    }, 100);
   }, { passive:true });
+
+  // biar trackpad/mousewheel juga halus
+  el.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    el.scrollTop += e.deltaY;
+  }, { passive:false });
 }
 
 function openTimePicker(){
-  // bangun sekali
   if (!wheelsBuilt){
     buildWheel(wheelHour, 24);
     buildWheel(wheelMin, 60);
-    watchWheel(wheelHour, true);
-    watchWheel(wheelMin, false);
+    enableScroll(wheelHour, 23, v => selHour = v);
+    enableScroll(wheelMin, 59,  v => selMin  = v);
     wheelsBuilt = true;
   }
-  // nilai awal = waktu sekarang atau dari input
   let h = 0, m = 0;
-  if (timeInput.value) {
-    const [hh, mm] = timeInput.value.split(":");
-    h = parseInt(hh||"0",10); m = parseInt(mm||"0",10);
-  } else {
-    const now = new Date();
-    h = now.getHours(); m = now.getMinutes();
+  if (timeInput.value){
+    const [hh, mm] = timeInput.value.split(":"); h = parseInt(hh||"0",10); m = parseInt(mm||"0",10);
+  }else{
+    const now = new Date(); h = now.getHours(); m = now.getMinutes();
   }
   selHour = h; selMin = m;
-  snapTo(wheelHour, h);
-  snapTo(wheelMin, m);
-
+  snapTopFor(wheelHour, h);
+  snapTopFor(wheelMin, m);
   timeModal.classList.remove("hidden");
 }
 function closeTimePicker(save){
   if (save){
-    // finalisasi 24 jam (Indonesia)
     const val = `${pad2(selHour)}:${pad2(selMin)}`;
     timeInput.value = val;
     timeLabel.textContent = val;
@@ -108,17 +123,14 @@ function closeTimePicker(save){
   }
   timeModal.classList.add("hidden");
 }
-// open/close bindings
 timeBtn.addEventListener("click", openTimePicker);
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave.addEventListener("click",   () => closeTimePicker(true));
 
-/* ===== FORM ENABLING ===== */
+/* ===== ENABLING ===== */
 function setSubmitEnabled(){
-  const timeOk = !!timeInput.value;
-  const actOk  = !!activityEl.value.trim();
-  const photoOk= !!uploaded?.fileId;
-  submitBtn.disabled = !(timeOk && actOk && photoOk && !uploading);
+  const ok = !!timeInput.value && !!activityEl.value.trim() && !!uploaded?.fileId && !uploading;
+  submitBtn.disabled = !ok;
 }
 activityEl.addEventListener("input", setSubmitEnabled);
 
@@ -141,19 +153,9 @@ fileInput.addEventListener("change", async (ev) => {
     showOverlay("loading", "Mengunggah foto…", "Mohon tunggu sebentar");
 
     const base64 = await fileToBase64(file);
-    const payload = {
-      token: SHARED_TOKEN,
-      action: "upload",
-      filename: file.name,
-      mimeType: file.type || "image/jpeg",
-      dataUrl: base64
-    };
+    const payload = { token: SHARED_TOKEN, action: "upload", filename: file.name, mimeType: file.type || "image/jpeg", dataUrl: base64 };
 
-    const res = await fetch(SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type":"application/json" },
-      body: JSON.stringify(payload)
-    });
+    const res = await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify(payload) });
     const json = await res.json();
     if (!res.ok || !json.success) throw new Error(json.error || "Upload gagal");
 
@@ -193,24 +195,17 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
     const res = await fetch(SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type":"application/json" },
-      body: JSON.stringify({
-        token: SHARED_TOKEN,
-        action: "createLog",
-        time: timeStr,
-        activity,
-        fileId: uploaded.fileId
-      })
+      body: JSON.stringify({ token: SHARED_TOKEN, action: "createLog", time: timeStr, activity, fileId: uploaded.fileId })
     });
     const json = await res.json();
     if (!res.ok || !json.success) throw new Error(json.error || "Gagal menyimpan");
 
     showOverlay("ok", "Tersimpan", "Logbook berhasil ditambahkan");
-    timeInput.value = "";
-    timeLabel.textContent = "Pilih Waktu";
-    activityEl.value = "";
-    uploaded = null;
-    uploadInfo.classList.add("hidden");
-    preview.removeAttribute("src");
+
+    // reset
+    timeInput.value = ""; timeLabel.textContent = "Pilih Waktu";
+    activityEl.value = ""; uploaded = null;
+    uploadInfo.classList.add("hidden"); preview.removeAttribute("src");
     setSubmitEnabled();
 
     await loadRows();
@@ -224,7 +219,7 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
 
 /* ===== TABEL ===== */
 async function loadRows(){
-  rowsTbody.innerHTML = `<tr><td colspan="4">Memuat…</td></tr>`;
+  rowsTbody.innerHTML = `<tr><td colspan="3">Memuat…</td></tr>`;
   try{
     const url = new URL(SCRIPT_URL);
     url.searchParams.set("action","list");
@@ -236,25 +231,46 @@ async function loadRows(){
 
     rowsTbody.innerHTML = "";
     if (!json.rows || !json.rows.length) {
-      rowsTbody.innerHTML = `<tr><td colspan="4" class="muted">Belum ada data</td></tr>`;
+      rowsTbody.innerHTML = `<tr><td colspan="3" class="muted">Belum ada data</td></tr>`;
       return;
     }
+
     for (const r of json.rows){
       const tr = document.createElement("tr");
+      const timeDisp = fmtTimeWIB(r.time || r.createdAt || "");
       tr.innerHTML = `
-        <td>${escapeHtml(r.time || "-")}</td>
+        <td>${timeDisp}</td>
         <td>${escapeHtml(r.activity || "-")}</td>
-        <td>${r.fileUrl ? `<a href="${r.fileUrl}" target="_blank" rel="noopener">Buka</a>` : "-"}</td>
-        <td>${escapeHtml(r.createdAt || "-")}</td>
+        <td>${r.fileUrl ? `<button class="btn btn-view" data-url="${r.fileUrl}">Lihat</button>` : "-"}</td>
       `;
       rowsTbody.appendChild(tr);
     }
   }catch(err){
     console.error(err);
-    rowsTbody.innerHTML = `<tr><td colspan="4">Gagal memuat data</td></tr>`;
+    rowsTbody.innerHTML = `<tr><td colspan="3">Gagal memuat data</td></tr>`;
   }
 }
+rowsTbody.addEventListener("click", (e) => {
+  const btn = e.target.closest(".btn-view");
+  if (!btn) return;
+  openPhoto(btn.dataset.url);
+});
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+/* ===== MODAL FOTO ===== */
+const photoModal = document.getElementById("photoModal");
+const photoImg   = document.getElementById("photoImg");
+document.getElementById("photoClose").addEventListener("click", closePhoto);
+photoModal.addEventListener("click", (e)=>{ if(e.target===photoModal) closePhoto(); });
+
+function openPhoto(url){
+  photoImg.src = url;
+  photoModal.classList.remove("hidden");
+}
+function closePhoto(){
+  photoModal.classList.add("hidden");
+  photoImg.removeAttribute("src");
+}
 
 /* ===== OVERLAY UPLOAD ===== */
 function showOverlay(state, title, desc){
@@ -274,11 +290,8 @@ function showOverlay(state, title, desc){
 
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
-  // default label = waktu sekarang (24 jam ID)
-  const now = new Date();
-  const v = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-  timeInput.value = "";
-  timeLabel.textContent = "Pilih Waktu"; // biar user sadar harus pilih
+  // label awal
+  timeLabel.textContent = "Pilih Waktu";
   setSubmitEnabled();
   await loadRows();
 });
