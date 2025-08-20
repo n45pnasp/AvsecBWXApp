@@ -381,10 +381,15 @@ async function loadRows(){
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
-/* konversi link Drive → link gambar langsung */
+/* konversi fileId/url Drive → URL foto via Apps Script (aman & always works) */
 function toImageUrl(url, fileId){
-  const id = fileId || (url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || "");
-  return id ? (`https://drive.google.com/uc?export=view&id=${id}`) : (url || "");
+  const id = fileId
+    || (url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
+    ||   url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1]
+    || "");
+  return id
+    ? `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(id)}`
+    : "";
 }
 
 /* ===== TAP = lihat foto, LONG-PRESS = Edit/Hapus ===== */
