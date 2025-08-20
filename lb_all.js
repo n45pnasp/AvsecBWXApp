@@ -97,8 +97,8 @@ function setSubmitEnabled(){
 }
 activityEl.addEventListener("input", setSubmitEnabled);
 
-/* ===== TIME PICKER (WHEEL – baca dari GARIS TENGAH) ===== */
-const ITEM_H = 36;           // sama dgn .item di CSS
+/* ===== TIME PICKER (WHEEL – baca item PUSAT layar) ===== */
+const ITEM_H = 36;           // harus sama dgn .item di CSS
 const VISIBLE = 5;
 const SPACER = ((VISIBLE-1)/2) * ITEM_H;
 
@@ -119,7 +119,7 @@ function buildWheel(el, count){
     const it = document.createElement("div");
     it.className = "item";
     it.textContent = pad2(i);
-    it.dataset.val = i;
+    it.dataset.val = i; // penting: 0..count-1
     frag.appendChild(it);
   }
   frag.appendChild(bottom);
@@ -127,15 +127,30 @@ function buildWheel(el, count){
   el.appendChild(frag);
 }
 
-/* ⬇️ Perbaikan inti: index di garis tengah */
-function centerIndex(el, max){
-  // tepat: jika scrollTop = SPACER + idx*ITEM_H → idx
-  const idx = Math.round((el.scrollTop - SPACER) / ITEM_H);
-  return clamp(idx, 0, max);
+function snapToCenter(el, idx){
+  el.scrollTop = SPACER + idx*ITEM_H;
 }
-function snapToCenter(el, idx){ el.scrollTop = SPACER + idx*ITEM_H; }
 
-/* interaksi stabil (tanpa auto-lari/loop) */
+/* === Inti perbaikan: cari elemen .item yang pusatnya paling dekat dengan garis tengah wheel === */
+function centerIndex(el, max){
+  const rect = el.getBoundingClientRect();
+  const midY = rect.top + rect.height / 2;
+  let closest = 0;
+  let best = Infinity;
+  const nodes = el.querySelectorAll('.item');
+  nodes.forEach(n => {
+    const r = n.getBoundingClientRect();
+    const cy = r.top + r.height/2;
+    const d  = Math.abs(cy - midY);
+    if (d < best){
+      best = d;
+      closest = +n.dataset.val; // 0..max
+    }
+  });
+  return clamp(closest, 0, max);
+}
+
+/* interaksi */
 function enableWheel(el, max){
   let dragging = false, startY = 0, startTop = 0, pid = 0;
   let timer = null;
@@ -165,7 +180,7 @@ function enableWheel(el, max){
   el.addEventListener("pointerup", endDrag);
   el.addEventListener("pointercancel", endDrag);
 
-  // Snap hanya setelah scroll berhenti (debounce)
+  // Snap hanya ketika scroll berhenti (inertia selesai)
   el.addEventListener("scroll", ()=>{
     if (isSnapping) return;
     clearTimeout(timer);
@@ -174,7 +189,7 @@ function enableWheel(el, max){
       snapToCenter(el, centerIndex(el, max));
       requestAnimationFrame(()=>{ isSnapping = false; });
     }, 160);
-  }, {passive:true});
+  }, { passive:true });
 
   // Klik item → loncat & snap
   el.addEventListener("click", (e)=>{
@@ -439,6 +454,6 @@ function closePhoto(){ photoModal.classList.add("hidden"); photoImg.removeAttrib
 document.addEventListener("DOMContentLoaded", async () => {
   timeLabel.textContent = "Pilih Waktu";
   setModeEdit(false);         // default mode tambah
-  disableNativeTimePicker();  // selalu wheel
+  disableNativeTimePicker();  // pastikan selalu wheel picker
   await loadRows();
 });
