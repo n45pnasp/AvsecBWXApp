@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>LOGBOOK CCTV</title>
+  <title>LOGBOOK</title>
   <link rel="stylesheet" href="lb_all.css"/>
 </head>
 <body>
@@ -11,23 +11,40 @@
     <!-- CARD: FORM -->
     <section class="card">
       <h1>Input Kegiatan</h1>
-      <p class="muted">Maksimal 10 entri. Disimpan tepat di <b>A18:C28</b> pada Sheet.</p>
+      <p class="muted">Maksimal 10 entri. Disimpan tepat di <b>A18:C28</b> pada Sheet (privat).</p>
 
       <form id="kForm" class="form-grid" autocomplete="off">
+        <!-- Waktu: PIN picker -->
         <div class="field">
-          <label for="timeHHMM">Waktu (jam:menit)</label>
-          <input id="timeHHMM" name="timeHHMM" type="time" required/>
+          <label for="timeHHMM">Waktu (HH:MM)</label>
+          <div class="pin-time">
+            <input id="timeHHMM" name="timeHHMM" type="text" inputmode="numeric" pattern="\\d{2}:\\d{2}" placeholder="HH:MM" readonly />
+            <button id="btnPickTime" type="button" class="btn">Pilih Waktu</button>
+          </div>
+          <small class="hint">Gunakan keypad ala Android untuk input jam & menit.</small>
         </div>
 
+        <!-- Kegiatan: textbox -->
         <div class="field">
           <label for="activity">Kegiatan</label>
-          <textarea id="activity" name="activity" rows="3" placeholder="Tulis kegiatan…" required></textarea>
+          <input id="activity" name="activity" type="text" placeholder="Tulis kegiatan…" required />
         </div>
 
+        <!-- Foto: upload + kompres 300px -->
         <div class="field">
-          <label for="photo">Foto (Link/ID Google Drive atau URL gambar)</label>
-          <input id="photo" name="photo" type="text" placeholder="https://drive.google.com/file/d/ID/view … atau langsung ID" required/>
-          <small class="hint">Akan otomatis diubah menjadi <code>thumbnail?id=…</code> agar tampil via <code>=IMAGE()</code> di Sheet.</small>
+          <label for="photoFile">Foto (upload, akan dikompres JPG ≤ 300px)</label>
+          <input id="photoFile" name="photoFile" type="file" accept="image/*" capture="environment" />
+          <div class="upload-row">
+            <button id="btnUploadPick" type="button" class="btn">Pilih/Foto</button>
+            <span id="uploadInfo" class="muted">Belum ada gambar</span>
+          </div>
+          <canvas id="previewCanvas" class="preview" width="0" height="0" hidden></canvas>
+
+          <details class="link-fallback">
+            <summary>Atau pakai link/ID Google Drive</summary>
+            <input id="photoLink" name="photoLink" type="text" placeholder="https://drive.google.com/file/d/ID/view … atau ID file" />
+            <small class="hint">Jika diisi, sistem memakai link/ID ini (tanpa upload).</small>
+          </details>
         </div>
 
         <button id="submitBtn" type="submit">Kirim</button>
@@ -61,7 +78,27 @@
     </section>
   </main>
 
-  <!-- JS dipisah -->
+  <!-- PIN Time Picker Modal -->
+  <div id="timeModal" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Set Waktu</h3>
+        <button id="timeClose" class="icon-btn" aria-label="Tutup">✕</button>
+      </div>
+      <div class="time-display" id="timeDisplay">--:--</div>
+      <div class="keypad" id="keypad">
+        <!-- Baris keypad -->
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+        <button data-k="back" class="sub">⌫</button><button data-k="0">0</button><button data-k="clear" class="sub">C</button>
+      </div>
+      <div class="modal-actions">
+        <button id="timeSet" class="btn">Pakai</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="lb_all.js"></script>
 </body>
 </html>
