@@ -1,11 +1,9 @@
 // ===== KONFIGURASI =====
-// Ganti URL_WEB_APP sesuai deployment Google Apps Script kamu (Deploy > New Deployment)
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycby8Fca079ujQUPFAaURh-WmwqiPOoEgFllQDRlxIsYY1IK31urzSgzrgyIlezkpgJG5/exec"; // harus /exec
-const SHARED_TOKEN = "N45p"; // sama dengan di code.gs
+// Gunakan URL Web App /exec dari deployment terbaru
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyc4Vmnuj905a5y53tJ75jJsgLXKTd7dSpaZouLwstIlSjGRV08R7vNLsi9ytP1Cers/exec";
+const SHARED_TOKEN = "N45p"; // sama dgn code.gs
 
-const ALLOWED_SECTIONS = ["HBSCP", "PSCP", "POS1", "PATROLI", "MALAM"];
-
-// Utility dom
+// Utility DOM
 function $(sel){ return document.querySelector(sel); }
 function el(tag, props = {}, children = []) {
   const n = document.createElement(tag);
@@ -14,7 +12,7 @@ function el(tag, props = {}, children = []) {
   return n;
 }
 
-// Overlay control (sesuai CSS kamu)
+// Overlay
 const Overlay = {
   show(title = "Memproses…", desc = "Sedang berjalan") {
     document.body.classList.add("blur-bg");
@@ -22,23 +20,20 @@ const Overlay = {
     o.style.display = "flex";
     o.querySelector(".title").textContent = title;
     o.querySelector(".desc").textContent = desc;
-    const icon = o.querySelector(".icon");
-    icon.className = "icon spinner";
+    o.querySelector(".icon").className = "icon spinner";
   },
   success(title = "Berhasil", desc = "Data berhasil dimuat"){
     const o = $("#loadingOverlay");
     o.querySelector(".title").textContent = title;
     o.querySelector(".desc").textContent = desc;
-    const icon = o.querySelector(".icon");
-    icon.className = "icon success";
+    o.querySelector(".icon").className = "icon success";
     setTimeout(Overlay.hide, 700);
   },
   error(title = "Gagal", desc = "Terjadi kesalahan"){
     const o = $("#loadingOverlay");
     o.querySelector(".title").textContent = title;
     o.querySelector(".desc").textContent = desc;
-    const icon = o.querySelector(".icon");
-    icon.className = "icon error";
+    o.querySelector(".icon").className = "icon error";
   },
   hide(){
     document.body.classList.remove("blur-bg");
@@ -50,17 +45,18 @@ window.App = { hideOverlay: Overlay.hide };
 
 function fillText(id, value){
   const el = document.getElementById(id);
-  if (el) el.textContent = value || "-";
+  if (el) el.textContent = (value ?? "").toString().trim() || "-";
 }
 
 function renderTable(tableId, rows){
   const tbody = document.querySelector(`#${tableId} tbody`);
+  if (!tbody) return;
   tbody.innerHTML = "";
-  rows.forEach((r, idx) => {
+  (rows || []).forEach((r, idx) => {
     const tr = el("tr", {}, [
-      el("td", { textContent: r.no || String(idx+1) }),
-      el("td", { textContent: r.nama || "-" }),
-      el("td", { textContent: r.posisi || "-" })
+      el("td", { textContent: (r.no || String(idx+1)) }),
+      el("td", { textContent: (r.nama || "-") }),
+      el("td", { textContent: (r.posisi || "-") })
     ]);
     tbody.appendChild(tr);
   });
@@ -70,8 +66,8 @@ function bySection(data, section){
   return (data.rosters || []).filter(r => (r.section || "").toUpperCase() === section);
 }
 
-// ===== Helper: JSONP fallback =====
-function fetchJsonp(params){
+// ===== JSONP fallback (bypass CORS) =====
+function fetchJsonp(){
   return new Promise((resolve, reject) => {
     const cbName = "roster_cb_" + Math.random().toString(36).slice(2);
     const s = document.createElement("script");
@@ -95,7 +91,6 @@ function fetchJsonp(params){
     s.src = url.toString();
     document.body.appendChild(s);
 
-    // timeout opsional
     setTimeout(() => {
       if (window[cbName]) {
         delete window[cbName];
@@ -106,24 +101,25 @@ function fetchJsonp(params){
   });
 }
 
+// ===== Fetch dengan deteksi redirect/HTML =====
 async function fetchData(){
-  // 1) coba fetch standar (bisa gagal karena CORS/redirect)
   try{
     const url = new URL(GAS_ENDPOINT);
     url.searchParams.set("action", "getRoster");
     url.searchParams.set("token", SHARED_TOKEN);
     url.searchParams.set("_", Date.now()); // cache buster
 
-    const res = await fetch(url.toString(), {
-      method: "GET",
-      cache: "no-store" // hilangkan header custom agar tak memicu preflight
-    });
+    const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
+
+    // Jika bukan JSON (mis. HTML login/redirect), paksa fallback JSONP
+    const ctype = (res.headers.get("content-type") || "").toLowerCase();
+    if (!ctype.includes("application/json")) throw new Error("non-json response");
+
     const data = await res.json();
     if (!data || !data.ok) throw new Error(data?.error || `HTTP ${res.status}`);
     return data;
   } catch (err){
     console.warn("Fetch biasa gagal, fallback JSONP…", err);
-    // 2) fallback JSONP (tidak dibatasi CORS)
     return fetchJsonp();
   }
 }
@@ -133,7 +129,7 @@ async function init(){
     Overlay.show("Mengambil data…", "Memuat daftar tugas");
     const data = await fetchData();
 
-    // Header
+    // Header (tanggal akan sama seperti di Sheet, karena server pakai getDisplayValues)
     fillText("tgl", data.config?.tanggal);
     fillText("chief", data.config?.chief);
     fillText("assistantChief", data.config?.assistant_chief);
@@ -146,15 +142,15 @@ async function init(){
     fillText("spvPatroli", data.config?.supervisor_patroli);
 
     // Tables
-    renderTable("tbl-hbscp",  bySection(data, "HBSCP"));
-    renderTable("tbl-pscp",   bySection(data, "PSCP"));
-    renderTable("tbl-pos1",   bySection(data, "POS1"));
-    renderTable("tbl-patroli",bySection(data, "PATROLI"));
-    renderTable("tbl-malam",  bySection(data, "MALAM"));
+    renderTable("tbl-hbscp",   bySection(data, "HBSCP"));
+    renderTable("tbl-pscp",    bySection(data, "PSCP"));
+    renderTable("tbl-pos1",    bySection(data, "POS1"));
+    renderTable("tbl-patroli", bySection(data, "PATROLI"));
+    renderTable("tbl-malam",   bySection(data, "MALAM"));
 
     // Notes
-    fillText("noteFyi", data.config?.fyi);
-    fillText("noteCuti", data.config?.cuti);
+    fillText("noteFyi",   data.config?.fyi);
+    fillText("noteCuti",  data.config?.cuti);
     fillText("noteSakit", data.config?.sakit);
 
     Overlay.success("Selesai", "Data berhasil dimuat");
