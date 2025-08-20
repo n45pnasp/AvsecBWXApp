@@ -1,7 +1,9 @@
 // ===== KONFIGURASI =====
-// Gunakan URL Web App /exec dari deployment terbaru
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbyc4Vmnuj905a5y53tJ75jJsgLXKTd7dSpaZouLwstIlSjGRV08R7vNLsi9ytP1Cers/exec";
-const SHARED_TOKEN = "N45p"; // sama dgn code.gs
+const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycby8Fca079ujQUPFAaURh-WmwqiPOoEgFllQDRlxIsYY1IK31urzSgzrgyIlezkpgJG5/exec"; // /exec
+const SHARED_TOKEN = "N45p"; // sama dengan di code.gs
+
+// Paksa JSONP di GitHub Pages agar console bersih (hindari fetch yg pasti CORS/302)
+const FORCE_JSONP = location.hostname.endsWith("github.io");
 
 // Utility DOM
 function $(sel){ return document.querySelector(sel); }
@@ -66,7 +68,7 @@ function bySection(data, section){
   return (data.rosters || []).filter(r => (r.section || "").toUpperCase() === section);
 }
 
-// ===== JSONP fallback (bypass CORS) =====
+// ===== JSONP (bypass CORS, bersih di console) =====
 function fetchJsonp(){
   return new Promise((resolve, reject) => {
     const cbName = "roster_cb_" + Math.random().toString(36).slice(2);
@@ -101,25 +103,27 @@ function fetchJsonp(){
   });
 }
 
-// ===== Fetch dengan deteksi redirect/HTML =====
+// ===== Fetch dengan fallback =====
 async function fetchData(){
+  // Di GitHub Pages: langsung JSONP supaya tidak ada error merah di console
+  if (FORCE_JSONP) return fetchJsonp();
+
+  // Selain itu, coba fetch standar dulu; jika gagal, fallback JSONP
   try{
     const url = new URL(GAS_ENDPOINT);
     url.searchParams.set("action", "getRoster");
     url.searchParams.set("token", SHARED_TOKEN);
-    url.searchParams.set("_", Date.now()); // cache buster
+    url.searchParams.set("_", Date.now());
 
     const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
-
-    // Jika bukan JSON (mis. HTML login/redirect), paksa fallback JSONP
     const ctype = (res.headers.get("content-type") || "").toLowerCase();
     if (!ctype.includes("application/json")) throw new Error("non-json response");
 
     const data = await res.json();
     if (!data || !data.ok) throw new Error(data?.error || `HTTP ${res.status}`);
     return data;
-  } catch (err){
-    console.warn("Fetch biasa gagal, fallback JSONP…", err);
+  } catch {
+    // jangan log error agar console tetap bersih
     return fetchJsonp();
   }
 }
@@ -129,7 +133,7 @@ async function init(){
     Overlay.show("Mengambil data…", "Memuat daftar tugas");
     const data = await fetchData();
 
-    // Header (tanggal akan sama seperti di Sheet, karena server pakai getDisplayValues)
+    // Header (format tanggal persis dgn Sheet karena server pakai getDisplayValues)
     fillText("tgl", data.config?.tanggal);
     fillText("chief", data.config?.chief);
     fillText("assistantChief", data.config?.assistant_chief);
