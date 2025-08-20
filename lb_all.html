@@ -18,6 +18,7 @@
   </div>
 
   <main class="container">
+    <!-- KARTU INPUT -->
     <section class="card">
       <h1 class="card-title">Input Logbook</h1>
 
@@ -51,34 +52,28 @@
       <button id="submitBtn" class="btn primary" type="button" disabled>✅ Kirim Data</button>
     </section>
 
-    <!-- Tabel hasil - Judul di luar card, tepat di bawah card input -->
+    <!-- JUDUL DI LUAR CARD -->
     <h2 class="section-title">Isi Logbook</h2>
-    
-   <!-- <section class="card"> -->
-      <div class="table-wrap">
-        <table class="log-table" aria-label="Isi Logbook">
-          <colgroup>
-            <col class="col-time" />
-            <col class="col-activity" />
-            <col class="col-photo" />
-            <col class="col-actions" />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>Waktu</th>
-              <th>Kegiatan</th>
-              <th>Foto</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="rows"></tbody>
-        </table>
-      </div>
-   <!-- </section> -->
 
+    <!-- TABEL 2 KOLOM (bukan di dalam card) -->
+    <div class="table-wrap">
+      <table class="log-table" aria-label="Isi Logbook">
+        <colgroup>
+          <col class="col-time" />
+          <col class="col-activity" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Waktu</th>
+            <th>Kegiatan</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
   </main>
 
-  <!-- Overlay upload -->
+  <!-- Overlay status umum -->
   <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
     <div class="sheet">
       <div class="icon spinner" id="ovIcon"></div>
@@ -98,7 +93,6 @@
         <div class="t-title">Pilih Waktu</div>
         <button type="button" class="t-btn t-save">Simpan</button>
       </div>
-
       <div class="wheels">
         <div class="wheel" id="wheelHour"></div>
         <div class="sep">:</div>
@@ -113,6 +107,18 @@
     <div class="photo-sheet">
       <button class="photo-close" id="photoClose" aria-label="Tutup">✕</button>
       <img id="photoImg" alt="Foto logbook" />
+    </div>
+  </div>
+
+  <!-- Action Sheet (long-press) -->
+  <div id="actSheet" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="sheet-mini">
+      <div class="sheet-title">Aksi</div>
+      <div class="sheet-actions">
+        <button id="actEdit"   class="t-btn">✏️ Edit</button>
+        <button id="actDelete" class="t-btn danger">🗑 Hapus</button>
+      </div>
+      <button id="actClose" class="close" type="button">Tutup</button>
     </div>
   </div>
 
