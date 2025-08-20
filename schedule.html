@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Schedule - Airport Security BWX</title>
+  <link rel="stylesheet" href="tugas.css" />
+</head>
+<body>
+  <!-- App Bar -->
+  <div class="app-bar">
+    <a class="back-btn" aria-label="Kembali" href="index.html">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <path d="M15 6L9 12L15 18" />
+      </svg>
+    </a>
+    <h1 class="app-title">Schedule Avsec BWX</h1>
+  </div>
+
+  <!-- Header Title Card -->
+  <section class="header-card">
+    <div class="header-top"></div>
+    <div class="header-row">
+      <div class="header-title">
+        <h2>Airport Security Bandara Internasional Banyuwangi</h2>
+        <div id="tgl" class="subdate">Tanggal: -</div>
+      </div>
+      <img id="logo" class="logo" alt="Logo Avsec" src="avsec.png" />
+    </div>
+
+    <div class="ident-list">
+      <div class="ident-line"><strong>Chief:</strong> <span id="chief">-</span></div>
+      <div class="ident-line"><strong>Assistant Chief:</strong> <span id="assistantChief">-</span></div>
+      <div class="ident-line"><strong>Supervisor CCTV:</strong> <span id="spvCctv">-</span></div>
+    </div>
+  </section>
+
+  <!-- Section: HBSCP -->
+  <section class="sec">
+    <div class="section-chip chip-hbscp">POSISI TUGAS JAGA HBSCP</div>
+    <div class="subhead"><strong>SUPERVISOR HBSCP:</strong> <span id="spvHbscp">-</span></div>
+
+    <div class="table-wrap">
+      <table id="tbl-hbscp">
+        <thead>
+          <tr><th>No</th><th>Nama</th><th>Posisi Tugas</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section: PSCP -->
+  <section class="sec">
+    <div class="section-chip chip-pscp">POSISI TUGAS JAGA PSCP</div>
+    <div class="subhead"><strong>SUPERVISOR PSCP:</strong> <span id="spvPscp">-</span></div>
+
+    <div class="table-wrap">
+      <table id="tbl-pscp">
+        <thead>
+          <tr><th>No</th><th>Nama</th><th>Posisi Tugas</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section: POS 1 -->
+  <section class="sec">
+    <div class="section-chip chip-pos1">POSISI TUGAS POS 1</div>
+    <div class="subhead"><strong>SUPERVISOR POS:</strong> <span id="spvPos1">-</span></div>
+
+    <div class="table-wrap">
+      <table id="tbl-pos1">
+        <thead>
+          <tr><th>No</th><th>Nama</th><th>Posisi Tugas</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section: PATROLI -->
+  <section class="sec">
+    <div class="section-chip chip-patroli">POSISI TUGAS PATROLI</div>
+    <div class="subhead"><strong>SUPERVISOR PATROLI:</strong> <span id="spvPatroli">-</span></div>
+
+    <div class="table-wrap">
+      <table id="tbl-patroli">
+        <thead>
+          <tr><th>No</th><th>Nama</th><th>Posisi Tugas</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section: MALAM -->
+  <section class="sec">
+    <div class="section-chip chip-malam">POSISI TUGAS JAGA MALAM</div>
+
+    <div class="table-wrap">
+      <table id="tbl-malam">
+        <thead>
+          <tr><th>No</th><th>Nama</th><th>Posisi Tugas</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Catatan -->
+  <section class="sec notes">
+    <div class="note-line"><strong>FYI:</strong> <span id="noteFyi">-</span></div>
+    <div class="note-line"><strong>CUTI:</strong> <span id="noteCuti">-</span></div>
+    <div class="note-line"><strong>SAKIT:</strong> <span id="noteSakit">-</span></div>
+  </section>
+
+  <!-- Loading Overlay (pakai style dari CSS kamu) -->
+  <div id="loadingOverlay">
+    <div class="load-card">
+      <span class="icon spinner"></span>
+      <div class="texts">
+        <div class="title">Mengambil data…</div>
+        <div class="desc">Memuat daftar tugas dari Google Sheet</div>
+      </div>
+      <button class="close" title="Tutup" onclick="window.App.hideOverlay()">✕</button>
+    </div>
+  </div>
+
+  <script src="tugas.js" type="module"></script>
+</body>
+</html>
