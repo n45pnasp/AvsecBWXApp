@@ -18,14 +18,13 @@ const activityEl  = document.getElementById("activity");
 const rowsTbody   = document.getElementById("rows");
 
 /* ===== STATE ===== */
-let uploaded = null;   // {fileId, url, name} (saat tambah)
-let uploading = false;
-let editingId = null;  // id baris sheet ketika edit
+let uploaded   = null;  // {fileId, url, name} (saat tambah)
+let uploading  = false;
+let editingId  = null;  // id baris saat edit
 
 /* ===== UTIL ===== */
 const pad2 = (n)=> String(n).padStart(2,"0");
 
-/* Format "HH:MM WIB" untuk tampilan */
 function fmtTimeWIB(s){
   if (!s) return "-";
   const m = /^(\d{1,2}):(\d{2})$/.exec(s);
@@ -60,7 +59,7 @@ function showOverlay(state, title, desc){
   if (state !== "loading") setTimeout(() => overlay.classList.add("hidden"), 1200);
 }
 
-/* ===== MODE (tambah / edit) ===== */
+/* ===== MODE (Tambah vs Edit) ===== */
 function setModeEdit(on){
   submitBtn.textContent = on ? "✏️ Edit" : "✅ Kirim Data";
   pickPhoto.disabled = !!on;
@@ -108,7 +107,7 @@ const wheelMin  = document.getElementById("wheelMin");
 const btnCancel = timeModal.querySelector(".t-cancel");
 const btnSave   = timeModal.querySelector(".t-save");
 
-let selHour = 0, selMin = 0, wheelsBuilt = false;
+let wheelsBuilt = false;
 
 function buildWheel(el, count){
   const frag = document.createDocumentFragment();
@@ -128,7 +127,13 @@ function buildWheel(el, count){
 }
 function snapTopFor(el, value){ el.scrollTop = SPACER + value*ITEM_H; }
 function nearestVal(el, max){ return Math.min(Math.max(Math.round((el.scrollTop - SPACER)/ITEM_H), 0), max); }
-function enableWheel(el, max, setSel){
+// baca tepat dari posisi roda (fix selisih jam/menit)
+function valueFromWheel(el, max){
+  const v = Math.round((el.scrollTop - SPACER)/ITEM_H);
+  return Math.min(Math.max(v, 0), max);
+}
+
+function enableWheel(el, max){
   let dragging = false, startY = 0, startTop = 0, pid = 0, timer = null;
   el.addEventListener("pointerdown", (e)=>{
     dragging = true; startY = e.clientY; startTop = el.scrollTop; pid = e.pointerId;
@@ -142,7 +147,7 @@ function enableWheel(el, max, setSel){
     if (!dragging) return;
     dragging = false;
     const v = nearestVal(el, max);
-    snapTopFor(el, v); setSel(v);
+    snapTopFor(el, v);
   }
   el.addEventListener("pointerup", endDrag);
   el.addEventListener("pointercancel", endDrag);
@@ -150,20 +155,21 @@ function enableWheel(el, max, setSel){
     clearTimeout(timer);
     timer = setTimeout(()=>{
       const v = nearestVal(el, max);
-      snapTopFor(el, v); setSel(v);
+      snapTopFor(el, v);
     }, 80);
   }, {passive:true});
   el.addEventListener("click", (e)=>{
     const it = e.target.closest(".item"); if (!it) return;
-    const v = +it.dataset.val; snapTopFor(el, v); setSel(v);
+    const v = +it.dataset.val; snapTopFor(el, v);
   });
 }
+
 function openTimePicker(){
   if (!wheelsBuilt){
     buildWheel(wheelHour, 24);
     buildWheel(wheelMin, 60);
-    enableWheel(wheelHour, 23, v => selHour = v);
-    enableWheel(wheelMin, 59,  v => selMin  = v);
+    enableWheel(wheelHour, 23);
+    enableWheel(wheelMin, 59);
     wheelsBuilt = true;
   }
   let h = 0, m = 0;
@@ -172,30 +178,36 @@ function openTimePicker(){
   }else{
     const now = new Date(); h = now.getHours(); m = now.getMinutes();
   }
-  selHour = h; selMin = m;
   snapTopFor(wheelHour, h);
   snapTopFor(wheelMin, m);
   timeModal.classList.remove("hidden");
 }
+
 function closeTimePicker(save){
   if (save){
-    const val = `${pad2(selHour)}:${pad2(selMin)}`;
+    // BACA LANGSUNG dari posisi roda (menghindari selisih karena inersia)
+    const h = valueFromWheel(wheelHour, 23);
+    const m = valueFromWheel(wheelMin, 59);
+    snapTopFor(wheelHour, h);
+    snapTopFor(wheelMin, m);
+
+    const val = `${pad2(h)}:${pad2(m)}`;
     timeInput.value = val;
     timeLabel.textContent = val;
     setSubmitEnabled();
   }
   timeModal.classList.add("hidden");
 }
-timeBtn.addEventListener("click", openTimePicker);
-btnCancel.addEventListener("click", () => closeTimePicker(false));
-btnSave.addEventListener("click",   () => closeTimePicker(true));
 
-/* Matikan native time-picker di mobile: sembunyikan input */
+// Matikan native time-picker & selalu buka wheel
 function disableNativeTimePicker(){
-  try{
-    timeInput.setAttribute("type","hidden"); // tetap dipakai sebagai storage value
-  }catch(_){}
+  timeInput.setAttribute("readonly", "");
+  timeInput.setAttribute("inputmode","none");
+  timeInput.addEventListener("focus", (e)=>{ e.preventDefault(); e.target.blur(); openTimePicker(); });
+  timeBtn.addEventListener("click", openTimePicker);
 }
+btnCancel.addEventListener("click", () => closeTimePicker(false));
+btnSave  .addEventListener("click", () => closeTimePicker(true));
 
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
 pickPhoto.addEventListener("click", () => fileInput.click());
@@ -246,11 +258,10 @@ async function fileToBase64(file){
 /* ===== SUBMIT (Create / Update) ===== */
 submitBtn.addEventListener("click", async () => {
   if (submitBtn.disabled) return;
-  const timeStr = timeInput.value;
+  const timeStr  = timeInput.value;
   const activity = activityEl.value.trim();
   if (!timeStr || !activity) return;
 
-  // MODE EDIT → updateLog
   if (editingId){
     try{
       submitBtn.disabled = true;
@@ -275,7 +286,6 @@ submitBtn.addEventListener("click", async () => {
     return;
   }
 
-  // MODE TAMBAH → createLog (butuh foto)
   if (!uploaded?.fileId) return;
   try{
     submitBtn.disabled = true;
@@ -325,23 +335,18 @@ async function loadRows(){
 
     for (const r of json.rows){
       const id = r.id ?? "";
+      const imgUrl = toImageUrl(r.fileUrl || "", r.fileId || "");
+
       const tr = document.createElement("tr");
-      const safeAct = escapeHtml(r.activity || "-");
-      const fileId  = r.fileId || "";
-      const fileUrl = r.fileUrl || "";
       tr.innerHTML = `
         <td>${fmtTimeWIB(r.time || r.createdAt || "")}</td>
-        <td>${safeAct}</td>
-        <td>${
-          (fileId || fileUrl)
-          ? `<button class="icon-btn btn-view" data-id="${fileId}" data-url="${fileUrl}" title="Lihat foto">
-               <svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-             </button>`
-          : "-"
-        }</td>
+        <td>${escapeHtml(r.activity || "-")}</td>
+        <td>${imgUrl ? `<button class="icon-btn btn-view" data-url="${imgUrl}" title="Lihat foto">
+              <svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>` : "-"}</td>
         <td>
           <div class="actions">
-            <button class="icon-btn btn-edit" data-id="${id}" data-time="${r.time||''}" data-activity="${safeAct}" title="Edit">
+            <button class="icon-btn btn-edit" data-id="${id}" data-time="${r.time||''}" data-activity="${escapeHtml(r.activity||'')}" title="Edit">
               <svg viewBox="0 0 24 24"><path d="M3 21h4l11-11-4-4L3 17v4Z"/><path d="M15 5l4 4"/></svg>
             </button>
             <button class="icon-btn btn-del" data-id="${id}" title="Hapus">
@@ -359,14 +364,17 @@ async function loadRows(){
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
+/* konversi link Drive → link gambar yang bisa di-embed */
+function toImageUrl(url, fileId){
+  const id = fileId || (url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || "");
+  return id ? (`https://drive.google.com/uc?export=view&id=${id}`) : (url || "");
+}
+
 rowsTbody.addEventListener("click", async (e) => {
   const view = e.target.closest(".btn-view");
   const edit = e.target.closest(".btn-edit");
   const del  = e.target.closest(".btn-del");
-  if (view){
-    openPhoto(normalizeDriveUrl(view.dataset.url, view.dataset.id));
-    return;
-  }
+  if (view){ openPhoto(view.dataset.url); return; }
 
   if (edit){
     const id = edit.dataset.id;
@@ -405,30 +413,13 @@ const photoModal = document.getElementById("photoModal");
 const photoImg   = document.getElementById("photoImg");
 document.getElementById("photoClose").addEventListener("click", closePhoto);
 photoModal.addEventListener("click", (e)=>{ if(e.target===photoModal) closePhoto(); });
-
-function normalizeDriveUrl(url, fileId){
-  // Prioritaskan fileId → direct view URL
-  if (fileId) return `https://drive.google.com/uc?export=view&id=${fileId}`;
-  if (!url) return "";
-  // Ubah /file/d/<id>/view → uc?export=view&id=<id>
-  const m = url.match(/\/file\/d\/([^/]+)/);
-  if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
-  return url; // jika sudah direct image/dataURL/URL lain
-}
-function openPhoto(src){
-  if (!src) return;
-  photoImg.src = src;
-  photoModal.classList.remove("hidden");
-}
-function closePhoto(){
-  photoModal.classList.add("hidden");
-  photoImg.removeAttribute("src");
-}
+function openPhoto(url){ if(!url) return; photoImg.src = url; photoModal.classList.remove("hidden"); }
+function closePhoto(){ photoModal.classList.add("hidden"); photoImg.removeAttribute("src"); }
 
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
-  disableNativeTimePicker();          // cegah picker bawaan
   timeLabel.textContent = "Pilih Waktu";
-  setModeEdit(false);                 // default mode tambah
+  setModeEdit(false);         // default mode tambah
+  disableNativeTimePicker();  // pastikan selalu wheel picker
   await loadRows();
 });
