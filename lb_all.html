@@ -1,65 +1,200 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Logbook CCTV</title>
-  <style>
-    :root{
-      --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#94a3b8; --border:#334;
-      --accent:#3b82f6; --danger:#ef4444; --ok:#22c55e;
-    }
-    *{box-sizing:border-box}
-    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-         background:var(--bg); color:var(--text); padding:20px;}
-    .card{max-width:520px; margin:0 auto; background:#0b1324; border:1px solid var(--border);
-          border-radius:16px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.35)}
-    h1{font-size:20px; margin:0 0 6px}
-    p.muted{color:var(--muted); margin-top:0}
-    label{display:block; font-weight:600; margin:12px 0 6px}
-    input,textarea,button{
-      width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--border);
-      background:#0f172a; color:var(--text);
-    }
-    input[type="time"]{ font-variant-numeric:tabular-nums }
-    .row{display:grid; grid-template-columns:1fr; gap:12px}
-    button{background:var(--accent); border:none; font-weight:700; cursor:pointer}
-    button:disabled{opacity:.6; cursor:not-allowed}
-    .status{margin-top:12px; padding:10px 12px; border-radius:10px; display:none}
-    .status.ok{display:block; background:rgba(34,197,94,.15); border:1px solid rgba(34,197,94,.45)}
-    .status.err{display:block; background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.45)}
-    small.hint{color:var(--muted)}
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>LB CCTV</title>
+  <link rel="stylesheet" href="lb_all.css"/>
+
+  <script>
+    // ==== KONFIG: sesuaikan dgn Web App Apps Script kamu ====
+    const SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbykEpoX-fKWM5jtIKGJPfgIE1fU8cSqGTRY90RwYvhFgJ6RvBaEvk6zoiWWFAlbDYbdpw/exec'; // GANTI
+    const SHARED_TOKEN = 'N45p'; // samakan dgn TOKEN di code.gs
+  </script>
 </head>
 <body>
-  <div class="card">
-    <h1>Input Kegiatan</h1>
-    <p class="muted">Tulis **maks 10 entri**. Disimpan tepat di <b>A18:C28</b>.</p>
+  <main class="container">
+    <!-- CARD: FORM -->
+    <section class="card">
+      <h1>Input Kegiatan</h1>
+      <p class="muted">Maksimal 10 entri. Disimpan tepat di <b>A18:C28</b> pada Sheet.</p>
 
-    <form id="kForm" class="row" autocomplete="off">
-      <div>
-        <label for="timeHHMM">Waktu (jam:menit)</label>
-        <input id="timeHHMM" name="timeHHMM" type="time" required />
+      <form id="kForm" class="form-grid" autocomplete="off">
+        <div class="field">
+          <label for="timeHHMM">Waktu (jam:menit)</label>
+          <input id="timeHHMM" name="timeHHMM" type="time" required/>
+        </div>
+
+        <div class="field">
+          <label for="activity">Kegiatan</label>
+          <textarea id="activity" name="activity" rows="3" placeholder="Tulis kegiatan…" required></textarea>
+        </div>
+
+        <div class="field">
+          <label for="photo">Foto (Link/ID Google Drive atau URL gambar)</label>
+          <input id="photo" name="photo" type="text" placeholder="https://drive.google.com/file/d/ID/view … atau langsung ID" required/>
+          <small class="hint">Akan otomatis diubah menjadi <code>thumbnail?id=…</code> agar tampil via <code>=IMAGE()</code> di Sheet.</small>
+        </div>
+
+        <button id="submitBtn" type="submit">Kirim</button>
+      </form>
+
+      <div id="statusOk"  class="status ok"  role="alert"></div>
+      <div id="statusErr" class="status err" role="alert"></div>
+    </section>
+
+    <!-- CARD: TABEL HASIL -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Daftar Entri (A18:C28)</h2>
+        <button id="refreshBtn" class="ghost">Segarkan</button>
       </div>
 
-      <div>
-        <label for="activity">Kegiatan</label>
-        <textarea id="activity" name="activity" rows="3" placeholder="Tulis kegiatan…" required></textarea>
+      <div class="table-wrap">
+        <table class="sheet-table" id="resultTable" aria-label="Hasil entri A18:C28">
+          <thead>
+            <tr>
+              <th style="width:110px">Waktu</th>
+              <th>Kegiatan</th>
+              <th style="width:120px">Foto</th>
+            </tr>
+          </thead>
+          <tbody id="resultTBody">
+            <tr><td colspan="3" class="empty">Memuat data…</td></tr>
+          </tbody>
+        </table>
       </div>
+    </section>
+  </main>
 
-      <div>
-        <label for="photo">Foto (Link/ID Google Drive atau URL gambar)</label>
-        <input id="photo" name="photo" type="text" placeholder="contoh: https://drive.google.com/file/d/ID/view … atau langsung ID" required />
-        <small class="hint">Link/ID akan otomatis diubah ke <code>thumbnail?id=…</code> agar tampil di Sheet via <code>=IMAGE()</code>.</small>
-      </div>
+  <script type="module">
+    // ===== UTIL DOM =====
+    const $ = (s, el=document) => el.querySelector(s);
 
-      <button id="submitBtn" type="submit">Kirim</button>
-    </form>
+    // ===== MESSAGE UI =====
+    function showMsg(ok, msg){
+      const okBox  = $('#statusOk');
+      const errBox = $('#statusErr');
+      okBox.style.display = 'none';
+      errBox.style.display = 'none';
+      if (ok) { okBox.textContent = msg; okBox.style.display = 'block'; }
+      else    { errBox.textContent = msg; errBox.style.display = 'block'; }
+    }
 
-    <div id="statusOk"  class="status ok"></div>
-    <div id="statusErr" class="status err"></div>
-  </div>
+    // ===== TIME DEFAULT =====
+    (function setDefaultTime(){
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2,'0');
+      const mm = String(now.getMinutes()).padStart(2,'0');
+      $('#timeHHMM').value = `${hh}:${mm}`;
+    })();
 
-  <script type="module" src="./form.js"></script>
+    // ===== SUBMIT FORM =====
+    $('#kForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = $('#submitBtn');
+      btn.disabled = true;
+
+      try{
+        const timeHHMM = $('#timeHHMM').value.trim();
+        const activity = $('#activity').value.trim();
+        const photo    = $('#photo').value.trim();
+
+        if (!/^\d{2}:\d{2}$/.test(timeHHMM)) throw new Error('Format waktu harus HH:MM');
+        if (!activity)                       throw new Error('Kegiatan wajib diisi');
+        if (!photo)                          throw new Error('Link/ID foto wajib diisi');
+
+        const res = await fetch(`${SCRIPT_URL}?token=${encodeURIComponent(SHARED_TOKEN)}`, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify({ timeHHMM, activity, photo })
+        });
+        const data = await res.json();
+
+        if (!data.ok){
+          if (data.code === 'FULL') throw new Error('Slot A18:C28 sudah penuh (10/10). Hapus baris lama dulu.');
+          if (data.code === 'BAD_TOKEN') throw new Error('Token salah. Cek SHARED_TOKEN & TOKEN.');
+          throw new Error(data.message || data.code || 'Gagal menyimpan');
+        }
+
+        showMsg(true, `Tersimpan di baris ${data.row}.`);
+        // reset & set default jam lagi
+        $('#kForm').reset();
+        const now = new Date();
+        $('#timeHHMM').value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+        // refresh tabel
+        await refreshTable();
+      }catch(err){
+        showMsg(false, String(err.message || err));
+      }finally{
+        btn.disabled = false;
+      }
+    });
+
+    // ===== RENDER TABEL =====
+    function renderRows(items){
+      const tbody = $('#resultTBody');
+      tbody.innerHTML = '';
+
+      if (!items.length){
+        tbody.innerHTML = `<tr><td colspan="3" class="empty">Belum ada entri pada A18:C28.</td></tr>`;
+        return;
+      }
+
+      for (const it of items){
+        const tr = document.createElement('tr');
+
+        const tdTime = document.createElement('td');
+        tdTime.textContent = it.time || '';
+        tdTime.className = 'mono';
+
+        const tdAct = document.createElement('td');
+        tdAct.textContent = it.activity || '';
+
+        const tdPhoto = document.createElement('td');
+        tdPhoto.className = 'photo-cell';
+        if (it.photoUrl){
+          const a = document.createElement('a');
+          a.href = it.photoUrl; a.target = '_blank'; a.rel = 'noopener';
+          const img = document.createElement('img');
+          img.alt = 'foto'; img.loading = 'lazy';
+          img.src = it.photoUrl;
+          a.appendChild(img);
+          tdPhoto.appendChild(a);
+        } else {
+          tdPhoto.innerHTML = '<span class="muted">—</span>';
+        }
+
+        tr.appendChild(tdTime);
+        tr.appendChild(tdAct);
+        tr.appendChild(tdPhoto);
+        tbody.appendChild(tr);
+      }
+    }
+
+    // ===== FETCH DATA =====
+    async function refreshTable(){
+      const tbody = $('#resultTBody');
+      tbody.innerHTML = `<tr><td colspan="3" class="empty">Memuat data…</td></tr>`;
+      try{
+        const res = await fetch(`${SCRIPT_URL}?token=${encodeURIComponent(SHARED_TOKEN)}`);
+        const data = await res.json();
+        if (!data.ok){
+          if (data.code === 'BAD_TOKEN') throw new Error('Token salah. Cek SHARED_TOKEN & TOKEN.');
+          throw new Error(data.message || data.code || 'Gagal memuat data');
+        }
+        renderRows(data.items || []);
+      }catch(err){
+        tbody.innerHTML = `<tr><td colspan="3" class="empty err">Gagal memuat: ${String(err.message || err)}</td></tr>`;
+      }
+    }
+
+    // tombol segarkan
+    $('#refreshBtn').addEventListener('click', refreshTable);
+
+    // load awal
+    refreshTable();
+  </script>
 </body>
 </html>
