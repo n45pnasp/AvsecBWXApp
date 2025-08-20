@@ -223,6 +223,10 @@ body.blur-bg > *:not(#loadingOverlay){
   font-size: clamp(14px, 2.7vw, 18px);
   letter-spacing: .3px;
 }
+/* Semua data dari Sheet otomatis bold */
+span[id]{
+  font-weight: 700;
+}
 
 /* =========================
    Responsif
