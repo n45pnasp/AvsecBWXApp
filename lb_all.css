@@ -8,63 +8,64 @@
    APP BAR (Back + Title)
    ========================= */
 .app-bar{
-  position: sticky; top: 0; z-index: 40;
+  position: sticky; top: 0; inset-inline: 0; z-index: 100;
   display: flex; align-items: center; gap: 10px;
-  height: 56px;
-  background: var(--panel);
-  color: var(--text);
+  height: 56px; padding: 0 14px;
+  background: var(--panel); color: var(--text);
   border-bottom: 1px solid var(--border);
-  padding: 0 14px;
-  margin: -20px -20px 16px; /* full-bleed */
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px; height: 44px;
-  background: transparent;
-  border: none;
-  color: var(--text);
-  cursor: pointer;
-  flex: 0 0 auto;
-  text-decoration: none;
-  border-radius: 8px;
-  transition: background 0.12s ease, transform 0.1s ease;
-}
-.back-btn svg {
-  display: block;
-  stroke: currentColor;
-  stroke-width: 2.2;
-}
-.back-btn:hover { background: rgba(255,255,255,0.06); }
-.back-btn:active { background: rgba(0,0,0,0.25); transform: translateY(1px); }
-.back-btn:focus-visible {
-  outline: 2px solid rgba(255,255,255,0.4);
-  outline-offset: 2px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.18);
 }
 .app-title{
   font-size: 22px; font-weight: 300; letter-spacing: .3px;
   margin: 0; user-select: none;
 }
+.back-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:44px; height:44px; flex:0 0 auto;
+  background:transparent; border:none; color:var(--text);
+  border-radius:10px; cursor:pointer; text-decoration:none;
+  transition: background .12s ease, transform .08s ease;
+}
+.back-btn:hover{ background: rgba(255,255,255,.06); }
+.back-btn:active{ background: rgba(0,0,0,.25); transform: translateY(1px); }
+.back-btn:focus-visible{ outline: 2px solid rgba(255,255,255,.4); outline-offset: 2px; }
+.back-btn svg, .back-btn svg *{
+  stroke: currentColor; stroke-width: 2.2; fill: none;
+  stroke-linecap: round; stroke-linejoin: round;
+}
 
-*{box-sizing:border-box}
-html,body{margin:0;padding:0}
+/* =========================
+   BASE
+   ========================= */
+*{ box-sizing:border-box }
+html,body{ margin:0; padding:0 }
 body{
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
   background: var(--bg); color: var(--text);
   -webkit-tap-highlight-color: transparent;
 }
-.container{max-width:900px;margin:24px auto;padding:0 16px;display:grid;gap:16px}
+.container{
+  max-width:900px; margin:24px auto; padding:0 16px; display:grid; gap:16px;
+  padding-top:8px; /* beri jarak dari app bar */
+}
 .card{
   background: var(--card); border:1px solid var(--border);
   border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25);
 }
-.card-title{font-weight:700;margin-bottom:12px}
+.card-title{ font-weight:700; margin-bottom:12px }
 
-.row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.field{display:grid;gap:8px;margin:12px 0}
-textarea,input[type="time"]{
+/* =========================
+   FORM BARIS ATAS
+   ========================= */
+.row-2{
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:10px; margin-bottom:12px;
+}
+/* SELALU dua kolom, termasuk di mobile */
+@media (max-width:560px){ .row-2{ grid-template-columns:1fr 1fr } }
+
+.field{ display:grid; gap:8px; margin:12px 0 }
+textarea, input[type="time"]{
   width:100%; background:#0b1324; color:var(--text);
   border:1px solid var(--border); border-radius:12px; padding:12px;
 }
@@ -76,54 +77,119 @@ textarea,input[type="time"]{
   transition: filter .15s ease, transform .06s ease;
   text-align:center;
 }
-.btn:hover, .btn-like:hover{filter:brightness(1.05)}
-.btn:active, .btn-like:active{transform:translateY(1px)}
-.btn.primary{background:#2563eb;border-color:#1e40af}
-.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn:hover, .btn-like:hover{ filter:brightness(1.05) }
+.btn:active, .btn-like:active{ transform:translateY(1px) }
+.btn.primary{ background:#2563eb; border-color:#1e40af }
+.btn:disabled{ opacity:.55; cursor:not-allowed }
 
-.btn-like{position:relative}
+/* Tombol waktu bergaya tombol, input time disembunyikan
+   (native picker tidak muncul, kita pakai modal custom) */
+.btn-like{ position:relative }
 .btn-like input[type="time"]{
-  position:absolute; inset:0; opacity:0; cursor:pointer;
+  position:absolute; inset:0; opacity:0; pointer-events:none;
 }
-#timeLabel{pointer-events:none}
+#timeLabel{ pointer-events:none }
 
+/* =========================
+   PREVIEW & STATUS UPLOAD
+   ========================= */
 .upload-info{
   display:flex; gap:12px; align-items:center; margin-bottom:8px;
   padding:8px; border:1px dashed var(--border); border-radius:12px;
 }
-.upload-info img{width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
-.muted{color:var(--muted);font-size:12px}
+.upload-info img{
+  width:64px; height:64px; object-fit:cover;
+  border-radius:10px; border:1px solid var(--border);
+}
+.muted{ color:var(--muted); font-size:12px }
 
-.table-wrap{overflow:auto}
-table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:12px;overflow:hidden}
-th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
-th{background:#111827}
-tbody tr:nth-child(odd){background:rgba(255,255,255,.02)}
+/* =========================
+   TABEL
+   ========================= */
+.table-wrap{ overflow:auto }
+table{
+  width:100%; border-collapse:separate; border-spacing:0;
+  border:1px solid var(--border); border-radius:12px; overflow:hidden;
+}
+th,td{ padding:10px 12px; text-align:left; border-bottom:1px solid var(--border) }
+th{ background:#111827 }
+tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
 
-.hidden{display:none !important}
-
-/* Overlay */
+/* =========================
+   OVERLAY UPLOAD (card melayang)
+   ========================= */
 .overlay{
-  position:fixed;inset:0;display:grid;place-items:center;
-  background:rgba(0,0,0,.45);backdrop-filter:blur(2px);z-index:9999;
+  position:fixed; inset:0; display:grid; place-items:center;
+  background:rgba(0,0,0,.45); backdrop-filter:blur(2px); z-index:9999;
 }
 .sheet{
-  display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:12px;
-  background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 16px;min-width:min(520px,92vw);
+  display:grid; grid-template-columns:48px 1fr auto; align-items:center; gap:12px;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:14px 16px; min-width:min(520px,92vw);
   animation:pop .18s ease-out both;
 }
-.icon{width:42px;height:42px;border-radius:50%;position:relative}
-.icon.spinner{border:5px solid rgba(255,255,255,.15);border-top-color:var(--accent);animation:spin .9s linear infinite}
-.icon.ok{background:rgba(34,197,94,.12);border:2px solid var(--ok)}
-.icon.ok::after{content:"";position:absolute;left:11px;top:8px;width:12px;height:20px;border:solid var(--ok);border-width:0 4px 4px 0;transform:rotate(45deg);border-radius:2px}
-.icon.err{background:rgba(239,68,68,.12);border:2px solid var(--danger)}
-.icon.err::before,.icon.err::after{content:"";position:absolute;left:19px;top:8px;width:4px;height:24px;background:var(--danger);border-radius:2px}
-.icon.err::after{transform:rotate(90deg)}
-.texts .title{font-weight:700}
-.texts .desc{color:var(--muted);font-size:14px}
-.close{appearance:none;border:1px solid var(--border);background:#111827;color:#fff;width:36px;height:36px;border-radius:10px;cursor:pointer}
+.icon{ width:42px; height:42px; border-radius:50%; position:relative }
+.icon.spinner{ border:5px solid rgba(255,255,255,.15); border-top-color:var(--accent); animation:spin .9s linear infinite }
+.icon.ok{ background:rgba(34,197,94,.12); border:2px solid var(--ok) }
+.icon.ok::after{
+  content:""; position:absolute; left:11px; top:8px; width:12px; height:20px;
+  border:solid var(--ok); border-width:0 4px 4px 0; transform:rotate(45deg); border-radius:2px;
+}
+.icon.err{ background:rgba(239,68,68,.12); border:2px solid var(--danger) }
+.icon.err::before,.icon.err::after{
+  content:""; position:absolute; left:19px; top:8px; width:4px; height:24px; background:var(--danger); border-radius:2px;
+}
+.icon.err::after{ transform:rotate(90deg) }
+.texts .title{ font-weight:700 }
+.texts .desc{ color:var(--muted); font-size:14px }
+.close{
+  appearance:none; border:1px solid var(--border); background:#111827; color:#fff;
+  width:36px; height:36px; border-radius:10px; cursor:pointer;
+}
 
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes pop{from{transform:translateY(6px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+/* =========================
+   TIME PICKER (WHEEL MODAL)
+   ========================= */
+#timeModal.overlay{ z-index:10000 } /* di atas overlay lain */
+.time-sheet{
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  width:min(420px,92vw); padding:10px 12px 14px; box-shadow:0 16px 40px rgba(0,0,0,.45);
+}
+.time-header{
+  display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;
+}
+.t-title{ font-weight:700 }
+.t-btn{
+  background:#1f2937; color:#fff; border:1px solid var(--border);
+  padding:8px 12px; border-radius:10px; cursor:pointer;
+}
+.t-btn:hover{ filter:brightness(1.05) }
 
-@media (max-width:560px){ .row-2{grid-template-columns:1fr} }
+.wheels{
+  position:relative;
+  display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+  gap:12px; padding:8px 4px;
+}
+.wheel{
+  height:180px; /* 5 baris (36px) */
+  overflow-y:auto; scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch;
+  border:1px solid var(--border); border-radius:12px; background:#0b1324;
+}
+.wheel::-webkit-scrollbar{ width:0; height:0 } /* sembunyikan scrollbar */
+.item{
+  height:36px; display:flex; align-items:center; justify-content:center;
+  font-size:20px; scroll-snap-align:center; color:var(--text);
+}
+.sep{ font-weight:700; font-size:22px; opacity:.9 }
+.picker-highlight{
+  pointer-events:none; position:absolute; left:4px; right:4px; top:50%; transform:translateY(-50%);
+  height:36px; border:1px solid var(--accent-2); border-radius:10px;
+}
+
+/* =========================
+   UTIL
+   ========================= */
+.hidden{ display:none !important }
+
+@keyframes spin{ to{ transform:rotate(360deg) } }
+@keyframes pop{ from{ transform:translateY(6px) scale(.98); opacity:0 } to{ transform:none; opacity:1 } }
