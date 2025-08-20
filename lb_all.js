@@ -1,307 +1,195 @@
-// ====== KONFIG ======
-const SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbzAV6FM5297R4fqz7JTAb2HM6rVbS9_ltZl7NOXAthas9ZJT2-2tIj3O5NLBLn4VA1Pvg/exec';
-const SHARED_TOKEN = 'N45p';
-const JPG_QUALITY  = 0.8;
-const MAX_SIZE_PX  = 300;
+/* ===== KONFIG ===== */
+const SCRIPT_URL   = "https://script.google.com/macros/s/AKfycbz0aS1u33vUX8lD1-aOqt8aVxgrEj1EflvZ4P1De-Hz1hHFMS-COGpzYG-01qqtcQ6I5w/exec";
+const SHARED_TOKEN = "N45p";
 
-// ====== DOM ======
-const $  = (s, el=document) => el.querySelector(s);
+/* ===== DOM ===== */
+const timeInput   = document.getElementById("timeInput");
+const timeLabel   = document.getElementById("timeLabel");
+const pickPhoto   = document.getElementById("pickPhotoBtn");
+const fileInput   = document.getElementById("fileInput");
+const preview     = document.getElementById("preview");
+const uploadInfo  = document.getElementById("uploadInfo");
+const uploadName  = document.getElementById("uploadName");
+const uploadStatus= document.getElementById("uploadStatus");
+const submitBtn   = document.getElementById("submitBtn");
+const activityEl  = document.getElementById("activity");
+const rowsTbody   = document.getElementById("rows");
 
-const timeInput     = $('#timeHHMM');
-const btnPickTime   = $('#btnPickTime');
-const modal         = $('#timeModal');
-const timeDisplay   = $('#timeDisplay');
-const btnTimeClose  = $('#timeClose');
-const btnTimeSet    = $('#timeSet');
-const keypad        = $('#keypad');
-
-const fileInput     = $('#photoFile');   // galeri
-const camInput      = $('#photoCam');    // kamera
-const btnPickGallery= $('#btnPickGallery');
-const btnPickCamera = $('#btnPickCamera');
-const uploadInfo    = $('#uploadInfo');
-const canvasPrev    = $('#previewCanvas');
-const linkInput     = $('#photoLink');
-
-const form          = $('#kForm');
-const submitBtn     = $('#submitBtn');
-const refreshBtn    = $('#refreshBtn');
-
-// ====== STATE ======
-let pinBuffer = '';              // "HHMM"
-let uploadedThumbUrl = '';       // hasil upload-only (thumbnail)
+/* ===== STATE ===== */
+let uploaded = null;   // {fileId, url, name}
 let uploading = false;
 
-// ====== STATUS MSG ======
-function showMsg(ok, msg){
-  const okBox  = $('#statusOk');
-  const errBox = $('#statusErr');
-  okBox.style.display = 'none';
-  errBox.style.display = 'none';
-  if (ok) { okBox.textContent = msg; okBox.style.display = 'block'; }
-  else    { errBox.textContent = msg; errBox.style.display = 'block'; }
-}
-
-// ====== DEFAULT TIME ======
-(function setDefaultTime(){
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2,'0');
-  const mm = String(now.getMinutes()).padStart(2,'0');
-  timeInput.value = `${hh}:${mm}`;
-})();
-
-// ====== TABLE ======
-async function refreshTable(){
-  const tbody = $('#resultTBody');
-  tbody.innerHTML = `<tr><td colspan="3" class="empty">Memuat data…</td></tr>`;
-  try{
-    const res = await fetch(`${SCRIPT_URL}?token=${encodeURIComponent(SHARED_TOKEN)}`);
-    const data = await res.json();
-    if (!data.ok){
-      if (data.code === 'BAD_TOKEN') throw new Error('Token salah. Cek SHARED_TOKEN & TOKEN.');
-      throw new Error(data.message || data.code || 'Gagal memuat data');
-    }
-    renderRows(data.items || []);
-  }catch(err){
-    tbody.innerHTML = `<tr><td colspan="3" class="empty err">Gagal memuat: ${String(err.message || err)}</td></tr>`;
+/* ===== UTIL ===== */
+function showOverlay(state, title, desc){
+  const overlay = document.getElementById("overlay");
+  const icon    = document.getElementById("ovIcon");
+  const tEl     = document.getElementById("ovTitle");
+  const dEl     = document.getElementById("ovDesc");
+  const close   = document.getElementById("ovClose");
+  overlay.classList.remove("hidden");
+  icon.className = "icon " + (state === "loading" ? "spinner" : state === "ok" ? "ok" : "err");
+  tEl.textContent = title;
+  dEl.textContent = desc || "";
+  close.classList.toggle("hidden", state === "loading");
+  close.onclick = () => overlay.classList.add("hidden");
+  if (state !== "loading") {
+    setTimeout(() => overlay.classList.add("hidden"), 1200);
   }
 }
-function renderRows(items){
-  const tbody = $('#resultTBody');
-  tbody.innerHTML = '';
-  if (!items?.length){
-    tbody.innerHTML = `<tr><td colspan="3" class="empty">Belum ada entri pada A18:C28.</td></tr>`;
-    return;
-  }
-  for (const it of items){
-    const tr = document.createElement('tr');
+function hideOverlay(){ document.getElementById("overlay").classList.add("hidden"); }
 
-    const tdTime = document.createElement('td');
-    tdTime.textContent = it.time || '';
-    tdTime.className = 'mono';
-
-    const tdAct = document.createElement('td');
-    tdAct.textContent = it.activity || '';
-
-    const tdPhoto = document.createElement('td');
-    tdPhoto.className = 'photo-cell';
-    if (it.photoUrl){
-      const a = document.createElement('a');
-      a.href = it.photoUrl; a.target = '_blank'; a.rel = 'noopener';
-      const img = document.createElement('img');
-      img.alt = 'foto'; img.loading = 'lazy'; img.src = it.photoUrl;
-      a.appendChild(img); tdPhoto.appendChild(a);
-    } else tdPhoto.innerHTML = '<span class="muted">—</span>';
-
-    tr.appendChild(tdTime); tr.appendChild(tdAct); tr.appendChild(tdPhoto);
-    tbody.appendChild(tr);
-  }
+function setSubmitEnabled(){
+  const timeOk = !!timeInput.value;
+  const actOk  = !!activityEl.value.trim();
+  const photoOk= !!uploaded?.fileId;
+  submitBtn.disabled = !(timeOk && actOk && photoOk && !uploading);
 }
 
-// ====== TIME PICKER ======
-// Jangan buka modal kecuali lewat tombol:
-timeInput.addEventListener('focus', (e)=> e.target.blur());
-timeInput.addEventListener('click', (e)=> e.preventDefault());
-
-btnPickTime.addEventListener('click', async ()=>{
-  // Coba native showPicker jika ada dan hasilnya bagus
-  if (timeInput.showPicker) {
-    try {
-      // sementara ubah tipe ke time agar native muncul, lalu kembalikan
-      timeInput.setAttribute('type','time');
-      timeInput.showPicker();
-      // kembalikan readonly behavior setelah sedikit delay
-      setTimeout(()=>{ timeInput.setAttribute('type','text'); }, 100);
-      return;
-    } catch(_) {
-      // fallback ke modal
-      timeInput.setAttribute('type','text');
-    }
-  }
-  openTimeModal();
+/* ===== UI BINDINGS ===== */
+timeInput.addEventListener("change", () => {
+  timeLabel.textContent = timeInput.value ? timeInput.value : "Pilih Waktu";
+  setSubmitEnabled();
 });
 
-function openTimeModal(){
-  pinBuffer = (timeInput.value || '').replace(':','');
-  if (!/^\d{4}$/.test(pinBuffer)) pinBuffer = '';
-  modal.hidden = false;
-  updateTimeDisplay();
-}
-function closeTimeModal(){ modal.hidden = true; }
+pickPhoto.addEventListener("click", () => fileInput.click());
 
-btnTimeClose.addEventListener('click', closeTimeModal);
-modal.addEventListener('click', (e)=>{ if (e.target === modal) closeTimeModal(); });
-
-function updateTimeDisplay(){
-  const d = pinBuffer.padEnd(4, '_');
-  const hh = d.slice(0,2), mm = d.slice(2,4);
-  timeDisplay.textContent = `${hh}:${mm}`;
-}
-// Guard keypad agar valid sepanjang input
-keypad.addEventListener('click', (e)=>{
-  const k = e.target?.dataset?.k;
-  if (!k) return;
-  if (k === 'clear'){ pinBuffer=''; updateTimeDisplay(); return; }
-  if (k === 'back'){  pinBuffer = pinBuffer.slice(0,-1); updateTimeDisplay(); return; }
-  if (!/^\d$/.test(k)) return;
-
-  let next = pinBuffer + k;
-  if (next.length === 1) {
-    // H: 0-2
-    if (+next[0] > 2) return;
-  } else if (next.length === 2) {
-    // HH: jika H1=2, H2=0-3
-    if (pinBuffer[0] === '2' && +next[1] > 3) return;
-  } else if (next.length === 3) {
-    // M1: 0-5
-    if (+next[2] > 5) return;
-  } else if (next.length > 4) {
-    return;
-  }
-  pinBuffer = next;
-  updateTimeDisplay();
-});
-
-btnTimeSet.addEventListener('click', ()=>{
-  if (pinBuffer.length !== 4) { showMsg(false,'Lengkapi HHMM pada keypad'); return; }
-  let hh = parseInt(pinBuffer.slice(0,2),10);
-  let mm = parseInt(pinBuffer.slice(2,4),10);
-  if (hh>23) hh=23; if (mm>59) mm=59;
-  timeInput.value = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
-  closeTimeModal();
-});
-
-// ====== UPLOAD: pilih sumber ======
-btnPickGallery.addEventListener('click', ()=> fileInput.click());
-btnPickCamera .addEventListener('click', ()=> camInput.click());
-
-// Kompres → Upload segera → simpan uploadedThumbUrl
-fileInput.addEventListener('change', ()=> handleChosenFile(fileInput.files?.[0]));
-camInput .addEventListener('change', ()=> handleChosenFile(camInput.files?.[0]));
-
-async function handleChosenFile(file){
+fileInput.addEventListener("change", async (ev) => {
+  const file = ev.target.files?.[0];
   if (!file) return;
+
+  // Preview kecil
+  uploadInfo.classList.remove("hidden");
+  uploadName.textContent = file.name;
+  uploadStatus.textContent = "Mengunggah foto…";
+  const reader = new FileReader();
+  reader.onload = (e) => { preview.src = e.target.result; };
+  reader.readAsDataURL(file);
+
+  // Auto-upload (base64 → GAS)
   try{
-    uploading = true;
-    uploadInfo.textContent = `Memproses ${file.name}…`;
+    uploading = true; setSubmitEnabled();
+    showOverlay("loading", "Mengunggah foto…", "Mohon tunggu sebentar");
 
-    // Kompres
-    const dataUrl = await compressToJpegDataUrl(file, MAX_SIZE_PX, JPG_QUALITY);
-    await drawPreview(dataUrl);
+    const base64 = await fileToBase64(file); // dataURL
+    const payload = {
+      token: SHARED_TOKEN,
+      action: "upload",
+      filename: file.name,
+      mimeType: file.type || "image/jpeg",
+      dataUrl: base64    // kirim dataURL langsung, server yang mengupas prefix
+    };
 
-    // Upload-only
-    uploadInfo.textContent = 'Mengunggah…';
-    const up = await fetch(`${SCRIPT_URL}?token=${encodeURIComponent(SHARED_TOKEN)}`, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({ op: 'upload', photoDataUrl: dataUrl })
-    }).then(r=>r.json());
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || "Upload gagal");
 
-    if (!up.ok) throw new Error(up.message || up.code || 'Upload gagal');
-    uploadedThumbUrl = up.photoUrl || '';
-    uploadInfo.textContent = 'Upload selesai ✔';
-    // Kosongkan fallback link bila ada
-    linkInput.value = '';
+    uploaded = { fileId: json.fileId, url: json.url, name: file.name };
+    uploadStatus.textContent = "Upload selesai ✅";
+    showOverlay("ok", "Berhasil diunggah", "Foto tersimpan di Drive");
+
   }catch(err){
-    uploadedThumbUrl = '';
-    uploadInfo.textContent = 'Gagal upload';
-    showMsg(false, `Upload gagal: ${String(err.message || err)}`);
+    console.error(err);
+    uploaded = null;
+    uploadStatus.textContent = "Upload gagal ❌";
+    showOverlay("err", "Gagal mengunggah", err.message || "Coba lagi");
   }finally{
-    uploading = false;
+    uploading = false; setSubmitEnabled();
   }
-}
+});
 
-function drawPreview(dataUrl){
-  return new Promise((resolve)=>{
-    const img = new Image();
-    img.onload = ()=>{
-      const maxSide = Math.max(img.width, img.height);
-      const scale = Math.min(MAX_SIZE_PX/maxSide, 1);
-      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-      canvasPrev.width = w; canvasPrev.height = h;
-      const ctx = canvasPrev.getContext('2d');
-      ctx.clearRect(0,0,w,h);
-      ctx.drawImage(img, 0, 0, w, h);
-      canvasPrev.hidden = false;
-      resolve();
-    };
-    img.src = dataUrl;
-  });
-}
-
-function compressToJpegDataUrl(file, maxSizePx, quality){
-  return new Promise((resolve, reject)=>{
+async function fileToBase64(file){
+  return new Promise((resolve, reject) => {
     const r = new FileReader();
-    r.onload = ()=>{
-      const img = new Image();
-      img.onload = ()=>{
-        const maxSide = Math.max(img.width, img.height);
-        const scale = Math.min(maxSizePx / maxSide, 1);
-        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-        const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(c.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = reject;
-      img.src = r.result;
-    };
+    r.onload = () => resolve(r.result); // dataURL
     r.onerror = reject;
     r.readAsDataURL(file);
   });
 }
 
-// ====== SUBMIT ======
-form.addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  if (uploading) { showMsg(false,'Tunggu upload gambar selesai dulu.'); return; }
+/* ===== SUBMIT LOG ===== */
+document.getElementById("submitBtn").addEventListener("click", async () => {
+  if (submitBtn.disabled) return;
+  const timeStr = timeInput.value;                // "HH:MM"
+  const activity = activityEl.value.trim();
+  if (!timeStr || !activity || !uploaded?.fileId) return;
 
-  submitBtn.disabled = true;
   try{
-    const timeHHMM = timeInput.value.trim();
-    const activity = $('#activity').value.trim();
-    if (!/^\d{2}:\d{2}$/.test(timeHHMM)) throw new Error('Format waktu harus HH:MM');
-    if (!activity) throw new Error('Kegiatan wajib diisi');
+    submitBtn.disabled = true;
+    showOverlay("loading", "Menyimpan logbook…", "Mengirim data ke Spreadsheet");
 
-    let body = { timeHHMM, activity };
-
-    if (uploadedThumbUrl) {
-      body.photoMode     = 'thumbUrl';
-      body.photoThumbUrl = uploadedThumbUrl;
-    } else {
-      const link = linkInput.value.trim();
-      if (!link) throw new Error('Pilih/ambil foto atau isi link/ID Google Drive.');
-      body.photoMode = 'link';
-      body.photo     = link;
-    }
-
-    const res  = await fetch(`${SCRIPT_URL}?token=${encodeURIComponent(SHARED_TOKEN)}`, {
-      method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(body)
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({
+        token: SHARED_TOKEN,
+        action: "createLog",
+        time: timeStr,
+        activity,
+        fileId: uploaded.fileId
+      })
     });
-    const data = await res.json();
-    if (!data.ok){
-      if (data.code === 'FULL')     throw new Error('Slot A18:C28 sudah penuh (10/10). Hapus baris lama dulu.');
-      if (data.code === 'BAD_TOKEN') throw new Error('Token salah. Cek SHARED_TOKEN & TOKEN.');
-      throw new Error(data.message || data.code || 'Gagal menyimpan');
-    }
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || "Gagal menyimpan");
 
-    showMsg(true, `Tersimpan di baris ${data.row}.`);
-    // Reset ringan
-    form.reset();
-    uploadedThumbUrl = '';
-    canvasPrev.hidden = true; canvasPrev.width = 0; canvasPrev.height = 0;
-    uploadInfo.textContent = 'Belum ada gambar';
-    const now = new Date();
-    timeInput.value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    showOverlay("ok", "Tersimpan", "Logbook berhasil ditambahkan");
+    // Reset form (kecuali waktu, kalau mau di-keep hapus baris berikut)
+    timeInput.value = "";
+    timeLabel.textContent = "Pilih Waktu";
+    activityEl.value = "";
+    uploaded = null;
+    uploadInfo.classList.add("hidden");
+    preview.removeAttribute("src");
+    setSubmitEnabled();
 
-    await refreshTable();
+    await loadRows();
   }catch(err){
-    showMsg(false, String(err.message || err));
+    console.error(err);
+    showOverlay("err", "Gagal menyimpan", err.message || "Coba lagi");
   }finally{
     submitBtn.disabled = false;
   }
 });
 
-// ====== INIT ======
-refreshBtn.addEventListener('click', refreshTable);
-refreshTable();
+/* ===== LOAD TABLE ===== */
+async function loadRows(){
+  rowsTbody.innerHTML = `<tr><td colspan="4">Memuat…</td></tr>`;
+  try{
+    const url = new URL(SCRIPT_URL);
+    url.searchParams.set("action","list");
+    url.searchParams.set("token",SHARED_TOKEN);
+
+    const res = await fetch(url.toString(), { method:"GET" });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || "Gagal memuat");
+
+    rowsTbody.innerHTML = "";
+    if (!json.rows || !json.rows.length) {
+      rowsTbody.innerHTML = `<tr><td colspan="4" class="muted">Belum ada data</td></tr>`;
+      return;
+    }
+    for (const r of json.rows){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${escapeHtml(r.time || "-")}</td>
+        <td>${escapeHtml(r.activity || "-")}</td>
+        <td>${r.fileUrl ? `<a href="${r.fileUrl}" target="_blank" rel="noopener">Buka</a>` : "-"}</td>
+        <td>${escapeHtml(r.createdAt || "-")}</td>
+      `;
+      rowsTbody.appendChild(tr);
+    }
+  }catch(err){
+    console.error(err);
+    rowsTbody.innerHTML = `<tr><td colspan="4">Gagal memuat data</td></tr>`;
+  }
+}
+function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+/* ===== INIT ===== */
+document.addEventListener("DOMContentLoaded", async () => {
+  setSubmitEnabled();
+  await loadRows();
+});
