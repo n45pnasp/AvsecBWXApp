@@ -137,34 +137,57 @@ function snapToCenter(el, idx){ el.scrollTop = SPACER + idx*ITEM_H; }
 
 /* interaksi */
 function enableWheel(el, max){
-  let dragging = false, startY = 0, startTop = 0, pid = 0, timer = null;
+  let dragging = false, startY = 0, startTop = 0, pid = 0;
+  let timer = null;
+  let isSnapping = false; // lock agar tidak loop
 
   el.addEventListener("pointerdown", (e)=>{
-    dragging = true; startY = e.clientY; startTop = el.scrollTop; pid = e.pointerId;
+    dragging = true;
+    startY = e.clientY;
+    startTop = el.scrollTop;
+    pid = e.pointerId;
     el.setPointerCapture(pid);
+    // hentikan snap tertunda saat user mulai drag
+    clearTimeout(timer);
   });
+
   el.addEventListener("pointermove", (e)=>{
     if (!dragging) return;
     el.scrollTop = startTop + (e.clientY - startY);
   });
+
   function endDrag(){
     if (!dragging) return;
     dragging = false;
+    // snap SEKALI ke item yang tepat di garis tengah
+    isSnapping = true;
     snapToCenter(el, centerIndex(el, max));
+    // lepas lock setelah browser memproses scroll dari snap
+    requestAnimationFrame(()=>{ isSnapping = false; });
   }
   el.addEventListener("pointerup", endDrag);
   el.addEventListener("pointercancel", endDrag);
 
+  // Jangan auto-snap di setiap scroll; hanya saat scroll berhenti (inertia selesai)
   el.addEventListener("scroll", ()=>{
+    if (isSnapping) return;       // abaikan scroll akibat snap programatis
     clearTimeout(timer);
-    timer = setTimeout(()=> snapToCenter(el, centerIndex(el, max)), 80);
+    timer = setTimeout(()=>{
+      isSnapping = true;
+      snapToCenter(el, centerIndex(el, max));
+      requestAnimationFrame(()=>{ isSnapping = false; });
+    }, 160); // tunggu sebentar agar inertia benar-benar selesai
   }, {passive:true});
 
+  // Klik item → loncat dan snap
   el.addEventListener("click", (e)=>{
     const it = e.target.closest(".item"); if (!it) return;
+    isSnapping = true;
     snapToCenter(el, +it.dataset.val);
+    requestAnimationFrame(()=>{ isSnapping = false; });
   });
 }
+
 
 function openTimePicker(){
   if (!wheelsBuilt){
