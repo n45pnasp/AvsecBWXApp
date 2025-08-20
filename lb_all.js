@@ -18,9 +18,9 @@ const activityEl  = document.getElementById("activity");
 const rowsTbody   = document.getElementById("rows");
 
 /* ===== STATE ===== */
-let uploaded   = null;  // {fileId, url, name} (saat tambah)
+let uploaded   = null;
 let uploading  = false;
-let editingId  = null;  // id baris saat edit
+let editingId  = null;
 
 /* ===== UTIL ===== */
 const pad2  = (n)=> String(n).padStart(2,"0");
@@ -67,7 +67,7 @@ function setModeEdit(on){
   fileInput.disabled = !!on;
   if (on){
     uploadInfo.classList.add("hidden");
-    uploaded = null; // foto tidak boleh diganti saat edit
+    uploaded = null;
   }
   setSubmitEnabled();
 }
@@ -86,7 +86,6 @@ function exitEditMode(){
   activityEl.value = "";
   setModeEdit(false);
 }
-
 function setSubmitEnabled(){
   const timeOk = !!timeInput.value;
   const actOk  = !!activityEl.value.trim();
@@ -97,8 +96,8 @@ function setSubmitEnabled(){
 }
 activityEl.addEventListener("input", setSubmitEnabled);
 
-/* ===== TIME PICKER (WHEEL – baca item PUSAT layar) ===== */
-const ITEM_H = 36;           // harus sama dgn .item di CSS
+/* ===== TIME PICKER (wheel; baca item tepat di garis tengah) ===== */
+const ITEM_H = 36;
 const VISIBLE = 5;
 const SPACER = ((VISIBLE-1)/2) * ITEM_H;
 
@@ -119,7 +118,7 @@ function buildWheel(el, count){
     const it = document.createElement("div");
     it.className = "item";
     it.textContent = pad2(i);
-    it.dataset.val = i; // penting: 0..count-1
+    it.dataset.val = i;
     frag.appendChild(it);
   }
   frag.appendChild(bottom);
@@ -127,34 +126,28 @@ function buildWheel(el, count){
   el.appendChild(frag);
 }
 
+/* >>> Perbaikan inti <<<  */
+/* Posisi yang benar agar item i tepat di tengah viewport */
 function snapToCenter(el, idx){
-  el.scrollTop = SPACER + idx*ITEM_H;
+  el.scrollTop = idx * ITEM_H; // BUKAN SPACER + idx*ITEM_H
 }
-
-/* === Inti perbaikan: cari elemen .item yang pusatnya paling dekat dengan garis tengah wheel === */
+/* Cari item yg pusatnya paling dekat dgn garis tengah */
 function centerIndex(el, max){
   const rect = el.getBoundingClientRect();
   const midY = rect.top + rect.height / 2;
-  let closest = 0;
-  let best = Infinity;
-  const nodes = el.querySelectorAll('.item');
-  nodes.forEach(n => {
+  let best = Infinity, idx = 0;
+  el.querySelectorAll(".item").forEach(n=>{
     const r = n.getBoundingClientRect();
-    const cy = r.top + r.height/2;
-    const d  = Math.abs(cy - midY);
-    if (d < best){
-      best = d;
-      closest = +n.dataset.val; // 0..max
-    }
+    const d = Math.abs((r.top + r.height/2) - midY);
+    if (d < best){ best = d; idx = +n.dataset.val; }
   });
-  return clamp(closest, 0, max);
+  return clamp(idx, 0, max);
 }
 
-/* interaksi */
 function enableWheel(el, max){
   let dragging = false, startY = 0, startTop = 0, pid = 0;
-  let timer = null;
-  let isSnapping = false;
+  let timer = null, isSnapping = false;
+  const MAX_TOP = max * ITEM_H; // batas keras
 
   el.addEventListener("pointerdown", (e)=>{
     dragging = true;
@@ -167,7 +160,10 @@ function enableWheel(el, max){
 
   el.addEventListener("pointermove", (e)=>{
     if (!dragging) return;
-    el.scrollTop = startTop + (e.clientY - startY);
+    let t = startTop + (e.clientY - startY);
+    if (t < 0) t = 0;
+    if (t > MAX_TOP) t = MAX_TOP;     // stop mentok atas/bawah
+    el.scrollTop = t;
   });
 
   function endDrag(){
@@ -180,18 +176,19 @@ function enableWheel(el, max){
   el.addEventListener("pointerup", endDrag);
   el.addEventListener("pointercancel", endDrag);
 
-  // Snap hanya ketika scroll berhenti (inertia selesai)
   el.addEventListener("scroll", ()=>{
     if (isSnapping) return;
+    // jaga-jaga kalau ada inertia yang lewat batas
+    if (el.scrollTop < 0){ el.scrollTop = 0; return; }
+    if (el.scrollTop > MAX_TOP){ el.scrollTop = MAX_TOP; return; }
     clearTimeout(timer);
     timer = setTimeout(()=>{
       isSnapping = true;
       snapToCenter(el, centerIndex(el, max));
       requestAnimationFrame(()=>{ isSnapping = false; });
-    }, 160);
-  }, { passive:true });
+    }, 140);
+  }, {passive:true});
 
-  // Klik item → loncat & snap
   el.addEventListener("click", (e)=>{
     const it = e.target.closest(".item"); if (!it) return;
     isSnapping = true;
@@ -210,7 +207,9 @@ function openTimePicker(){
   }
   let h = 0, m = 0;
   if (timeInput.value){
-    const [hh, mm] = timeInput.value.split(":"); h = parseInt(hh||"0",10); m = parseInt(mm||"0",10);
+    const [hh, mm] = timeInput.value.split(":");
+    h = clamp(parseInt(hh||"0",10), 0, 23);
+    m = clamp(parseInt(mm||"0",10), 0, 59);
   }else{
     const now = new Date(); h = now.getHours(); m = now.getMinutes();
   }
@@ -218,7 +217,6 @@ function openTimePicker(){
   snapToCenter(wheelMin,  m);
   timeModal.classList.remove("hidden");
 }
-
 function closeTimePicker(save){
   if (save){
     const h = centerIndex(wheelHour, 23);
@@ -232,8 +230,7 @@ function closeTimePicker(save){
   }
   timeModal.classList.add("hidden");
 }
-
-/* selalu pakai wheel – nonaktifkan native picker */
+/* selalu pakai wheel */
 function disableNativeTimePicker(){
   timeInput.setAttribute("readonly", "");
   timeInput.setAttribute("inputmode","none");
@@ -243,10 +240,10 @@ function disableNativeTimePicker(){
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave  .addEventListener("click", () => closeTimePicker(true));
 
-/* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
+/* ===== UPLOAD FOTO (tambah) ===== */
 pickPhoto.addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", async (ev) => {
-  if (editingId) return; // di mode edit abaikan upload
+  if (editingId) return;
   const file = ev.target.files?.[0];
   if (!file) return;
 
@@ -289,7 +286,7 @@ async function fileToBase64(file){
   });
 }
 
-/* ===== SUBMIT (Create / Update) ===== */
+/* ===== SUBMIT ===== */
 submitBtn.addEventListener("click", async () => {
   if (submitBtn.disabled) return;
   const timeStr  = timeInput.value;
@@ -397,19 +394,15 @@ async function loadRows(){
   }
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
-
-/* konversi link Drive → link gambar langsung */
 function toImageUrl(url, fileId){
   const id = fileId || (url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || "");
   return id ? (`https://drive.google.com/uc?export=view&id=${id}`) : (url || "");
 }
-
 rowsTbody.addEventListener("click", async (e) => {
   const view = e.target.closest(".btn-view");
   const edit = e.target.closest(".btn-edit");
   const del  = e.target.closest(".btn-del");
   if (view){ openPhoto(view.dataset.url); return; }
-
   if (edit){
     const id = edit.dataset.id;
     if (!id){ alert("Tidak ada ID data dari server."); return; }
@@ -418,7 +411,6 @@ rowsTbody.addEventListener("click", async (e) => {
     enterEditMode(id, t, a);
     return;
   }
-
   if (del){
     const id = del.dataset.id;
     if (!id){ alert("Tidak ada ID data dari server."); return; }
@@ -453,7 +445,7 @@ function closePhoto(){ photoModal.classList.add("hidden"); photoImg.removeAttrib
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
   timeLabel.textContent = "Pilih Waktu";
-  setModeEdit(false);         // default mode tambah
-  disableNativeTimePicker();  // pastikan selalu wheel picker
+  setModeEdit(false);
+  disableNativeTimePicker();
   await loadRows();
 });
