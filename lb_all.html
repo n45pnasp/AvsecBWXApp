@@ -10,8 +10,8 @@
   <!-- App Bar -->
   <div class="app-bar">
     <a class="back-btn" aria-label="Kembali" href="index.html">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-        <path d="M15 6L9 12L15 18" />
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
       </svg>
     </a>
     <h1 class="app-title">Logbook</h1>
@@ -22,16 +22,14 @@
       <h1 class="card-title">Input Logbook</h1>
 
       <div class="row-2">
-        <!-- Kiri: Time Picker (custom modal) -->
+        <!-- Kiri: Time Picker (modal wheel) -->
         <label class="btn-like" aria-label="Pilih Waktu" id="timeBtn">
           <input id="timeInput" type="time" required />
           <span id="timeLabel">Pilih Waktu</span>
         </label>
 
         <!-- Kanan: Upload Foto -->
-        <button id="pickPhotoBtn" type="button" class="btn">
-          📷 Ambil / Pilih Foto
-        </button>
+        <button id="pickPhotoBtn" type="button" class="btn">📷 Pilih Foto</button>
         <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
       </div>
 
@@ -63,7 +61,6 @@
               <th>Waktu</th>
               <th>Kegiatan</th>
               <th>Foto</th>
-              <th>Dibuat</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -99,6 +96,14 @@
         <div class="wheel" id="wheelMin"></div>
         <div class="picker-highlight"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal Foto -->
+  <div id="photoModal" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="photo-sheet">
+      <button class="photo-close" id="photoClose" aria-label="Tutup">✕</button>
+      <img id="photoImg" alt="Foto logbook" />
     </div>
   </div>
 
