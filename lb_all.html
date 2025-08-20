@@ -14,30 +14,38 @@
       <p class="muted">Maksimal 10 entri. Disimpan tepat di <b>A18:C28</b> pada Sheet (privat).</p>
 
       <form id="kForm" class="form-grid" autocomplete="off">
-        <!-- Waktu: PIN picker -->
+        <!-- Waktu -->
         <div class="field">
           <label for="timeHHMM">Waktu (HH:MM)</label>
           <div class="pin-time">
-            <input id="timeHHMM" name="timeHHMM" type="text" inputmode="numeric" pattern="\\d{2}:\\d{2}" placeholder="HH:MM" readonly />
+            <input id="timeHHMM" name="timeHHMM" type="text" inputmode="none" placeholder="HH:MM" readonly />
             <button id="btnPickTime" type="button" class="btn">Pilih Waktu</button>
           </div>
-          <small class="hint">Gunakan keypad ala Android untuk input jam & menit.</small>
+          <small class="hint">Tekan tombol untuk membuka pemilih waktu.</small>
         </div>
 
-        <!-- Kegiatan: textbox -->
+        <!-- Kegiatan -->
         <div class="field">
           <label for="activity">Kegiatan</label>
           <input id="activity" name="activity" type="text" placeholder="Tulis kegiatan…" required />
         </div>
 
-        <!-- Foto: upload + kompres 300px -->
+        <!-- Foto -->
         <div class="field">
-          <label for="photoFile">Foto (upload, akan dikompres JPG ≤ 300px)</label>
-          <input id="photoFile" name="photoFile" type="file" accept="image/*" capture="environment" />
+          <label>Foto (kompres JPG ≤ 300px & di-upload otomatis)</label>
+
+          <!-- input galeri (tanpa capture) -->
+          <input id="photoFile" name="photoFile" type="file" accept="image/*" hidden/>
+
+          <!-- input kamera (dengan capture) -->
+          <input id="photoCam"  name="photoCam"  type="file" accept="image/*" capture="environment" hidden/>
+
           <div class="upload-row">
-            <button id="btnUploadPick" type="button" class="btn">Pilih/Foto</button>
+            <button id="btnPickGallery" type="button" class="btn">Dari Galeri</button>
+            <button id="btnPickCamera"  type="button" class="btn">Buka Kamera</button>
             <span id="uploadInfo" class="muted">Belum ada gambar</span>
           </div>
+
           <canvas id="previewCanvas" class="preview" width="0" height="0" hidden></canvas>
 
           <details class="link-fallback">
@@ -78,7 +86,7 @@
     </section>
   </main>
 
-  <!-- PIN Time Picker Modal -->
+  <!-- PIN Time Picker Modal (hanya via tombol) -->
   <div id="timeModal" class="modal" hidden>
     <div class="modal-card">
       <div class="modal-head">
@@ -87,7 +95,6 @@
       </div>
       <div class="time-display" id="timeDisplay">--:--</div>
       <div class="keypad" id="keypad">
-        <!-- Baris keypad -->
         <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
         <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
         <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
