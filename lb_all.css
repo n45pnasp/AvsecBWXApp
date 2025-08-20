@@ -220,15 +220,64 @@ tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
 @keyframes spin{ to{ transform:rotate(360deg) } }
 @keyframes pop{ from{ transform:translateY(6px) scale(.98); opacity:0 } to{ transform:none; opacity:1 } }
 
+/* Judul seksi di luar card */
+.section-title{
+  margin:6px 0 8px; padding:0 2px;
+  font-weight:700; font-size:18px; color:var(--text); opacity:.9;
+}
+
+/* Tabel responsif */
+.table-wrap{ overflow-x:auto }
+.log-table{
+  width:100%; border-collapse:separate; border-spacing:0;
+  border:1px solid var(--border); border-radius:12px; overflow:hidden;
+  table-layout: fixed;
+}
+.log-table .col-time{ width: 96px; }
+.log-table .col-activity{ width:auto; }
+.log-table .col-photo{ width: 90px; }
+.log-table .col-actions{ width: 84px; }
+
+.log-table th, .log-table td{
+  padding:10px 12px; text-align:left; border-bottom:1px solid var(--border);
+}
+.log-table th{ background:#111827; white-space:nowrap }
+.log-table tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
+
+/* Bungkus teks kegiatan agar tidak meluber layar */
+.log-table td:nth-child(2){
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Foto & Aksi rata-tengah */
+.log-table td:nth-child(3),
+.log-table td:nth-child(4){ text-align:center }
+
+/* Tombol ikon kecil (Lihat / Edit / Hapus) */
+.actions{ display:inline-flex; gap:8px; align-items:center; justify-content:center }
+.icon-btn{
+  appearance:none; border:1px solid var(--border); background:#1f2937; color:#fff;
+  width:36px; height:36px; border-radius:10px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  transition: filter .15s ease, transform .06s ease;
+}
+.icon-btn:hover{ filter:brightness(1.05) }
+.icon-btn:active{ transform:translateY(1px) }
+.icon-btn svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2 }
 
 /* =========================
    RESPONSIVE
    ========================= */
-@media (max-width: 480px){
+@media (max-width:560px){
   .app-title{ font-size: 20px; }
   .back-btn{ width: 40px; height: 40px; }
   .controls{ gap:8px; }
   .controls button{ padding: 10px 14px; }
+  .log-table .col-time{ width:84px }
+  .log-table .col-photo{ width:80px }
+  .log-table .col-actions{ width:76px }
   #loadingOverlay .load-card{
     grid-template-columns: 48px 1fr auto;
     padding: 14px;
