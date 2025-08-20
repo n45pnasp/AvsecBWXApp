@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Logbook CCTV</title>
+  <style>
+    :root{
+      --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#94a3b8; --border:#334;
+      --accent:#3b82f6; --danger:#ef4444; --ok:#22c55e;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+         background:var(--bg); color:var(--text); padding:20px;}
+    .card{max-width:520px; margin:0 auto; background:#0b1324; border:1px solid var(--border);
+          border-radius:16px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    h1{font-size:20px; margin:0 0 6px}
+    p.muted{color:var(--muted); margin-top:0}
+    label{display:block; font-weight:600; margin:12px 0 6px}
+    input,textarea,button{
+      width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--border);
+      background:#0f172a; color:var(--text);
+    }
+    input[type="time"]{ font-variant-numeric:tabular-nums }
+    .row{display:grid; grid-template-columns:1fr; gap:12px}
+    button{background:var(--accent); border:none; font-weight:700; cursor:pointer}
+    button:disabled{opacity:.6; cursor:not-allowed}
+    .status{margin-top:12px; padding:10px 12px; border-radius:10px; display:none}
+    .status.ok{display:block; background:rgba(34,197,94,.15); border:1px solid rgba(34,197,94,.45)}
+    .status.err{display:block; background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.45)}
+    small.hint{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Input Kegiatan</h1>
+    <p class="muted">Tulis **maks 10 entri**. Disimpan tepat di <b>A18:C28</b>.</p>
+
+    <form id="kForm" class="row" autocomplete="off">
+      <div>
+        <label for="timeHHMM">Waktu (jam:menit)</label>
+        <input id="timeHHMM" name="timeHHMM" type="time" required />
+      </div>
+
+      <div>
+        <label for="activity">Kegiatan</label>
+        <textarea id="activity" name="activity" rows="3" placeholder="Tulis kegiatan…" required></textarea>
+      </div>
+
+      <div>
+        <label for="photo">Foto (Link/ID Google Drive atau URL gambar)</label>
+        <input id="photo" name="photo" type="text" placeholder="contoh: https://drive.google.com/file/d/ID/view … atau langsung ID" required />
+        <small class="hint">Link/ID akan otomatis diubah ke <code>thumbnail?id=…</code> agar tampil di Sheet via <code>=IMAGE()</code>.</small>
+      </div>
+
+      <button id="submitBtn" type="submit">Kirim</button>
+    </form>
+
+    <div id="statusOk"  class="status ok"></div>
+    <div id="statusErr" class="status err"></div>
+  </div>
+
+  <script type="module" src="./form.js"></script>
+</body>
+</html>
