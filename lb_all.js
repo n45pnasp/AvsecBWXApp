@@ -127,15 +127,15 @@ function buildWheel(el, count){
   el.appendChild(frag);
 }
 
-/* index tepat di garis tengah highlight */
+/* ⬇️ Perbaikan inti: index di garis tengah */
 function centerIndex(el, max){
-  const centerTop = el.scrollTop + el.clientHeight/2;
-  const relative  = centerTop - SPACER - ITEM_H/2;
-  return clamp(Math.round(relative / ITEM_H), 0, max);
+  // tepat: jika scrollTop = SPACER + idx*ITEM_H → idx
+  const idx = Math.round((el.scrollTop - SPACER) / ITEM_H);
+  return clamp(idx, 0, max);
 }
 function snapToCenter(el, idx){ el.scrollTop = SPACER + idx*ITEM_H; }
 
-/* interaksi yang stabil (tak auto-lari/loop) */
+/* interaksi stabil (tanpa auto-lari/loop) */
 function enableWheel(el, max){
   let dragging = false, startY = 0, startTop = 0, pid = 0;
   let timer = null;
@@ -165,7 +165,7 @@ function enableWheel(el, max){
   el.addEventListener("pointerup", endDrag);
   el.addEventListener("pointercancel", endDrag);
 
-  // Snap hanya setelah scroll berhenti (debounce) agar tidak mentok sendiri
+  // Snap hanya setelah scroll berhenti (debounce)
   el.addEventListener("scroll", ()=>{
     if (isSnapping) return;
     clearTimeout(timer);
