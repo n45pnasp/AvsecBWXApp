@@ -23,7 +23,8 @@ let uploading  = false;
 let editingId  = null;  // id baris saat edit
 
 /* ===== UTIL ===== */
-const pad2 = (n)=> String(n).padStart(2,"0");
+const pad2  = (n)=> String(n).padStart(2,"0");
+const clamp = (v,min,max)=> v<min?min : v>max?max : v;
 
 function fmtTimeWIB(s){
   if (!s) return "-";
@@ -96,8 +97,8 @@ function setSubmitEnabled(){
 }
 activityEl.addEventListener("input", setSubmitEnabled);
 
-/* ===== TIME PICKER (WHEEL) ===== */
-const ITEM_H = 36;
+/* ===== TIME PICKER (WHEEL – nilai berbasis GARIS TENGAH) ===== */
+const ITEM_H = 36;           // harus sama dgn .item di CSS
 const VISIBLE = 5;
 const SPACER = ((VISIBLE-1)/2) * ITEM_H;
 
@@ -125,16 +126,19 @@ function buildWheel(el, count){
   el.innerHTML = "";
   el.appendChild(frag);
 }
-function snapTopFor(el, value){ el.scrollTop = SPACER + value*ITEM_H; }
-function nearestVal(el, max){ return Math.min(Math.max(Math.round((el.scrollTop - SPACER)/ITEM_H), 0), max); }
-// baca tepat dari posisi roda (fix selisih jam/menit)
-function valueFromWheel(el, max){
-  const v = Math.round((el.scrollTop - SPACER)/ITEM_H);
-  return Math.min(Math.max(v, 0), max);
-}
 
+/* hitung index tepat di GARIS TENGAH */
+function centerIndex(el, max){
+  const centerTop = el.scrollTop + el.clientHeight/2;            // posisi Y tengah
+  const relative  = centerTop - SPACER - ITEM_H/2;               // relatif ke pusat item
+  return clamp(Math.round(relative / ITEM_H), 0, max);
+}
+function snapToCenter(el, idx){ el.scrollTop = SPACER + idx*ITEM_H; }
+
+/* interaksi */
 function enableWheel(el, max){
   let dragging = false, startY = 0, startTop = 0, pid = 0, timer = null;
+
   el.addEventListener("pointerdown", (e)=>{
     dragging = true; startY = e.clientY; startTop = el.scrollTop; pid = e.pointerId;
     el.setPointerCapture(pid);
@@ -146,21 +150,19 @@ function enableWheel(el, max){
   function endDrag(){
     if (!dragging) return;
     dragging = false;
-    const v = nearestVal(el, max);
-    snapTopFor(el, v);
+    snapToCenter(el, centerIndex(el, max));
   }
   el.addEventListener("pointerup", endDrag);
   el.addEventListener("pointercancel", endDrag);
+
   el.addEventListener("scroll", ()=>{
     clearTimeout(timer);
-    timer = setTimeout(()=>{
-      const v = nearestVal(el, max);
-      snapTopFor(el, v);
-    }, 80);
+    timer = setTimeout(()=> snapToCenter(el, centerIndex(el, max)), 80);
   }, {passive:true});
+
   el.addEventListener("click", (e)=>{
     const it = e.target.closest(".item"); if (!it) return;
-    const v = +it.dataset.val; snapTopFor(el, v);
+    snapToCenter(el, +it.dataset.val);
   });
 }
 
@@ -178,19 +180,17 @@ function openTimePicker(){
   }else{
     const now = new Date(); h = now.getHours(); m = now.getMinutes();
   }
-  snapTopFor(wheelHour, h);
-  snapTopFor(wheelMin, m);
+  snapToCenter(wheelHour, h);
+  snapToCenter(wheelMin,  m);
   timeModal.classList.remove("hidden");
 }
 
 function closeTimePicker(save){
   if (save){
-    // BACA LANGSUNG dari posisi roda (menghindari selisih karena inersia)
-    const h = valueFromWheel(wheelHour, 23);
-    const m = valueFromWheel(wheelMin, 59);
-    snapTopFor(wheelHour, h);
-    snapTopFor(wheelMin, m);
-
+    const h = centerIndex(wheelHour, 23);
+    const m = centerIndex(wheelMin,  59);
+    snapToCenter(wheelHour, h);
+    snapToCenter(wheelMin,  m);
     const val = `${pad2(h)}:${pad2(m)}`;
     timeInput.value = val;
     timeLabel.textContent = val;
@@ -199,7 +199,7 @@ function closeTimePicker(save){
   timeModal.classList.add("hidden");
 }
 
-// Matikan native time-picker & selalu buka wheel
+/* selalu pakai wheel – nonaktifkan native picker */
 function disableNativeTimePicker(){
   timeInput.setAttribute("readonly", "");
   timeInput.setAttribute("inputmode","none");
@@ -364,7 +364,7 @@ async function loadRows(){
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
-/* konversi link Drive → link gambar yang bisa di-embed */
+/* konversi link Drive → link gambar langsung */
 function toImageUrl(url, fileId){
   const id = fileId || (url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || "");
   return id ? (`https://drive.google.com/uc?export=view&id=${id}`) : (url || "");
