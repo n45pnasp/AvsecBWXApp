@@ -358,7 +358,9 @@ async function loadRows(){
 
     for (const r of json.rows){
       const id     = r.id ?? "";
-      const imgUrl = toImageUrl(r.fileUrl || "", r.fileId || "");
+      const imgUrl = r.fileId
+        ? `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(r.fileId)}`
+        : toImageUrl(r.fileUrl || "", r.fileId || "");
       const time   = r.time || r.createdAt || "";
       const actRaw = r.activity || "";
 
