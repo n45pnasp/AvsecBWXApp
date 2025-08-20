@@ -193,3 +193,17 @@ tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
 
 @keyframes spin{ to{ transform:rotate(360deg) } }
 @keyframes pop{ from{ transform:translateY(6px) scale(.98); opacity:0 } to{ transform:none; opacity:1 } }
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+@media (max-width: 480px){
+  .app-title{ font-size: 20px; }
+  .back-btn{ width: 40px; height: 40px; }
+  .controls{ gap:8px; }
+  .controls button{ padding: 10px 14px; }
+  #loadingOverlay .load-card{
+    grid-template-columns: 48px 1fr auto;
+    padding: 14px;
+  }
+}
