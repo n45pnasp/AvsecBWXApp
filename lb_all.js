@@ -97,8 +97,8 @@ function setSubmitEnabled(){
 }
 activityEl.addEventListener("input", setSubmitEnabled);
 
-/* ===== TIME PICKER (WHEEL – nilai berbasis GARIS TENGAH) ===== */
-const ITEM_H = 36;           // harus sama dgn .item di CSS
+/* ===== TIME PICKER (WHEEL – baca dari GARIS TENGAH) ===== */
+const ITEM_H = 36;           // sama dgn .item di CSS
 const VISIBLE = 5;
 const SPACER = ((VISIBLE-1)/2) * ITEM_H;
 
@@ -127,19 +127,19 @@ function buildWheel(el, count){
   el.appendChild(frag);
 }
 
-/* hitung index tepat di GARIS TENGAH */
+/* index tepat di garis tengah highlight */
 function centerIndex(el, max){
-  const centerTop = el.scrollTop + el.clientHeight/2;            // posisi Y tengah
-  const relative  = centerTop - SPACER - ITEM_H/2;               // relatif ke pusat item
+  const centerTop = el.scrollTop + el.clientHeight/2;
+  const relative  = centerTop - SPACER - ITEM_H/2;
   return clamp(Math.round(relative / ITEM_H), 0, max);
 }
 function snapToCenter(el, idx){ el.scrollTop = SPACER + idx*ITEM_H; }
 
-/* interaksi */
+/* interaksi yang stabil (tak auto-lari/loop) */
 function enableWheel(el, max){
   let dragging = false, startY = 0, startTop = 0, pid = 0;
   let timer = null;
-  let isSnapping = false; // lock agar tidak loop
+  let isSnapping = false;
 
   el.addEventListener("pointerdown", (e)=>{
     dragging = true;
@@ -147,7 +147,6 @@ function enableWheel(el, max){
     startTop = el.scrollTop;
     pid = e.pointerId;
     el.setPointerCapture(pid);
-    // hentikan snap tertunda saat user mulai drag
     clearTimeout(timer);
   });
 
@@ -159,27 +158,25 @@ function enableWheel(el, max){
   function endDrag(){
     if (!dragging) return;
     dragging = false;
-    // snap SEKALI ke item yang tepat di garis tengah
     isSnapping = true;
     snapToCenter(el, centerIndex(el, max));
-    // lepas lock setelah browser memproses scroll dari snap
     requestAnimationFrame(()=>{ isSnapping = false; });
   }
   el.addEventListener("pointerup", endDrag);
   el.addEventListener("pointercancel", endDrag);
 
-  // Jangan auto-snap di setiap scroll; hanya saat scroll berhenti (inertia selesai)
+  // Snap hanya setelah scroll berhenti (debounce) agar tidak mentok sendiri
   el.addEventListener("scroll", ()=>{
-    if (isSnapping) return;       // abaikan scroll akibat snap programatis
+    if (isSnapping) return;
     clearTimeout(timer);
     timer = setTimeout(()=>{
       isSnapping = true;
       snapToCenter(el, centerIndex(el, max));
       requestAnimationFrame(()=>{ isSnapping = false; });
-    }, 160); // tunggu sebentar agar inertia benar-benar selesai
+    }, 160);
   }, {passive:true});
 
-  // Klik item → loncat dan snap
+  // Klik item → loncat & snap
   el.addEventListener("click", (e)=>{
     const it = e.target.closest(".item"); if (!it) return;
     isSnapping = true;
@@ -187,7 +184,6 @@ function enableWheel(el, max){
     requestAnimationFrame(()=>{ isSnapping = false; });
   });
 }
-
 
 function openTimePicker(){
   if (!wheelsBuilt){
@@ -443,6 +439,6 @@ function closePhoto(){ photoModal.classList.add("hidden"); photoImg.removeAttrib
 document.addEventListener("DOMContentLoaded", async () => {
   timeLabel.textContent = "Pilih Waktu";
   setModeEdit(false);         // default mode tambah
-  disableNativeTimePicker();  // pastikan selalu wheel picker
+  disableNativeTimePicker();  // selalu wheel
   await loadRows();
 });
