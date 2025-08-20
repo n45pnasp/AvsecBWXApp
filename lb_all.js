@@ -358,15 +358,15 @@ async function loadRows(){
 
     for (const r of json.rows){
       const id     = r.id ?? "";
-      const imgUrl = r.fileId
-        ? `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(r.fileId)}`
-        : toImageUrl(r.fileUrl || "", r.fileId || "");
+      const fileId = r.fileId || (r.fileUrl?.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
+                    || r.fileUrl?.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || "");
       const time   = r.time || r.createdAt || "";
       const actRaw = r.activity || "";
 
       const tr = document.createElement("tr");
       tr.dataset.id        = id;
-      tr.dataset.url       = imgUrl || "";
+      tr.dataset.fileId    = fileId;                      // ← simpan fileId
+      tr.dataset.url       = toImageUrl(r.fileUrl||"", fileId); // fallback kalau ada link publik
       tr.dataset.time      = time || "";
       tr.dataset.activity  = actRaw;
 
@@ -383,15 +383,13 @@ async function loadRows(){
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
-/* konversi fileId/url Drive → URL foto via Apps Script (aman & always works) */
+/* konversi link Drive → link gambar publik (fallback; kalau file memang public) */
 function toImageUrl(url, fileId){
   const id = fileId
     || (url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
     ||   url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1]
     || "");
-  return id
-    ? `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(id)}`
-    : "";
+  return id ? `https://drive.google.com/uc?export=view&id=${id}` : "";
 }
 
 /* ===== TAP = lihat foto, LONG-PRESS = Edit/Hapus ===== */
@@ -458,12 +456,28 @@ rowsTbody.addEventListener("pointerdown", (e)=>{
 ["pointerup","pointercancel","pointerleave"].forEach(ev=>{
   rowsTbody.addEventListener(ev, ()=>{ clearTimeout(pressTimer); }, {passive:true});
 });
-rowsTbody.addEventListener("click", (e)=>{
+rowsTbody.addEventListener("click", async (e)=>{
   const tr = e.target.closest("tr[data-id]");
   if (!tr) return;
   if (longFired){ longFired = false; return; }   // jangan dobel
-  const url = tr.dataset.url;
-  if (url) openPhoto(url);
+
+  // Prioritas: ambil dari server (private file, aman)
+  if (tr.dataset.fileId){
+    try{
+      const u = `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(tr.dataset.fileId)}`;
+      const res = await fetch(u);
+      const j = await res.json();
+      if (!res.ok || !j.success || !j.dataUrl) throw new Error(j.error || "Gagal memuat foto");
+      openPhoto(j.dataUrl);
+      return;
+    }catch(err){
+      console.error(err);
+      // kalau gagal, coba fallback ke URL publik (kalau ada)
+    }
+  }
+
+  // Fallback: bila file publik
+  if (tr.dataset.url) openPhoto(tr.dataset.url);
 });
 
 /* ===== MODAL FOTO ===== */
