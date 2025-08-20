@@ -133,8 +133,9 @@ function centerIndex(el, max){
   const relative  = centerTop - SPACER - ITEM_H/2;
   return clamp(Math.round(relative / ITEM_H), 0, max);
 }
-function snapToCenter(el, idx){ el.scrollTop = SPACER + idx*ITEM_H; }
-
+function snapToCenter(el, idx){
+  el.scrollTop = idx * ITEM_H; // BUKAN SPACER + idx*ITEM_H
+}
 /* interaksi + anti bounce (stop di batas) */
 function enableWheel(el, max){
   let dragging = false, startY = 0, startTop = 0, pid = 0;
