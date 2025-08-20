@@ -6,8 +6,8 @@
   <title>Logbook</title>
   <link rel="stylesheet" href="lb_all.css" />
 </head>
-  <body>
-    <!-- App Bar -->
+<body>
+  <!-- App Bar -->
   <div class="app-bar">
     <a class="back-btn" aria-label="Kembali" href="index.html">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
@@ -16,14 +16,14 @@
     </a>
     <h1 class="app-title">Logbook</h1>
   </div>
-  
+
   <main class="container">
     <section class="card">
       <h1 class="card-title">Input Logbook</h1>
 
       <div class="row-2">
-        <!-- Kiri: Time Picker -->
-        <label class="btn-like" aria-label="Pilih Waktu">
+        <!-- Kiri: Time Picker (custom modal) -->
+        <label class="btn-like" aria-label="Pilih Waktu" id="timeBtn">
           <input id="timeInput" type="time" required />
           <span id="timeLabel">Pilih Waktu</span>
         </label>
@@ -81,6 +81,24 @@
         <div class="desc" id="ovDesc">Mohon tunggu sebentar</div>
       </div>
       <button id="ovClose" class="close hidden" type="button">Tutup</button>
+    </div>
+  </div>
+
+  <!-- Modal Time Picker (wheel) -->
+  <div id="timeModal" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="time-sheet">
+      <div class="time-header">
+        <button type="button" class="t-btn t-cancel">Batal</button>
+        <div class="t-title">Pilih Waktu</div>
+        <button type="button" class="t-btn t-save">Simpan</button>
+      </div>
+
+      <div class="wheels">
+        <div class="wheel" id="wheelHour"></div>
+        <div class="sep">:</div>
+        <div class="wheel" id="wheelMin"></div>
+        <div class="picker-highlight"></div>
+      </div>
     </div>
   </div>
 
