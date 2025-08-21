@@ -5,9 +5,9 @@ const SHARED_TOKEN = "N45p";
 /* ===== KOMpresi GAMBAR (opsi) ===== */
 const COMPRESS_CFG = {
   /** Batas sisi terpanjang hasil (px) */
-  MAX_LONG_EDGE: 1600,
+  MAX_LONG_EDGE: 800,
   /** Jika gambar kecil, jangan upscale */
-  MIN_SHRINK_RATIO: 0.95, // < 1.0 artinya harus mengecil nyata baru diproses
+  MIN_SHRINK_RATIO: 0.5, // < 1.0 artinya harus mengecil nyata baru diproses
 };
 
 /* ===== DOM ===== */
