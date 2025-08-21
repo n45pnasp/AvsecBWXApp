@@ -1,13 +1,13 @@
 /* ===== KONFIG ===== */
-const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev";
-const SHARED_TOKEN = "N45p";
+const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // 🔒 JANGAN UBAH TANPA PERMINTAAN
+const SHARED_TOKEN = "N45p";                                    // 🔒 JANGAN UBAH TANPA PERMINTAAN
 
 /* ===== KOMpresi GAMBAR (opsi) ===== */
 const COMPRESS_CFG = {
-  /** Batas sisi terpanjang hasil (px) */
+  /** Batas sisi terpanjang hasil (px). Kecilkan untuk file lebih mungil. */
   MAX_LONG_EDGE: 800,
   /** Jika gambar kecil, jangan upscale */
-  MIN_SHRINK_RATIO: 0.5, // < 1.0 artinya harus mengecil nyata baru diproses
+  MIN_SHRINK_RATIO: 0.5,
 };
 
 /* ===== DOM ===== */
@@ -68,21 +68,24 @@ function showOverlay(state, title, desc){
   if (state !== "loading") setTimeout(() => overlay.classList.add("hidden"), 1200);
 }
 
-/* ===== MINI CONFIRM DIALOG (tanpa popup browser) ===== */
-function askConfirm(message = "Yakin?", {okText="OK", cancelText="Batal"} = {}) {
+/* ===== MINI CONFIRM DIALOG (tanpa popup browser) – v2 ===== */
+function askConfirm(message = "Yakin?", { okText = "Hapus", cancelText = "Batal" } = {}) {
   return new Promise(resolve => {
     let modal = document.getElementById("jsConfirm");
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "jsConfirm";
       modal.className = "hidden";
+      modal.setAttribute("role", "dialog");
+      modal.setAttribute("aria-modal", "true");
       modal.innerHTML = `
         <div class="jsc-backdrop"></div>
         <div class="jsc-card">
+          <button class="jsc-x" aria-label="Tutup" title="Tutup">×</button>
           <div class="jsc-msg"></div>
           <div class="jsc-actions">
-            <button class="jsc-cancel">${cancelText}</button>
-            <button class="jsc-ok">${okText}</button>
+            <button class="jsc-cancel" type="button"></button>
+            <button class="jsc-ok" type="button"></button>
           </div>
         </div>
       `;
@@ -90,41 +93,60 @@ function askConfirm(message = "Yakin?", {okText="OK", cancelText="Batal"} = {}) 
       css.textContent = `
         #jsConfirm{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999}
         #jsConfirm.hidden{display:none}
-        #jsConfirm .jsc-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45)}
-        #jsConfirm .jsc-card{position:relative;max-width:320px;width:90%;background:#111827;color:#e5e7eb;
-          border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:16px}
-        #jsConfirm .jsc-msg{font-size:14px;line-height:1.4;margin-bottom:12px;white-space:pre-wrap}
-        #jsConfirm .jsc-actions{display:flex;gap:8px;justify-content:flex-end}
+        #jsConfirm .jsc-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:saturate(120%) blur(2px)}
+        #jsConfirm .jsc-card{position:relative;max-width:360px;width:90%;background:#0f172a;color:#e5e7eb;
+          border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:18px 16px 14px}
+        #jsConfirm .jsc-msg{font-size:14px;line-height:1.5;margin:4px 6px 12px;white-space:pre-wrap}
+        #jsConfirm .jsc-actions{display:flex;gap:8px;justify-content:flex-end;padding:0 6px}
         #jsConfirm button{appearance:none;border:0;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer}
         #jsConfirm .jsc-cancel{background:#374151;color:#e5e7eb}
         #jsConfirm .jsc-ok{background:#ef4444;color:white}
         #jsConfirm button:active{transform:translateY(1px)}
+        #jsConfirm .jsc-x{
+          position:absolute;top:8px;right:8px;width:32px;height:32px;line-height:28px;
+          border-radius:999px;background:#111827;color:#e5e7eb;font-size:20px;font-weight:600;
+          display:inline-flex;align-items:center;justify-content:center;cursor:pointer
+        }
+        #jsConfirm .jsc-x:active{transform:scale(.98)}
+        /* cegah long-press jadi text-selection / callout hanya di modal */
+        #jsConfirm, #jsConfirm *{
+          -webkit-user-select:none; user-select:none;
+          -webkit-touch-callout:none;
+          -webkit-tap-highlight-color: transparent;
+        }
       `;
       document.head.appendChild(css);
       document.body.appendChild(modal);
+      modal.addEventListener("contextmenu", e => e.preventDefault());
     }
+
     const msgEl = modal.querySelector(".jsc-msg");
     const okBtn = modal.querySelector(".jsc-ok");
     const noBtn = modal.querySelector(".jsc-cancel");
+    const xBtn  = modal.querySelector(".jsc-x");
+
     msgEl.textContent = message;
+    okBtn.textContent = okText;
+    noBtn.textContent = cancelText;
 
     function close(val){
       modal.classList.add("hidden");
       okBtn.removeEventListener("click", onOk);
       noBtn.removeEventListener("click", onNo);
+      xBtn.removeEventListener("click", onNo);
       modal.removeEventListener("click", onBackdrop);
       resolve(val);
     }
     function onOk(){ close(true); }
     function onNo(){ close(false); }
-    function onBackdrop(e){ if(e.target===modal) close(false); }
+    function onBackdrop(e){ if(e.target === modal) close(false); }
 
-    okBtn.textContent = okText;
-    noBtn.textContent = cancelText;
     modal.classList.remove("hidden");
     okBtn.addEventListener("click", onOk);
     noBtn.addEventListener("click", onNo);
+    xBtn.addEventListener("click", onNo);
     modal.addEventListener("click", onBackdrop);
+    setTimeout(()=> okBtn.focus?.(), 0);
   });
 }
 
@@ -266,7 +288,6 @@ function openTimePicker(){
   snapToCenter(wheelMin,  m);
   timeModal.classList.remove("hidden");
 }
-
 function closeTimePicker(save){
   if (save){
     const h = centerIndex(wheelHour, 23);
@@ -280,7 +301,6 @@ function closeTimePicker(save){
   }
   timeModal.classList.add("hidden");
 }
-
 function disableNativeTimePicker(){
   timeInput.setAttribute("readonly", "");
   timeInput.setAttribute("inputmode","none");
@@ -294,17 +314,14 @@ btnSave  .addEventListener("click", () => closeTimePicker(true));
 function forceGalleryPicker(){
   try{
     fileInput.setAttribute("accept","image/*");
-    fileInput.removeAttribute("capture"); // <— penting: hilangkan hint kamera
+    fileInput.removeAttribute("capture"); // hilangkan hint kamera
   }catch(_){}
 }
 
 /* ====== Paksa PNG + KOMPRES dari sisi klien ====== */
-/** Downscale bertahap (lebih tajam) */
 function stepDownScale(srcCanvas, targetW, targetH){
   let sCan = srcCanvas;
   let sW = sCan.width, sH = sCan.height;
-
-  // Turunkan ukuran setengah demi setengah sampai mendekati target
   while (sW * 0.5 > targetW && sH * 0.5 > targetH) {
     const tCan = document.createElement("canvas");
     tCan.width = Math.max(1, Math.round(sW * 0.5));
@@ -314,8 +331,6 @@ function stepDownScale(srcCanvas, targetW, targetH){
     sCan = tCan;
     sW = sCan.width; sH = sCan.height;
   }
-
-  // Render ke ukuran akhir
   if (sW !== targetW || sH !== targetH){
     const fCan = document.createElement("canvas");
     fCan.width = Math.max(1, Math.round(targetW));
@@ -331,7 +346,6 @@ function stepDownScale(srcCanvas, targetW, targetH){
 async function normalizeToPNG(file) {
   let source, w, h, revokeUrl = null;
   try {
-    // createImageBitmap biasanya sudah respect EXIF orientation
     source = await createImageBitmap(file);
     w = source.width; h = source.height;
   } catch {
@@ -347,19 +361,16 @@ async function normalizeToPNG(file) {
     h = source.naturalHeight || source.height;
   }
 
-  // Hitung target dimensi sesuai MAX_LONG_EDGE
-  const longEdge = Math.max(w, h);
-  const scale = COMPRESS_CFG.MAX_LONG_EDGE / longEdge;
-  const needResize = scale < COMPRESS_CFG.MIN_SHRINK_RATIO; // kompres hanya jika benar-benar mengecil
+  const longEdge   = Math.max(w, h);
+  const scale      = COMPRESS_CFG.MAX_LONG_EDGE / longEdge;
+  const needResize = scale < COMPRESS_CFG.MIN_SHRINK_RATIO;
 
-  // Gambar ke canvas awal (ukuran asli)
   const baseCanvas = document.createElement("canvas");
-  baseCanvas.width = Math.max(1, w);
+  baseCanvas.width  = Math.max(1, w);
   baseCanvas.height = Math.max(1, h);
   const baseCtx = baseCanvas.getContext("2d");
   baseCtx.drawImage(source, 0, 0, baseCanvas.width, baseCanvas.height);
 
-  // Downscale bertahap jika perlu
   let outCanvas = baseCanvas;
   if (needResize){
     const tw = Math.round(w * scale);
@@ -367,7 +378,6 @@ async function normalizeToPNG(file) {
     outCanvas = stepDownScale(baseCanvas, tw, th);
   }
 
-  // Export PNG (lossless). Browser abaikan "quality" utk PNG, ini normal.
   const pngBlob = await new Promise((resolve) => {
     if (!outCanvas.toBlob) {
       try {
@@ -412,10 +422,7 @@ pickPhoto.addEventListener("click", async () => {
         multiple: false,
         excludeAcceptAllOption: true,
         startIn: "pictures",
-        types: [{
-          description: "Foto",
-          accept: { "image/*": [".jpg",".jpeg",".png",".gif",".webp",".heic"] }
-        }]
+        types: [{ description: "Foto", accept: { "image/*": [".jpg",".jpeg",".png",".gif",".webp",".heic"] } }]
       });
       const file = await handle.getFile();
       const dt = new DataTransfer(); dt.items.add(file);
@@ -618,7 +625,7 @@ actDelete.addEventListener("click", async () => {
   const id = sheetTarget.dataset.id;
   closeActionSheet();
 
-  // <<< gunakan modal konfirmasi kustom, bukan window.confirm >>>
+  // gunakan modal konfirmasi kustom
   const ok = await askConfirm("Hapus entri ini?", { okText:"Hapus", cancelText:"Batal" });
   if (!ok) return;
 
