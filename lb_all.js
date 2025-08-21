@@ -2,6 +2,14 @@
 const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev";
 const SHARED_TOKEN = "N45p";
 
+/* ===== KOMpresi GAMBAR (opsi) ===== */
+const COMPRESS_CFG = {
+  /** Batas sisi terpanjang hasil (px) */
+  MAX_LONG_EDGE: 1600,
+  /** Jika gambar kecil, jangan upscale */
+  MIN_SHRINK_RATIO: 0.95, // < 1.0 artinya harus mengecil nyata baru diproses
+};
+
 /* ===== DOM ===== */
 const timeInput   = document.getElementById("timeInput");
 const timeLabel   = document.getElementById("timeLabel");
@@ -133,7 +141,7 @@ function centerIndex(el, max){
 }
 function snapToCenter(el, idx){ el.scrollTop = idx * ITEM_H; }
 function enableWheel(el, max){
-  let dragging = false, startY = 0, startTop = 0, pid = 0;
+  let dragging = false, startY = 0, startTop = 0;
   let isSnapping = false;
   let timer = null;
 
@@ -141,8 +149,7 @@ function enableWheel(el, max){
     dragging = true;
     startY = e.clientY;
     startTop = el.scrollTop;
-    pid = e.pointerId;
-    el.setPointerCapture(pid);
+    el.setPointerCapture(e.pointerId);
     clearTimeout(timer);
   });
 
@@ -231,13 +238,40 @@ function forceGalleryPicker(){
   }catch(_){}
 }
 
-/* ====== Paksa PNG dari sisi klien (untuk HP) ====== */
-/** Render file ke <canvas> → ambil blob PNG
- *  Jika browser tak bisa decode (HEIC dll), akan fallback kirim file asli.
- */
+/* ====== Paksa PNG + KOMPRES dari sisi klien ====== */
+/** Downscale bertahap (lebih tajam) */
+function stepDownScale(srcCanvas, targetW, targetH){
+  let sCan = srcCanvas;
+  let sW = sCan.width, sH = sCan.height;
+
+  // Turunkan ukuran setengah demi setengah sampai mendekati target
+  while (sW * 0.5 > targetW && sH * 0.5 > targetH) {
+    const tCan = document.createElement("canvas");
+    tCan.width = Math.max(1, Math.round(sW * 0.5));
+    tCan.height = Math.max(1, Math.round(sH * 0.5));
+    const tCtx = tCan.getContext("2d");
+    tCtx.drawImage(sCan, 0, 0, sW, sH, 0, 0, tCan.width, tCan.height);
+    sCan = tCan;
+    sW = sCan.width; sH = sCan.height;
+  }
+
+  // Render ke ukuran akhir
+  if (sW !== targetW || sH !== targetH){
+    const fCan = document.createElement("canvas");
+    fCan.width = Math.max(1, Math.round(targetW));
+    fCan.height = Math.max(1, Math.round(targetH));
+    const fCtx = fCan.getContext("2d");
+    fCtx.drawImage(sCan, 0, 0, sW, sH, 0, 0, fCan.width, fCan.height);
+    return fCan;
+  }
+  return sCan;
+}
+
+/** Render file → resize (jika perlu) → toBlob("image/png") */
 async function normalizeToPNG(file) {
   let source, w, h, revokeUrl = null;
   try {
+    // createImageBitmap biasanya sudah respect EXIF orientation
     source = await createImageBitmap(file);
     w = source.width; h = source.height;
   } catch {
@@ -253,17 +287,31 @@ async function normalizeToPNG(file) {
     h = source.naturalHeight || source.height;
   }
 
-  // (Opsional) resize di sini bila mau batasi dimensi
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, w);
-  canvas.height = Math.max(1, h);
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+  // Hitung target dimensi sesuai MAX_LONG_EDGE
+  const longEdge = Math.max(w, h);
+  const scale = COMPRESS_CFG.MAX_LONG_EDGE / longEdge;
+  const needResize = scale < COMPRESS_CFG.MIN_SHRINK_RATIO; // kompres hanya jika benar-benar mengecil
 
+  // Gambar ke canvas awal (ukuran asli)
+  const baseCanvas = document.createElement("canvas");
+  baseCanvas.width = Math.max(1, w);
+  baseCanvas.height = Math.max(1, h);
+  const baseCtx = baseCanvas.getContext("2d");
+  baseCtx.drawImage(source, 0, 0, baseCanvas.width, baseCanvas.height);
+
+  // Downscale bertahap jika perlu
+  let outCanvas = baseCanvas;
+  if (needResize){
+    const tw = Math.round(w * scale);
+    const th = Math.round(h * scale);
+    outCanvas = stepDownScale(baseCanvas, tw, th);
+  }
+
+  // Export PNG (lossless). Browser abaikan "quality" utk PNG, ini normal.
   const pngBlob = await new Promise((resolve) => {
-    if (!canvas.toBlob) {
+    if (!outCanvas.toBlob) {
       try {
-        const dataUrl = canvas.toDataURL("image/png");
+        const dataUrl = outCanvas.toDataURL("image/png");
         const b64 = dataUrl.split(",")[1];
         const bin = atob(b64);
         const arr = new Uint8Array(bin.length);
@@ -274,7 +322,7 @@ async function normalizeToPNG(file) {
       }
       return;
     }
-    try { canvas.toBlob(b => resolve(b || file), "image/png"); }
+    try { outCanvas.toBlob(b => resolve(b || file), "image/png"); }
     catch { resolve(file); }
   });
 
@@ -294,7 +342,6 @@ async function fileToBase64(file){
 }
 
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
-// UBAHAN: File System Access API → galeri; fallback input file tanpa "capture"
 pickPhoto.addEventListener("click", async () => {
   if (editingId) return;
   forceGalleryPicker();
@@ -316,9 +363,7 @@ pickPhoto.addEventListener("click", async () => {
       fileInput.dispatchEvent(new Event("change", { bubbles: true }));
       return;
     }
-  }catch(_){
-    // fallback
-  }
+  }catch(_){}
 
   fileInput.click();
 });
@@ -336,11 +381,11 @@ fileInput.addEventListener("change", async (ev) => {
     uploading = true; setSubmitEnabled();
     showOverlay("loading", "Mengunggah foto…", "Mohon tunggu sebentar");
 
-    // === UBAHAN PENTING: paksa PNG untuk preview & upload ===
+    // === PNG + KOMPRES ===
     const pngBlob = await normalizeToPNG(file);
     const pngName = (file.name.replace(/\.[^.]+$/,"") || "photo") + ".png";
 
-    // Preview gunakan PNG yang sama dengan yang diupload
+    // Preview gunakan hasil kompres (PNG)
     const objectUrl = URL.createObjectURL(pngBlob);
     preview.src = objectUrl;
 
@@ -355,8 +400,6 @@ fileInput.addEventListener("change", async (ev) => {
     uploaded = { fileId: json.fileId, url: json.url, name: pngName };
     uploadStatus.textContent = "Upload selesai ✅";
     showOverlay("ok", "Berhasil diunggah", "Foto tersimpan di Drive");
-
-    // (Opsional) URL.revokeObjectURL(objectUrl); // kalau sudah tidak perlu preview
   }catch(err){
     console.error(err);
     uploaded = null;
