@@ -223,8 +223,46 @@ function disableNativeTimePicker(){
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave  .addEventListener("click", () => closeTimePicker(true));
 
+/* ===== GALERI MODE: pastikan file input buka galeri, bukan kamera ===== */
+function forceGalleryPicker(){
+  try{
+    fileInput.setAttribute("accept","image/*");
+    fileInput.removeAttribute("capture"); // <— penting: hilangkan hint kamera
+  }catch(_){}
+}
+
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
-pickPhoto.addEventListener("click", () => fileInput.click());
+// UBAHAN: coba File System Access API → langsung masuk Galeri; fallback ke input file tanpa "capture"
+pickPhoto.addEventListener("click", async () => {
+  if (editingId) return;
+  forceGalleryPicker();
+
+  // Coba open file picker modern (Android Chrome, sebagian mobile)
+  try{
+    if (window.showOpenFilePicker){
+      const [handle] = await window.showOpenFilePicker({
+        multiple: false,
+        excludeAcceptAllOption: true,
+        startIn: "pictures", // minta galeri
+        types: [{
+          description: "Foto",
+          accept: { "image/*": [".jpg",".jpeg",".png",".gif",".webp",".heic"] }
+        }]
+      });
+      const file = await handle.getFile();
+      const dt = new DataTransfer(); dt.items.add(file);
+      fileInput.files = dt.files;
+      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      return;
+    }
+  }catch(_){
+    // jatuh ke fallback input
+  }
+
+  // Fallback universal (iOS/Android): tetap galeri karena tidak ada 'capture'
+  fileInput.click();
+});
+
 fileInput.addEventListener("change", async (ev) => {
   if (editingId) return;
   const file = ev.target.files?.[0];
@@ -446,13 +484,12 @@ rowsTbody.addEventListener("pointerdown", (e)=>{
   rowsTbody.addEventListener(ev, ()=>{ clearTimeout(pressTimer); }, {passive:true});
 });
 
-/* ====== ⬇️ BAGIAN DIUBAH: klik list → spinner + tampil foto ====== */
+/* Klik baris → tampil foto */
 rowsTbody.addEventListener("click", async (e)=>{
   const tr = e.target.closest("tr[data-id]");
   if (!tr) return;
   if (longFired){ longFired = false; return; }
 
-  // Prioritas: ambil via server (private). Tampilkan spinner saat fetch.
   if (tr.dataset.fileId){
     try{
       showOverlay("loading","Memuat foto…","");
@@ -460,17 +497,14 @@ rowsTbody.addEventListener("click", async (e)=>{
       const res = await fetch(u);
       const j = await res.json();
       if (!res.ok || !j.success || !j.dataUrl) throw new Error(j.error || "Gagal memuat foto");
-      openPhoto(j.dataUrl, /*overlayAlreadyShown*/ true);
+      openPhoto(j.dataUrl, true);
       return;
     }catch(err){
       console.error(err);
-      // jika gagal, lanjut ke fallback
     }
   }
-
-  // Fallback: bila ada URL publik
   if (tr.dataset.url){
-    openPhoto(tr.dataset.url); // openPhoto akan tampilkan spinner sendiri
+    openPhoto(tr.dataset.url);
   }
 });
 
@@ -480,23 +514,16 @@ const photoImg   = document.getElementById("photoImg");
 document.getElementById("photoClose").addEventListener("click", closePhoto);
 photoModal.addEventListener("click", (e)=>{ if(e.target===photoModal) closePhoto(); });
 
-/* ====== ⬇️ DIUBAH: openPhoto dengan spinner & cache-busting ====== */
 function openPhoto(url, overlayAlreadyShown = false){
   if(!url) return;
   if (!overlayAlreadyShown){
     showOverlay("loading","Memuat foto…","");
   }
-
-  // buka modal dulu
   photoModal.classList.remove("hidden");
-
-  // cache-busting untuk URL non-data/blob
   let finalUrl = url;
   if (!/^data:/.test(url) && !/^blob:/.test(url)){
     finalUrl = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
   }
-
-  // selesai/gagal → tutup spinner
   photoImg.onload = () => {
     document.getElementById("overlay").classList.add("hidden");
     photoImg.onload = photoImg.onerror = null;
@@ -506,10 +533,8 @@ function openPhoto(url, overlayAlreadyShown = false){
     photoImg.onload = photoImg.onerror = null;
     showOverlay("err","Gagal memuat foto","Coba lagi");
   };
-
   photoImg.src = finalUrl;
 }
-
 function closePhoto(){
   photoModal.classList.add("hidden");
   photoImg.removeAttribute("src");
@@ -520,5 +545,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   timeLabel.textContent = "Pilih Waktu";
   setModeEdit(false);
   disableNativeTimePicker();
+  forceGalleryPicker(); // pastikan input siap galeri
   await loadRows();
 });
