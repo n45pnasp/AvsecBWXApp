@@ -1,5 +1,4 @@
-<!-- pakai type="module" -->
-<script type="module">
+
 /* ===== KONFIG ===== */
 const SCRIPT_URL       = "https://logbk.avsecbwx2018.workers.dev"; // Cloudflare Worker
 const SHARED_TOKEN     = "N45p";
@@ -624,4 +623,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   disableNativeTimePicker();
   await loadRows();
 });
-</script>
+
