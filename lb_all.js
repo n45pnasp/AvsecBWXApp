@@ -2,11 +2,38 @@
 const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // 🔒 JANGAN UBAH TANPA PERMINTAAN
 const SHARED_TOKEN = "N45p";                                    // 🔒 JANGAN UBAH TANPA PERMINTAAN
 
+/* ===== PETA TARGET =====
+   key = param ?target=...
+*/
+const TARGETS = {
+  cctv:    { label: "LB CCTV"    },
+  pscp:    { label: "LB PSCP"    },
+  hbscp:   { label: "LB HBSCP"   },
+  arrival: { label: "LB Arrival" },
+  pos1:    { label: "LB Pos 1 & Patroli" },
+  cargo:   { label: "LB Cargo"   },
+  malam:   { label: "LB Malam"   },
+};
+
+/* ===== UTIL TARGET ===== */
+function getTarget() {
+  const u = new URL(location.href);
+  let t = (u.searchParams.get("target") || "").toLowerCase().trim();
+  if (t && TARGETS[t]) {
+    try { localStorage.setItem("lb_target", t); } catch(_){}
+    return t;
+  }
+  try {
+    const saved = (localStorage.getItem("lb_target") || "").toLowerCase().trim();
+    if (saved && TARGETS[saved]) return saved;
+  } catch(_){}
+  return "cctv"; // default
+}
+function getTargetLabel(t) { return (TARGETS[t]?.label) || t.toUpperCase(); }
+
 /* ===== KOMpresi GAMBAR (opsi) ===== */
 const COMPRESS_CFG = {
-  /** Batas sisi terpanjang hasil (px). Kecilkan untuk file lebih mungil. */
   MAX_LONG_EDGE: 800,
-  /** Jika gambar kecil, jangan upscale */
   MIN_SHRINK_RATIO: 0.5,
 };
 
@@ -25,10 +52,14 @@ const submitBtn   = document.getElementById("submitBtn");
 const activityEl  = document.getElementById("activity");
 const rowsTbody   = document.getElementById("rows");
 
+/* Optional label target di UI (jika ada elemen-nya) */
+const targetLabelEl = document.getElementById("targetLabel");
+
 /* ===== STATE ===== */
 let uploaded   = null;  // {fileId, url, name} (saat tambah)
 let uploading  = false;
 let editingId  = null;  // id baris saat edit
+const TARGET   = getTarget();
 
 /* ===== UTIL ===== */
 const pad2  = (n)=> String(n).padStart(2,"0");
@@ -108,7 +139,6 @@ function askConfirm(message = "Yakin?", { okText = "Hapus", cancelText = "Batal"
           display:inline-flex;align-items:center;justify-content:center;cursor:pointer
         }
         #jsConfirm .jsc-x:active{transform:scale(.98)}
-        /* cegah long-press jadi text-selection / callout hanya di modal */
         #jsConfirm, #jsConfirm *{
           -webkit-user-select:none; user-select:none;
           -webkit-touch-callout:none;
@@ -187,7 +217,7 @@ function setSubmitEnabled(){
 }
 activityEl.addEventListener("input", setSubmitEnabled);
 
-/* ===== TIME PICKER (Wheel – baca nilai dari GARIS TENGAH) ===== */
+/* ===== TIME PICKER (Wheel) ===== */
 const ITEM_H  = 36;
 const VISIBLE = 5;
 const SPACER  = ((VISIBLE-1)/2) * ITEM_H;
@@ -310,15 +340,15 @@ function disableNativeTimePicker(){
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave  .addEventListener("click", () => closeTimePicker(true));
 
-/* ===== GALERI MODE: pastikan file input buka galeri, bukan kamera ===== */
+/* ===== GALERI MODE ===== */
 function forceGalleryPicker(){
   try{
     fileInput.setAttribute("accept","image/*");
-    fileInput.removeAttribute("capture"); // hilangkan hint kamera
+    fileInput.removeAttribute("capture");
   }catch(_){}
 }
 
-/* ====== Paksa PNG + KOMPRES dari sisi klien ====== */
+/* ====== PNG + KOMPRES ====== */
 function stepDownScale(srcCanvas, targetW, targetH){
   let sCan = srcCanvas;
   let sW = sCan.width, sH = sCan.height;
@@ -341,8 +371,6 @@ function stepDownScale(srcCanvas, targetW, targetH){
   }
   return sCan;
 }
-
-/** Render file → resize (jika perlu) → toBlob("image/png") */
 async function normalizeToPNG(file) {
   let source, w, h, revokeUrl = null;
   try {
@@ -401,7 +429,6 @@ async function normalizeToPNG(file) {
 
   return pngBlob;
 }
-
 async function fileToBase64(file){
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -446,7 +473,7 @@ fileInput.addEventListener("change", async (ev) => {
 
   try{
     uploading = true; setSubmitEnabled();
-    showOverlay("loading", "Mengunggah foto…", "Mohon tunggu sebentar");
+    showOverlay("loading", "Mengunggah foto…", `Target: ${getTargetLabel(TARGET)}`);
 
     // === PNG + KOMPRES ===
     const pngBlob = await normalizeToPNG(file);
@@ -456,7 +483,7 @@ fileInput.addEventListener("change", async (ev) => {
     const objectUrl = URL.createObjectURL(pngBlob);
     preview.src = objectUrl;
 
-    // Upload base64 PNG
+    // Upload base64 PNG → action: upload (tanpa target, karena upload hanya ke Drive)
     const base64 = await fileToBase64(pngBlob);
     const payload = { token: SHARED_TOKEN, action: "upload", filename: pngName, mimeType: "image/png", dataUrl: base64 };
 
@@ -487,11 +514,11 @@ submitBtn.addEventListener("click", async () => {
   if (editingId){
     try{
       submitBtn.disabled = true;
-      showOverlay("loading","Menyimpan perubahan…","");
+      showOverlay("loading","Menyimpan perubahan…", `Target: ${getTargetLabel(TARGET)}`);
 
       const res = await fetch(SCRIPT_URL, {
         method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ token: SHARED_TOKEN, action: "updateLog", id: editingId, time: timeStr, activity })
+        body: JSON.stringify({ token: SHARED_TOKEN, target: TARGET, action: "updatelog", id: editingId, time: timeStr, activity })
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || "Gagal mengubah");
@@ -511,11 +538,11 @@ submitBtn.addEventListener("click", async () => {
   if (!uploaded?.fileId) return;
   try{
     submitBtn.disabled = true;
-    showOverlay("loading", "Menyimpan logbook…", "Mengirim data ke Spreadsheet");
+    showOverlay("loading", "Menyimpan logbook…", `Target: ${getTargetLabel(TARGET)}`);
 
     const res = await fetch(SCRIPT_URL, {
       method: "POST", headers: { "Content-Type":"application/json" },
-      body: JSON.stringify({ token: SHARED_TOKEN, action: "createLog", time: timeStr, activity, fileId: uploaded.fileId })
+      body: JSON.stringify({ token: SHARED_TOKEN, target: TARGET, action: "createlog", time: timeStr, activity, fileId: uploaded.fileId })
     });
     const json = await res.json();
     if (!res.ok || !json.success) throw new Error(json.error || "Gagal menyimpan");
@@ -543,6 +570,7 @@ async function loadRows(){
   try{
     const url = new URL(SCRIPT_URL);
     url.searchParams.set("action","list");
+    url.searchParams.set("target", TARGET);
     url.searchParams.set("token",SHARED_TOKEN);
 
     const res = await fetch(url.toString(), { method:"GET" });
@@ -625,15 +653,14 @@ actDelete.addEventListener("click", async () => {
   const id = sheetTarget.dataset.id;
   closeActionSheet();
 
-  // gunakan modal konfirmasi kustom
   const ok = await askConfirm("Hapus entri ini?", { okText:"Hapus", cancelText:"Batal" });
   if (!ok) return;
 
   try{
-    showOverlay("loading","Menghapus data…","");
+    showOverlay("loading","Menghapus data…", `Target: ${getTargetLabel(TARGET)}`);
     const res = await fetch(SCRIPT_URL, {
       method:"POST", headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ token:SHARED_TOKEN, action:"deleteLog", id })
+      body: JSON.stringify({ token:SHARED_TOKEN, target: TARGET, action:"deletelog", id })
     });
     const json = await res.json();
     if (!res.ok || !json.success) throw new Error(json.error || "Gagal menghapus");
@@ -716,9 +743,12 @@ function closePhoto(){
 
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
+  // tampilkan label target (jika ada elemen)
+  if (targetLabelEl) targetLabelEl.textContent = getTargetLabel(TARGET);
+
   timeLabel.textContent = "Pilih Waktu";
   setModeEdit(false);
   disableNativeTimePicker();
-  forceGalleryPicker(); // pastikan input siap galeri
+  forceGalleryPicker();
   await loadRows();
 });
