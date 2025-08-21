@@ -231,19 +231,80 @@ function forceGalleryPicker(){
   }catch(_){}
 }
 
+/* ====== Paksa PNG dari sisi klien (untuk HP) ====== */
+/** Render file ke <canvas> → ambil blob PNG
+ *  Jika browser tak bisa decode (HEIC dll), akan fallback kirim file asli.
+ */
+async function normalizeToPNG(file) {
+  let source, w, h, revokeUrl = null;
+  try {
+    source = await createImageBitmap(file);
+    w = source.width; h = source.height;
+  } catch {
+    const url = URL.createObjectURL(file);
+    revokeUrl = url;
+    source = await new Promise((res, rej) => {
+      const img = new Image();
+      img.onload = () => res(img);
+      img.onerror = rej;
+      img.src = url;
+    });
+    w = source.naturalWidth || source.width;
+    h = source.naturalHeight || source.height;
+  }
+
+  // (Opsional) resize di sini bila mau batasi dimensi
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, w);
+  canvas.height = Math.max(1, h);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+
+  const pngBlob = await new Promise((resolve) => {
+    if (!canvas.toBlob) {
+      try {
+        const dataUrl = canvas.toDataURL("image/png");
+        const b64 = dataUrl.split(",")[1];
+        const bin = atob(b64);
+        const arr = new Uint8Array(bin.length);
+        for (let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+        resolve(new Blob([arr], { type: "image/png" }));
+      } catch {
+        resolve(file);
+      }
+      return;
+    }
+    try { canvas.toBlob(b => resolve(b || file), "image/png"); }
+    catch { resolve(file); }
+  });
+
+  try { if ('close' in source) source.close(); } catch {}
+  if (revokeUrl) { try { URL.revokeObjectURL(revokeUrl); } catch {} }
+
+  return pngBlob;
+}
+
+async function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
-// UBAHAN: coba File System Access API → langsung masuk Galeri; fallback ke input file tanpa "capture"
+// UBAHAN: File System Access API → galeri; fallback input file tanpa "capture"
 pickPhoto.addEventListener("click", async () => {
   if (editingId) return;
   forceGalleryPicker();
 
-  // Coba open file picker modern (Android Chrome, sebagian mobile)
   try{
     if (window.showOpenFilePicker){
       const [handle] = await window.showOpenFilePicker({
         multiple: false,
         excludeAcceptAllOption: true,
-        startIn: "pictures", // minta galeri
+        startIn: "pictures",
         types: [{
           description: "Foto",
           accept: { "image/*": [".jpg",".jpeg",".png",".gif",".webp",".heic"] }
@@ -256,10 +317,9 @@ pickPhoto.addEventListener("click", async () => {
       return;
     }
   }catch(_){
-    // jatuh ke fallback input
+    // fallback
   }
 
-  // Fallback universal (iOS/Android): tetap galeri karena tidak ada 'capture'
   fileInput.click();
 });
 
@@ -271,41 +331,41 @@ fileInput.addEventListener("change", async (ev) => {
   uploadInfo.classList.remove("hidden");
   uploadName.textContent = file.name;
   uploadStatus.textContent = "Mengunggah foto…";
-  const objectUrl = URL.createObjectURL(file);
-  preview.src = objectUrl;
 
   try{
     uploading = true; setSubmitEnabled();
     showOverlay("loading", "Mengunggah foto…", "Mohon tunggu sebentar");
 
-    const base64 = await fileToBase64(file);
-    const payload = { token: SHARED_TOKEN, action: "upload", filename: file.name, mimeType: file.type || "image/jpeg", dataUrl: base64 };
+    // === UBAHAN PENTING: paksa PNG untuk preview & upload ===
+    const pngBlob = await normalizeToPNG(file);
+    const pngName = (file.name.replace(/\.[^.]+$/,"") || "photo") + ".png";
+
+    // Preview gunakan PNG yang sama dengan yang diupload
+    const objectUrl = URL.createObjectURL(pngBlob);
+    preview.src = objectUrl;
+
+    // Upload base64 PNG
+    const base64 = await fileToBase64(pngBlob);
+    const payload = { token: SHARED_TOKEN, action: "upload", filename: pngName, mimeType: "image/png", dataUrl: base64 };
 
     const res = await fetch(SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
     const json = await res.json();
     if (!res.ok || !json.success) throw new Error(json.error || "Upload gagal");
 
-    uploaded = { fileId: json.fileId, url: json.url, name: file.name };
+    uploaded = { fileId: json.fileId, url: json.url, name: pngName };
     uploadStatus.textContent = "Upload selesai ✅";
     showOverlay("ok", "Berhasil diunggah", "Foto tersimpan di Drive");
+
+    // (Opsional) URL.revokeObjectURL(objectUrl); // kalau sudah tidak perlu preview
   }catch(err){
     console.error(err);
     uploaded = null;
     uploadStatus.textContent = "Upload gagal ❌";
     showOverlay("err", "Gagal mengunggah", err.message || "Coba lagi");
   }finally{
-    URL.revokeObjectURL(objectUrl);
     uploading = false; setSubmitEnabled();
   }
 });
-async function fileToBase64(file){
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
 
 /* ===== SUBMIT (Create / Update) ===== */
 submitBtn.addEventListener("click", async () => {
