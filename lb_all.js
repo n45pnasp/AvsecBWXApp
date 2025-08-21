@@ -21,6 +21,7 @@ const rowsTbody   = document.getElementById("rows");
 let uploaded   = null;  // {fileId, url, name} (saat tambah)
 let uploading  = false;
 let editingId  = null;  // id baris saat edit
+let currentBlobUrl = null; // untuk revoke objectURL saat modal ditutup
 
 /* ===== UTIL ===== */
 const pad2  = (n)=> String(n).padStart(2,"0");
@@ -134,7 +135,8 @@ function centerIndex(el, max){
   return clamp(Math.round(relative / ITEM_H), 0, max);
 }
 function snapToCenter(el, idx){
-  el.scrollTop = idx * ITEM_H; // BUKAN SPACER + idx*ITEM_H
+  // sesuai instruksi: TANPA menambah SPACER di sini
+  el.scrollTop = idx * ITEM_H;
 }
 /* interaksi + anti bounce (stop di batas) */
 function enableWheel(el, max){
@@ -154,7 +156,6 @@ function enableWheel(el, max){
   el.addEventListener("pointermove", (e)=>{
     if (!dragging) return;
     const next = startTop + (e.clientY - startY);
-    // clamp supaya tidak lewat batas spacer
     el.scrollTop = clamp(next, 0, SPACER + max*ITEM_H + SPACER);
   });
 
@@ -169,7 +170,6 @@ function enableWheel(el, max){
   el.addEventListener("pointercancel", endDrag);
   el.addEventListener("pointerleave", endDrag);
 
-  // hanya snap saat scroll berhenti (inertia selesai)
   el.addEventListener("scroll", ()=>{
     if (isSnapping) return;
     clearTimeout(timer);
@@ -180,7 +180,6 @@ function enableWheel(el, max){
     }, 140);
   }, {passive:true});
 
-  // klik item → loncat
   el.addEventListener("click", (e)=>{
     const it = e.target.closest(".item"); if (!it) return;
     isSnapping = true;
@@ -232,8 +231,31 @@ function disableNativeTimePicker(){
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave  .addEventListener("click", () => closeTimePicker(true));
 
+/* ===== PILIH FOTO DARI STORAGE (bukan kamera) ===== */
+pickPhoto.addEventListener("click", async () => {
+  if (editingId) return; // saat edit tidak boleh ganti foto
+  try {
+    if (window.showOpenFilePicker) {
+      const [handle] = await window.showOpenFilePicker({
+        multiple: false,
+        excludeAcceptAllOption: true,
+        types: [{
+          description: "Foto",
+          accept: { "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"] }
+        }]
+      });
+      const file = await handle.getFile();
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      return;
+    }
+  } catch(_) {}
+  fileInput.click();
+});
+
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
-pickPhoto.addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", async (ev) => {
   if (editingId) return;
   const file = ev.target.files?.[0];
@@ -358,6 +380,7 @@ async function loadRows(){
 
     for (const r of json.rows){
       const id     = r.id ?? "";
+      // === JS1 style: simpan fileId & URL fallback (uc?export=view) ===
       const fileId = r.fileId || (r.fileUrl?.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
                     || r.fileUrl?.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || "");
       const time   = r.time || r.createdAt || "";
@@ -365,8 +388,8 @@ async function loadRows(){
 
       const tr = document.createElement("tr");
       tr.dataset.id        = id;
-      tr.dataset.fileId    = fileId;                      // ← simpan fileId
-      tr.dataset.url       = toImageUrl(r.fileUrl||"", fileId); // fallback kalau ada link publik
+      tr.dataset.fileId    = fileId;                                // (point 2)
+      tr.dataset.url       = toImageUrl(r.fileUrl||"", fileId);     // (point 5)
       tr.dataset.time      = time || "";
       tr.dataset.activity  = actRaw;
 
@@ -383,7 +406,8 @@ async function loadRows(){
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
-/* konversi link Drive → link gambar publik (fallback; kalau file memang public) */
+/* === JS1 helper (point 5): pakai link Drive publik (fallback). 
+      Catatan: akan tampil hanya jika file publik. === */
 function toImageUrl(url, fileId){
   const id = fileId
     || (url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
@@ -456,37 +480,99 @@ rowsTbody.addEventListener("pointerdown", (e)=>{
 ["pointerup","pointercancel","pointerleave"].forEach(ev=>{
   rowsTbody.addEventListener(ev, ()=>{ clearTimeout(pressTimer); }, {passive:true});
 });
+
+/* ==== Klik baris: JS1-STYLE (point 1) dengan fallback kuat ====
+   1) Coba ambil via endpoint server (?action=photo&id=fileId)
+      - Jika server balas JSON {dataUrl}, pakai itu.
+      - Jika server balas bytes image/*, buat Blob URL dan pakai.
+   2) Jika gagal semua → fallback ke URL publik (uc?export=view) dari dataset.url
+*/
 rowsTbody.addEventListener("click", async (e)=>{
   const tr = e.target.closest("tr[data-id]");
   if (!tr) return;
   if (longFired){ longFired = false; return; }   // jangan dobel
 
-  // Prioritas: ambil dari server (private file, aman)
-  if (tr.dataset.fileId){
-    try{
-      const u = `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(tr.dataset.fileId)}`;
+  const fileId = tr.dataset.fileId || "";
+  const fallbackUrl = tr.dataset.url || "";
+
+  if (!fileId && !fallbackUrl) return;
+
+  try{
+    if (fileId){
+      showOverlay("loading","Memuat foto…","");
+      const u = `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(fileId)}&t=${Date.now()}`;
       const res = await fetch(u);
-      const j = await res.json();
-      if (!res.ok || !j.success || !j.dataUrl) throw new Error(j.error || "Gagal memuat foto");
-      openPhoto(j.dataUrl);
-      return;
-    }catch(err){
-      console.error(err);
-      // kalau gagal, coba fallback ke URL publik (kalau ada)
+      if (!res.ok) throw new Error("Gagal mengambil foto dari server");
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+
+      if (ct.includes("application/json")){
+        // server kirim JSON (dataUrl)
+        const j = await res.json();
+        if (!j.success || !j.dataUrl) throw new Error(j.error || "Format foto tidak valid");
+        openPhoto(j.dataUrl, { isBlob:false });
+        return;
+      }
+      if (ct.startsWith("image/")){
+        const blob = await res.blob();
+        const objUrl = URL.createObjectURL(blob);
+        openPhoto(objUrl, { isBlob:true });
+        return;
+      }
+      throw new Error("Tipe respon tidak dikenali");
     }
+  }catch(err){
+    console.warn("Ambil via server gagal, fallback ke URL publik:", err);
+    // terus ke fallback
   }
 
-  // Fallback: bila file publik
-  if (tr.dataset.url) openPhoto(tr.dataset.url);
+  if (fallbackUrl){
+    openPhoto(fallbackUrl, { isBlob:false });
+  }
 });
 
-/* ===== MODAL FOTO ===== */
+/* ===== MODAL FOTO (dengan loader & revoke blob) ===== */
 const photoModal = document.getElementById("photoModal");
 const photoImg   = document.getElementById("photoImg");
 document.getElementById("photoClose").addEventListener("click", closePhoto);
 photoModal.addEventListener("click", (e)=>{ if(e.target===photoModal) closePhoto(); });
-function openPhoto(url){ if(!url) return; photoImg.src = url; photoModal.classList.remove("hidden"); }
-function closePhoto(){ photoModal.classList.add("hidden"); photoImg.removeAttribute("src"); }
+
+function openPhoto(url, opts = { isBlob:false }){
+  if(!url) return;
+  // tampilkan loader
+  showOverlay("loading","Memuat foto…","");
+  // cache-busting hanya untuk URL biasa (bukan blob/data:)
+  let finalUrl = url;
+  if (!opts.isBlob && !/^data:/.test(url) && !/^blob:/.test(url)){
+    finalUrl = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
+  }
+
+  // revoke blob lama jika ada
+  if (currentBlobUrl){
+    URL.revokeObjectURL(currentBlobUrl);
+    currentBlobUrl = null;
+  }
+  if (opts.isBlob) currentBlobUrl = finalUrl;
+
+  photoImg.onload = () => {
+    document.getElementById("overlay").classList.add("hidden");
+    photoImg.onload = photoImg.onerror = null;
+  };
+  photoImg.onerror = () => {
+    document.getElementById("overlay").classList.add("hidden");
+    photoImg.onload = photoImg.onerror = null;
+    showOverlay("err","Gagal memuat foto","Coba lagi");
+  };
+  photoImg.src = finalUrl;
+  photoModal.classList.remove("hidden");
+}
+function closePhoto(){
+  photoModal.classList.add("hidden");
+  photoImg.removeAttribute("src");
+  if (currentBlobUrl){
+    URL.revokeObjectURL(currentBlobUrl);
+    currentBlobUrl = null;
+  }
+}
 
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
