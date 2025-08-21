@@ -30,6 +30,12 @@ function getTarget() {
   return "cctv"; // default
 }
 function getTargetLabel(t) { return (TARGETS[t]?.label) || t.toUpperCase(); }
+function getHeaderTitle(t){
+  // "LB PSCP" → "PSCP", lalu "LOGBOOK PSCP"
+  const lbl  = getTargetLabel(t);
+  const core = lbl.replace(/^LB\s*/i, "");
+  return `LOGBOOK ${core.toUpperCase()}`;
+}
 
 /* ===== KOMpresi GAMBAR (opsi) ===== */
 const COMPRESS_CFG = {
@@ -743,8 +749,15 @@ function closePhoto(){
 
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
-  // tampilkan label target (jika ada elemen)
+  // label kecil opsional di UI
   if (targetLabelEl) targetLabelEl.textContent = getTargetLabel(TARGET);
+
+  // ====== SET HEADER & TAB TITLE SESUAI TARGET ======
+  const headerEl = document.getElementById("headerTitle")
+                 || document.querySelector(".appbar-title")
+                 || document.querySelector("header h1");
+  if (headerEl) headerEl.textContent = getHeaderTitle(TARGET);
+  try { document.title = getHeaderTitle(TARGET); } catch(_) {}
 
   timeLabel.textContent = "Pilih Waktu";
   setModeEdit(false);
