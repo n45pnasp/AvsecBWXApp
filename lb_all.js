@@ -154,6 +154,7 @@ function enableWheel(el, max){
   el.addEventListener("pointermove", (e)=>{
     if (!dragging) return;
     const next = startTop + (e.clientY - startY);
+    // clamp supaya tidak lewat batas spacer
     el.scrollTop = clamp(next, 0, SPACER + max*ITEM_H + SPACER);
   });
 
@@ -168,6 +169,7 @@ function enableWheel(el, max){
   el.addEventListener("pointercancel", endDrag);
   el.addEventListener("pointerleave", endDrag);
 
+  // hanya snap saat scroll berhenti (inertia selesai)
   el.addEventListener("scroll", ()=>{
     if (isSnapping) return;
     clearTimeout(timer);
@@ -178,6 +180,7 @@ function enableWheel(el, max){
     }, 140);
   }, {passive:true});
 
+  // klik item → loncat
   el.addEventListener("click", (e)=>{
     const it = e.target.closest(".item"); if (!it) return;
     isSnapping = true;
@@ -229,37 +232,8 @@ function disableNativeTimePicker(){
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave  .addEventListener("click", () => closeTimePicker(true));
 
-/* ===== PILIH FOTO DARI STORAGE (bukan kamera) ===== */
-pickPhoto.addEventListener("click", async () => {
-  if (editingId) return; // saat edit tidak boleh ganti foto
-
-  try {
-    if (window.showOpenFilePicker) {
-      const [handle] = await window.showOpenFilePicker({
-        multiple: false,
-        excludeAcceptAllOption: true,
-        types: [{
-          description: "Foto",
-          accept: { "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"] }
-        }]
-      });
-      const file = await handle.getFile();
-
-      // set ke input agar reuse alur upload yang sudah ada
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      fileInput.files = dt.files;
-      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
-      return;
-    }
-  } catch (_) {
-    // user batal atau API tidak tersedia → fallback ke input
-  }
-
-  fileInput.click();
-});
-
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
+pickPhoto.addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", async (ev) => {
   if (editingId) return;
   const file = ev.target.files?.[0];
@@ -384,15 +358,15 @@ async function loadRows(){
 
     for (const r of json.rows){
       const id     = r.id ?? "";
-      const imgUrl = r.fileId
-        ? `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(r.fileId)}`
-        : toImageUrl(r.fileUrl || "", r.fileId || "");
+      const fileId = r.fileId || (r.fileUrl?.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
+                    || r.fileUrl?.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || "");
       const time   = r.time || r.createdAt || "";
       const actRaw = r.activity || "";
 
       const tr = document.createElement("tr");
       tr.dataset.id        = id;
-      tr.dataset.url       = imgUrl || "";
+      tr.dataset.fileId    = fileId;                      // ← simpan fileId
+      tr.dataset.url       = toImageUrl(r.fileUrl||"", fileId); // fallback kalau ada link publik
       tr.dataset.time      = time || "";
       tr.dataset.activity  = actRaw;
 
@@ -409,15 +383,13 @@ async function loadRows(){
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
-/* konversi fileId/url Drive → URL foto via Apps Script (aman & always works) */
+/* konversi link Drive → link gambar publik (fallback; kalau file memang public) */
 function toImageUrl(url, fileId){
   const id = fileId
     || (url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
     ||   url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1]
     || "");
-  return id
-    ? `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(id)}`
-    : "";
+  return id ? `https://drive.google.com/uc?export=view&id=${id}` : "";
 }
 
 /* ===== TAP = lihat foto, LONG-PRESS = Edit/Hapus ===== */
@@ -484,43 +456,37 @@ rowsTbody.addEventListener("pointerdown", (e)=>{
 ["pointerup","pointercancel","pointerleave"].forEach(ev=>{
   rowsTbody.addEventListener(ev, ()=>{ clearTimeout(pressTimer); }, {passive:true});
 });
-rowsTbody.addEventListener("click", (e)=>{
+rowsTbody.addEventListener("click", async (e)=>{
   const tr = e.target.closest("tr[data-id]");
   if (!tr) return;
   if (longFired){ longFired = false; return; }   // jangan dobel
-  const url = tr.dataset.url;
-  if (url) openPhoto(url);
+
+  // Prioritas: ambil dari server (private file, aman)
+  if (tr.dataset.fileId){
+    try{
+      const u = `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(tr.dataset.fileId)}`;
+      const res = await fetch(u);
+      const j = await res.json();
+      if (!res.ok || !j.success || !j.dataUrl) throw new Error(j.error || "Gagal memuat foto");
+      openPhoto(j.dataUrl);
+      return;
+    }catch(err){
+      console.error(err);
+      // kalau gagal, coba fallback ke URL publik (kalau ada)
+    }
+  }
+
+  // Fallback: bila file publik
+  if (tr.dataset.url) openPhoto(tr.dataset.url);
 });
 
-/* ===== MODAL FOTO (dengan loader) ===== */
+/* ===== MODAL FOTO ===== */
 const photoModal = document.getElementById("photoModal");
 const photoImg   = document.getElementById("photoImg");
 document.getElementById("photoClose").addEventListener("click", closePhoto);
 photoModal.addEventListener("click", (e)=>{ if(e.target===photoModal) closePhoto(); });
-
-function openPhoto(url){
-  if(!url) return;
-  // tampilkan loader
-  showOverlay("loading","Memuat foto…","");
-  // bust cache agar tidak menampilkan gambar lama pada URL yang sama
-  const finalUrl = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
-  // handle selesai / gagal
-  photoImg.onload = () => {
-    document.getElementById("overlay").classList.add("hidden");
-    photoImg.onload = photoImg.onerror = null;
-  };
-  photoImg.onerror = () => {
-    document.getElementById("overlay").classList.add("hidden");
-    photoImg.onload = photoImg.onerror = null;
-    showOverlay("err","Gagal memuat foto","Coba lagi");
-  };
-  photoImg.src = finalUrl;
-  photoModal.classList.remove("hidden");
-}
-function closePhoto(){
-  photoModal.classList.add("hidden");
-  photoImg.removeAttribute("src");
-}
+function openPhoto(url){ if(!url) return; photoImg.src = url; photoModal.classList.remove("hidden"); }
+function closePhoto(){ photoModal.classList.add("hidden"); photoImg.removeAttribute("src"); }
 
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
