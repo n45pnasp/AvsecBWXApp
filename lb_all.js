@@ -21,7 +21,6 @@ const rowsTbody   = document.getElementById("rows");
 let uploaded   = null;  // {fileId, url, name} (saat tambah)
 let uploading  = false;
 let editingId  = null;  // id baris saat edit
-let currentBlobUrl = null; // untuk revoke objectURL saat modal ditutup
 
 /* ===== UTIL ===== */
 const pad2  = (n)=> String(n).padStart(2,"0");
@@ -135,8 +134,7 @@ function centerIndex(el, max){
   return clamp(Math.round(relative / ITEM_H), 0, max);
 }
 function snapToCenter(el, idx){
-  // sesuai instruksi: TANPA menambah SPACER di sini
-  el.scrollTop = idx * ITEM_H;
+  el.scrollTop = idx * ITEM_H; // BUKAN SPACER + idx*ITEM_H
 }
 /* interaksi + anti bounce (stop di batas) */
 function enableWheel(el, max){
@@ -156,6 +154,7 @@ function enableWheel(el, max){
   el.addEventListener("pointermove", (e)=>{
     if (!dragging) return;
     const next = startTop + (e.clientY - startY);
+    // clamp supaya tidak lewat batas spacer
     el.scrollTop = clamp(next, 0, SPACER + max*ITEM_H + SPACER);
   });
 
@@ -170,6 +169,7 @@ function enableWheel(el, max){
   el.addEventListener("pointercancel", endDrag);
   el.addEventListener("pointerleave", endDrag);
 
+  // hanya snap saat scroll berhenti (inertia selesai)
   el.addEventListener("scroll", ()=>{
     if (isSnapping) return;
     clearTimeout(timer);
@@ -180,6 +180,7 @@ function enableWheel(el, max){
     }, 140);
   }, {passive:true});
 
+  // klik item → loncat
   el.addEventListener("click", (e)=>{
     const it = e.target.closest(".item"); if (!it) return;
     isSnapping = true;
@@ -231,9 +232,82 @@ function disableNativeTimePicker(){
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave  .addEventListener("click", () => closeTimePicker(true));
 
+/* ======= Kompresi gambar (agar aman di Sheet & kecil) ======= */
+async function compressImage(file, {
+  maxW = 1600,
+  maxH = 1600,
+  quality = 0.72,
+  type = "image/jpeg"
+} = {}) {
+  try {
+    let src, w, h, revoke = null;
+    try {
+      src = await createImageBitmap(file);
+      w = src.width; h = src.height;
+    } catch {
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        const url = URL.createObjectURL(file);
+        revoke = url;
+        i.src = url;
+      });
+      src = img;
+      w = img.naturalWidth || img.width;
+      h = img.naturalHeight || img.height;
+    }
+
+    const scale = Math.min(maxW / w, maxH / h, 1);
+    const outW = Math.max(1, Math.round(w * scale));
+    const outH = Math.max(1, Math.round(h * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = outW; canvas.height = outH;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(src, 0, 0, outW, outH);
+
+    let blob = await new Promise(resolve => {
+      if (!canvas.toBlob) return resolve(null);
+      try { canvas.toBlob(b => resolve(b || null), type, quality); }
+      catch { resolve(null); }
+    });
+
+    if (!blob) {
+      const dataUrl = canvas.toDataURL(type, quality);
+      const b64 = dataUrl.split(",")[1];
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      blob = new Blob([arr], { type });
+    }
+
+    try { if ('close' in src) src.close(); } catch {}
+    if (revoke) { try { URL.revokeObjectURL(revoke); } catch {} }
+
+    return blob;
+  } catch {
+    // Bila gagal proses (mis. format tidak didukung), pakai file asli
+    return file;
+  }
+}
+function blobToDataURL(blob){
+  return new Promise((resolve, reject)=>{
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+function renameToJpg(name){
+  const base = name.replace(/\.[^.]+$/, "");
+  return base + ".jpg";
+}
+
 /* ===== PILIH FOTO DARI STORAGE (bukan kamera) ===== */
 pickPhoto.addEventListener("click", async () => {
   if (editingId) return; // saat edit tidak boleh ganti foto
+
   try {
     if (window.showOpenFilePicker) {
       const [handle] = await window.showOpenFilePicker({
@@ -241,95 +315,24 @@ pickPhoto.addEventListener("click", async () => {
         excludeAcceptAllOption: true,
         types: [{
           description: "Foto",
-          accept: { "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"] }
+          accept: { "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif"] }
         }]
       });
       const file = await handle.getFile();
+
+      // set ke input agar reuse alur upload yang sudah ada
       const dt = new DataTransfer();
       dt.items.add(file);
       fileInput.files = dt.files;
       fileInput.dispatchEvent(new Event("change", { bubbles: true }));
       return;
     }
-  } catch(_) {}
-  fileInput.click();
-});
-
-/* ====== KOMPres gambar sebelum upload ====== */
-  // --- GANTI fungsi compressImage lama dengan yang ini ---
-  async function compressImage(file, {
-    maxW = 1600,
-    maxH = 1600,
-    quality = 0.72,
-    type = "image/jpeg"
-  } = {}) {
-    // 1) Muat sumber gambar (bitmap lebih cepat, fallback <img>)
-    let source, w, h, revokeUrl = null;
-    try {
-      source = await createImageBitmap(file);
-      w = source.width; h = source.height;
-    } catch (_) {
-      const img = await new Promise((res, rej) => {
-        const i = new Image();
-        i.onload = () => res(i);
-        i.onerror = rej;
-        const url = URL.createObjectURL(file);
-        revokeUrl = url;
-        i.src = url;
-      });
-      source = img;
-      w = img.naturalWidth || img.width;
-      h = img.naturalHeight || img.height;
-    }
-  
-    // 2) Skala tidak lebih dari 1600 px di sisi terpanjang
-    const scale = Math.min(maxW / w, maxH / h, 1);
-    const outW = Math.max(1, Math.round(w * scale));
-    const outH = Math.max(1, Math.round(h * scale));
-  
-    const canvas = document.createElement("canvas");
-    canvas.width = outW; canvas.height = outH;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(source, 0, 0, outW, outH);
-  
-    // 3) Coba toBlob → kalau null (Safari/HEIC), fallback ke toDataURL
-    let blob = await new Promise(resolve => {
-      if (!canvas.toBlob) return resolve(null);
-      try {
-        canvas.toBlob(b => resolve(b || null), type, quality);
-      } catch (_) {
-        resolve(null);
-      }
-    });
-  
-    if (!blob) {
-      // Fallback yang selalu jalan
-      try {
-        const dataUrl = canvas.toDataURL(type, quality); // "data:image/jpeg;base64,..."
-        const b64 = dataUrl.split(",")[1];
-        const bin = atob(b64);
-        const len = bin.length;
-        const arr = new Uint8Array(len);
-        for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
-        blob = new Blob([arr], { type });
-      } catch (_) {
-        // Jika semua gagal, kembalikan file asli (last resort)
-        blob = file;
-      }
-    }
-  
-    // 4) Bersihkan resource
-    try { if ('close' in source) source.close(); } catch (_) {}
-    if (revokeUrl) { try { URL.revokeObjectURL(revokeUrl); } catch (_) {} }
-  
-    return blob;
+  } catch (_) {
+    // user batal atau API tidak tersedia → fallback ke input
   }
 
-
-function normalizeToJpegName(name){
-  const base = name.replace(/\.[^/.]+$/, "");
-  return base + ".jpg";
-}
+  fileInput.click();
+});
 
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
 fileInput.addEventListener("change", async (ev) => {
@@ -347,20 +350,23 @@ fileInput.addEventListener("change", async (ev) => {
     uploading = true; setSubmitEnabled();
     showOverlay("loading", "Mengunggah foto…", "Mohon tunggu sebentar");
 
-    // === KOMPres dulu ===
-    const compressedBlob = await compressImage(file); // JPEG 1600px max, quality 0.72
-    const uploadMime = "image/jpeg";
-    const uploadFilename = normalizeToJpegName(file.name);
+    // === Kompres + konversi ke JPEG agar aman di Sheet ===
+    const jpegBlob = await compressImage(file);
+    const base64   = await blobToDataURL(jpegBlob);
 
-    // kirim hasil kompres
-    const base64 = await fileToBase64(compressedBlob);
-    const payload = { token: SHARED_TOKEN, action: "upload", filename: uploadFilename, mimeType: uploadMime, dataUrl: base64 };
+    const payload = {
+      token: SHARED_TOKEN,
+      action: "upload",
+      filename: renameToJpg(file.name),
+      mimeType: "image/jpeg",
+      dataUrl: base64
+    };
 
     const res = await fetch(SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
     const json = await res.json();
     if (!res.ok || !json.success) throw new Error(json.error || "Upload gagal");
 
-    uploaded = { fileId: json.fileId, url: json.url, name: file.name };
+    uploaded = { fileId: json.fileId, url: json.url, name: payload.filename };
     uploadStatus.textContent = "Upload selesai ✅";
     showOverlay("ok", "Berhasil diunggah", "Foto tersimpan di Drive");
   }catch(err){
@@ -373,12 +379,12 @@ fileInput.addEventListener("change", async (ev) => {
     uploading = false; setSubmitEnabled();
   }
 });
-async function fileToBase64(fileOrBlob){
+async function fileToBase64(file){
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result);
     r.onerror = reject;
-    r.readAsDataURL(fileOrBlob);
+    r.readAsDataURL(file);
   });
 }
 
@@ -462,15 +468,15 @@ async function loadRows(){
 
     for (const r of json.rows){
       const id     = r.id ?? "";
-      const fileId = r.fileId || (r.fileUrl?.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
-                    || r.fileUrl?.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || "");
+      const imgUrl = r.fileId
+        ? `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(r.fileId)}`
+        : toImageUrl(r.fileUrl || "", r.fileId || "");
       const time   = r.time || r.createdAt || "";
       const actRaw = r.activity || "";
 
       const tr = document.createElement("tr");
       tr.dataset.id        = id;
-      tr.dataset.fileId    = fileId;                                // (point 2)
-      tr.dataset.url       = toImageUrl(r.fileUrl||"", fileId);     // (point 5)
+      tr.dataset.url       = imgUrl || "";
       tr.dataset.time      = time || "";
       tr.dataset.activity  = actRaw;
 
@@ -487,13 +493,15 @@ async function loadRows(){
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
-/* konversi fileId/url Drive → URL foto publik (fallback; kalau file memang public) */
+/* konversi fileId/url Drive → URL foto via Apps Script (aman & always works) */
 function toImageUrl(url, fileId){
   const id = fileId
     || (url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
     ||   url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1]
     || "");
-  return id ? `https://drive.google.com/uc?export=view&id=${id}` : "";
+  return id
+    ? `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(id)}`
+    : "";
 }
 
 /* ===== TAP = lihat foto, LONG-PRESS = Edit/Hapus ===== */
@@ -560,69 +568,27 @@ rowsTbody.addEventListener("pointerdown", (e)=>{
 ["pointerup","pointercancel","pointerleave"].forEach(ev=>{
   rowsTbody.addEventListener(ev, ()=>{ clearTimeout(pressTimer); }, {passive:true});
 });
-
-/* Klik: prioritas ambil via server (fileId), fallback ke URL publik */
-rowsTbody.addEventListener("click", async (e)=>{
+rowsTbody.addEventListener("click", (e)=>{
   const tr = e.target.closest("tr[data-id]");
   if (!tr) return;
   if (longFired){ longFired = false; return; }   // jangan dobel
-
-  const fileId = tr.dataset.fileId || "";
-  const fallbackUrl = tr.dataset.url || "";
-
-  if (!fileId && !fallbackUrl) return;
-
-  try{
-    if (fileId){
-      showOverlay("loading","Memuat foto…","");
-      const u = `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(fileId)}&t=${Date.now()}`;
-      const res = await fetch(u);
-      if (!res.ok) throw new Error("Gagal mengambil foto dari server");
-      const ct = (res.headers.get("content-type") || "").toLowerCase();
-
-      if (ct.includes("application/json")){
-        const j = await res.json();
-        if (!j.success || !j.dataUrl) throw new Error(j.error || "Format foto tidak valid");
-        openPhoto(j.dataUrl, { isBlob:false });
-        return;
-      }
-      if (ct.startsWith("image/")){
-        const blob = await res.blob();
-        const objUrl = URL.createObjectURL(blob);
-        openPhoto(objUrl, { isBlob:true });
-        return;
-      }
-      throw new Error("Tipe respon tidak dikenali");
-    }
-  }catch(err){
-    console.warn("Ambil via server gagal, fallback ke URL publik:", err);
-  }
-
-  if (fallbackUrl){
-    openPhoto(fallbackUrl, { isBlob:false });
-  }
+  const url = tr.dataset.url;
+  if (url) openPhoto(url);
 });
 
-/* ===== MODAL FOTO (dengan loader & revoke blob) ===== */
+/* ===== MODAL FOTO (dengan loader) ===== */
 const photoModal = document.getElementById("photoModal");
 const photoImg   = document.getElementById("photoImg");
 document.getElementById("photoClose").addEventListener("click", closePhoto);
 photoModal.addEventListener("click", (e)=>{ if(e.target===photoModal) closePhoto(); });
 
-function openPhoto(url, opts = { isBlob:false }){
+function openPhoto(url){
   if(!url) return;
+  // tampilkan loader
   showOverlay("loading","Memuat foto…","");
-  let finalUrl = url;
-  if (!opts.isBlob && !/^data:/.test(url) && !/^blob:/.test(url)){
-    finalUrl = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
-  }
-
-  if (currentBlobUrl){
-    URL.revokeObjectURL(currentBlobUrl);
-    currentBlobUrl = null;
-  }
-  if (opts.isBlob) currentBlobUrl = finalUrl;
-
+  // bust cache agar tidak menampilkan gambar lama pada URL yang sama
+  const finalUrl = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
+  // handle selesai / gagal
   photoImg.onload = () => {
     document.getElementById("overlay").classList.add("hidden");
     photoImg.onload = photoImg.onerror = null;
@@ -638,10 +604,6 @@ function openPhoto(url, opts = { isBlob:false }){
 function closePhoto(){
   photoModal.classList.add("hidden");
   photoImg.removeAttribute("src");
-  if (currentBlobUrl){
-    URL.revokeObjectURL(currentBlobUrl);
-    currentBlobUrl = null;
-  }
 }
 
 /* ===== INIT ===== */
