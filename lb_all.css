@@ -118,17 +118,29 @@ textarea, input[type="time"]{
 }
 .log-table tbody tr{ cursor: pointer } /* baris bisa di-tap */
 
-/* OVERLAY / STATUS */
+/* ===== OVERLAY / STATUS ===== */
 .overlay{
   position:fixed; inset:0; display:grid; place-items:center;
   background:rgba(0,0,0,.45); backdrop-filter:blur(2px); z-index:9999;
 }
+/* kartu notifikasi, proporsional */
 .sheet{
-  display:grid; grid-template-columns:48px 1fr auto; align-items:center; gap:12px;
+  position: relative;
+  display:grid; grid-template-columns:48px 1fr; align-items:center; gap:12px;
   background:var(--card); border:1px solid var(--border);
-  border-radius:16px; padding:14px 16px; min-width:min(520px,92vw);
+  border-radius:16px; padding:14px 16px; width:min(520px, 92vw);
   animation:pop .18s ease-out both;
 }
+/* X kanan atas — dipakai juga oleh action sheet */
+.sheet-x{
+  position:absolute; top:10px; right:10px;
+  width:38px; height:38px; display:grid; place-items:center;
+  border-radius:10px; background:#111827; color:#fff;
+  border:1px solid var(--border); cursor:pointer;
+}
+.sheet-x:hover{ filter:brightness(1.05) }
+.sheet-x:active{ transform: scale(.98) }
+
 .icon{ width:42px; height:42px; border-radius:50%; position:relative }
 .icon.spinner{ border:5px solid rgba(255,255,255,.15); border-top-color:var(--accent); animation:spin .9s linear infinite }
 .icon.ok{ background:rgba(34,197,94,.12); border:2px solid var(--ok) }
@@ -139,14 +151,13 @@ textarea, input[type="time"]{
 .icon.err{ background:rgba(239,68,68,.12); border:2px solid var(--danger) }
 .icon.err::before,.icon.err::after{ content:""; position:absolute; left:19px; top:8px; width:4px; height:24px; background:var(--danger); border-radius:2px }
 .icon.err::after{ transform:rotate(90deg) }
-.texts .title{ font-weight:700 }
-.texts .desc{ color:var(--muted); font-size:14px }
-.close{
-  appearance:none; border:1px solid var(--border); background:#111827; color:#fff;
-  width:36px; height:36px; border-radius:10px; cursor:pointer;
-}
+.texts .title{ font-weight:700; font-size: clamp(14px, 1.6vw, 16px); }
+.texts .desc{ color:var(--muted); font-size: clamp(12px, 1.4vw, 14px); }
 
-/* TIME PICKER (Wheel Modal) */
+/* Tombol close lama — tidak dipakai lagi sebagai tombol text */
+.close{ display:none }
+
+/* ===== TIME PICKER (Wheel Modal) ===== */
 #timeModal.overlay{ z-index:10000 }
 .time-sheet{
   background:var(--card); border:1px solid var(--border); border-radius:16px;
@@ -170,7 +181,7 @@ textarea, input[type="time"]{
   overflow-y:auto; scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch;
   border:1px solid var(--border); border-radius:12px; background:#0b1324;
   touch-action: pan-y; user-select:none;
-  overscroll-behavior: contain;          /* cegah bounce antar kontainer */
+  overscroll-behavior: contain;
 }
 .wheel::-webkit-scrollbar{ width:0; height:0 }
 .item{
@@ -183,7 +194,7 @@ textarea, input[type="time"]{
   height:36px; border:1px solid var(--accent-2); border-radius:10px;
 }
 
-/* PHOTO MODAL */
+/* ===== PHOTO MODAL ===== */
 .photo-sheet{
   position:relative; background:var(--card); border:1px solid var(--border); border-radius:16px;
   padding:10px; max-width:min(92vw, 720px); max-height:92vh; box-shadow:0 16px 40px rgba(0,0,0,.45);
@@ -194,14 +205,21 @@ textarea, input[type="time"]{
   background:#111827; color:#fff; border:1px solid var(--border); border-radius:10px; cursor:pointer;
 }
 
-/* ACTION SHEET (long-press) */
+/* ===== ACTION SHEET (long-press) ===== */
 .sheet-mini{
+  position:relative;
   background:var(--card); border:1px solid var(--border); border-radius:16px;
-  width:min(360px, 92vw); padding:12px; display:grid; gap:10px;
+  width:min(360px, 92vw); padding:14px 12px 12px; display:grid; gap:10px;
   box-shadow:0 16px 40px rgba(0,0,0,.45);
 }
-.sheet-title{ font-weight:700 }
-.sheet-actions{ display:flex; gap:10px }
+.sheet-title{ font-weight:700; padding-right:46px; } /* ruang untuk X */
+.sheet-actions{
+  display:grid; grid-template-columns: 1fr 1fr; gap:10px;
+}
+.t-btn{
+  background:#1f2937; color:#fff; border:1px solid var(--border);
+  padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:600;
+}
 .t-btn.danger{ background:#7a1c1c; border-color:#a43434 }
 
 /* UTIL */
