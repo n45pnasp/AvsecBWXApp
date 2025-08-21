@@ -1,30 +1,27 @@
 
 /* ===== KONFIG ===== */
-const SCRIPT_URL       = "https://logbk.avsecbwx2018.workers.dev"; // Cloudflare Worker
-const SHARED_TOKEN     = "N45p";
-const GAS_FALLBACK_URL = "https://script.google.com/macros/s/AKfycbyY7QxnULhiumfMb_dXvtzh1-VYPLzftUCorV6PtjSiqd6gU0_1vIwfE-PrxJr_DMkWFg/exec"; // <-- isi URL Web App GAS kalau mau fallback otomatis, biarkan "" kalau tidak
+const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev";
+const SHARED_TOKEN = "N45p";
 
 /* ===== DOM ===== */
-const timeInput    = document.getElementById("timeInput");
-const timeLabel    = document.getElementById("timeLabel");
-const timeBtn      = document.getElementById("timeBtn");
+const timeInput   = document.getElementById("timeInput");
+const timeLabel   = document.getElementById("timeLabel");
+const timeBtn     = document.getElementById("timeBtn");
 
-const pickPhoto    = document.getElementById("pickPhotoBtn");
-const fileInput    = document.getElementById("fileInput");
-const preview      = document.getElementById("preview");
-const uploadInfo   = document.getElementById("uploadInfo");
-const uploadName   = document.getElementById("uploadName");
-const uploadStatus = document.getElementById("uploadStatus");
-
-const submitBtn    = document.getElementById("submitBtn");
-const activityEl   = document.getElementById("activity");
-const rowsTbody    = document.getElementById("rows");
+const pickPhoto   = document.getElementById("pickPhotoBtn");
+const fileInput   = document.getElementById("fileInput");
+const preview     = document.getElementById("preview");
+const uploadInfo  = document.getElementById("uploadInfo");
+const uploadName  = document.getElementById("uploadName");
+const uploadStatus= document.getElementById("uploadStatus");
+const submitBtn   = document.getElementById("submitBtn");
+const activityEl  = document.getElementById("activity");
+const rowsTbody   = document.getElementById("rows");
 
 /* ===== STATE ===== */
-let uploaded       = null;   // {fileId, url, name}
-let uploading      = false;
-let editingId      = null;
-let currentBlobUrl = null;   // untuk revoke objectURL pada modal foto
+let uploaded   = null;  // {fileId, url, name} (saat tambah)
+let uploading  = false;
+let editingId  = null;  // id baris saat edit
 
 /* ===== UTIL ===== */
 const pad2  = (n)=> String(n).padStart(2,"0");
@@ -40,9 +37,7 @@ function fmtTimeWIB(s){
   const d = new Date(s);
   if (!isNaN(d)){
     try{
-      const str = new Intl.DateTimeFormat("id-ID",{
-        hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Asia/Jakarta"
-      }).format(d);
+      const str = new Intl.DateTimeFormat("id-ID",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Asia/Jakarta"}).format(d);
       return `${str} WIB`;
     }catch(_){
       return `${pad2(d.getHours())}:${pad2(d.getMinutes())} WIB`;
@@ -57,7 +52,6 @@ function showOverlay(state, title, desc){
   const tEl     = document.getElementById("ovTitle");
   const dEl     = document.getElementById("ovDesc");
   const close   = document.getElementById("ovClose");
-
   overlay.classList.remove("hidden");
   icon.className = "icon " + (state === "loading" ? "spinner" : state === "ok" ? "ok" : "err");
   tEl.textContent = title;
@@ -95,17 +89,17 @@ function exitEditMode(){
 }
 
 function setSubmitEnabled(){
-  const timeOk  = !!timeInput.value;
-  const actOk   = !!activityEl.value.trim();
-  const photoOk = !!uploaded?.fileId;
+  const timeOk = !!timeInput.value;
+  const actOk  = !!activityEl.value.trim();
+  const photoOk= !!uploaded?.fileId;
   const ok = editingId ? (timeOk && actOk && !uploading)
                        : (timeOk && actOk && photoOk && !uploading);
   submitBtn.disabled = !ok;
 }
 activityEl.addEventListener("input", setSubmitEnabled);
 
-/* ===== TIME PICKER (Wheel) ===== */
-const ITEM_H  = 36;
+/* ===== TIME PICKER (Wheel – baca nilai dari GARIS TENGAH) ===== */
+const ITEM_H  = 36;           // sama dgn .item di CSS
 const VISIBLE = 5;
 const SPACER  = ((VISIBLE-1)/2) * ITEM_H;
 
@@ -133,12 +127,17 @@ function buildWheel(el, count){
   el.innerHTML = "";
   el.appendChild(frag);
 }
+
+/* index tepat di GARIS TENGAH kontainer (anti offset 2 baris) */
 function centerIndex(el, max){
   const centerTop = el.scrollTop + el.clientHeight/2;
   const relative  = centerTop - SPACER - ITEM_H/2;
   return clamp(Math.round(relative / ITEM_H), 0, max);
 }
-function snapToCenter(el, idx){ el.scrollTop = idx * ITEM_H; }
+function snapToCenter(el, idx){
+  el.scrollTop = idx * ITEM_H; // BUKAN SPACER + idx*ITEM_H
+}
+/* interaksi + anti bounce (stop di batas) */
 function enableWheel(el, max){
   let dragging = false, startY = 0, startTop = 0, pid = 0;
   let isSnapping = false;
@@ -152,11 +151,14 @@ function enableWheel(el, max){
     el.setPointerCapture(pid);
     clearTimeout(timer);
   });
+
   el.addEventListener("pointermove", (e)=>{
     if (!dragging) return;
     const next = startTop + (e.clientY - startY);
+    // clamp supaya tidak lewat batas spacer
     el.scrollTop = clamp(next, 0, SPACER + max*ITEM_H + SPACER);
   });
+
   function endDrag(){
     if (!dragging) return;
     dragging = false;
@@ -168,6 +170,7 @@ function enableWheel(el, max){
   el.addEventListener("pointercancel", endDrag);
   el.addEventListener("pointerleave", endDrag);
 
+  // hanya snap saat scroll berhenti (inertia selesai)
   el.addEventListener("scroll", ()=>{
     if (isSnapping) return;
     clearTimeout(timer);
@@ -178,6 +181,7 @@ function enableWheel(el, max){
     }, 140);
   }, {passive:true});
 
+  // klik item → loncat
   el.addEventListener("click", (e)=>{
     const it = e.target.closest(".item"); if (!it) return;
     isSnapping = true;
@@ -185,6 +189,7 @@ function enableWheel(el, max){
     requestAnimationFrame(()=>{ isSnapping = false; });
   });
 }
+
 function openTimePicker(){
   if (!wheelsBuilt){
     buildWheel(wheelHour, 24);
@@ -203,6 +208,7 @@ function openTimePicker(){
   snapToCenter(wheelMin,  m);
   timeModal.classList.remove("hidden");
 }
+
 function closeTimePicker(save){
   if (save){
     const h = centerIndex(wheelHour, 23);
@@ -216,6 +222,8 @@ function closeTimePicker(save){
   }
   timeModal.classList.add("hidden");
 }
+
+/* selalu pakai wheel – nonaktif native picker */
 function disableNativeTimePicker(){
   timeInput.setAttribute("readonly", "");
   timeInput.setAttribute("inputmode","none");
@@ -225,133 +233,107 @@ function disableNativeTimePicker(){
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave  .addEventListener("click", () => closeTimePicker(true));
 
-/* ===== PILIH FOTO (storage, bukan kamera) ===== */
+/* ======= Kompresi gambar (agar aman di Sheet & kecil) ======= */
+async function compressImage(file, {
+  maxW = 1600,
+  maxH = 1600,
+  quality = 0.72,
+  type = "image/jpeg"
+} = {}) {
+  try {
+    let src, w, h, revoke = null;
+    try {
+      src = await createImageBitmap(file);
+      w = src.width; h = src.height;
+    } catch {
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        const url = URL.createObjectURL(file);
+        revoke = url;
+        i.src = url;
+      });
+      src = img;
+      w = img.naturalWidth || img.width;
+      h = img.naturalHeight || img.height;
+    }
+
+    const scale = Math.min(maxW / w, maxH / h, 1);
+    const outW = Math.max(1, Math.round(w * scale));
+    const outH = Math.max(1, Math.round(h * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = outW; canvas.height = outH;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(src, 0, 0, outW, outH);
+
+    let blob = await new Promise(resolve => {
+      if (!canvas.toBlob) return resolve(null);
+      try { canvas.toBlob(b => resolve(b || null), type, quality); }
+      catch { resolve(null); }
+    });
+
+    if (!blob) {
+      const dataUrl = canvas.toDataURL(type, quality);
+      const b64 = dataUrl.split(",")[1];
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      blob = new Blob([arr], { type });
+    }
+
+    try { if ('close' in src) src.close(); } catch {}
+    if (revoke) { try { URL.revokeObjectURL(revoke); } catch {} }
+
+    return blob;
+  } catch {
+    // Bila gagal proses (mis. format tidak didukung), pakai file asli
+    return file;
+  }
+}
+function blobToDataURL(blob){
+  return new Promise((resolve, reject)=>{
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+function renameToJpg(name){
+  const base = name.replace(/\.[^.]+$/, "");
+  return base + ".jpg";
+}
+
+/* ===== PILIH FOTO DARI STORAGE (bukan kamera) ===== */
 pickPhoto.addEventListener("click", async () => {
   if (editingId) return; // saat edit tidak boleh ganti foto
+
   try {
     if (window.showOpenFilePicker) {
       const [handle] = await window.showOpenFilePicker({
         multiple: false,
         excludeAcceptAllOption: true,
-        types: [{ description: "Foto", accept: { "image/*": [".jpg",".jpeg",".png",".gif",".webp",".heic"] } }]
+        types: [{
+          description: "Foto",
+          accept: { "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif"] }
+        }]
       });
       const file = await handle.getFile();
-      const dt = new DataTransfer(); dt.items.add(file);
+
+      // set ke input agar reuse alur upload yang sudah ada
+      const dt = new DataTransfer();
+      dt.items.add(file);
       fileInput.files = dt.files;
       fileInput.dispatchEvent(new Event("change", { bubbles: true }));
       return;
     }
-  } catch(_) {}
+  } catch (_) {
+    // user batal atau API tidak tersedia → fallback ke input
+  }
+
   fileInput.click();
 });
-
-/* ===== Kompres gambar → JPEG 1600px ===== */
-async function compressImage(file, { maxW=1600, maxH=1600, quality=0.72, type="image/jpeg" } = {}){
-  let source, w, h, revokeUrl = null;
-  try {
-    source = await createImageBitmap(file);
-    w = source.width; h = source.height;
-  } catch {
-    const img = await new Promise((res, rej)=>{
-      const i = new Image();
-      i.onload = () => res(i);
-      i.onerror = rej;
-      const url = URL.createObjectURL(file);
-      revokeUrl = url;
-      i.src = url;
-    });
-    source = img;
-    w = img.naturalWidth || img.width;
-    h = img.naturalHeight || img.height;
-  }
-  const scale = Math.min(maxW / w, maxH / h, 1);
-  const outW = Math.max(1, Math.round(w * scale));
-  const outH = Math.max(1, Math.round(h * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = outW; canvas.height = outH;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(source, 0, 0, outW, outH);
-
-  let blob = await new Promise(resolve=>{
-    if (!canvas.toBlob) return resolve(null);
-    try { canvas.toBlob(b => resolve(b || null), type, quality); }
-    catch { resolve(null); }
-  });
-  if (!blob){
-    try {
-      const dataUrl = canvas.toDataURL(type, quality);
-      const b64 = dataUrl.split(",")[1];
-      const bin = atob(b64);
-      const arr = new Uint8Array(bin.length);
-      for (let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
-      blob = new Blob([arr], { type });
-    } catch { blob = file; }
-  }
-  try { if ('close' in source) source.close(); } catch {}
-  if (revokeUrl) { try { URL.revokeObjectURL(revokeUrl); } catch {} }
-  return blob;
-}
-function normalizeToJpegName(name){ return name.replace(/\.[^/.]+$/, "") + ".jpg"; }
-function fileToBase64(fileOrBlob){
-  return new Promise((resolve, reject)=>{
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(fileOrBlob);
-  });
-}
-
-/* ===== Helper fetch dengan fallback & debug ===== */
-async function postJSON(pathOrUrl, bodyObj, { timeoutMs=20000 } = {}){
-  const controller = new AbortController();
-  const t = setTimeout(()=>controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(pathOrUrl, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify(bodyObj),
-      signal: controller.signal
-    });
-    const ct = (res.headers.get("content-type")||"").toLowerCase();
-    const data = ct.includes("application/json") ? await res.json() : { raw: await res.text() };
-    return { ok: res.ok, status: res.status, data };
-  } catch (e) {
-    return { ok:false, status:0, data:{ error: e?.message || "Network error" } };
-  } finally { clearTimeout(t); }
-}
-async function getJSON(url, { timeoutMs=20000 } = {}){
-  const controller = new AbortController();
-  const t = setTimeout(()=>controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { method:"GET", signal: controller.signal });
-    const ct = (res.headers.get("content-type")||"").toLowerCase();
-    if (ct.startsWith("image/")) return { ok: res.ok, status: res.status, blob: await res.blob(), ct };
-    const data = ct.includes("application/json") ? await res.json() : { raw: await res.text() };
-    return { ok: res.ok, status: res.status, data, ct };
-  } catch (e) {
-    return { ok:false, status:0, data:{ error: e?.message || "Network error" } };
-  } finally { clearTimeout(t); }
-}
-async function postWithFallback(payload){
-  // coba Worker dulu
-  let r = await postJSON(SCRIPT_URL, payload);
-  if (!r.ok && GAS_FALLBACK_URL){
-    // coba langsung GAS
-    r = await postJSON(GAS_FALLBACK_URL, payload);
-  }
-  return r;
-}
-async function getWithFallback(params){
-  const u1 = new URL(SCRIPT_URL);
-  Object.entries(params).forEach(([k,v])=>u1.searchParams.set(k,v));
-  let r = await getJSON(u1.toString());
-  if (!r.ok && GAS_FALLBACK_URL){
-    const u2 = new URL(GAS_FALLBACK_URL);
-    Object.entries(params).forEach(([k,v])=>u2.searchParams.set(k,v));
-    r = await getJSON(u2.toString());
-  }
-  return r;
-}
 
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
 fileInput.addEventListener("change", async (ev) => {
@@ -369,20 +351,23 @@ fileInput.addEventListener("change", async (ev) => {
     uploading = true; setSubmitEnabled();
     showOverlay("loading", "Mengunggah foto…", "Mohon tunggu sebentar");
 
-    // kompres → JPEG
-    const compressedBlob = await compressImage(file);
-    const uploadMime = "image/jpeg";
-    const uploadFilename = normalizeToJpegName(file.name);
+    // === Kompres + konversi ke JPEG agar aman di Sheet ===
+    const jpegBlob = await compressImage(file);
+    const base64   = await blobToDataURL(jpegBlob);
 
-    const base64 = await fileToBase64(compressedBlob);
-    const payload = { token: SHARED_TOKEN, action: "upload", filename: uploadFilename, mimeType: uploadMime, dataUrl: base64 };
+    const payload = {
+      token: SHARED_TOKEN,
+      action: "upload",
+      filename: renameToJpg(file.name),
+      mimeType: "image/jpeg",
+      dataUrl: base64
+    };
 
-    const res = await postWithFallback(payload);
-    if (!res.ok || !res.data?.success){
-      throw new Error(res.data?.error || `Upload gagal [${res.status}]`);
-    }
+    const res = await fetch(SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || "Upload gagal");
 
-    uploaded = { fileId: res.data.fileId, url: res.data.url, name: file.name };
+    uploaded = { fileId: json.fileId, url: json.url, name: payload.filename };
     uploadStatus.textContent = "Upload selesai ✅";
     showOverlay("ok", "Berhasil diunggah", "Foto tersimpan di Drive");
   }catch(err){
@@ -395,6 +380,14 @@ fileInput.addEventListener("change", async (ev) => {
     uploading = false; setSubmitEnabled();
   }
 });
+async function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
 
 /* ===== SUBMIT (Create / Update) ===== */
 submitBtn.addEventListener("click", async () => {
@@ -403,14 +396,17 @@ submitBtn.addEventListener("click", async () => {
   const activity = activityEl.value.trim();
   if (!timeStr || !activity) return;
 
-  // MODE EDIT
   if (editingId){
     try{
       submitBtn.disabled = true;
       showOverlay("loading","Menyimpan perubahan…","");
 
-      const res = await postWithFallback({ token: SHARED_TOKEN, action: "updateLog", id: editingId, time: timeStr, activity });
-      if (!res.ok || !res.data?.success) throw new Error(res.data?.error || `Gagal mengubah [${res.status}]`);
+      const res = await fetch(SCRIPT_URL, {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ token: SHARED_TOKEN, action: "updateLog", id: editingId, time: timeStr, activity })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "Gagal mengubah");
 
       showOverlay("ok","Tersimpan","Perubahan berhasil");
       exitEditMode();
@@ -424,14 +420,17 @@ submitBtn.addEventListener("click", async () => {
     return;
   }
 
-  // MODE TAMBAH
   if (!uploaded?.fileId) return;
   try{
     submitBtn.disabled = true;
     showOverlay("loading", "Menyimpan logbook…", "Mengirim data ke Spreadsheet");
 
-    const res = await postWithFallback({ token: SHARED_TOKEN, action: "createLog", time: timeStr, activity, fileId: uploaded.fileId });
-    if (!res.ok || !res.data?.success) throw new Error(res.data?.error || `Gagal menyimpan [${res.status}]`);
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST", headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ token: SHARED_TOKEN, action: "createLog", time: timeStr, activity, fileId: uploaded.fileId })
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || "Gagal menyimpan");
 
     showOverlay("ok", "Tersimpan", "Logbook berhasil ditambahkan");
 
@@ -450,30 +449,35 @@ submitBtn.addEventListener("click", async () => {
   }
 });
 
-/* ===== LIST (2 kolom) ===== */
+/* ===== TABEL (2 kolom) ===== */
 async function loadRows(){
   rowsTbody.innerHTML = `<tr><td colspan="2">Memuat…</td></tr>`;
   try{
-    const res = await getWithFallback({ action:"list", token:SHARED_TOKEN, t: Date.now().toString() });
-    if (!res.ok || !res.data?.success) throw new Error(res.data?.error || `Gagal memuat [${res.status}]`);
+    const url = new URL(SCRIPT_URL);
+    url.searchParams.set("action","list");
+    url.searchParams.set("token",SHARED_TOKEN);
 
-    const json = res.data;
+    const res = await fetch(url.toString(), { method:"GET" });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || "Gagal memuat");
+
     rowsTbody.innerHTML = "";
     if (!json.rows || !json.rows.length) {
       rowsTbody.innerHTML = `<tr><td colspan="2" class="muted">Belum ada data</td></tr>`;
       return;
     }
+
     for (const r of json.rows){
       const id     = r.id ?? "";
-      const fileId = r.fileId || (r.fileUrl?.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
-                    || r.fileUrl?.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || "");
+      const imgUrl = r.fileId
+        ? `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(r.fileId)}`
+        : toImageUrl(r.fileUrl || "", r.fileId || "");
       const time   = r.time || r.createdAt || "";
       const actRaw = r.activity || "";
 
       const tr = document.createElement("tr");
       tr.dataset.id        = id;
-      tr.dataset.fileId    = fileId;
-      tr.dataset.url       = toImageUrl(r.fileUrl||"", fileId);
+      tr.dataset.url       = imgUrl || "";
       tr.dataset.time      = time || "";
       tr.dataset.activity  = actRaw;
 
@@ -489,12 +493,16 @@ async function loadRows(){
   }
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+/* konversi fileId/url Drive → URL foto via Apps Script (aman & always works) */
 function toImageUrl(url, fileId){
   const id = fileId
     || (url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
     ||   url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1]
     || "");
-  return id ? `https://drive.google.com/uc?export=view&id=${id}` : "";
+  return id
+    ? `${SCRIPT_URL}?action=photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(id)}`
+    : "";
 }
 
 /* ===== TAP = lihat foto, LONG-PRESS = Edit/Hapus ===== */
@@ -508,8 +516,14 @@ const actDelete = document.getElementById("actDelete");
 const actClose  = document.getElementById("actClose");
 let sheetTarget = null;
 
-function openActionSheetFor(tr){ sheetTarget = tr; actSheet.classList.remove("hidden"); }
-function closeActionSheet(){ actSheet.classList.add("hidden"); sheetTarget = null; }
+function openActionSheetFor(tr){
+  sheetTarget = tr;
+  actSheet.classList.remove("hidden");
+}
+function closeActionSheet(){
+  actSheet.classList.add("hidden");
+  sheetTarget = null;
+}
 actClose.addEventListener("click", closeActionSheet);
 actSheet.addEventListener("click", (e)=>{ if(e.target===actSheet) closeActionSheet(); });
 
@@ -529,8 +543,12 @@ actDelete.addEventListener("click", async () => {
   if (!confirm("Hapus entri ini?")) return;
   try{
     showOverlay("loading","Menghapus data…","");
-    const res = await postWithFallback({ token:SHARED_TOKEN, action:"deleteLog", id });
-    if (!res.ok || !res.data?.success) throw new Error(res.data?.error || `Gagal menghapus [${res.status}]`);
+    const res = await fetch(SCRIPT_URL, {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ token:SHARED_TOKEN, action:"deleteLog", id })
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || "Gagal menghapus");
     showOverlay("ok","Terhapus","Data dihapus");
     if (editingId && editingId == id) exitEditMode();
     await loadRows();
@@ -551,76 +569,48 @@ rowsTbody.addEventListener("pointerdown", (e)=>{
 ["pointerup","pointercancel","pointerleave"].forEach(ev=>{
   rowsTbody.addEventListener(ev, ()=>{ clearTimeout(pressTimer); }, {passive:true});
 });
-
-/* Klik baris: prioritas ambil via server (fileId), fallback URL publik */
-rowsTbody.addEventListener("click", async (e)=>{
+rowsTbody.addEventListener("click", (e)=>{
   const tr = e.target.closest("tr[data-id]");
   if (!tr) return;
-  if (longFired){ longFired = false; return; }
-
-  const fileId = tr.dataset.fileId || "";
-  const fallbackUrl = tr.dataset.url || "";
-  if (!fileId && !fallbackUrl) return;
-
-  try{
-    if (fileId){
-      showOverlay("loading","Memuat foto…","");
-      const res = await getWithFallback({ action:"photo", token: encodeURIComponent(SHARED_TOKEN), id: encodeURIComponent(fileId), t: Date.now().toString() });
-      if (!res.ok) throw new Error(`Gagal mengambil foto [${res.status}]`);
-      if (res.ct?.startsWith("image/") && res.blob){
-        const objUrl = URL.createObjectURL(res.blob);
-        openPhoto(objUrl, { isBlob:true });
-        return;
-      }
-      const j = res.data;
-      if (!j?.success || !j?.dataUrl) throw new Error(j?.error || "Format foto tidak valid");
-      openPhoto(j.dataUrl, { isBlob:false });
-      return;
-    }
-  }catch(err){
-    console.warn("Ambil via server gagal, fallback ke URL publik:", err);
-  }
-  if (fallbackUrl) openPhoto(fallbackUrl, { isBlob:false });
+  if (longFired){ longFired = false; return; }   // jangan dobel
+  const url = tr.dataset.url;
+  if (url) openPhoto(url);
 });
 
-/* ===== MODAL FOTO ===== */
+/* ===== MODAL FOTO (dengan loader) ===== */
 const photoModal = document.getElementById("photoModal");
 const photoImg   = document.getElementById("photoImg");
 document.getElementById("photoClose").addEventListener("click", closePhoto);
 photoModal.addEventListener("click", (e)=>{ if(e.target===photoModal) closePhoto(); });
 
-function openPhoto(url, opts = { isBlob:false }){
+function openPhoto(url){
   if(!url) return;
+  // tampilkan loader
   showOverlay("loading","Memuat foto…","");
-  let finalUrl = url;
-  if (!opts.isBlob && !/^data:/.test(url) && !/^blob:/.test(url)){
-    finalUrl = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
-  }
-  if (currentBlobUrl){
-    URL.revokeObjectURL(currentBlobUrl);
-    currentBlobUrl = null;
-  }
-  if (opts.isBlob) currentBlobUrl = finalUrl;
-
-  photoImg.onload = () => { document.getElementById("overlay").classList.add("hidden"); photoImg.onload = photoImg.onerror = null; };
-  photoImg.onerror = () => { document.getElementById("overlay").classList.add("hidden"); photoImg.onload = photoImg.onerror = null; showOverlay("err","Gagal memuat foto","Coba lagi"); };
+  // bust cache agar tidak menampilkan gambar lama pada URL yang sama
+  const finalUrl = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
+  // handle selesai / gagal
+  photoImg.onload = () => {
+    document.getElementById("overlay").classList.add("hidden");
+    photoImg.onload = photoImg.onerror = null;
+  };
+  photoImg.onerror = () => {
+    document.getElementById("overlay").classList.add("hidden");
+    photoImg.onload = photoImg.onerror = null;
+    showOverlay("err","Gagal memuat foto","Coba lagi");
+  };
   photoImg.src = finalUrl;
   photoModal.classList.remove("hidden");
 }
 function closePhoto(){
   photoModal.classList.add("hidden");
   photoImg.removeAttribute("src");
-  if (currentBlobUrl){
-    URL.revokeObjectURL(currentBlobUrl);
-    currentBlobUrl = null;
-  }
 }
 
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
   timeLabel.textContent = "Pilih Waktu";
-  setModeEdit(false);
-  disableNativeTimePicker();
+  setModeEdit(false);         // default mode tambah
+  disableNativeTimePicker();  // pastikan selalu wheel picker
   await loadRows();
 });
-
