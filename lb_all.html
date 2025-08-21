@@ -17,6 +17,20 @@
   <h1 class="app-title" id="appTitle">Logbook</h1>
 </div>
 
+<script>
+  // ambil title dari server
+  (async () => {
+    try {
+      const res = await fetch(`${SCRIPT_URL}?action=title&token=${SHARED_TOKEN}`);
+      const data = await res.json();
+      if (data.success && data.title) {
+        document.getElementById("appTitle").textContent = data.title;
+      }
+    } catch(e){ console.error("Gagal ambil judul:", e); }
+  })();
+</script>
+
+
   <main class="container">
     <!-- KARTU INPUT -->
     <section class="card">
