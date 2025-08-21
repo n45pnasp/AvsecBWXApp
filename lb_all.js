@@ -256,45 +256,75 @@ pickPhoto.addEventListener("click", async () => {
 });
 
 /* ====== KOMPres gambar sebelum upload ====== */
-async function compressImage(file, {maxW=1600, maxH=1600, quality=0.72, type="image/jpeg"} = {}){
-  // Coba pakai createImageBitmap (cepat), fall back ke <img>
-  let source, w, h;
-  try{
-    source = await createImageBitmap(file);
-    w = source.width; h = source.height;
-  }catch(_){
-    const img = await new Promise((res, rej)=>{
-      const i = new Image();
-      i.onload = ()=>res(i);
-      i.onerror = rej;
-      i.src = URL.createObjectURL(file);
+  // --- GANTI fungsi compressImage lama dengan yang ini ---
+  async function compressImage(file, {
+    maxW = 1600,
+    maxH = 1600,
+    quality = 0.72,
+    type = "image/jpeg"
+  } = {}) {
+    // 1) Muat sumber gambar (bitmap lebih cepat, fallback <img>)
+    let source, w, h, revokeUrl = null;
+    try {
+      source = await createImageBitmap(file);
+      w = source.width; h = source.height;
+    } catch (_) {
+      const img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = rej;
+        const url = URL.createObjectURL(file);
+        revokeUrl = url;
+        i.src = url;
+      });
+      source = img;
+      w = img.naturalWidth || img.width;
+      h = img.naturalHeight || img.height;
+    }
+  
+    // 2) Skala tidak lebih dari 1600 px di sisi terpanjang
+    const scale = Math.min(maxW / w, maxH / h, 1);
+    const outW = Math.max(1, Math.round(w * scale));
+    const outH = Math.max(1, Math.round(h * scale));
+  
+    const canvas = document.createElement("canvas");
+    canvas.width = outW; canvas.height = outH;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(source, 0, 0, outW, outH);
+  
+    // 3) Coba toBlob → kalau null (Safari/HEIC), fallback ke toDataURL
+    let blob = await new Promise(resolve => {
+      if (!canvas.toBlob) return resolve(null);
+      try {
+        canvas.toBlob(b => resolve(b || null), type, quality);
+      } catch (_) {
+        resolve(null);
+      }
     });
-    source = img; w = img.naturalWidth || img.width; h = img.naturalHeight || img.height;
+  
+    if (!blob) {
+      // Fallback yang selalu jalan
+      try {
+        const dataUrl = canvas.toDataURL(type, quality); // "data:image/jpeg;base64,..."
+        const b64 = dataUrl.split(",")[1];
+        const bin = atob(b64);
+        const len = bin.length;
+        const arr = new Uint8Array(len);
+        for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
+        blob = new Blob([arr], { type });
+      } catch (_) {
+        // Jika semua gagal, kembalikan file asli (last resort)
+        blob = file;
+      }
+    }
+  
+    // 4) Bersihkan resource
+    try { if ('close' in source) source.close(); } catch (_) {}
+    if (revokeUrl) { try { URL.revokeObjectURL(revokeUrl); } catch (_) {} }
+  
+    return blob;
   }
 
-  // Hitung skala (maks sisi 1600)
-  const scale = Math.min(maxW / w, maxH / h, 1);
-  const outW = Math.max(1, Math.round(w * scale));
-  const outH = Math.max(1, Math.round(h * scale));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = outW; canvas.height = outH;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(source, 0, 0, outW, outH);
-
-  const blob = await new Promise(resolve=>{
-    canvas.toBlob(b=>resolve(b || null), type, quality);
-  });
-
-  // Bersihkan bitmap & blob URL src fallback
-  try{ if ('close' in source) source.close(); }catch(_){}
-  if (source instanceof HTMLImageElement){
-    try{ URL.revokeObjectURL(source.src); }catch(_){}
-  }
-
-  // Jika gagal kompres (HEIC lama, dll) → kembalikan file asli
-  return blob || file;
-}
 
 function normalizeToJpegName(name){
   const base = name.replace(/\.[^/.]+$/, "");
