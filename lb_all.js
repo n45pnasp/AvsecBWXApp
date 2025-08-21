@@ -134,7 +134,7 @@ function centerIndex(el, max){
   return clamp(Math.round(relative / ITEM_H), 0, max);
 }
 function snapToCenter(el, idx){
-  el.scrollTop = idx * ITEM_H; // BUKAN SPACER + idx*ITEM_H (sesuai instruksi)
+  el.scrollTop = idx * ITEM_H; // BUKAN SPACER + idx*ITEM_H
 }
 /* interaksi + anti bounce (stop di batas) */
 function enableWheel(el, max){
