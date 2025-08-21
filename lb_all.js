@@ -68,6 +68,66 @@ function showOverlay(state, title, desc){
   if (state !== "loading") setTimeout(() => overlay.classList.add("hidden"), 1200);
 }
 
+/* ===== MINI CONFIRM DIALOG (tanpa popup browser) ===== */
+function askConfirm(message = "Yakin?", {okText="OK", cancelText="Batal"} = {}) {
+  return new Promise(resolve => {
+    let modal = document.getElementById("jsConfirm");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "jsConfirm";
+      modal.className = "hidden";
+      modal.innerHTML = `
+        <div class="jsc-backdrop"></div>
+        <div class="jsc-card">
+          <div class="jsc-msg"></div>
+          <div class="jsc-actions">
+            <button class="jsc-cancel">${cancelText}</button>
+            <button class="jsc-ok">${okText}</button>
+          </div>
+        </div>
+      `;
+      const css = document.createElement("style");
+      css.textContent = `
+        #jsConfirm{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999}
+        #jsConfirm.hidden{display:none}
+        #jsConfirm .jsc-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+        #jsConfirm .jsc-card{position:relative;max-width:320px;width:90%;background:#111827;color:#e5e7eb;
+          border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:16px}
+        #jsConfirm .jsc-msg{font-size:14px;line-height:1.4;margin-bottom:12px;white-space:pre-wrap}
+        #jsConfirm .jsc-actions{display:flex;gap:8px;justify-content:flex-end}
+        #jsConfirm button{appearance:none;border:0;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer}
+        #jsConfirm .jsc-cancel{background:#374151;color:#e5e7eb}
+        #jsConfirm .jsc-ok{background:#ef4444;color:white}
+        #jsConfirm button:active{transform:translateY(1px)}
+      `;
+      document.head.appendChild(css);
+      document.body.appendChild(modal);
+    }
+    const msgEl = modal.querySelector(".jsc-msg");
+    const okBtn = modal.querySelector(".jsc-ok");
+    const noBtn = modal.querySelector(".jsc-cancel");
+    msgEl.textContent = message;
+
+    function close(val){
+      modal.classList.add("hidden");
+      okBtn.removeEventListener("click", onOk);
+      noBtn.removeEventListener("click", onNo);
+      modal.removeEventListener("click", onBackdrop);
+      resolve(val);
+    }
+    function onOk(){ close(true); }
+    function onNo(){ close(false); }
+    function onBackdrop(e){ if(e.target===modal) close(false); }
+
+    okBtn.textContent = okText;
+    noBtn.textContent = cancelText;
+    modal.classList.remove("hidden");
+    okBtn.addEventListener("click", onOk);
+    noBtn.addEventListener("click", onNo);
+    modal.addEventListener("click", onBackdrop);
+  });
+}
+
 /* ===== MODE (Tambah vs Edit) ===== */
 function setModeEdit(on){
   submitBtn.textContent = on ? "✏️ Edit" : "✅ Kirim Data";
@@ -557,7 +617,11 @@ actDelete.addEventListener("click", async () => {
   if(!sheetTarget) return;
   const id = sheetTarget.dataset.id;
   closeActionSheet();
-  if (!confirm("Hapus entri ini?")) return;
+
+  // <<< gunakan modal konfirmasi kustom, bukan window.confirm >>>
+  const ok = await askConfirm("Hapus entri ini?", { okText:"Hapus", cancelText:"Batal" });
+  if (!ok) return;
+
   try{
     showOverlay("loading","Menghapus data…","");
     const res = await fetch(SCRIPT_URL, {
