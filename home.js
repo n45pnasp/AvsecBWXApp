@@ -44,8 +44,8 @@ function updateGreeting() {
   if (greetEl) greetEl.textContent = getGreetingID();
 
   const k = (greetEl?.textContent || "")
-  .replace(/[^\p{L}\s]/gu, "")  // buang tanda baca
-  .split(" ")[1];               // -> Pagi/Siang/Sore/Malam
+    .replace(/[^\p{L}\s]/gu, "")
+    .split(" ")[1];
   const t = {
     Pagi:  "Fokus & semangat produktif ☕",
     Siang: "Jeda sejenak, tarik napas 🌤️",
@@ -115,7 +115,6 @@ async function fetchProfile(user){
 
     const name = nameSnap.exists() ? String(nameSnap.val()).trim()
                : (user.displayName?.trim() || (user.email?.split("@")[0] ?? "Pengguna"));
-    const spec = specSnap.exists() ? String(specSnap.val()).trim() : "";
     const role = roleSnap.exists() ? String(roleSnap.val()).trim()
                : (isAdminSnap.exists() && isAdminSnap.val() ? "admin" : "user");
     const isAdmin  = isAdminSnap.exists() ? !!isAdminSnap.val() : role === "admin";
@@ -123,9 +122,9 @@ async function fetchProfile(user){
     const rawPhoto = photoSnap.exists() ? photoSnap.val() : (user.photoURL || "");
     const photoURL = await resolvePhotoURL(rawPhoto, user);
 
-    return { name, spec, role, isAdmin, photoURL };
+    return { name, role, isAdmin, photoURL };
   }catch{
-    return { name: resolveDisplayName(user), spec: "", role: "user", isAdmin: false, photoURL: { primary: DEFAULT_AVATAR, fallback: "" } };
+    return { name: resolveDisplayName(user), role: "user", isAdmin: false, photoURL: { primary: DEFAULT_AVATAR, fallback: "" } };
   }
 }
 
@@ -194,103 +193,6 @@ window.onLogout = function () {
   location.href = "index.html?logout=1";
 };
 
-// ======== KODULAR BRIDGE: Icon → WebViewString ========
-function sendToKodular(message){
-  try {
-    if (window.AppInventor && typeof window.AppInventor.setWebViewString === "function") {
-      window.AppInventor.setWebViewString(String(message));
-    } else {
-      console.debug("[KodularBridge]", message);
-      document.title = String(message); // fallback dev
-    }
-  } catch (e) {
-    console.warn("Gagal kirim ke Kodular:", e);
-  }
-}
-
-/**
- * Bind elemen ber-atribut data-icon agar:
- * - Mengirim WebViewString = nilai data-icon
- * - Jika anchor punya href valid (bukan '#'), tetap navigasi setelah jeda singkat
- * - Debounce agar tidak kirim ganda
- * - Aksesibilitas: bisa di-trigger Enter/Space
- */
-function bindIcon(el){
-  if (!el || el.__kodularBound) return;
-  el.__kodularBound = true;
-
-  // perbaiki role/tabindex untuk aksesibilitas
-  if (!el.hasAttribute("role")) el.setAttribute("role","button");
-  if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex","0");
-
-  // anti dobel
-  let firedAt = 0;
-  const DEBOUNCE_MS = 220;
-
-  const fire = () => {
-    const now = Date.now();
-    if (now - firedAt < DEBOUNCE_MS) return;
-    firedAt = now;
-
-    const name = (el.getAttribute("data-icon") || "").trim();
-    if (!name) return;
-
-    // kirim ke Kodular
-    sendToKodular(name);
-
-    // Tentukan target navigasi:
-    // 1) gunakan href jika anchor dan bukan "#"
-    // 2) atau gunakan data-href jika ada
-    let target = "";
-    if (el instanceof HTMLAnchorElement) {
-      const href = (el.getAttribute("href") || "").trim();
-      if (href && href !== "#") target = href;
-    }
-    if (!target) {
-      const dh = (el.getAttribute("data-href") || "").trim();
-      if (dh) target = dh;
-    }
-
-    if (target) {
-      setTimeout(()=>{ location.href = target; }, 140);
-    }
-  };
-
-  // Interaksi utama
-  el.addEventListener("click", (ev) => {
-    // Jika anchor dengan href="#", cegah scroll ke atas
-    if (el instanceof HTMLAnchorElement) {
-      const href = (el.getAttribute("href") || "").trim();
-      if (!href || href === "#") ev.preventDefault();
-    }
-    fire();
-  });
-
-  el.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      fire();
-    }
-  });
-}
-
-function setupKodularIconBridge(){
-  // Bind semua elemen yang punya data-icon (apps grid + dock)
-  document.querySelectorAll("[data-icon]").forEach(bindIcon);
-
-  // Observasi DOM jika ada ikon baru dimasukkan dinamis
-  const mo = new MutationObserver((muts) => {
-    for (const m of muts) {
-      m.addedNodes?.forEach(node => {
-        if (!(node instanceof HTMLElement)) return;
-        if (node.hasAttribute?.("data-icon")) bindIcon(node);
-        node.querySelectorAll?.("[data-icon]")?.forEach(bindIcon);
-      });
-    }
-  });
-  mo.observe(document.documentElement, { childList: true, subtree: true });
-}
-
 // ===== Pressed effect untuk dock (stabil di mobile) =====
 function enableDockPressedEffect(){
   document.querySelectorAll('.dock-btn').forEach(btn=>{
@@ -308,7 +210,6 @@ function tick() { updateGreeting(); }
 tick();
 setInterval(tick, 60 * 1000);
 
-setupKodularIconBridge();
 enableDockPressedEffect();
 
 // Ambil profil user saat state Auth siap (redirect ditangani oleh auth-guard.js)
