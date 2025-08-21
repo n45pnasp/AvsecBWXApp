@@ -255,6 +255,52 @@ pickPhoto.addEventListener("click", async () => {
   fileInput.click();
 });
 
+/* ====== KOMPres gambar sebelum upload ====== */
+async function compressImage(file, {maxW=1600, maxH=1600, quality=0.72, type="image/jpeg"} = {}){
+  // Coba pakai createImageBitmap (cepat), fall back ke <img>
+  let source, w, h;
+  try{
+    source = await createImageBitmap(file);
+    w = source.width; h = source.height;
+  }catch(_){
+    const img = await new Promise((res, rej)=>{
+      const i = new Image();
+      i.onload = ()=>res(i);
+      i.onerror = rej;
+      i.src = URL.createObjectURL(file);
+    });
+    source = img; w = img.naturalWidth || img.width; h = img.naturalHeight || img.height;
+  }
+
+  // Hitung skala (maks sisi 1600)
+  const scale = Math.min(maxW / w, maxH / h, 1);
+  const outW = Math.max(1, Math.round(w * scale));
+  const outH = Math.max(1, Math.round(h * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = outW; canvas.height = outH;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(source, 0, 0, outW, outH);
+
+  const blob = await new Promise(resolve=>{
+    canvas.toBlob(b=>resolve(b || null), type, quality);
+  });
+
+  // Bersihkan bitmap & blob URL src fallback
+  try{ if ('close' in source) source.close(); }catch(_){}
+  if (source instanceof HTMLImageElement){
+    try{ URL.revokeObjectURL(source.src); }catch(_){}
+  }
+
+  // Jika gagal kompres (HEIC lama, dll) → kembalikan file asli
+  return blob || file;
+}
+
+function normalizeToJpegName(name){
+  const base = name.replace(/\.[^/.]+$/, "");
+  return base + ".jpg";
+}
+
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
 fileInput.addEventListener("change", async (ev) => {
   if (editingId) return;
@@ -271,8 +317,14 @@ fileInput.addEventListener("change", async (ev) => {
     uploading = true; setSubmitEnabled();
     showOverlay("loading", "Mengunggah foto…", "Mohon tunggu sebentar");
 
-    const base64 = await fileToBase64(file);
-    const payload = { token: SHARED_TOKEN, action: "upload", filename: file.name, mimeType: file.type || "image/jpeg", dataUrl: base64 };
+    // === KOMPres dulu ===
+    const compressedBlob = await compressImage(file); // JPEG 1600px max, quality 0.72
+    const uploadMime = "image/jpeg";
+    const uploadFilename = normalizeToJpegName(file.name);
+
+    // kirim hasil kompres
+    const base64 = await fileToBase64(compressedBlob);
+    const payload = { token: SHARED_TOKEN, action: "upload", filename: uploadFilename, mimeType: uploadMime, dataUrl: base64 };
 
     const res = await fetch(SCRIPT_URL, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
     const json = await res.json();
@@ -291,12 +343,12 @@ fileInput.addEventListener("change", async (ev) => {
     uploading = false; setSubmitEnabled();
   }
 });
-async function fileToBase64(file){
+async function fileToBase64(fileOrBlob){
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result);
     r.onerror = reject;
-    r.readAsDataURL(file);
+    r.readAsDataURL(fileOrBlob);
   });
 }
 
@@ -380,7 +432,6 @@ async function loadRows(){
 
     for (const r of json.rows){
       const id     = r.id ?? "";
-      // === JS1 style: simpan fileId & URL fallback (uc?export=view) ===
       const fileId = r.fileId || (r.fileUrl?.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
                     || r.fileUrl?.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1] || "");
       const time   = r.time || r.createdAt || "";
@@ -406,8 +457,7 @@ async function loadRows(){
 }
 function escapeHtml(s){ return (s||"").replace(/[&<>"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
 
-/* === JS1 helper (point 5): pakai link Drive publik (fallback). 
-      Catatan: akan tampil hanya jika file publik. === */
+/* konversi fileId/url Drive → URL foto publik (fallback; kalau file memang public) */
 function toImageUrl(url, fileId){
   const id = fileId
     || (url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]
@@ -481,12 +531,7 @@ rowsTbody.addEventListener("pointerdown", (e)=>{
   rowsTbody.addEventListener(ev, ()=>{ clearTimeout(pressTimer); }, {passive:true});
 });
 
-/* ==== Klik baris: JS1-STYLE (point 1) dengan fallback kuat ====
-   1) Coba ambil via endpoint server (?action=photo&id=fileId)
-      - Jika server balas JSON {dataUrl}, pakai itu.
-      - Jika server balas bytes image/*, buat Blob URL dan pakai.
-   2) Jika gagal semua → fallback ke URL publik (uc?export=view) dari dataset.url
-*/
+/* Klik: prioritas ambil via server (fileId), fallback ke URL publik */
 rowsTbody.addEventListener("click", async (e)=>{
   const tr = e.target.closest("tr[data-id]");
   if (!tr) return;
@@ -506,7 +551,6 @@ rowsTbody.addEventListener("click", async (e)=>{
       const ct = (res.headers.get("content-type") || "").toLowerCase();
 
       if (ct.includes("application/json")){
-        // server kirim JSON (dataUrl)
         const j = await res.json();
         if (!j.success || !j.dataUrl) throw new Error(j.error || "Format foto tidak valid");
         openPhoto(j.dataUrl, { isBlob:false });
@@ -522,7 +566,6 @@ rowsTbody.addEventListener("click", async (e)=>{
     }
   }catch(err){
     console.warn("Ambil via server gagal, fallback ke URL publik:", err);
-    // terus ke fallback
   }
 
   if (fallbackUrl){
@@ -538,15 +581,12 @@ photoModal.addEventListener("click", (e)=>{ if(e.target===photoModal) closePhoto
 
 function openPhoto(url, opts = { isBlob:false }){
   if(!url) return;
-  // tampilkan loader
   showOverlay("loading","Memuat foto…","");
-  // cache-busting hanya untuk URL biasa (bukan blob/data:)
   let finalUrl = url;
   if (!opts.isBlob && !/^data:/.test(url) && !/^blob:/.test(url)){
     finalUrl = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
   }
 
-  // revoke blob lama jika ada
   if (currentBlobUrl){
     URL.revokeObjectURL(currentBlobUrl);
     currentBlobUrl = null;
