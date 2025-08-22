@@ -7,167 +7,155 @@
   <link rel="stylesheet" href="lb_all.css" />
 </head>
 <body>
-<!-- App Bar -->
-<div class="app-bar">
-  <a class="back-btn" aria-label="Kembali" href="index.html">
-    <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M15 6L9 12L15 18"></path>
-    </svg>
-  </a>
-  <h1 class="app-title" id="appTitle">Logbook</h1>
-</div>
+  <!-- App Bar -->
+  <div class="app-bar">
+    <a class="back-btn" aria-label="Kembali" href="index.html">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
+      </svg>
+    </a>
+    <h1 class="app-title" id="appTitle">Logbook</h1>
+  </div>
 
-<script>
-  (async () => {
-    try {
-      const res = await fetch(`${SCRIPT_URL}?action=title&token=${SHARED_TOKEN}`);
-      const data = await res.json();
-      if (data.success && data.title) {
-        document.getElementById("appTitle").textContent = data.title;
-      }
-    } catch(e){ console.error("Gagal ambil judul:", e); }
-  })();
-</script>
+  <main class="container">
+    <!-- KARTU INPUT -->
+    <section class="card">
+      <h1 class="card-title">Input Logbook</h1>
 
-<main class="container">
-  <!-- KARTU INPUT -->
-  <section class="card">
-    <h1 class="card-title">Input Logbook</h1>
+      <div class="row-2">
+        <!-- Kiri: Time Picker (modal wheel) -->
+        <label class="btn-like" aria-label="Pilih Waktu" id="timeBtn">
+          <input id="timeInput" type="time" required />
+          <span id="timeLabel">Pilih Waktu</span>
+        </label>
 
-    <div class="row-2">
-      <!-- Kiri: Time Picker (modal wheel) -->
-      <label class="btn-like" aria-label="Pilih Waktu" id="timeBtn">
-        <input id="timeInput" type="time" required />
-        <span id="timeLabel">Pilih Waktu</span>
-      </label>
+        <!-- Kanan: Upload Foto -->
+        <button id="pickPhotoBtn" type="button" class="btn">📷 Pilih Foto</button>
+        <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
+      </div>
 
-      <!-- Kanan: Upload Foto -->
-      <button id="pickPhotoBtn" type="button" class="btn">📷 Pilih Foto</button>
-      <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
+      <!-- Preview & status upload -->
+      <div id="uploadInfo" class="upload-info hidden">
+        <img id="preview" alt="Preview" />
+        <div class="meta">
+          <div id="uploadStatus">Menunggu foto…</div>
+          <div id="uploadName" class="muted"></div>
+        </div>
+      </div>
+
+      <!-- Kegiatan -->
+      <div class="field">
+        <label for="activity">Kegiatan</label>
+        <textarea id="activity" rows="3" placeholder="Tuliskan kegiatan…"></textarea>
+      </div>
+
+      <button id="submitBtn" class="btn primary" type="button" disabled>✅ Kirim Data</button>
+    </section>
+
+    <!-- JUDUL DI LUAR CARD -->
+    <h2 class="section-title">Isi Logbook</h2>
+
+    <!-- TABEL 2 KOLOM -->
+    <div class="table-wrap">
+      <table class="log-table" aria-label="Isi Logbook">
+        <colgroup>
+          <col class="col-time" />
+          <col class="col-activity" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Waktu</th>
+            <th>Kegiatan</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
     </div>
+  </main>
 
-    <!-- Preview & status upload -->
-    <div id="uploadInfo" class="upload-info hidden">
-      <img id="preview" alt="Preview" />
-      <div class="meta">
-        <div id="uploadStatus">Menunggu foto…</div>
-        <div id="uploadName" class="muted"></div>
+  <!-- Overlay status umum -->
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet" role="document">
+      <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+
+      <div class="icon spinner" id="ovIcon"></div>
+      <div class="texts">
+        <div class="title" id="ovTitle">Mengunggah foto…</div>
+        <div class="desc" id="ovDesc">Mohon tunggu sebentar</div>
       </div>
     </div>
-
-    <!-- Kegiatan -->
-    <div class="field">
-      <label for="activity">Kegiatan</label>
-      <textarea id="activity" rows="3" placeholder="Tuliskan kegiatan…"></textarea>
-    </div>
-
-    <button id="submitBtn" class="btn primary" type="button" disabled>✅ Kirim Data</button>
-  </section>
-
-  <!-- JUDUL DI LUAR CARD -->
-  <h2 class="section-title">Isi Logbook</h2>
-
-  <!-- TABEL 2 KOLOM -->
-  <div class="table-wrap">
-    <table class="log-table" aria-label="Isi Logbook">
-      <colgroup>
-        <col class="col-time" />
-        <col class="col-activity" />
-      </colgroup>
-      <thead>
-        <tr>
-          <th>Waktu</th>
-          <th>Kegiatan</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
   </div>
-</main>
 
-<!-- Overlay status umum -->
-<div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
-  <div class="sheet" role="document">
-    <!-- X icon-only -->
-    <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
-      </svg>
-    </button>
-
-    <div class="icon spinner" id="ovIcon"></div>
-    <div class="texts">
-      <div class="title" id="ovTitle">Mengunggah foto…</div>
-      <div class="desc" id="ovDesc">Mohon tunggu sebentar</div>
+  <!-- Modal Time Picker (wheel) -->
+  <div id="timeModal" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="time-sheet">
+      <div class="time-header">
+        <button type="button" class="t-btn t-cancel">Batal</button>
+        <div class="t-title">Pilih Waktu</div>
+        <button type="button" class="t-btn t-save">Simpan</button>
+      </div>
+      <div class="wheels">
+        <div class="wheel" id="wheelHour"></div>
+        <div class="sep">:</div>
+        <div class="wheel" id="wheelMin"></div>
+        <div class="picker-highlight"></div>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Modal Time Picker (wheel) -->
-<div id="timeModal" class="overlay hidden" role="dialog" aria-modal="true">
-  <div class="time-sheet">
-    <div class="time-header">
-      <button type="button" class="t-btn t-cancel">Batal</button>
-      <div class="t-title">Pilih Waktu</div>
-      <button type="button" class="t-btn t-save">Simpan</button>
-    </div>
-    <div class="wheels">
-      <div class="wheel" id="wheelHour"></div>
-      <div class="sep">:</div>
-      <div class="wheel" id="wheelMin"></div>
-      <div class="picker-highlight"></div>
+  <!-- Modal Foto -->
+  <div id="photoModal" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="photo-sheet">
+      <button class="icon-x" id="photoClose" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <img id="photoImg" alt="Foto logbook" />
     </div>
   </div>
-</div>
 
-<!-- Modal Foto -->
-<div id="photoModal" class="overlay hidden" role="dialog" aria-modal="true">
-  <div class="photo-sheet">
-    <button class="icon-x" id="photoClose" aria-label="Tutup">
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
-      </svg>
-    </button>
-    <img id="photoImg" alt="Foto logbook" />
-  </div>
-</div>
-
-<!-- Action Sheet (long-press) -->
-<div id="actSheet" class="overlay hidden" role="dialog" aria-modal="true">
-  <div class="sheet-mini" role="document">
-    <button id="actClose" class="icon-x" type="button" aria-label="Tutup">
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
-      </svg>
-    </button>
-    <div class="sheet-title">Aksi</div>
-    <div class="sheet-actions">
-      <button id="actEdit"   class="t-btn">✏️ Edit</button>
-      <button id="actDelete" class="t-btn danger">🗑 Hapus</button>
+  <!-- Action Sheet (long-press) -->
+  <div id="actSheet" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="sheet-mini" role="document">
+      <button id="actClose" class="icon-x" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="sheet-title">Aksi</div>
+      <div class="sheet-actions">
+        <button id="actEdit"   class="t-btn">✏️ Edit</button>
+        <button id="actDelete" class="t-btn danger">🗑 Hapus</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Confirm Dialog (reusable, untuk hapus dsb) -->
-<div id="confirmDlg" class="overlay hidden" role="dialog" aria-modal="true">
-  <div class="dialog" role="document" aria-labelledby="confirmTitle">
-    <button class="icon-x" id="confirmX" aria-label="Tutup">
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
-      </svg>
-    </button>
-    <div class="dialog-title" id="confirmTitle">Hapus entri ini?</div>
-    <div class="dialog-actions">
-      <button class="btn ghost" id="confirmCancel">Batal</button>
-      <button class="btn danger" id="confirmOk">Hapus</button>
+  <!-- Confirm Dialog (reusable) -->
+  <div id="confirmDlg" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="dialog" role="document" aria-labelledby="confirmTitle">
+      <button class="icon-x" id="confirmX" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="dialog-title" id="confirmTitle">Hapus entri ini?</div>
+      <div class="dialog-actions">
+        <button class="btn ghost" id="confirmCancel">Batal</button>
+        <button class="btn danger" id="confirmOk">Hapus</button>
+      </div>
     </div>
   </div>
-</div>
 
-<script type="module" src="lb_all.js"></script>
+  <!-- Script utama -->
+  <script type="module" src="lb_all.js"></script>
 </body>
 </html>
