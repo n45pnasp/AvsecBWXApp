@@ -2,17 +2,15 @@
 const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // 🔒 JANGAN UBAH TANPA PERMINTAAN
 const SHARED_TOKEN = "N45p";                                    // 🔒 JANGAN UBAH TANPA PERMINTAAN
 
-/* ===== PETA TARGET =====
-   key = param ?target=...
-*/
+/* ===== PETA TARGET ===== (key = ?target=...) */
 const TARGETS = {
-  cctv:    { label: "LB CCTV"    },
-  pscp:    { label: "LB PSCP"    },
-  hbscp:   { label: "LB HBSCP"   },
+  cctv:    { label: "LB CCTV" },
+  pscp:    { label: "LB PSCP" },
+  hbscp:   { label: "LB HBSCP" },
   arrival: { label: "LB Arrival" },
   pos1:    { label: "LB Pos 1 & Patroli" },
-  cargo:   { label: "LB Cargo"   },
-  malam:   { label: "LB Malam"   },
+  cargo:   { label: "LB Cargo" },
+  malam:   { label: "LB Malam" },
 };
 
 /* ===== UTIL TARGET ===== */
@@ -20,52 +18,45 @@ function getTarget() {
   const u = new URL(location.href);
   let t = (u.searchParams.get("target") || "").toLowerCase().trim();
   if (t && TARGETS[t]) {
-    try { localStorage.setItem("lb_target", t); } catch(_){}
+    try { localStorage.setItem("lb_target", t); } catch(_) {}
     return t;
   }
   try {
     const saved = (localStorage.getItem("lb_target") || "").toLowerCase().trim();
     if (saved && TARGETS[saved]) return saved;
-  } catch(_){}
+  } catch(_) {}
   return "cctv"; // default
 }
-function getTargetLabel(t) { return (TARGETS[t]?.label) || t.toUpperCase(); }
+function getTargetLabel(t){ return (TARGETS[t]?.label) || t.toUpperCase(); }
 function getHeaderTitle(t){
-  // "LB PSCP" → "PSCP", lalu "LOGBOOK PSCP"
-  const lbl  = getTargetLabel(t);
-  const core = lbl.replace(/^LB\s*/i, "");
+  const lbl  = getTargetLabel(t);         // e.g. "LB PSCP"
+  const core = lbl.replace(/^LB\s*/i,""); // → "PSCP"
   return `LOGBOOK ${core.toUpperCase()}`;
 }
 
-/* ===== KOMpresi GAMBAR (opsi) ===== */
-const COMPRESS_CFG = {
-  MAX_LONG_EDGE: 800,
-  MIN_SHRINK_RATIO: 0.5,
-};
+/* ===== KOMPRESI GAMBAR (opsi) ===== */
+const COMPRESS_CFG = { MAX_LONG_EDGE: 800, MIN_SHRINK_RATIO: 0.5 };
 
 /* ===== DOM ===== */
-const timeInput   = document.getElementById("timeInput");
-const timeLabel   = document.getElementById("timeLabel");
-const timeBtn     = document.getElementById("timeBtn");
-
-const pickPhoto   = document.getElementById("pickPhotoBtn");
-const fileInput   = document.getElementById("fileInput");
-const preview     = document.getElementById("preview");
-const uploadInfo  = document.getElementById("uploadInfo");
-const uploadName  = document.getElementById("uploadName");
-const uploadStatus= document.getElementById("uploadStatus");
-const submitBtn   = document.getElementById("submitBtn");
-const activityEl  = document.getElementById("activity");
-const rowsTbody   = document.getElementById("rows");
-
-/* Optional label target di UI (jika ada elemen-nya) */
-const targetLabelEl = document.getElementById("targetLabel");
+const timeInput    = document.getElementById("timeInput");
+const timeLabel    = document.getElementById("timeLabel");
+const timeBtn      = document.getElementById("timeBtn");
+const pickPhoto    = document.getElementById("pickPhotoBtn");
+const fileInput    = document.getElementById("fileInput");
+const preview      = document.getElementById("preview");
+const uploadInfo   = document.getElementById("uploadInfo");
+const uploadName   = document.getElementById("uploadName");
+const uploadStatus = document.getElementById("uploadStatus");
+const submitBtn    = document.getElementById("submitBtn");
+const activityEl   = document.getElementById("activity");
+const rowsTbody    = document.getElementById("rows");
+const targetLabelEl= document.getElementById("targetLabel"); // optional
 
 /* ===== STATE ===== */
-let uploaded   = null;  // {fileId, url, name} (saat tambah)
-let uploading  = false;
-let editingId  = null;  // id baris saat edit
-const TARGET   = getTarget();
+let uploaded  = null;   // {fileId, url, name}
+let uploading = false;
+let editingId = null;
+const TARGET  = getTarget();
 
 /* ===== UTIL ===== */
 const pad2  = (n)=> String(n).padStart(2,"0");
@@ -83,7 +74,7 @@ function fmtTimeWIB(s){
     try{
       const str = new Intl.DateTimeFormat("id-ID",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Asia/Jakarta"}).format(d);
       return `${str} WIB`;
-    }catch(_){
+    }catch{
       return `${pad2(d.getHours())}:${pad2(d.getMinutes())} WIB`;
     }
   }
@@ -105,16 +96,16 @@ function showOverlay(state, title, desc){
   if (state !== "loading") setTimeout(() => overlay.classList.add("hidden"), 1200);
 }
 
-/* ===== MINI CONFIRM DIALOG (tanpa popup browser) – v2 ===== */
-function askConfirm(message = "Yakin?", { okText = "Hapus", cancelText = "Batal" } = {}) {
+/* ===== Mini Confirm Dialog ===== */
+function askConfirm(message="Yakin?", { okText="Hapus", cancelText="Batal" } = {}){
   return new Promise(resolve => {
     let modal = document.getElementById("jsConfirm");
     if (!modal) {
       modal = document.createElement("div");
       modal.id = "jsConfirm";
       modal.className = "hidden";
-      modal.setAttribute("role", "dialog");
-      modal.setAttribute("aria-modal", "true");
+      modal.setAttribute("role","dialog");
+      modal.setAttribute("aria-modal","true");
       modal.innerHTML = `
         <div class="jsc-backdrop"></div>
         <div class="jsc-card">
@@ -124,38 +115,27 @@ function askConfirm(message = "Yakin?", { okText = "Hapus", cancelText = "Batal"
             <button class="jsc-cancel" type="button"></button>
             <button class="jsc-ok" type="button"></button>
           </div>
-        </div>
-      `;
+        </div>`;
       const css = document.createElement("style");
       css.textContent = `
         #jsConfirm{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999}
         #jsConfirm.hidden{display:none}
         #jsConfirm .jsc-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:saturate(120%) blur(2px)}
-        #jsConfirm .jsc-card{position:relative;max-width:360px;width:90%;background:#0f172a;color:#e5e7eb;
-          border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:18px 16px 14px}
+        #jsConfirm .jsc-card{position:relative;max-width:360px;width:90%;background:#0f172a;color:#e5e7eb;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:18px 16px 14px}
         #jsConfirm .jsc-msg{font-size:14px;line-height:1.5;margin:4px 6px 12px;white-space:pre-wrap}
         #jsConfirm .jsc-actions{display:flex;gap:8px;justify-content:flex-end;padding:0 6px}
         #jsConfirm button{appearance:none;border:0;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer}
         #jsConfirm .jsc-cancel{background:#374151;color:#e5e7eb}
         #jsConfirm .jsc-ok{background:#ef4444;color:white}
         #jsConfirm button:active{transform:translateY(1px)}
-        #jsConfirm .jsc-x{
-          position:absolute;top:8px;right:8px;width:32px;height:32px;line-height:28px;
-          border-radius:999px;background:#111827;color:#e5e7eb;font-size:20px;font-weight:600;
-          display:inline-flex;align-items:center;justify-content:center;cursor:pointer
-        }
+        #jsConfirm .jsc-x{position:absolute;top:8px;right:8px;width:32px;height:32px;line-height:28px;border-radius:999px;background:#111827;color:#e5e7eb;font-size:20px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
         #jsConfirm .jsc-x:active{transform:scale(.98)}
-        #jsConfirm, #jsConfirm *{
-          -webkit-user-select:none; user-select:none;
-          -webkit-touch-callout:none;
-          -webkit-tap-highlight-color: transparent;
-        }
+        #jsConfirm, #jsConfirm *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
       `;
       document.head.appendChild(css);
       document.body.appendChild(modal);
       modal.addEventListener("contextmenu", e => e.preventDefault());
     }
-
     const msgEl = modal.querySelector(".jsc-msg");
     const okBtn = modal.querySelector(".jsc-ok");
     const noBtn = modal.querySelector(".jsc-cancel");
@@ -212,7 +192,6 @@ function exitEditMode(){
   activityEl.value = "";
   setModeEdit(false);
 }
-
 function setSubmitEnabled(){
   const timeOk = !!timeInput.value;
   const actOk  = !!activityEl.value.trim();
@@ -224,16 +203,12 @@ function setSubmitEnabled(){
 activityEl.addEventListener("input", setSubmitEnabled);
 
 /* ===== TIME PICKER (Wheel) ===== */
-const ITEM_H  = 36;
-const VISIBLE = 5;
-const SPACER  = ((VISIBLE-1)/2) * ITEM_H;
-
+const ITEM_H  = 36, VISIBLE = 5, SPACER = ((VISIBLE-1)/2) * ITEM_H;
 const timeModal = document.getElementById("timeModal");
 const wheelHour = document.getElementById("wheelHour");
 const wheelMin  = document.getElementById("wheelMin");
 const btnCancel = timeModal.querySelector(".t-cancel");
 const btnSave   = timeModal.querySelector(".t-save");
-
 let wheelsBuilt = false;
 
 function buildWheel(el, count){
@@ -270,13 +245,11 @@ function enableWheel(el, max){
     el.setPointerCapture(e.pointerId);
     clearTimeout(timer);
   });
-
   el.addEventListener("pointermove", (e)=>{
     if (!dragging) return;
     const next = startTop + (e.clientY - startY);
     el.scrollTop = clamp(next, 0, SPACER + max*ITEM_H + SPACER);
   });
-
   function endDrag(){
     if (!dragging) return;
     dragging = false;
@@ -287,7 +260,6 @@ function enableWheel(el, max){
   el.addEventListener("pointerup", endDrag);
   el.addEventListener("pointercancel", endDrag);
   el.addEventListener("pointerleave", endDrag);
-
   el.addEventListener("scroll", ()=>{
     if (isSnapping) return;
     clearTimeout(timer);
@@ -297,7 +269,6 @@ function enableWheel(el, max){
       requestAnimationFrame(()=>{ isSnapping = false; });
     }, 140);
   }, {passive:true});
-
   el.addEventListener("click", (e)=>{
     const it = e.target.closest(".item"); if (!it) return;
     isSnapping = true;
@@ -351,7 +322,7 @@ function forceGalleryPicker(){
   try{
     fileInput.setAttribute("accept","image/*");
     fileInput.removeAttribute("capture");
-  }catch(_){}
+  }catch{}
 }
 
 /* ====== PNG + KOMPRES ====== */
@@ -369,7 +340,7 @@ function stepDownScale(srcCanvas, targetW, targetH){
   }
   if (sW !== targetW || sH !== targetH){
     const fCan = document.createElement("canvas");
-    fCan.width = Math.max(1, Math.round(targetW));
+    fCan.width  = Math.max(1, Math.round(targetW));
     fCan.height = Math.max(1, Math.round(targetH));
     const fCtx = fCan.getContext("2d");
     fCtx.drawImage(sCan, 0, 0, sW, sH, 0, 0, fCan.width, fCan.height);
@@ -432,13 +403,12 @@ async function normalizeToPNG(file) {
 
   try { if ('close' in source) source.close(); } catch {}
   if (revokeUrl) { try { URL.revokeObjectURL(revokeUrl); } catch {} }
-
   return pngBlob;
 }
 async function fileToBase64(file){
   return new Promise((resolve, reject) => {
     const r = new FileReader();
-    r.onload = () => resolve(r.result);
+    r.onload  = () => resolve(r.result);
     r.onerror = reject;
     r.readAsDataURL(file);
   });
@@ -463,7 +433,7 @@ pickPhoto.addEventListener("click", async () => {
       fileInput.dispatchEvent(new Event("change", { bubbles: true }));
       return;
     }
-  }catch(_){}
+  }catch{}
 
   fileInput.click();
 });
@@ -481,15 +451,12 @@ fileInput.addEventListener("change", async (ev) => {
     uploading = true; setSubmitEnabled();
     showOverlay("loading", "Mengunggah foto…", `Target: ${getTargetLabel(TARGET)}`);
 
-    // === PNG + KOMPRES ===
     const pngBlob = await normalizeToPNG(file);
     const pngName = (file.name.replace(/\.[^.]+$/,"") || "photo") + ".png";
 
-    // Preview gunakan hasil kompres (PNG)
     const objectUrl = URL.createObjectURL(pngBlob);
     preview.src = objectUrl;
 
-    // Upload base64 PNG → action: upload (tanpa target, karena upload hanya ke Drive)
     const base64 = await fileToBase64(pngBlob);
     const payload = { token: SHARED_TOKEN, action: "upload", filename: pngName, mimeType: "image/png", dataUrl: base64 };
 
@@ -625,9 +592,7 @@ function toImageUrl(url, fileId){
 
 /* ===== TAP = lihat foto, LONG-PRESS = Edit/Hapus ===== */
 const LONG_MS = 550;
-let pressTimer = null;
-let longFired  = false;
-
+let pressTimer = null, longFired = false;
 const actSheet  = document.getElementById("actSheet");
 const actEdit   = document.getElementById("actEdit");
 const actDelete = document.getElementById("actDelete");
@@ -653,7 +618,6 @@ actEdit.addEventListener("click", () => {
   enterEditMode(id, t, act);
   closeActionSheet();
 });
-
 actDelete.addEventListener("click", async () => {
   if(!sheetTarget) return;
   const id = sheetTarget.dataset.id;
@@ -679,7 +643,7 @@ actDelete.addEventListener("click", async () => {
   }
 });
 
-/* deteksi long-press pada baris */
+/* Long-press handler */
 rowsTbody.addEventListener("pointerdown", (e)=>{
   const tr = e.target.closest("tr[data-id]");
   if (!tr) return;
@@ -749,15 +713,14 @@ function closePhoto(){
 
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
-  // label kecil opsional di UI
   if (targetLabelEl) targetLabelEl.textContent = getTargetLabel(TARGET);
 
-  // ====== SET HEADER & TAB TITLE SESUAI TARGET ======
-  const headerEl = document.getElementById("headerTitle")
-                 || document.querySelector(".appbar-title")
+  // Set judul header + tab title sesuai target
+  const headerEl = document.getElementById("appTitle")
+                 || document.querySelector(".app-title")
                  || document.querySelector("header h1");
   if (headerEl) headerEl.textContent = getHeaderTitle(TARGET);
-  try { document.title = getHeaderTitle(TARGET); } catch(_) {}
+  try { document.title = getHeaderTitle(TARGET); } catch {}
 
   timeLabel.textContent = "Pilih Waktu";
   setModeEdit(false);
