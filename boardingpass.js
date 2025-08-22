@@ -1,5 +1,5 @@
 /***** =======================================================
- * BOARDING SCAN (final, no Kodular)
+ * BOARDING SCAN (final + overlay: close button & target box)
  * ======================================================= */
 
 /* =======================
@@ -133,10 +133,11 @@ let scanState = {
   canvas: null,
   ctx: null,
   running: false,
-  stopLoop: null,
   usingDetector: false,
   detector: null,
   jsQRReady: false,
+  overlay: null,
+  closeBtn: null,
 };
 
 injectScanStyles();
@@ -156,16 +157,17 @@ async function startScan(){
     setWaitingUI(true);
     parsedOutput.textContent = 'Mengaktifkan kamera…';
 
-    // Siapkan elemen video + overlay
-    ensureVideo();
+    ensureVideo();      // siapkan elemen <video>
+    ensureOverlay();    // siapkan overlay (close + target box)
 
-    // Minta kamera belakang bila ada
+    // Tampilkan UI kamera lebih awal agar iOS nyaman play()
+    document.body.classList.add('scan-active');
+
     const constraints = {
       video: {
         facingMode: { ideal: "environment" },
         width: { ideal: 1280 },
         height: { ideal: 720 },
-        // beberapa device support continuous focus via advanced
         advanced: [{ focusMode: "continuous" }]
       },
       audio: false
@@ -175,8 +177,7 @@ async function startScan(){
     scanState.stream = stream;
     scanState.video.srcObject = stream;
 
-    // iOS Safari butuh playsinline + play() setelah user gesture
-    await scanState.video.play();
+    await scanState.video.play(); // iOS perlu user gesture
 
     // Cek dukungan BarcodeDetector + format
     scanState.usingDetector = false;
@@ -194,14 +195,11 @@ async function startScan(){
     }
 
     scanState.running = true;
-    document.body.classList.add('scan-active');
 
     if (scanState.usingDetector){
-      parsedOutput.textContent = 'Memindai… (deteksi native)';
       detectLoop_BarcodeDetector();
     }else{
-      parsedOutput.textContent = 'Memindai… (fallback QR)';
-      await ensureJsQR(); // hanya QR
+      await ensureJsQR(); // fallback QR
       prepareCanvas();
       detectLoop_jsQR();
     }
@@ -209,15 +207,13 @@ async function startScan(){
     console.error(err);
     parsedOutput.textContent = '❌ Tidak bisa mengakses kamera. Izinkan kamera di browser.';
     setWaitingUI(false);
-    await stopScan(); // pastikan bersih
+    await stopScan();
   }
 }
 
 async function stopScan(){
-  // hentikan loop
   scanState.running = false;
 
-  // hentikan track kamera
   if (scanState.stream){
     for (const t of scanState.stream.getTracks()){
       try { t.stop(); } catch(_) {}
@@ -225,34 +221,50 @@ async function stopScan(){
   }
   scanState.stream = null;
 
-  // bersihkan video
   if (scanState.video){
     scanState.video.srcObject = null;
-    scanState.video.remove(); // buang dari DOM
+    scanState.video.remove();
     scanState.video = null;
   }
-
-  // bersihkan canvas
   if (scanState.canvas){
     scanState.canvas.remove();
     scanState.canvas = null;
     scanState.ctx = null;
   }
 
-  document.body.classList.remove('scan-active');
+  document.body.classList.remove('scan-active'); // kembali ke halaman
   setWaitingUI(false);
 }
 
 function ensureVideo(){
   if (scanState.video) return;
   const v = document.createElement('video');
-  v.setAttribute('playsinline','');
+  v.setAttribute('playsinline',''); // penting utk iOS
   v.muted = true;
   v.autoplay = true;
   v.id = 'scan-video';
-  // dibikin transparan tapi tetap di-DOM (iOS memerlukan elemen ada)
   document.body.appendChild(v);
   scanState.video = v;
+}
+
+function ensureOverlay(){
+  if (scanState.overlay) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'scan-overlay';
+  overlay.innerHTML = `
+    <div class="scan-topbar">
+      <button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button>
+    </div>
+    <div class="scan-reticle" aria-hidden="true"></div>
+    <div class="scan-hint">Arahkan ke barcode / QR</div>
+  `;
+  document.body.appendChild(overlay);
+  scanState.overlay = overlay;
+  scanState.closeBtn = overlay.querySelector('#scan-close');
+  scanState.closeBtn.addEventListener('click', async (e) => {
+    e.preventDefault(); e.stopPropagation();
+    await stopScan();
+  });
 }
 
 function prepareCanvas(){
@@ -261,7 +273,7 @@ function prepareCanvas(){
   c.id = 'scan-canvas';
   c.width  = 640;
   c.height = 480;
-  document.body.appendChild(c); // tersembunyi via CSS
+  document.body.appendChild(c);
   scanState.canvas = c;
   scanState.ctx = c.getContext('2d', { willReadFrequently: true });
 }
@@ -281,19 +293,17 @@ async function ensureJsQR(){
 function detectLoop_BarcodeDetector(){
   const loop = async () => {
     if (!scanState.running || !scanState.video) return;
-
     try{
       const barcodes = await scanState.detector.detect(scanState.video);
       if (barcodes && barcodes.length){
         const value = (barcodes[0].rawValue || '').trim();
         if (value){
           await handleScanSuccess(value);
-          return; // stop loop setelah sukses
+          return;
         }
       }
     }catch(e){
       console.warn('Detector error:', e);
-      // jika detektor gagal terus, fallback ke jsQR (QR only)
       if (!scanState.canvas){
         try{
           await ensureJsQR();
@@ -304,7 +314,6 @@ function detectLoop_BarcodeDetector(){
         }catch(_) {}
       }
     }
-
     if (scanState.running) requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
@@ -313,20 +322,16 @@ function detectLoop_BarcodeDetector(){
 function detectLoop_jsQR(){
   const loop = () => {
     if (!scanState.running || !scanState.video) return;
-
     const vid = scanState.video;
     const cw = scanState.canvas.width  = vid.videoWidth  || 640;
     const ch = scanState.canvas.height = vid.videoHeight || 480;
-
     scanState.ctx.drawImage(vid, 0, 0, cw, ch);
     const img = scanState.ctx.getImageData(0, 0, cw, ch);
-    // jsQR global dari CDN
     const result = window.jsQR ? window.jsQR(img.data, cw, ch, { inversionAttempts: 'dontInvert' }) : null;
     if (result && result.data){
       handleScanSuccess(result.data);
-      return; // stop loop setelah sukses
+      return;
     }
-
     if (scanState.running) requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
@@ -334,12 +339,9 @@ function detectLoop_jsQR(){
 
 async function handleScanSuccess(raw){
   try{
-    // Matikan kamera lebih dulu, baru olah data
-    await stopScan();
-
-    // Proses hasil
+    await stopScan(); // matikan kamera dulu
     const parsed = parseBoardingPass(raw);
-    parsedOutput.innerHTML = parsed;
+    parsedOutput.innerHTML = parsed;   // hasil tampil setelah kembali
     saveScanToHistory(parsed);
     playBeepTwice();
   }catch(e){
@@ -349,7 +351,7 @@ async function handleScanSuccess(raw){
 }
 
 /* =======================
-   Public: bisa dipakai library lain
+   Public helper (opsional)
 ======================= */
 function receiveBarcode(payload){
   try{
@@ -376,7 +378,7 @@ function receiveBarcode(payload){
 window.receiveBarcode = receiveBarcode;
 
 /* =======================
-   Opsional: dukung ?barcode= untuk tes cepat
+   Opsional: ?barcode= untuk tes cepat
 ======================= */
 (function(){
   const b = new URLSearchParams(location.search).get('barcode');
@@ -384,21 +386,89 @@ window.receiveBarcode = receiveBarcode;
 })();
 
 /* =======================
-   Styles (disuntikkan)
+   Styles (disuntikkan) — overlay + target box
 ======================= */
 function injectScanStyles(){
   if (document.getElementById('scan-style')) return;
   const css = `
-    .is-waiting { opacity: .7; pointer-events:none }
-    #scan-video, #scan-canvas {
-      position: fixed; inset: 0;
-      width: 1px; height: 1px;
-      opacity: 0; pointer-events: none; z-index: -1;
+    .is-waiting { opacity:.7; pointer-events:none }
+
+    /* Saat scan aktif: sembunyikan konten halaman, tampilkan kamera */
+    body.scan-active{ background:#000; overscroll-behavior:contain; }
+    body.scan-active .app-bar,
+    body.scan-active .container { display:none !important; }
+
+    /* Video full-screen */
+    #scan-video, #scan-canvas{
+      position:fixed; inset:0;
+      width:100vw; height:100vh;
+      display:none; background:#000; z-index:9998;
     }
-    body.scan-active { cursor: progress; }
+    body.scan-active #scan-video{
+      display:block;
+      object-fit:cover;
+      transform:none;
+      touch-action:none;
+    }
+    body.scan-active #scan-canvas{ display:none; }
+
+    /* Overlay UI di atas video */
+    #scan-overlay{
+      position:fixed; inset:0; display:none; z-index:10000; pointer-events:none;
+    }
+    body.scan-active #scan-overlay{ display:block; }
+
+    .scan-topbar{
+      position:absolute; top:0; left:0; right:0; height:max(56px, calc(44px + env(safe-area-inset-top,0)));
+      display:flex; align-items:flex-start; justify-content:flex-end;
+      padding: calc(env(safe-area-inset-top,0) + 6px) 10px 8px;
+      background:linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,0));
+      pointer-events:none;
+    }
+    .scan-close{
+      pointer-events:auto;
+      width:42px; height:42px; border-radius:999px;
+      background:rgba(0,0,0,.55); color:#fff;
+      border:1px solid rgba(255,255,255,.25);
+      font-size:22px; line-height:1; display:flex; align-items:center; justify-content:center;
+      box-shadow:0 4px 12px rgba(0,0,0,.35);
+      transition: transform .08s ease, filter .15s ease;
+    }
+    .scan-close:active{ transform:scale(.96); }
+    .scan-close:focus-visible{ outline:2px solid rgba(255,255,255,.6); outline-offset:2px; }
+
+    /* Kotak target (reticle) di tengah */
+    .scan-reticle{
+      position:absolute; top:50%; left:50%;
+      width:min(68vw, 520px); aspect-ratio:1/1;
+      transform:translate(-50%, -50%);
+      border-radius:16px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,.28) inset;
+      pointer-events:none;
+      /* sudut-sudut (4 corner) */
+      background:
+        linear-gradient(#fff,#fff) left top / 28px 2px no-repeat,
+        linear-gradient(#fff,#fff) left top / 2px 28px no-repeat,
+        linear-gradient(#fff,#fff) right top / 28px 2px no-repeat,
+        linear-gradient(#fff,#fff) right top / 2px 28px no-repeat,
+        linear-gradient(#fff,#fff) left bottom / 28px 2px no-repeat,
+        linear-gradient(#fff,#fff) left bottom / 2px 28px no-repeat,
+        linear-gradient(#fff,#fff) right bottom / 28px 2px no-repeat,
+        linear-gradient(#fff,#fff) right bottom / 2px 28px no-repeat;
+      outline: 2px dashed rgba(255,255,255,.0); /* pegangan untuk aksesibilitas */
+    }
+
+    .scan-hint{
+      position:absolute; left:50%; bottom:max(18px, calc(16px + env(safe-area-inset-bottom,0)));
+      transform:translateX(-50%);
+      background:rgba(0,0,0,.55); color:#fff; font-weight:600;
+      padding:8px 12px; border-radius:999px;
+      letter-spacing:.2px; pointer-events:none;
+      box-shadow:0 4px 12px rgba(0,0,0,.35);
+    }
   `;
   const style = document.createElement('style');
   style.id = 'scan-style';
   style.textContent = css;
   document.head.appendChild(style);
-                                                             }
+}
