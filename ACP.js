@@ -1,4 +1,5 @@
 import { requireAuth } from "./auth-guard.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 const SCRIPT_URL   = "https://logacp.avsecbwx2018.workers.dev/";
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbwqJHoJjXpYCv2UstclVG_vHf5czAxDUfWmsSo6H4lcy3HgGZYSn7g1yAzbb8UFJHtrxw/exec";
@@ -18,6 +19,12 @@ const supervisor = document.getElementById("supervisor");
 const submitBtn  = document.getElementById("submitBtn");
 const scanBtn    = document.getElementById("scanBtn");
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
+
+const auth = getAuth();
+onAuthStateChanged(auth, (user) => {
+  const name = user?.displayName?.trim() || (user?.email ? user.email.split("@")[0] : "");
+  pemeriksa.value = name;
+});
 
 submitBtn.addEventListener("click", onSubmit);
 if (scanBtn) scanBtn.addEventListener("click", () => {
@@ -53,7 +60,7 @@ async function onSubmit(){
     const j = await res.json();
     if (!j || (!j.success && !j.ok)) throw new Error(j?.error || "Gagal mengirim");
     alert("Data berhasil dikirim");
-    [nama, kodePas, instansi, prohibited, lokasi, jamMasuk, jamKeluar, pemeriksa, supervisor].forEach(el => el.value = "");
+    [nama, kodePas, instansi, prohibited, lokasi, jamMasuk, jamKeluar, supervisor].forEach(el => el.value = "");
   } catch(err){
     alert("Gagal: " + (err?.message || err));
   } finally {
@@ -240,19 +247,23 @@ async function handleScanSuccess(raw){
 
 async function receiveBarcode(code){
   try{
+    jamMasuk.value = new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Jakarta'
+    }).format(new Date());
     const url = `${LOOKUP_URL}?token=${SHARED_TOKEN}&key=${encodeURIComponent(code)}`;
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
-      nama.value       = j.columns.B || '';
-      kodePas.value    = j.columns.C || '';
-      instansi.value   = j.columns.D || '';
-      prohibited.value = j.columns.E || '';
-      lokasi.value     = j.columns.F || '';
-      jamMasuk.value   = j.columns.G || '';
-      jamKeluar.value  = j.columns.H || '';
-      pemeriksa.value  = j.columns.I || '';
-      supervisor.value = j.columns.J || '';
+      nama.value     = j.columns.B || '';
+      kodePas.value  = decodeB64(j.columns.D || '');
+      instansi.value = j.columns.E || '';
+      prohibited.value = '';
+      lokasi.value     = '';
+      jamKeluar.value  = '';
+      supervisor.value = '';
     } else {
       alert(j?.error || 'Data tidak ditemukan');
     }
@@ -262,3 +273,11 @@ async function receiveBarcode(code){
 }
 
 window.receiveBarcode = receiveBarcode;
+
+function decodeB64(str){
+  try{
+    return atob(str);
+  }catch(_){
+    return str;
+  }
+}
