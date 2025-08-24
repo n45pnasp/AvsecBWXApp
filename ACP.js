@@ -1,6 +1,8 @@
 import { requireAuth } from "./auth-guard.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 const SCRIPT_URL   = "https://logacp.avsecbwx2018.workers.dev/";
+const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbwqJHoJjXpYCv2UstclVG_vHf5czAxDUfWmsSo6H4lcy3HgGZYSn7g1yAzbb8UFJHtrxw/exec";
 const SHARED_TOKEN = "N45p";
 
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
@@ -16,7 +18,30 @@ const pemeriksa  = document.getElementById("pemeriksa");
 const supervisor = document.getElementById("supervisor");
 const submitBtn  = document.getElementById("submitBtn");
 const scanBtn    = document.getElementById("scanBtn");
+const spinner    = document.getElementById("spinner");
+const modal      = document.getElementById("noPModal");
+const modalClose = document.getElementById("modalClose");
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
+
+const auth = getAuth();
+onAuthStateChanged(auth, (user) => {
+  const name = user?.displayName?.trim() || (user?.email ? user.email.split("@")[0] : "");
+  pemeriksa.value = name.toUpperCase();
+});
+
+pemeriksa.addEventListener("input", (e) => {
+  e.target.value = e.target.value.toUpperCase();
+});
+modalClose.addEventListener("click", () => modal.classList.add("hidden"));
+function showSpinner(){ spinner.classList.remove("hidden"); }
+function hideSpinner(){ spinner.classList.add("hidden"); }
+function clearInputs(){ [nama,kodePas,instansi,prohibited,lokasi,jamMasuk,jamKeluar,supervisor].forEach(el=>el.value=""); }
+kodePas.addEventListener("input", () => {
+  if (kodePas.value && !/P/i.test(kodePas.value)){
+    clearInputs();
+    modal.classList.remove("hidden");
+  }
+});
 
 submitBtn.addEventListener("click", onSubmit);
 if (scanBtn) scanBtn.addEventListener("click", () => {
@@ -27,41 +52,38 @@ if (scanBtn) scanBtn.addEventListener("click", () => {
   }
 });
 
-function fmtTimestamp() {
-  const d = new Date();
-  const pad = n => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
 async function onSubmit(){
-  const data = {
-    timestamp: fmtTimestamp(),
-    nama_lengkap: nama.value.trim(),
-    kode_pas: kodePas.value.trim(),
-    instansi: instansi.value.trim(),
-    prohibited_item: prohibited.value.trim(),
-    lokasi_acp: lokasi.value.trim(),
-    jam_masuk: jamMasuk.value.trim(),
-    jam_keluar: jamKeluar.value.trim(),
-    pemeriksa: pemeriksa.value.trim(),
-    supervisor: supervisor.value.trim()
+  const payload = {
+    token: SHARED_TOKEN,
+    row: [
+      nama.value.trim(),
+      kodePas.value.trim(),
+      instansi.value.trim(),
+      prohibited.value.trim(),
+      lokasi.value.trim(),
+      jamMasuk.value.trim(),
+      jamKeluar.value.trim(),
+      pemeriksa.value.trim(),
+      supervisor.value.trim()
+    ]
   };
-
   submitBtn.disabled = true;
+  showSpinner();
   try {
     const res = await fetch(SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "createAcp", token: SHARED_TOKEN, data })
+      body: JSON.stringify(payload)
     });
     const j = await res.json();
     if (!j || (!j.success && !j.ok)) throw new Error(j?.error || "Gagal mengirim");
     alert("Data berhasil dikirim");
-    [nama, kodePas, instansi, prohibited, lokasi, jamMasuk, jamKeluar, pemeriksa, supervisor].forEach(el => el.value = "");
+    clearInputs();
   } catch(err){
     alert("Gagal: " + (err?.message || err));
   } finally {
     submitBtn.disabled = false;
+    hideSpinner();
   }
 }
 
@@ -244,27 +266,35 @@ async function handleScanSuccess(raw){
 
 async function receiveBarcode(code){
   try{
-    const res = await fetch(SCRIPT_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'lookupAcp', token:SHARED_TOKEN, barcode:code })
-    });
+    showSpinner();
+    jamMasuk.value = new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Jakarta'
+    }).format(new Date());
+    const url = LOOKUP_URL + '?token=' + SHARED_TOKEN + '&key=' + encodeURIComponent(code);
+    const res = await fetch(url);
     const j = await res.json();
-    if (j && j.success && j.data){
-      nama.value       = j.data.nama_lengkap || '';
-      kodePas.value    = j.data.kode_pas || '';
-      instansi.value   = j.data.instansi || '';
-      prohibited.value = j.data.prohibited_item || '';
-      lokasi.value     = j.data.lokasi_acp || '';
-      jamMasuk.value   = j.data.jam_masuk || '';
-      jamKeluar.value  = j.data.jam_keluar || '';
-      pemeriksa.value  = j.data.pemeriksa || '';
-      supervisor.value = j.data.supervisor || '';
+    if (j && j.columns){
+      nama.value     = j.columns.B || '';
+      kodePas.value  = j.columns.D || '';
+      instansi.value = j.columns.E || '';
+      prohibited.value = '';
+      lokasi.value     = '';
+      jamKeluar.value  = '';
+      supervisor.value = '';
+      if (!/P/i.test(kodePas.value)){
+        clearInputs();
+        modal.classList.remove('hidden');
+      }
     } else {
       alert(j?.error || 'Data tidak ditemukan');
     }
   }catch(err){
     alert('Gagal mengambil data: ' + (err?.message || err));
+  } finally {
+    hideSpinner();
   }
 }
 
