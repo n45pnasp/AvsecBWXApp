@@ -88,8 +88,12 @@ input, textarea{
 .qr-btn img{ width:28px; height:28px; filter:invert(1); }
 .qr-btn small{ color:rgba(255,255,255,.85); font-weight:400; display:block; }
 
-/* Readonly text boxes */
-.readonly{ width:100%; background:#0b1324; color:var(--text); border:1px solid var(--border); border-radius:12px; padding:12px; }
+/* Info card untuk hasil scan */
+.info-card{ display:grid; gap:12px; }
+.info-field{ display:grid; gap:4px; padding:8px 0; border-bottom:1px solid var(--border); }
+.info-field:last-child{ border-bottom:none; padding-bottom:0; }
+.info-label{ font-size:var(--fs-sm); color:var(--muted); }
+.info-value{ font-weight:600; }
 
 .hidden{ display:none !important }
 /* ===== Modal & Spinner ===== */
