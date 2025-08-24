@@ -44,25 +44,6 @@ body{
   display: grid; gap: clamp(12px, 2.5vw, 18px);
   padding-top:8px;
 }
-
-/* ========== AKSI ATAS (baru) ========== */
-.top-actions{
-  display:flex; align-items:center; justify-content:space-between;
-  gap:12px; padding: 8px 4px;
-}
-.target-pill{
-  display:inline-flex; align-items:center; gap:8px;
-  padding:8px 12px; border:1px solid var(--border);
-  border-radius:999px; background:#0b1324; color:var(--text);
-  font-weight:600; letter-spacing:.2px;
-}
-.target-pill::before{
-  content:""; width:10px; height:10px; border-radius:999px;
-  background: linear-gradient(45deg, var(--accent), var(--accent-2));
-  box-shadow: 0 0 0 2px rgba(255,255,255,.06) inset;
-}
-
-/* ========== CARD, FORM, BUTTONS dsb ========== */
 .card{
   background: var(--card); border:1px solid var(--border);
   border-radius:16px; padding: clamp(12px, 2.4vw, 16px);
@@ -70,6 +51,7 @@ body{
 }
 .card-title{ font-weight:700; margin-bottom:12px; font-size: clamp(16px, 2vw, 20px) }
 
+/* ========== FORM BARIS ATAS ========== */
 .row-2{
   display:grid; grid-template-columns: 1fr 1fr;
   gap: clamp(8px, 2vw, 12px); margin-bottom:12px;
@@ -82,7 +64,7 @@ textarea, input[type="time"]{
   border:1px solid var(--border); border-radius:12px; padding:12px; font-size:var(--fs-base);
 }
 
-/* BUTTONS */
+/* ========== BUTTONS ========== */
 .btn, .btn-like{
   display:inline-flex; align-items:center; justify-content:center;
   background:#1f2937; color:#fff; border:1px solid var(--border);
@@ -94,8 +76,13 @@ textarea, input[type="time"]{
 .btn:active, .btn-like:active{ transform:translateY(1px) }
 .btn.primary{ background:#2563eb; border-color:#1e40af }
 .btn:disabled{ opacity:.55; cursor:not-allowed }
+
+/* Variasi untuk dialog */
 .btn.ghost{
   background:transparent; border-color:var(--border); color:var(--text);
+}
+.btn.danger{
+  background:#e53935; border-color:#cc2f2c;
 }
 
 /* Tombol waktu sebagai tombol; input time disembunyikan */
@@ -103,7 +90,7 @@ textarea, input[type="time"]{
 .btn-like input[type="time"]{ position:absolute; inset:0; opacity:0; pointer-events:none }
 #timeLabel{ pointer-events:none }
 
-/* PREVIEW UPLOAD */
+/* ========== PREVIEW UPLOAD ========== */
 .upload-info{
   display:flex; gap:12px; align-items:center; margin-bottom:8px;
   padding:8px; border:1px dashed var(--border); border-radius:12px;
@@ -114,7 +101,7 @@ textarea, input[type="time"]{
 }
 .muted{ color:var(--muted); font-size:var(--fs-sm) }
 
-/* TABEL 2 KOLOM */
+/* ========== TABEL 2 KOLOM ========== */
 .table-wrap{ overflow-x:auto }
 .log-table{
   width:100%; border-collapse:separate; border-spacing:0;
@@ -123,19 +110,24 @@ textarea, input[type="time"]{
 }
 .log-table .col-time{ width: 100px; }
 .log-table .col-activity{ width:auto; }
+
 .log-table th, .log-table td{
   padding:10px 12px; text-align:left; border-bottom:1px solid var(--border);
 }
 .log-table th{ background:#111827; white-space:nowrap }
 .log-table tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
-.log-table td:nth-child(2){ white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+
+.log-table td:nth-child(2){
+  white-space: normal; overflow-wrap: anywhere; word-break: break-word;
+}
 .log-table tbody tr{ cursor: pointer }
 
-/* OVERLAY / SHEET / ICON-X */
+/* ========== OVERLAY / SHEET / ICON-X ========== */
 .overlay{
   position:fixed; inset:0; display:grid; place-items:center;
   background:rgba(0,0,0,.45); backdrop-filter:blur(2px); z-index:9999;
 }
+
 .sheet{
   position: relative;
   display:grid; grid-template-columns:48px 1fr; align-items:center; gap:12px;
@@ -144,6 +136,8 @@ textarea, input[type="time"]{
   box-shadow:0 16px 40px rgba(0,0,0,.45);
   animation:pop .18s ease-out both;
 }
+
+/* Tombol X: ikon tanpa kotak */
 .icon-x{
   position:absolute; top:10px; right:10px;
   width:28px; height:28px; display:grid; place-items:center;
@@ -154,8 +148,13 @@ textarea, input[type="time"]{
 .icon-x:hover{ color:#fff; transform:scale(1.06) }
 .icon-x:active{ transform:scale(.94) }
 .icon-x svg{ display:block }
+
+/* Icon status */
 .icon{ width:42px; height:42px; border-radius:50%; position:relative }
-.icon.spinner{ border:5px solid rgba(255,255,255,.15); border-top-color:var(--accent); animation:spin .9s linear infinite }
+.icon.spinner{
+  border:5px solid rgba(255,255,255,.15); border-top-color:var(--accent);
+  animation:spin .9s linear infinite
+}
 .icon.ok{ background:rgba(34,197,94,.12); border:2px solid var(--ok) }
 .icon.ok::after{
   content:""; position:absolute; left:11px; top:8px; width:12px; height:20px;
@@ -164,10 +163,11 @@ textarea, input[type="time"]{
 .icon.err{ background:rgba(239,68,68,.12); border:2px solid var(--danger) }
 .icon.err::before,.icon.err::after{ content:""; position:absolute; left:19px; top:8px; width:4px; height:24px; background:var(--danger); border-radius:2px }
 .icon.err::after{ transform:rotate(90deg) }
+
 .texts .title{ font-weight:700; font-size: clamp(14px, 1.6vw, 16px); }
 .texts .desc{ color:var(--muted); font-size: clamp(12px, 1.4vw, 14px); }
 
-/* TIME PICKER (Wheel) */
+/* ========== TIME PICKER (Wheel) ========== */
 #timeModal.overlay{ z-index:10000 }
 .time-sheet{
   background:var(--card); border:1px solid var(--border); border-radius:16px;
@@ -205,14 +205,14 @@ textarea, input[type="time"]{
   height:36px; border:1px solid var(--accent-2); border-radius:10px;
 }
 
-/* PHOTO MODAL */
+/* ========== PHOTO MODAL ========== */
 .photo-sheet{
   position:relative; background:var(--card); border:1px solid var(--border); border-radius:16px;
   padding:10px; max-width:min(92vw, 720px); max-height:92vh; box-shadow:0 16px 40px rgba(0,0,0,.45);
 }
 .photo-sheet img{ display:block; max-width:100%; max-height:calc(92vh - 40px); border-radius:12px }
 
-/* ACTION SHEET */
+/* ========== ACTION SHEET (long-press) ========== */
 .sheet-mini{
   position:relative;
   background:var(--card); border:1px solid var(--border); border-radius:16px;
@@ -222,7 +222,7 @@ textarea, input[type="time"]{
 .sheet-title{ font-weight:700; padding-right:44px; }
 .sheet-actions{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
 
-/* CONFIRM DIALOG */
+/* ========== CONFIRM DIALOG (Batal / Hapus) ========== */
 .dialog{
   position:relative; width:min(420px, 92vw);
   background:var(--card); border:1px solid var(--border); border-radius:16px;
@@ -230,15 +230,17 @@ textarea, input[type="time"]{
   box-shadow:0 16px 40px rgba(0,0,0,.45); animation:pop .18s ease-out both;
 }
 .dialog-title{ font-weight:700; font-size: clamp(16px,2vw,18px); }
-.dialog-actions{ display:flex; justify-content:flex-end; gap:10px; }
+.dialog-actions{
+  display:flex; justify-content:flex-end; gap:10px;
+}
 
-/* UTIL & ANIMS */
+/* ========== UTIL & ANIMS ========== */
 .hidden{ display:none !important }
 .section-title{ margin:10px 0 8px; padding:0 2px; font-weight:700; font-size: clamp(16px, 2.1vw, 20px) }
 @keyframes spin{ to{ transform:rotate(360deg) } }
 @keyframes pop{ from{ transform:translateY(6px) scale(.98); opacity:0 } to{ transform:none; opacity:1 } }
 
-/* RESPONSIVE */
+/* ========== RESPONSIVE ========== */
 @media (max-width:560px){
   .app-title{ font-size: clamp(18px, 5vw, 20px) }
   .back-btn{ width: 40px; height: 40px; }
