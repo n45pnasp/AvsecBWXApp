@@ -183,7 +183,9 @@ async function onDownloadPdf(){
     const blob = await resp.blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${TARGET}.pdf`;
+    const now = new Date();
+    const dateStr = `${pad2(now.getDate())}-${pad2(now.getMonth() + 1)}-${now.getFullYear()}`;
+    a.download = `${TARGET}_${dateStr}.pdf`;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
