@@ -1,6 +1,6 @@
 import { requireAuth } from "./auth-guard.js";
 
-const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev";
+const SCRIPT_URL   = "https://logacp.avsecbwx2018.workers.dev/";
 const SHARED_TOKEN = "N45p";
 
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
