@@ -27,45 +27,24 @@ const auth = getAuth(app);
 
 /* ===== PETA TARGET ===== (key = ?target=...) */
 const TARGETS = {
-  cctv:    { label: "LB CCTV" },
-  pscp:    { label: "LB PSCP" },
-  hbscp:   { label: "LB HBSCP" },
-  arrival: { label: "LB Arrival" },
-  pos1:    { label: "LB Pos 1 & Patroli" },
-  cargo:   { label: "LB Cargo" },
-  malam:   { label: "LB Malam" },
+  LB_CCTV:    { label: "LB CCTV" },
+  LB_PSCP:    { label: "LB PSCP" },
+  LB_HBSCP:   { label: "LB HBSCP" },
+  LB_ARRIVAL: { label: "LB Arrival" },
+  LB_POS1:    { label: "LB Pos 1 & Patroli" },
+  LB_CARGO:   { label: "LB Cargo" },
+  LB_MALAM:   { label: "LB Malam" },
 };
 
 /* ===== INFO SHEET UNTUK DOWNLOAD PDF ===== */
 const SHEET_INFO = {
-  cctv: {
-    id: "1HLLEyF6EiLOSkdB1t8hdiD9u4re1pKRbxr05lChhWuI",
-    gid: "",
-  },
-  pscp: {
-    id: "1NiOsO1FLYgSfQGoIm4-xZ5CqdbI92OphU8ENsR1NXOI",
-    gid: "",
-  },
-  hbscp: {
-    id: "1JT-Yzu91MqXBN-lIHkD68lVyBIaffuVW2CFu19gYoOc",
-    gid: "",
-  },
-  arrival: {
-    id: "1zSJjGHiZeJP7QYwoiW-TRvbqVCBgghDgwmJYaOG3EYA",
-    gid: "",
-  },
-  pos1: {
-    id: "11J_ydWZGdG7jAVpVPWuMfluA3H7Z8pBIQLChZaS0BRg",
-    gid: "",
-  },
-  cargo: {
-    id: "1nfneesae64VWqcVbcgguMc2Gh2EceyLhbBr1LjOQ_2E",
-    gid: "",
-  },
-  malam: {
-    id: "1zf_rqCFVoi3AaQU-9Gb3l91striiQ5dWrD1JTyhdnZk",
-    gid: "",
-  },
+  LB_CCTV:    { id: "1HLLEyF6EiLOSkdB1t8hdiD9u4re1pKRbxr05lChhWuI", gid: "" },
+  LB_PSCP:    { id: "1NiOsO1FLYgSfQGoIm4-xZ5CqdbI92OphU8ENsR1NXOI", gid: "" },
+  LB_HBSCP:   { id: "1JT-Yzu91MqXBN-lIHkD68lVyBIaffuVW2CFu19gYoOc", gid: "" },
+  LB_ARRIVAL: { id: "1zSJjGHiZeJP7QYwoiW-TRvbqVCBgghDgwmJYaOG3EYA", gid: "" },
+  LB_POS1:    { id: "11J_ydWZGdG7jAVpVPWuMfluA3H7Z8pBIQLChZaS0BRg", gid: "" },
+  LB_CARGO:   { id: "1nfneesae64VWqcVbcgguMc2Gh2EceyLhbBr1LjOQ_2E", gid: "" },
+  LB_MALAM:   { id: "1zf_rqCFVoi3AaQU-9Gb3l91striiQ5dWrD1JTyhdnZk", gid: "" },
 };
 
 /* ===== UTIL DOWNLOAD PDF (Google Sheets) ===== */
@@ -89,18 +68,18 @@ function buildSheetPdfUrl(sheetId, gid, opts = {}) {
 /* ===== UTIL TARGET ===== */
 function getTarget() {
   const u = new URL(location.href);
-  let t = (u.searchParams.get("target") || "").toLowerCase().trim();
+  let t = (u.searchParams.get("target") || "").trim().toUpperCase();
   if (t && TARGETS[t]) {
     try { localStorage.setItem("lb_target", t); } catch(_) {}
     return t;
   }
   try {
-    const saved = (localStorage.getItem("lb_target") || "").toLowerCase().trim();
+    const saved = (localStorage.getItem("lb_target") || "").trim().toUpperCase();
     if (saved && TARGETS[saved]) return saved;
   } catch(_) {}
-  return "cctv"; // default
+  return "LB_CCTV"; // default
 }
-function getTargetLabel(t){ return (TARGETS[t]?.label) || t.toUpperCase(); }
+function getTargetLabel(t){ return (TARGETS[t]?.label) || t; }
 function getHeaderTitle(t){
   const lbl  = getTargetLabel(t);         // e.g. "LB PSCP"
   const core = lbl.replace(/^LB\s*/i,""); // → "PSCP"
