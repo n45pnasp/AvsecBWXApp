@@ -299,9 +299,13 @@ async function receiveBarcode(code){
     if (j && j.columns){
       const status = (j.columns.K || '').trim().toUpperCase();
       const rawKode = j.columns.D || '';
-      let decoded = '';
-      try { decoded = atob(rawKode); } catch(_) { decoded = rawKode; }
-      const kode = decoded.toUpperCase().trim();
+      let kode = rawKode;
+      try {
+        kode = decodeURIComponent(atob(rawKode));
+      } catch (_){
+        try { kode = atob(rawKode); } catch(__){ kode = rawKode; }
+      }
+      kode = kode.toUpperCase().trim();
 
       if (status === 'MATI'){
         const raw = j.columns.G || '';
@@ -319,7 +323,7 @@ async function receiveBarcode(code){
         showOverlay('stop','Kode PAS anda tidak memiliki daerah sisi udara, maka anda dilarang masuk!','');
       } else {
         nama.textContent     = (j.columns.B || '-').toUpperCase();
-        kodePas.textContent  = kode || '-';
+        kodePas.textContent  = (j.columns.D || '-').toUpperCase();
         instansi.textContent = (j.columns.E || '-').toUpperCase();
         prohibited.value = '';
         lokasi.value     = '';
