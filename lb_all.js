@@ -1,9 +1,29 @@
+// ==== Firebase SDK v9 (modular) ====
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
 /* ===== KONFIG ===== */
 const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // 🔒 JANGAN UBAH TANPA PERMINTAAN
 const SHARED_TOKEN = "N45p";                                    // 🔒 JANGAN UBAH TANPA PERMINTAAN
 
 // ========= Cloud Functions download PDF (endpoint) =========
 const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
+
+// ======== Konfigurasi Firebase (samakan dgn auth-guard.js) ========
+const firebaseConfig = {
+  apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
+  authDomain: "avsecbwx-4229c.firebaseapp.com",
+  projectId: "avsecbwx-4229c",
+  appId: "1:1029406629258:web:53e8f09585cd77823efc73",
+  storageBucket: "avsecbwx-4229c.appspot.com",
+  messagingSenderId: "1029406629258",
+  measurementId: "G-P37F88HGFE",
+  databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com",
+};
+
+// Singleton
+const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
 /* ===== PETA TARGET ===== (key = ?target=...) */
 const TARGETS = {
@@ -158,11 +178,24 @@ async function onDownloadPdf(){
     return;
   }
 
+  const user = auth.currentUser;
+  if (!user) {
+    alert("Harus login terlebih dulu.");
+    return;
+  }
+
+  const idToken = await user.getIdToken(true);
   const url = buildSheetPdfUrl(info.id, info.gid);
 
   try {
-    showOverlay("loading", "Menyiapkan PDF…", "Mohon tunggu");
-    const resp = await fetch(`${FN}?url=${encodeURIComponent(url)}`);
+    showOverlay("loading", "Menyiapkan PDF…", "Menghubungkan ke server");
+    const resp = await fetch(`${FN}?url=${encodeURIComponent(url)}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${idToken}`,
+        "Accept": "application/pdf",
+      },
+    });
     if (!resp.ok) {
       const txt = await resp.text().catch(() => resp.statusText);
       showOverlay("err", "Gagal mengunduh", txt);
