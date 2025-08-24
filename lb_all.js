@@ -13,6 +13,36 @@ const TARGETS = {
   malam:   { label: "LB Malam" },
 };
 
+/* ===== INFO SHEET UNTUK DOWNLOAD PDF ===== */
+const SHEET_INFO = {
+  // TODO: Isi id & gid masing-masing sheet
+  cctv:    { id: "", gid: "" },
+  pscp:    { id: "", gid: "" },
+  hbscp:   { id: "", gid: "" },
+  arrival: { id: "", gid: "" },
+  pos1:    { id: "", gid: "" },
+  cargo:   { id: "", gid: "" },
+  malam:   { id: "", gid: "" },
+};
+
+/* ===== UTIL DOWNLOAD PDF (Google Sheets) ===== */
+const USE_PUB = false;
+const PDF_DEFAULT_OPTS = {
+  format: "pdf", size: "A4", portrait: "true", scale: "2",
+  top_margin: "0.50", bottom_margin: "0.50", left_margin: "0.50", right_margin: "0.50",
+  sheetnames: "false", printtitle: "false", pagenumbers: "true", gridlines: "false", fzr: "true"
+};
+function buildSheetPdfUrl(sheetId, gid, opts = {}) {
+  const cacheBuster = { t: Date.now() };
+  if (USE_PUB) {
+    const params = new URLSearchParams({ gid, single: "true", output: "pdf", ...cacheBuster });
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
+  } else {
+    const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
+  }
+}
+
 /* ===== UTIL TARGET ===== */
 function getTarget() {
   const u = new URL(location.href);
@@ -51,6 +81,7 @@ const submitBtn    = document.getElementById("submitBtn");
 const activityEl   = document.getElementById("activity");
 const rowsTbody    = document.getElementById("rows");
 const targetLabelEl= document.getElementById("targetLabel"); // optional
+const downloadBtn  = document.getElementById("downloadPdfBtn");
 
 /* ===== STATE ===== */
 let uploaded  = null;   // {fileId, url, name}
@@ -94,6 +125,17 @@ function showOverlay(state, title, desc){
   close.classList.toggle("hidden", state === "loading");
   close.onclick = () => overlay.classList.add("hidden");
   if (state !== "loading") setTimeout(() => overlay.classList.add("hidden"), 1200);
+}
+
+/* ===== HANDLER DOWNLOAD PDF ===== */
+function onDownloadPdf(){
+  const info = SHEET_INFO[TARGET];
+  if(!info?.id){
+    alert("PDF belum tersedia untuk target ini");
+    return;
+  }
+  const url = buildSheetPdfUrl(info.id, info.gid);
+  window.open(url, "_blank");
 }
 
 /* ===== Mini Confirm Dialog ===== */
@@ -726,5 +768,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   setModeEdit(false);
   disableNativeTimePicker();
   forceGalleryPicker();
+  downloadBtn?.addEventListener("click", onDownloadPdf);
   await loadRows();
 });
