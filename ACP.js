@@ -1,6 +1,7 @@
 import { requireAuth } from "./auth-guard.js";
 
 const SCRIPT_URL   = "https://logacp.avsecbwx2018.workers.dev/";
+const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbwqJHoJjXpYCv2UstclVG_vHf5czAxDUfWmsSo6H4lcy3HgGZYSn7g1yAzbb8UFJHtrxw/exec";
 const SHARED_TOKEN = "N45p";
 
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
@@ -239,22 +240,19 @@ async function handleScanSuccess(raw){
 
 async function receiveBarcode(code){
   try{
-    const res = await fetch(SCRIPT_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'lookupAcp', token:SHARED_TOKEN, barcode:code })
-    });
+    const url = `${LOOKUP_URL}?token=${SHARED_TOKEN}&key=${encodeURIComponent(code)}`;
+    const res = await fetch(url);
     const j = await res.json();
-    if (j && j.success && j.data){
-      nama.value       = j.data.nama_lengkap || '';
-      kodePas.value    = j.data.kode_pas || '';
-      instansi.value   = j.data.instansi || '';
-      prohibited.value = j.data.prohibited_item || '';
-      lokasi.value     = j.data.lokasi_acp || '';
-      jamMasuk.value   = j.data.jam_masuk || '';
-      jamKeluar.value  = j.data.jam_keluar || '';
-      pemeriksa.value  = j.data.pemeriksa || '';
-      supervisor.value = j.data.supervisor || '';
+    if (j && j.columns){
+      nama.value       = j.columns.B || '';
+      kodePas.value    = j.columns.C || '';
+      instansi.value   = j.columns.D || '';
+      prohibited.value = j.columns.E || '';
+      lokasi.value     = j.columns.F || '';
+      jamMasuk.value   = j.columns.G || '';
+      jamKeluar.value  = j.columns.H || '';
+      pemeriksa.value  = j.columns.I || '';
+      supervisor.value = j.columns.J || '';
     } else {
       alert(j?.error || 'Data tidak ditemukan');
     }
