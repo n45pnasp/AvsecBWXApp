@@ -2,6 +2,9 @@
 const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // 🔒 JANGAN UBAH TANPA PERMINTAAN
 const SHARED_TOKEN = "N45p";                                    // 🔒 JANGAN UBAH TANPA PERMINTAAN
 
+// ========= Cloud Functions download PDF (endpoint) =========
+const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
+
 /* ===== PETA TARGET ===== (key = ?target=...) */
 const TARGETS = {
   cctv:    { label: "LB CCTV" },
@@ -148,14 +151,35 @@ function showOverlay(state, title, desc){
 }
 
 /* ===== HANDLER DOWNLOAD PDF ===== */
-function onDownloadPdf(){
+async function onDownloadPdf(){
   const info = SHEET_INFO[TARGET];
   if(!info?.id){
     alert("PDF belum tersedia untuk target ini");
     return;
   }
+
   const url = buildSheetPdfUrl(info.id, info.gid);
-  window.open(url, "_blank");
+
+  try {
+    showOverlay("loading", "Menyiapkan PDF…", "Mohon tunggu");
+    const resp = await fetch(`${FN}?url=${encodeURIComponent(url)}`);
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => resp.statusText);
+      showOverlay("err", "Gagal mengunduh", txt);
+      return;
+    }
+
+    const blob = await resp.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${TARGET}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    showOverlay("ok", "Berhasil", "PDF telah diunduh");
+  } catch (err) {
+    showOverlay("err", "Gagal mengunduh", err.message || "Coba lagi");
+  }
 }
 
 /* ===== Mini Confirm Dialog ===== */
