@@ -27,33 +27,27 @@ if (scanBtn) scanBtn.addEventListener("click", () => {
   }
 });
 
-function fmtTimestamp() {
-  const d = new Date();
-  const pad = n => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
 async function onSubmit(){
-  // Kirim data sebagai array sesuai urutan kolom di Spreadsheet
-  const data = [
-    fmtTimestamp(),
-    nama.value.trim(),
-    kodePas.value.trim(),
-    instansi.value.trim(),
-    prohibited.value.trim(),
-    lokasi.value.trim(),
-    jamMasuk.value.trim(),
-    jamKeluar.value.trim(),
-    pemeriksa.value.trim(),
-    supervisor.value.trim()
-  ];
+  // Kirim data dengan nama field sesuai Google Apps Script
+  const payload = {
+    token: SHARED_TOKEN,
+    namaLengkap: nama.value.trim(),
+    kodePas: kodePas.value.trim(),
+    instansi: instansi.value.trim(),
+    prohibitedItem: prohibited.value.trim(),
+    lokasiAcp: lokasi.value.trim(),
+    jamMasuk: jamMasuk.value.trim(),
+    jamKeluar: jamKeluar.value.trim(),
+    pemeriksa: pemeriksa.value.trim(),
+    supervisor: supervisor.value.trim()
+  };
 
   submitBtn.disabled = true;
   try {
     const res = await fetch(SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "createAcp", token: SHARED_TOKEN, data })
+      body: JSON.stringify(payload)
     });
     const j = await res.json();
     if (!j || (!j.success && !j.ok)) throw new Error(j?.error || "Gagal mengirim");
