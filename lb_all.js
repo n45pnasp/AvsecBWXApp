@@ -164,11 +164,10 @@ async function onDownloadPdf(){
   }
 
   const idToken = await user.getIdToken(true);
-  const url = buildSheetPdfUrl(info.id, info.gid);
 
   try {
     showOverlay("loading", "Menyiapkan PDF…", "Menghubungkan ke server");
-    const resp = await fetch(`${FN}?url=${encodeURIComponent(url)}`, {
+    const resp = await fetch(`${FN}?site=${encodeURIComponent(TARGET)}`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${idToken}`,
