@@ -302,14 +302,12 @@ async function receiveBarcode(code){
       let kode = rawKode;
       try {
         let decoded = atob(rawKode);
-        try {
-          decoded = decodeURIComponent(decoded);
-        } catch (__){ /* ignore percent-decoding errors */ }
-        kode = decoded;
-      } catch (_){
-        /* rawKode was not base64 */
-      }
+        try { decoded = decodeURIComponent(decoded); } catch(__){}
+        // gunakan hasil decode hanya jika berupa karakter yang dapat dicetak
+        if (/^[\x20-\x7E]+$/.test(decoded)) kode = decoded;
+      } catch (_){ /* abaikan jika bukan base64 */ }
       kode = kode.toUpperCase().trim();
+      const hasP = kode.includes('P') || rawKode.toUpperCase().includes('P');
 
       if (status === 'MATI'){
         const raw = j.columns.G || '';
@@ -322,12 +320,12 @@ async function receiveBarcode(code){
         }
         clearInputs();
         showOverlay('stop', `PAS ANDA HABIS MASA BERLAKUNYA ${exp}`,'');
-      } else if (!kode.includes('P')){
+      } else if (!hasP){
         clearInputs();
         showOverlay('stop','Kode PAS anda tidak memiliki daerah sisi udara, maka anda dilarang masuk!','');
       } else {
         nama.textContent     = (j.columns.B || '-').toUpperCase();
-        kodePas.textContent  = (j.columns.D || '-').toUpperCase();
+        kodePas.textContent  = kode;
         instansi.textContent = (j.columns.E || '-').toUpperCase();
         prohibited.value = '';
         lokasi.value     = '';
