@@ -21,7 +21,6 @@ const scanBtn    = document.getElementById("scanBtn");
 const spinner    = document.getElementById("spinner");
 const modal      = document.getElementById("noPModal");
 const modalClose = document.getElementById("modalClose");
-const infoCard   = document.getElementById("infoCard");
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
 
 const auth = getAuth();
@@ -37,12 +36,13 @@ modalClose.addEventListener("click", () => modal.classList.add("hidden"));
 function showSpinner(){ spinner.classList.remove("hidden"); }
 function hideSpinner(){ spinner.classList.add("hidden"); }
 function clearInputs(){
-  nama.textContent="";
-  kodePas.textContent="";
-  instansi.textContent="";
+  nama.textContent = "-";
+  kodePas.textContent = "-";
+  instansi.textContent = "-";
   [prohibited,lokasi,jamMasuk,jamKeluar,supervisor].forEach(el=>el.value="");
-  infoCard.classList.add("hidden");
 }
+
+clearInputs();
 
 submitBtn.addEventListener("click", onSubmit);
 if (scanBtn) scanBtn.addEventListener("click", () => {
@@ -56,17 +56,15 @@ if (scanBtn) scanBtn.addEventListener("click", () => {
 async function onSubmit(){
   const payload = {
     token: SHARED_TOKEN,
-    row: [
-      nama.textContent.trim(),
-      kodePas.textContent.trim(),
-      instansi.textContent.trim(),
-      prohibited.value.trim(),
-      lokasi.value.trim(),
-      jamMasuk.value.trim(),
-      jamKeluar.value.trim(),
-      pemeriksa.value.trim(),
-      supervisor.value.trim()
-    ]
+    namaLengkap: nama.textContent.trim(),
+    kodePas: kodePas.textContent.trim(),
+    instansi: instansi.textContent.trim(),
+    prohibitedItem: prohibited.value.trim(),
+    lokasiAcp: lokasi.value.trim(),
+    jamMasuk: jamMasuk.value.trim(),
+    jamKeluar: jamKeluar.value.trim(),
+    pemeriksa: pemeriksa.value.trim(),
+    supervisor: supervisor.value.trim()
   };
   submitBtn.disabled = true;
   showSpinner();
@@ -278,10 +276,9 @@ async function receiveBarcode(code){
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
-      nama.textContent     = j.columns.B || '';
-      kodePas.textContent  = j.columns.D || '';
-      instansi.textContent = j.columns.E || '';
-      infoCard.classList.remove('hidden');
+      nama.textContent     = j.columns.B || '-';
+      kodePas.textContent  = j.columns.D || '-';
+      instansi.textContent = j.columns.E || '-';
       prohibited.value = '';
       lokasi.value     = '';
       jamKeluar.value  = '';

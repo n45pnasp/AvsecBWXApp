@@ -25,18 +25,20 @@
       </button>
     </section>
 
-    <section id="infoCard" class="card hidden info-card">
-      <div class="info-field">
+    <section id="infoCard" class="card info-card">
+      <div class="info-name">
         <span class="info-label">Nama Lengkap</span>
-        <span id="nama" class="info-value"></span>
+        <span id="nama" class="info-value">-</span>
       </div>
-      <div class="info-field">
-        <span class="info-label">Kode Pas</span>
-        <span id="kodePas" class="info-value"></span>
-      </div>
-      <div class="info-field">
-        <span class="info-label">Instansi</span>
-        <span id="instansi" class="info-value"></span>
+      <div class="info-pair">
+        <div class="info-field">
+          <span class="info-label">Kode Pas</span>
+          <span id="kodePas" class="info-value">-</span>
+        </div>
+        <div class="info-field">
+          <span class="info-label">Instansi</span>
+          <span id="instansi" class="info-value">-</span>
+        </div>
       </div>
     </section>
 
@@ -75,8 +77,8 @@
   </main>
   <div id="spinner" class="spinner hidden"></div>
   <div id="noPModal" class="overlay hidden" role="dialog" aria-modal="true">
-    <div class="dialog" role="document">
-      <div class="dialog-title">Kode Pas tidak valid</div>
+    <div class="dialog alert" role="document">
+      <div class="dialog-title"><span class="icon-stop" aria-hidden="true">🛑</span>Kode PAS anda tidak memiliki daerah sisi udara, maka anda dilarang masuk!</div>
       <div class="dialog-actions">
         <button id="modalClose" type="button" class="btn primary">OK</button>
       </div>

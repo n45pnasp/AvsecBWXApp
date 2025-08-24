@@ -90,8 +90,9 @@ input, textarea{
 
 /* Info card untuk hasil scan */
 .info-card{ display:grid; gap:12px; }
-.info-field{ display:grid; gap:4px; padding:8px 0; border-bottom:1px solid var(--border); }
-.info-field:last-child{ border-bottom:none; padding-bottom:0; }
+.info-name{ display:grid; gap:4px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.info-pair{ display:grid; grid-template-columns:1fr 1fr; gap:12px; padding-top:8px; }
+.info-field{ display:grid; gap:4px; }
 .info-label{ font-size:var(--fs-sm); color:var(--muted); }
 .info-value{ font-weight:600; }
 
@@ -101,6 +102,9 @@ input, textarea{
 .dialog{ position:relative; width:min(420px,92vw); background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px 16px 14px; display:grid; gap:14px; box-shadow:0 16px 40px rgba(0,0,0,.45); animation:pop .18s ease-out both; }
 .dialog-title{ font-weight:700; font-size:clamp(16px,2vw,18px); }
 .dialog-actions{ display:flex; justify-content:flex-end; gap:10px; }
+.dialog.alert{ background:#2c0d0d; border-color:var(--danger); }
+.dialog.alert .dialog-title{ color:var(--danger); display:flex; align-items:center; gap:8px; }
+.icon-stop{ font-size:1.6em; line-height:1; }
 .spinner{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.45); z-index:1500; }
 .spinner::after{ content:""; width:48px; height:48px; border:4px solid var(--accent); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite; }
 @keyframes spin{ to{ transform:rotate(360deg); } }
