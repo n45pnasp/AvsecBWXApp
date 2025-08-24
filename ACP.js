@@ -322,7 +322,7 @@ async function receiveBarcode(code){
         showOverlay('stop', `PAS ANDA HABIS MASA BERLAKUNYA ${exp}`,'');
       } else if (!hasP){
         clearInputs();
-        showOverlay('stop','Kode PAS anda tidak memiliki daerah sisi udara, maka anda dilarang masuk!','');
+        showOverlay('stop','KODE PAS ANDA TIDAK MEMILIKI DAERAH SISI UDARA, MAKA ANDA DILARANG MASUK!','');
       } else {
         nama.textContent     = (j.columns.B || '-').toUpperCase();
         kodePas.textContent  = kode;
