@@ -34,18 +34,19 @@ function fmtTimestamp() {
 }
 
 async function onSubmit(){
-  const data = {
-    timestamp: fmtTimestamp(),
-    nama_lengkap: nama.value.trim(),
-    kode_pas: kodePas.value.trim(),
-    instansi: instansi.value.trim(),
-    prohibited_item: prohibited.value.trim(),
-    lokasi_acp: lokasi.value.trim(),
-    jam_masuk: jamMasuk.value.trim(),
-    jam_keluar: jamKeluar.value.trim(),
-    pemeriksa: pemeriksa.value.trim(),
-    supervisor: supervisor.value.trim()
-  };
+  // Kirim data sebagai array sesuai urutan kolom di Spreadsheet
+  const data = [
+    fmtTimestamp(),
+    nama.value.trim(),
+    kodePas.value.trim(),
+    instansi.value.trim(),
+    prohibited.value.trim(),
+    lokasi.value.trim(),
+    jamMasuk.value.trim(),
+    jamKeluar.value.trim(),
+    pemeriksa.value.trim(),
+    supervisor.value.trim()
+  ];
 
   submitBtn.disabled = true;
   try {
