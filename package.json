@@ -1,0 +1,13 @@
+{
+  "name": "avsecbwxapp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "ACP.js",
+  "scripts": {
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
