@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Form ACP</title>
+  <link rel="stylesheet" href="ACP.css" />
+  <style>html{visibility:hidden}</style>
+</head>
+<body>
+  <div class="app-bar">
+    <a class="back-btn" href="home.html" aria-label="Kembali">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
+      </svg>
+    </a>
+    <h1 class="app-title">Form ACP</h1>
+  </div>
+
+  <main class="container">
+    <button id="scanBtn" type="button" class="btn purple full">Scan Barcode</button>
+    <section class="card">
+      <h1 class="card-title">Input Data ACP</h1>
+
+      <div class="field">
+        <label for="nama">Nama Lengkap</label>
+        <input id="nama" type="text" />
+      </div>
+      <div class="field">
+        <label for="kodePas">Kode Pas</label>
+        <input id="kodePas" type="text" />
+      </div>
+      <div class="field">
+        <label for="instansi">Instansi</label>
+        <input id="instansi" type="text" />
+      </div>
+      <div class="field">
+        <label for="prohibited">Prohibited Item</label>
+        <input id="prohibited" type="text" />
+      </div>
+      <div class="field">
+        <label for="lokasi">Lokasi ACP</label>
+        <input id="lokasi" type="text" />
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="jamMasuk">Jam Masuk</label>
+          <input id="jamMasuk" type="time" />
+        </div>
+        <div class="field">
+          <label for="jamKeluar">Jam Keluar</label>
+          <input id="jamKeluar" type="time" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="pemeriksa">Pemeriksa</label>
+        <input id="pemeriksa" type="text" />
+      </div>
+      <div class="field">
+        <label for="supervisor">Supervisor</label>
+        <input id="supervisor" type="text" />
+      </div>
+
+      <button id="submitBtn" type="button" class="btn primary full">Kirim Data</button>
+    </section>
+  </main>
+
+  <script type="module" src="ACP.js"></script>
+</body>
+</html>

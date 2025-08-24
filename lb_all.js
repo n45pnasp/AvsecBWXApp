@@ -1,33 +1,85 @@
+// ==== Firebase SDK v9 (modular) ====
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
 /* ===== KONFIG ===== */
 const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // 🔒 JANGAN UBAH TANPA PERMINTAAN
 const SHARED_TOKEN = "N45p";                                    // 🔒 JANGAN UBAH TANPA PERMINTAAN
 
+// ========= Cloud Functions download PDF (endpoint) =========
+const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
+
+// ======== Konfigurasi Firebase (samakan dgn auth-guard.js) ========
+const firebaseConfig = {
+  apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
+  authDomain: "avsecbwx-4229c.firebaseapp.com",
+  projectId: "avsecbwx-4229c",
+  appId: "1:1029406629258:web:53e8f09585cd77823efc73",
+  storageBucket: "avsecbwx-4229c.appspot.com",
+  messagingSenderId: "1029406629258",
+  measurementId: "G-P37F88HGFE",
+  databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com",
+};
+
+// Singleton
+const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
 /* ===== PETA TARGET ===== (key = ?target=...) */
 const TARGETS = {
-  cctv:    { label: "LB CCTV" },
-  pscp:    { label: "LB PSCP" },
-  hbscp:   { label: "LB HBSCP" },
-  arrival: { label: "LB Arrival" },
-  pos1:    { label: "LB Pos 1 & Patroli" },
-  cargo:   { label: "LB Cargo" },
-  malam:   { label: "LB Malam" },
+  LB_CCTV:    { label: "LB CCTV" },
+  LB_PSCP:    { label: "LB PSCP" },
+  LB_HBSCP:   { label: "LB HBSCP" },
+  LB_ARRIVAL: { label: "LB Arrival" },
+  LB_POS1:    { label: "LB Pos 1 & Patroli" },
+  LB_CARGO:   { label: "LB Cargo" },
+  LB_MALAM:   { label: "LB Malam" },
 };
+
+/* ===== INFO SHEET UNTUK DOWNLOAD PDF ===== */
+const SHEET_INFO = {
+  LB_CCTV:    { id: "1HLLEyF6EiLOSkdB1t8hdiD9u4re1pKRbxr05lChhWuI", gid: "" },
+  LB_PSCP:    { id: "1NiOsO1FLYgSfQGoIm4-xZ5CqdbI92OphU8ENsR1NXOI", gid: "" },
+  LB_HBSCP:   { id: "1JT-Yzu91MqXBN-lIHkD68lVyBIaffuVW2CFu19gYoOc", gid: "" },
+  LB_ARRIVAL: { id: "1zSJjGHiZeJP7QYwoiW-TRvbqVCBgghDgwmJYaOG3EYA", gid: "" },
+  LB_POS1:    { id: "11J_ydWZGdG7jAVpVPWuMfluA3H7Z8pBIQLChZaS0BRg", gid: "" },
+  LB_CARGO:   { id: "1nfneesae64VWqcVbcgguMc2Gh2EceyLhbBr1LjOQ_2E", gid: "" },
+  LB_MALAM:   { id: "1zf_rqCFVoi3AaQU-9Gb3l91striiQ5dWrD1JTyhdnZk", gid: "" },
+};
+
+/* ===== UTIL DOWNLOAD PDF (Google Sheets) ===== */
+const USE_PUB = false;
+const PDF_DEFAULT_OPTS = {
+  format: "pdf", size: "A4", portrait: "true", scale: "2",
+  top_margin: "0.50", bottom_margin: "0.50", left_margin: "0.50", right_margin: "0.50",
+  sheetnames: "false", printtitle: "false", pagenumbers: "true", gridlines: "false", fzr: "true"
+};
+function buildSheetPdfUrl(sheetId, gid, opts = {}) {
+  const cacheBuster = { t: Date.now() };
+  if (USE_PUB) {
+    const params = new URLSearchParams({ gid, single: "true", output: "pdf", ...cacheBuster });
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
+  } else {
+    const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
+  }
+}
 
 /* ===== UTIL TARGET ===== */
 function getTarget() {
   const u = new URL(location.href);
-  let t = (u.searchParams.get("target") || "").toLowerCase().trim();
+  let t = (u.searchParams.get("target") || "").trim().toUpperCase();
   if (t && TARGETS[t]) {
     try { localStorage.setItem("lb_target", t); } catch(_) {}
     return t;
   }
   try {
-    const saved = (localStorage.getItem("lb_target") || "").toLowerCase().trim();
+    const saved = (localStorage.getItem("lb_target") || "").trim().toUpperCase();
     if (saved && TARGETS[saved]) return saved;
   } catch(_) {}
-  return "cctv"; // default
+  return "LB_CCTV"; // default
 }
-function getTargetLabel(t){ return (TARGETS[t]?.label) || t.toUpperCase(); }
+function getTargetLabel(t){ return (TARGETS[t]?.label) || t; }
 function getHeaderTitle(t){
   const lbl  = getTargetLabel(t);         // e.g. "LB PSCP"
   const core = lbl.replace(/^LB\s*/i,""); // → "PSCP"
@@ -51,6 +103,7 @@ const submitBtn    = document.getElementById("submitBtn");
 const activityEl   = document.getElementById("activity");
 const rowsTbody    = document.getElementById("rows");
 const targetLabelEl= document.getElementById("targetLabel"); // optional
+const downloadBtn  = document.getElementById("downloadPdfBtn");
 
 /* ===== STATE ===== */
 let uploaded  = null;   // {fileId, url, name}
@@ -94,6 +147,52 @@ function showOverlay(state, title, desc){
   close.classList.toggle("hidden", state === "loading");
   close.onclick = () => overlay.classList.add("hidden");
   if (state !== "loading") setTimeout(() => overlay.classList.add("hidden"), 1200);
+}
+
+/* ===== HANDLER DOWNLOAD PDF ===== */
+async function onDownloadPdf(){
+  const info = SHEET_INFO[TARGET];
+  if(!info?.id){
+    alert("PDF belum tersedia untuk target ini");
+    return;
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    alert("Harus login terlebih dulu.");
+    return;
+  }
+
+  const idToken = await user.getIdToken(true);
+
+  try {
+    showOverlay("loading", "Menyiapkan PDF…", "Menghubungkan ke server");
+    const resp = await fetch(`${FN}?site=${encodeURIComponent(TARGET)}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${idToken}`,
+        "Accept": "application/pdf",
+      },
+    });
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => resp.statusText);
+      showOverlay("err", "Gagal mengunduh", txt);
+      return;
+    }
+
+    const blob = await resp.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    const now = new Date();
+    const dateStr = `${pad2(now.getDate())}-${pad2(now.getMonth() + 1)}-${now.getFullYear()}`;
+    a.download = `${TARGET}_${dateStr}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    showOverlay("ok", "Berhasil", "PDF telah diunduh");
+  } catch (err) {
+    showOverlay("err", "Gagal mengunduh", err.message || "Coba lagi");
+  }
 }
 
 /* ===== Mini Confirm Dialog ===== */
@@ -444,7 +543,6 @@ fileInput.addEventListener("change", async (ev) => {
   if (!file) return;
 
   uploadInfo.classList.remove("hidden");
-  uploadName.textContent = file.name;
   uploadStatus.textContent = "Mengunggah foto…";
 
   try{
@@ -452,7 +550,11 @@ fileInput.addEventListener("change", async (ev) => {
     showOverlay("loading", "Mengunggah foto…", `Target: ${getTargetLabel(TARGET)}`);
 
     const pngBlob = await normalizeToPNG(file);
-    const pngName = (file.name.replace(/\.[^.]+$/,"") || "photo") + ".png";
+    const now     = new Date();
+    const dateStr = `${pad2(now.getDate())}-${pad2(now.getMonth()+1)}-${now.getFullYear()}`;
+    const timeStr = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+    const pngName = `${TARGET}_${dateStr}_${timeStr}.png`;
+    uploadName.textContent = pngName;
 
     const objectUrl = URL.createObjectURL(pngBlob);
     preview.src = objectUrl;
@@ -726,5 +828,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   setModeEdit(false);
   disableNativeTimePicker();
   forceGalleryPicker();
+  downloadBtn?.addEventListener("click", onDownloadPdf);
   await loadRows();
 });

@@ -1,0 +1,77 @@
+:root{
+  --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#94a3b8;
+  --border:rgba(255,255,255,.12); --card:#0b1324;
+  --accent:#7c9bff; --accent-2:#60a5fa; --ok:#22c55e; --danger:#ef4444;
+  --fs-base: clamp(14px, 1.6vw, 16px);
+  --fs-sm:   clamp(12px, 1.3vw, 14px);
+  --fs-lg:   clamp(18px, 2vw, 22px);
+}
+
+/* ===== App Bar ===== */
+.app-bar{
+  position:sticky; top:0; inset-inline:0; z-index:100;
+  display:flex; align-items:center; gap:10px;
+  height:56px; padding:0 14px;
+  background:var(--panel); color:var(--text);
+  border-bottom:1px solid var(--border);
+  box-shadow:0 6px 20px rgba(0,0,0,.18);
+}
+.app-title{ font-size:var(--fs-lg); font-weight:500; letter-spacing:.3px; margin:0; user-select:none }
+.back-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:44px; height:44px; flex:0 0 auto; background:transparent;
+  border:none; color:var(--text); border-radius:10px; cursor:pointer;
+  text-decoration:none; transition:background .12s ease, transform .08s ease;
+}
+.back-btn:hover{ background:rgba(255,255,255,.06) }
+.back-btn:active{ background:rgba(0,0,0,.25); transform:translateY(1px) }
+.back-btn:focus-visible{ outline:2px solid rgba(255,255,255,.4); outline-offset:2px }
+.back-btn svg, .back-btn svg *{ stroke:currentColor; stroke-width:2.2; fill:none; stroke-linecap:round; stroke-linejoin:round }
+
+/* ===== Base ===== */
+*{ box-sizing:border-box }
+html,body{ margin:0; padding:0 }
+body{
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  font-size:var(--fs-base);
+  background:var(--bg); color:var(--text);
+  -webkit-tap-highlight-color:transparent;
+}
+.container{
+  width:min(100%,1000px); margin:24px auto; padding:0 clamp(12px,3vw,20px);
+  display:grid; gap:clamp(12px,2.5vw,18px); padding-top:8px;
+}
+.card{
+  background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:clamp(12px,2.4vw,16px);
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+.card-title{ font-weight:700; margin-bottom:12px; font-size:clamp(16px,2vw,20px) }
+
+/* ===== Form ===== */
+.row-2{ display:grid; grid-template-columns:1fr 1fr; gap:clamp(8px,2vw,12px); }
+.field{ display:grid; gap:8px; margin:12px 0 }
+input, textarea{
+  width:100%; background:#0b1324; color:var(--text);
+  border:1px solid var(--border); border-radius:12px; padding:12px;
+  font-size:var(--fs-base);
+}
+
+/* ===== Buttons ===== */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  background:#1f2937; color:#fff; border:1px solid var(--border);
+  border-radius:12px; padding:12px; cursor:pointer; user-select:none;
+  transition:filter .15s ease, transform .06s ease; text-align:center;
+}
+.btn:hover{ filter:brightness(1.05) }
+.btn:active{ transform:translateY(1px) }
+.btn.primary{ background:#2563eb; border-color:#1e40af }
+.btn.full{ width:100% }
+.btn.purple{
+  background:linear-gradient(135deg,#6a5cff,#8a7bff);
+  box-shadow:0 6px 16px rgba(106,88,255,.35);
+}
+.btn:disabled{ opacity:.55; cursor:not-allowed }
+
+.hidden{ display:none !important }
