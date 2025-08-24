@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Logbook</title>
   <link rel="stylesheet" href="lb_all.css" />
+  <!-- Sembunyikan sampai status login dicek -->
+  <style>html{visibility:hidden}</style>
 </head>
 <body>
   <!-- App Bar -->
@@ -155,6 +157,12 @@
       </div>
     </div>
   </div>
+
+  <!-- Auth Guard: wajib login -->
+  <script type="module">
+    import { requireAuth } from "./auth-guard.js";
+    requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+  </script>
 
   <!-- Script utama -->
   <script type="module" src="lb_all.js"></script>
