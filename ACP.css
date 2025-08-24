@@ -119,7 +119,7 @@ input, textarea{
 .icon-x:active{ transform:scale(.94); }
 .icon-x svg{ display:block; }
 .icon{ width:42px; height:42px; border-radius:50%; position:relative; }
-.icon.spinner{ border:5px solid rgba(255,255,255,.15); border-top-color:var(--accent); animation:spin .9s linear infinite; }
+.icon.spinner,.icon.loading{ border:5px solid rgba(255,255,255,.15); border-top-color:var(--accent); animation:spin .9s linear infinite; }
 .icon.ok{ background:rgba(34,197,94,.12); border:2px solid var(--ok); }
 .icon.ok::after{ content:""; position:absolute; left:11px; top:8px; width:12px; height:20px; border:solid var(--ok); border-width:0 4px 4px 0; transform:rotate(45deg); border-radius:2px; }
 .icon.err{ background:rgba(239,68,68,.12); border:2px solid var(--danger); }

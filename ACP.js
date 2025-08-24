@@ -28,10 +28,7 @@ const ovClose = document.getElementById("ovClose");
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
 
 const auth = getAuth();
-onAuthStateChanged(auth, (user) => {
-  const name = user?.displayName?.trim() || (user?.email ? user.email.split("@")[0] : "");
-  pemeriksa.value = name.toUpperCase();
-});
+onAuthStateChanged(auth, setAuthName);
 
 // paksa huruf besar pada input pemeriksa
 pemeriksa.addEventListener("input", (e) => {
@@ -45,16 +42,26 @@ function showOverlay(state, title, desc){
   ovIcon.className = "icon " + state;
   ovTitle.textContent = title;
   ovDesc.textContent = desc || "";
-  ovClose.classList.toggle("hidden", state === "loading");
-  if (state !== "loading") setTimeout(() => overlay.classList.add("hidden"), 1500);
+  ovClose.classList.toggle("hidden", state === "spinner");
+  if (state !== "spinner") {
+    const delay = state === "stop" ? 3500 : 1500;
+    setTimeout(() => overlay.classList.add("hidden"), delay);
+  }
 }
 
 function hideOverlay(){ overlay.classList.add("hidden"); }
+function setAuthName(){
+  const user = auth.currentUser;
+  const name = user?.displayName?.trim() || (user?.email ? user.email.split("@")[0] : "");
+  pemeriksa.value = name.toUpperCase();
+}
+
 function clearInputs(){
   nama.textContent = "-";
   kodePas.textContent = "-";
   instansi.textContent = "-";
-  [prohibited,lokasi,jamMasuk,jamKeluar,supervisor].forEach(el=>el.value="");
+  [prohibited,lokasi,jamMasuk,jamKeluar,supervisor,pemeriksa].forEach(el=>el.value="");
+  setAuthName();
 }
 
 clearInputs();
@@ -82,7 +89,7 @@ async function onSubmit(){
     supervisor: supervisor.value.trim().toUpperCase()
   };
   submitBtn.disabled = true;
-  showOverlay('loading','Mengirim data…','');
+  showOverlay('spinner','Mengirim data…','');
   try {
     const res = await fetch(SCRIPT_URL, {
       method: "POST",
@@ -279,7 +286,7 @@ async function handleScanSuccess(raw){
 
 async function receiveBarcode(code){
   try{
-    showOverlay('loading','Mengambil data…','');
+    showOverlay('spinner','Mengambil data…','');
     jamMasuk.value = new Intl.DateTimeFormat('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
@@ -291,13 +298,25 @@ async function receiveBarcode(code){
     const j = await res.json();
     if (j && j.columns){
       nama.textContent     = (j.columns.B || '-').toUpperCase();
-      kodePas.textContent  = (j.columns.D || '-').toUpperCase();
+      kodePas.textContent  = j.columns.D ? atob(j.columns.D).toUpperCase() : '-';
       instansi.textContent = (j.columns.E || '-').toUpperCase();
       prohibited.value = '';
       lokasi.value     = '';
       jamKeluar.value  = '';
       supervisor.value = '';
-      if (!/P/i.test(kodePas.textContent)){
+      const status = (j.columns.K || '').toUpperCase();
+      if (status === 'MATI'){
+        const raw = j.columns.G || '';
+        let exp = '';
+        const dt = raw ? new Date(raw) : null;
+        if (dt && !isNaN(dt)){
+          exp = dt.toLocaleDateString('id-ID',{ day:'2-digit', month:'long', year:'numeric'}).toUpperCase();
+        } else {
+          exp = raw.toUpperCase();
+        }
+        clearInputs();
+        showOverlay('stop', `PAS ANDA HABIS MASA BERLAKUNYA ${exp}`,'');
+      } else if (!/P/i.test(kodePas.textContent)){
         clearInputs();
         showOverlay('stop','Kode PAS anda tidak memiliki daerah sisi udara, maka anda dilarang masuk!','');
       } else {
