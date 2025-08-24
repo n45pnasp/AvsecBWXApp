@@ -301,9 +301,13 @@ async function receiveBarcode(code){
       const rawKode = j.columns.D || '';
       let kode = rawKode;
       try {
-        kode = decodeURIComponent(atob(rawKode));
+        let decoded = atob(rawKode);
+        try {
+          decoded = decodeURIComponent(decoded);
+        } catch (__){ /* ignore percent-decoding errors */ }
+        kode = decoded;
       } catch (_){
-        try { kode = atob(rawKode); } catch(__){ kode = rawKode; }
+        /* rawKode was not base64 */
       }
       kode = kode.toUpperCase().trim();
 
