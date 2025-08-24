@@ -75,12 +75,17 @@
       <button id="submitBtn" type="button" class="btn primary full">Kirim Data</button>
     </section>
   </main>
-  <div id="spinner" class="spinner hidden"></div>
-  <div id="noPModal" class="overlay hidden" role="dialog" aria-modal="true">
-    <div class="dialog alert" role="document">
-      <div class="dialog-title"><span class="icon-stop" aria-hidden="true">🛑</span>Kode PAS anda tidak memiliki daerah sisi udara, maka anda dilarang masuk!</div>
-      <div class="dialog-actions">
-        <button id="modalClose" type="button" class="btn primary">OK</button>
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet" role="document">
+      <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="icon spinner" id="ovIcon"></div>
+      <div class="texts">
+        <div class="title" id="ovTitle"></div>
+        <div class="desc" id="ovDesc"></div>
       </div>
     </div>
   </div>

@@ -18,9 +18,13 @@ const pemeriksa  = document.getElementById("pemeriksa");
 const supervisor = document.getElementById("supervisor");
 const submitBtn  = document.getElementById("submitBtn");
 const scanBtn    = document.getElementById("scanBtn");
-const spinner    = document.getElementById("spinner");
-const modal      = document.getElementById("noPModal");
-const modalClose = document.getElementById("modalClose");
+
+// overlay ala lb_all
+const overlay = document.getElementById("overlay");
+const ovIcon  = document.getElementById("ovIcon");
+const ovTitle = document.getElementById("ovTitle");
+const ovDesc  = document.getElementById("ovDesc");
+const ovClose = document.getElementById("ovClose");
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
 
 const auth = getAuth();
@@ -29,12 +33,23 @@ onAuthStateChanged(auth, (user) => {
   pemeriksa.value = name.toUpperCase();
 });
 
+// paksa huruf besar pada input pemeriksa
 pemeriksa.addEventListener("input", (e) => {
   e.target.value = e.target.value.toUpperCase();
 });
-modalClose.addEventListener("click", () => modal.classList.add("hidden"));
-function showSpinner(){ spinner.classList.remove("hidden"); }
-function hideSpinner(){ spinner.classList.add("hidden"); }
+
+ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
+
+function showOverlay(state, title, desc){
+  overlay.classList.remove("hidden");
+  ovIcon.className = "icon " + state;
+  ovTitle.textContent = title;
+  ovDesc.textContent = desc || "";
+  ovClose.classList.toggle("hidden", state === "loading");
+  if (state !== "loading") setTimeout(() => overlay.classList.add("hidden"), 1500);
+}
+
+function hideOverlay(){ overlay.classList.add("hidden"); }
 function clearInputs(){
   nama.textContent = "-";
   kodePas.textContent = "-";
@@ -56,18 +71,18 @@ if (scanBtn) scanBtn.addEventListener("click", () => {
 async function onSubmit(){
   const payload = {
     token: SHARED_TOKEN,
-    namaLengkap: nama.textContent.trim(),
-    kodePas: kodePas.textContent.trim(),
-    instansi: instansi.textContent.trim(),
-    prohibitedItem: prohibited.value.trim(),
-    lokasiAcp: lokasi.value.trim(),
+    namaLengkap: nama.textContent.trim().toUpperCase(),
+    kodePas: kodePas.textContent.trim().toUpperCase(),
+    instansi: instansi.textContent.trim().toUpperCase(),
+    prohibitedItem: prohibited.value.trim().toUpperCase(),
+    lokasiAcp: lokasi.value.trim().toUpperCase(),
     jamMasuk: jamMasuk.value.trim(),
     jamKeluar: jamKeluar.value.trim(),
-    pemeriksa: pemeriksa.value.trim(),
-    supervisor: supervisor.value.trim()
+    pemeriksa: pemeriksa.value.trim().toUpperCase(),
+    supervisor: supervisor.value.trim().toUpperCase()
   };
   submitBtn.disabled = true;
-  showSpinner();
+  showOverlay('loading','Mengirim data…','');
   try {
     const res = await fetch(SCRIPT_URL, {
       method: "POST",
@@ -76,13 +91,12 @@ async function onSubmit(){
     });
     const j = await res.json();
     if (!j || (!j.success && !j.ok)) throw new Error(j?.error || "Gagal mengirim");
-    alert("Data berhasil dikirim");
+    showOverlay('ok','Data berhasil dikirim','');
     clearInputs();
   } catch(err){
-    alert("Gagal: " + (err?.message || err));
+    showOverlay('err','Gagal', err?.message || err);
   } finally {
     submitBtn.disabled = false;
-    hideSpinner();
   }
 }
 
@@ -151,7 +165,7 @@ async function startScan(){
       detectLoop_jsQR();
     }
   }catch(err){
-    alert('Tidak bisa mengakses kamera.');
+    showOverlay('err','Tidak bisa mengakses kamera','');
     await stopScan();
   }
 }
@@ -265,7 +279,7 @@ async function handleScanSuccess(raw){
 
 async function receiveBarcode(code){
   try{
-    showSpinner();
+    showOverlay('loading','Mengambil data…','');
     jamMasuk.value = new Intl.DateTimeFormat('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
@@ -276,24 +290,24 @@ async function receiveBarcode(code){
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
-      nama.textContent     = j.columns.B || '-';
-      kodePas.textContent  = j.columns.D || '-';
-      instansi.textContent = j.columns.E || '-';
+      nama.textContent     = (j.columns.B || '-').toUpperCase();
+      kodePas.textContent  = (j.columns.D || '-').toUpperCase();
+      instansi.textContent = (j.columns.E || '-').toUpperCase();
       prohibited.value = '';
       lokasi.value     = '';
       jamKeluar.value  = '';
       supervisor.value = '';
       if (!/P/i.test(kodePas.textContent)){
         clearInputs();
-        modal.classList.remove('hidden');
+        showOverlay('stop','Kode PAS anda tidak memiliki daerah sisi udara, maka anda dilarang masuk!','');
+      } else {
+        hideOverlay();
       }
     } else {
-      alert(j?.error || 'Data tidak ditemukan');
+      showOverlay('err', j?.error || 'Data tidak ditemukan','');
     }
   }catch(err){
-    alert('Gagal mengambil data: ' + (err?.message || err));
-  } finally {
-    hideSpinner();
+    showOverlay('err','Gagal mengambil data', err?.message || err);
   }
 }
 
