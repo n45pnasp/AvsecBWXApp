@@ -23,7 +23,11 @@ let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false,
 const auth = getAuth();
 onAuthStateChanged(auth, (user) => {
   const name = user?.displayName?.trim() || (user?.email ? user.email.split("@")[0] : "");
-  pemeriksa.value = name;
+  pemeriksa.value = name.toUpperCase();
+});
+
+pemeriksa.addEventListener("input", (e) => {
+  e.target.value = e.target.value.toUpperCase();
 });
 
 submitBtn.addEventListener("click", onSubmit);
@@ -258,7 +262,7 @@ async function receiveBarcode(code){
     const j = await res.json();
     if (j && j.columns){
       nama.value     = j.columns.B || '';
-      kodePas.value  = decodeB64(j.columns.D || '');
+      kodePas.value  = j.columns.D || '';
       instansi.value = j.columns.E || '';
       prohibited.value = '';
       lokasi.value     = '';
@@ -273,11 +277,3 @@ async function receiveBarcode(code){
 }
 
 window.receiveBarcode = receiveBarcode;
-
-function decodeB64(str){
-  try{
-    return atob(str);
-  }catch(_){
-    return str;
-  }
-}
