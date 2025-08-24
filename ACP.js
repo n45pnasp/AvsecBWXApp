@@ -18,30 +18,53 @@ const pemeriksa  = document.getElementById("pemeriksa");
 const supervisor = document.getElementById("supervisor");
 const submitBtn  = document.getElementById("submitBtn");
 const scanBtn    = document.getElementById("scanBtn");
-const spinner    = document.getElementById("spinner");
-const modal      = document.getElementById("noPModal");
-const modalClose = document.getElementById("modalClose");
+
+// overlay ala lb_all
+const overlay = document.getElementById("overlay");
+const ovIcon  = document.getElementById("ovIcon");
+const ovTitle = document.getElementById("ovTitle");
+const ovDesc  = document.getElementById("ovDesc");
+const ovClose = document.getElementById("ovClose");
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
 
 const auth = getAuth();
-onAuthStateChanged(auth, (user) => {
-  const name = user?.displayName?.trim() || (user?.email ? user.email.split("@")[0] : "");
-  pemeriksa.value = name.toUpperCase();
-});
+onAuthStateChanged(auth, setAuthName);
 
+// paksa huruf besar pada input pemeriksa
 pemeriksa.addEventListener("input", (e) => {
   e.target.value = e.target.value.toUpperCase();
 });
-modalClose.addEventListener("click", () => modal.classList.add("hidden"));
-function showSpinner(){ spinner.classList.remove("hidden"); }
-function hideSpinner(){ spinner.classList.add("hidden"); }
-function clearInputs(){ [nama,kodePas,instansi,prohibited,lokasi,jamMasuk,jamKeluar,supervisor].forEach(el=>el.value=""); }
-kodePas.addEventListener("input", () => {
-  if (kodePas.value && !/P/i.test(kodePas.value)){
-    clearInputs();
-    modal.classList.remove("hidden");
+
+ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
+
+function showOverlay(state, title, desc){
+  overlay.classList.remove("hidden");
+  ovIcon.className = "icon " + state;
+  ovTitle.textContent = title;
+  ovDesc.textContent = desc || "";
+  ovClose.classList.toggle("hidden", state === "spinner");
+  if (state !== "spinner") {
+    const delay = state === "stop" ? 3500 : 1500;
+    setTimeout(() => overlay.classList.add("hidden"), delay);
   }
-});
+}
+
+function hideOverlay(){ overlay.classList.add("hidden"); }
+function setAuthName(){
+  const user = auth.currentUser;
+  const name = user?.displayName?.trim() || (user?.email ? user.email.split("@")[0] : "");
+  pemeriksa.value = name.toUpperCase();
+}
+
+function clearInputs(){
+  nama.textContent = "-";
+  kodePas.textContent = "-";
+  instansi.textContent = "-";
+  [prohibited,lokasi,jamMasuk,jamKeluar,supervisor,pemeriksa].forEach(el=>el.value="");
+  setAuthName();
+}
+
+clearInputs();
 
 submitBtn.addEventListener("click", onSubmit);
 if (scanBtn) scanBtn.addEventListener("click", () => {
@@ -55,20 +78,18 @@ if (scanBtn) scanBtn.addEventListener("click", () => {
 async function onSubmit(){
   const payload = {
     token: SHARED_TOKEN,
-    row: [
-      nama.value.trim(),
-      kodePas.value.trim(),
-      instansi.value.trim(),
-      prohibited.value.trim(),
-      lokasi.value.trim(),
-      jamMasuk.value.trim(),
-      jamKeluar.value.trim(),
-      pemeriksa.value.trim(),
-      supervisor.value.trim()
-    ]
+    namaLengkap: nama.textContent.trim().toUpperCase(),
+    kodePas: kodePas.textContent.trim().toUpperCase(),
+    instansi: instansi.textContent.trim().toUpperCase(),
+    prohibitedItem: prohibited.value.trim().toUpperCase(),
+    lokasiAcp: lokasi.value.trim().toUpperCase(),
+    jamMasuk: jamMasuk.value.trim(),
+    jamKeluar: jamKeluar.value.trim(),
+    pemeriksa: pemeriksa.value.trim().toUpperCase(),
+    supervisor: supervisor.value.trim().toUpperCase()
   };
   submitBtn.disabled = true;
-  showSpinner();
+  showOverlay('spinner','Mengirim data…','');
   try {
     const res = await fetch(SCRIPT_URL, {
       method: "POST",
@@ -77,13 +98,12 @@ async function onSubmit(){
     });
     const j = await res.json();
     if (!j || (!j.success && !j.ok)) throw new Error(j?.error || "Gagal mengirim");
-    alert("Data berhasil dikirim");
+    showOverlay('ok','Data berhasil dikirim','');
     clearInputs();
   } catch(err){
-    alert("Gagal: " + (err?.message || err));
+    showOverlay('err','Gagal', err?.message || err);
   } finally {
     submitBtn.disabled = false;
-    hideSpinner();
   }
 }
 
@@ -152,7 +172,7 @@ async function startScan(){
       detectLoop_jsQR();
     }
   }catch(err){
-    alert('Tidak bisa mengakses kamera.');
+    showOverlay('err','Tidak bisa mengakses kamera','');
     await stopScan();
   }
 }
@@ -266,7 +286,7 @@ async function handleScanSuccess(raw){
 
 async function receiveBarcode(code){
   try{
-    showSpinner();
+    showOverlay('spinner','Mengambil data…','');
     jamMasuk.value = new Intl.DateTimeFormat('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
@@ -277,24 +297,47 @@ async function receiveBarcode(code){
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
-      nama.value     = j.columns.B || '';
-      kodePas.value  = j.columns.D || '';
-      instansi.value = j.columns.E || '';
-      prohibited.value = '';
-      lokasi.value     = '';
-      jamKeluar.value  = '';
-      supervisor.value = '';
-      if (!/P/i.test(kodePas.value)){
+      const status = (j.columns.K || '').trim().toUpperCase();
+      const rawKode = j.columns.D || '';
+      let kode = rawKode;
+      try {
+        let decoded = atob(rawKode);
+        try { decoded = decodeURIComponent(decoded); } catch(__){}
+        // gunakan hasil decode hanya jika berupa karakter yang dapat dicetak
+        if (/^[\x20-\x7E]+$/.test(decoded)) kode = decoded;
+      } catch (_){ /* abaikan jika bukan base64 */ }
+      kode = kode.toUpperCase().trim();
+      const hasP = kode.includes('P') || rawKode.toUpperCase().includes('P');
+
+      if (status === 'MATI'){
+        const raw = j.columns.G || '';
+        let exp = '';
+        const dt = raw ? new Date(raw) : null;
+        if (dt && !isNaN(dt)){
+          exp = dt.toLocaleDateString('id-ID',{ day:'2-digit', month:'long', year:'numeric'}).toUpperCase();
+        } else {
+          exp = raw.toUpperCase();
+        }
         clearInputs();
-        modal.classList.remove('hidden');
+        showOverlay('stop', `PAS ANDA HABIS MASA BERLAKUNYA ${exp}`,'');
+      } else if (!hasP){
+        clearInputs();
+        showOverlay('stop','Kode PAS anda tidak memiliki daerah sisi udara, maka anda dilarang masuk!','');
+      } else {
+        nama.textContent     = (j.columns.B || '-').toUpperCase();
+        kodePas.textContent  = kode;
+        instansi.textContent = (j.columns.E || '-').toUpperCase();
+        prohibited.value = '';
+        lokasi.value     = '';
+        jamKeluar.value  = '';
+        supervisor.value = '';
+        hideOverlay();
       }
     } else {
-      alert(j?.error || 'Data tidak ditemukan');
+      showOverlay('err', j?.error || 'Data tidak ditemukan','');
     }
   }catch(err){
-    alert('Gagal mengambil data: ' + (err?.message || err));
-  } finally {
-    hideSpinner();
+    showOverlay('err','Gagal mengambil data', err?.message || err);
   }
 }
 

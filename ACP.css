@@ -74,10 +74,61 @@ input, textarea{
 }
 .btn:disabled{ opacity:.55; cursor:not-allowed }
 
+/* Tombol scan ala boardingpass */
+.qr-card{ padding:0; }
+.qr-btn{
+  width:100%; display:flex; flex-direction:row; align-items:center; justify-content:center;
+  gap:12px; background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  border:1px solid rgba(255,255,255,.12); border-radius:16px;
+  padding:14px 16px; font-weight:600; font-size:16px; cursor:pointer; color:#fff;
+  box-shadow:0 6px 16px rgba(106,88,255,.35); transition:filter .15s ease, transform .1s ease; text-align:left;
+}
+.qr-btn:hover{ filter:brightness(1.08) }
+.qr-btn:active{ transform:translateY(1px) }
+.qr-btn img{ width:28px; height:28px; filter:invert(1); }
+.qr-btn small{ color:rgba(255,255,255,.85); font-weight:400; display:block; }
+
+/* Info card untuk hasil scan */
+.info-card{ display:grid; gap:12px; }
+.info-name{ display:grid; gap:4px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.info-pair{ display:grid; grid-template-columns:1fr 1fr; gap:12px; padding-top:8px; }
+.info-field{ display:grid; gap:4px; }
+.info-label{ font-size:var(--fs-sm); color:var(--muted); }
+.info-value{ font-weight:600; }
+
 .hidden{ display:none !important }
-/* ===== Modal & Spinner ===== */
-.modal{ position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:2000; }
-.modal-content{ background:var(--card); padding:20px; border-radius:12px; text-align:center; max-width:90%; }
-.spinner{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.45); z-index:1500; }
-.spinner::after{ content:""; width:48px; height:48px; border:4px solid var(--accent); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite; }
+
+/* ===== Overlay ala lb_all ===== */
+.overlay{ position:fixed; inset:0; display:grid; place-items:center; background:rgba(0,0,0,.45); backdrop-filter:blur(2px); z-index:9999; }
+.sheet{
+  position:relative;
+  display:grid; grid-template-columns:48px 1fr; align-items:center; gap:12px;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:16px 18px; width:min(520px,92vw);
+  box-shadow:0 16px 40px rgba(0,0,0,.45);
+  animation:pop .18s ease-out both;
+}
+.icon-x{
+  position:absolute; top:10px; right:10px;
+  width:28px; height:28px; display:grid; place-items:center;
+  color:var(--muted);
+  background:transparent; border:none; padding:0; cursor:pointer;
+  transition:transform .08s ease, color .12s ease, opacity .12s ease;
+}
+.icon-x:hover{ color:#fff; transform:scale(1.06); }
+.icon-x:active{ transform:scale(.94); }
+.icon-x svg{ display:block; }
+.icon{ width:42px; height:42px; border-radius:50%; position:relative; }
+.icon.spinner,.icon.loading{ border:5px solid rgba(255,255,255,.15); border-top-color:var(--accent); animation:spin .9s linear infinite; }
+.icon.ok{ background:rgba(34,197,94,.12); border:2px solid var(--ok); }
+.icon.ok::after{ content:""; position:absolute; left:11px; top:8px; width:12px; height:20px; border:solid var(--ok); border-width:0 4px 4px 0; transform:rotate(45deg); border-radius:2px; }
+.icon.err{ background:rgba(239,68,68,.12); border:2px solid var(--danger); }
+.icon.err::before,.icon.err::after{ content:""; position:absolute; left:19px; top:8px; width:4px; height:24px; background:var(--danger); border-radius:2px; }
+.icon.err::after{ transform:rotate(90deg); }
+.icon.stop{ background:rgba(239,68,68,.12); border:2px solid var(--danger); display:flex; align-items:center; justify-content:center; font-size:28px; }
+.icon.stop::before{ content:'\1F6D1'; }
+.texts .title{ font-weight:700; font-size:clamp(14px,1.6vw,16px); }
+.texts .desc{ color:var(--muted); font-size:clamp(12px,1.4vw,14px); }
+
 @keyframes spin{ to{ transform:rotate(360deg); } }
+@keyframes pop{ from{ transform:translateY(6px) scale(.98); opacity:0 } to{ transform:none; opacity:1 } }
