@@ -543,7 +543,6 @@ fileInput.addEventListener("change", async (ev) => {
   if (!file) return;
 
   uploadInfo.classList.remove("hidden");
-  uploadName.textContent = file.name;
   uploadStatus.textContent = "Mengunggah foto…";
 
   try{
@@ -551,7 +550,11 @@ fileInput.addEventListener("change", async (ev) => {
     showOverlay("loading", "Mengunggah foto…", `Target: ${getTargetLabel(TARGET)}`);
 
     const pngBlob = await normalizeToPNG(file);
-    const pngName = (file.name.replace(/\.[^.]+$/,"") || "photo") + ".png";
+    const now     = new Date();
+    const dateStr = `${pad2(now.getDate())}-${pad2(now.getMonth()+1)}-${now.getFullYear()}`;
+    const timeStr = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+    const pngName = `${TARGET}_${dateStr}_${timeStr}.png`;
+    uploadName.textContent = pngName;
 
     const objectUrl = URL.createObjectURL(pngBlob);
     preview.src = objectUrl;
