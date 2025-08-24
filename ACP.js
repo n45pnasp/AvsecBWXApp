@@ -53,18 +53,18 @@ if (scanBtn) scanBtn.addEventListener("click", () => {
 });
 
 async function onSubmit(){
-  const row = [
-    nama.value.trim(),
-    kodePas.value.trim(),
-    instansi.value.trim(),
-    prohibited.value.trim(),
-    lokasi.value.trim(),
-    jamMasuk.value.trim(),
-    jamKeluar.value.trim(),
-    pemeriksa.value.trim(),
-    supervisor.value.trim()
-  ];
-  const payload = { token: SHARED_TOKEN, row };
+  const payload = {
+    token: SHARED_TOKEN,
+    namaLengkap: nama.value.trim(),
+    kodePas: kodePas.value.trim(),
+    instansi: instansi.value.trim(),
+    prohibitedItem: prohibited.value.trim(),
+    lokasiAcp: lokasi.value.trim(),
+    jamMasuk: jamMasuk.value.trim(),
+    jamKeluar: jamKeluar.value.trim(),
+    pemeriksa: pemeriksa.value.trim(),
+    supervisor: supervisor.value.trim()
+  };
   submitBtn.disabled = true;
   showSpinner();
   try {
