@@ -15,14 +15,34 @@ const TARGETS = {
 
 /* ===== INFO SHEET UNTUK DOWNLOAD PDF ===== */
 const SHEET_INFO = {
-  // TODO: Isi id & gid masing-masing sheet
-  cctv:    { id: "", gid: "" },
-  pscp:    { id: "", gid: "" },
-  hbscp:   { id: "", gid: "" },
-  arrival: { id: "", gid: "" },
-  pos1:    { id: "", gid: "" },
-  cargo:   { id: "", gid: "" },
-  malam:   { id: "", gid: "" },
+  cctv: {
+    id: "1HLLEyF6EiLOSkdB1t8hdiD9u4re1pKRbxr05lChhWuI",
+    gid: "",
+  },
+  pscp: {
+    id: "1NiOsO1FLYgSfQGoIm4-xZ5CqdbI92OphU8ENsR1NXOI",
+    gid: "",
+  },
+  hbscp: {
+    id: "1JT-Yzu91MqXBN-lIHkD68lVyBIaffuVW2CFu19gYoOc",
+    gid: "",
+  },
+  arrival: {
+    id: "1zSJjGHiZeJP7QYwoiW-TRvbqVCBgghDgwmJYaOG3EYA",
+    gid: "",
+  },
+  pos1: {
+    id: "11J_ydWZGdG7jAVpVPWuMfluA3H7Z8pBIQLChZaS0BRg",
+    gid: "",
+  },
+  cargo: {
+    id: "1nfneesae64VWqcVbcgguMc2Gh2EceyLhbBr1LjOQ_2E",
+    gid: "",
+  },
+  malam: {
+    id: "1zf_rqCFVoi3AaQU-9Gb3l91striiQ5dWrD1JTyhdnZk",
+    gid: "",
+  },
 };
 
 /* ===== UTIL DOWNLOAD PDF (Google Sheets) ===== */
