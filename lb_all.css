@@ -76,6 +76,10 @@ textarea, input[type="time"]{
 .btn:active, .btn-like:active{ transform:translateY(1px) }
 .btn.primary{ background:#2563eb; border-color:#1e40af }
 .btn.full{ width:100%; }
+.btn.purple{
+  background:linear-gradient(135deg,#6a5cff,#8a7bff);
+  box-shadow:0 6px 16px rgba(106,88,255,.35);
+}
 .btn:disabled{ opacity:.55; cursor:not-allowed }
 
 /* Variasi untuk dialog */
