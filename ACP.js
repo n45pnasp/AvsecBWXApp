@@ -21,6 +21,7 @@ const scanBtn    = document.getElementById("scanBtn");
 const spinner    = document.getElementById("spinner");
 const modal      = document.getElementById("noPModal");
 const modalClose = document.getElementById("modalClose");
+const infoCard   = document.getElementById("infoCard");
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
 
 const auth = getAuth();
@@ -35,13 +36,13 @@ pemeriksa.addEventListener("input", (e) => {
 modalClose.addEventListener("click", () => modal.classList.add("hidden"));
 function showSpinner(){ spinner.classList.remove("hidden"); }
 function hideSpinner(){ spinner.classList.add("hidden"); }
-function clearInputs(){ [nama,kodePas,instansi,prohibited,lokasi,jamMasuk,jamKeluar,supervisor].forEach(el=>el.value=""); }
-kodePas.addEventListener("input", () => {
-  if (kodePas.value && !/P/i.test(kodePas.value)){
-    clearInputs();
-    modal.classList.remove("hidden");
-  }
-});
+function clearInputs(){
+  nama.textContent="";
+  kodePas.textContent="";
+  instansi.textContent="";
+  [prohibited,lokasi,jamMasuk,jamKeluar,supervisor].forEach(el=>el.value="");
+  infoCard.classList.add("hidden");
+}
 
 submitBtn.addEventListener("click", onSubmit);
 if (scanBtn) scanBtn.addEventListener("click", () => {
@@ -56,9 +57,9 @@ async function onSubmit(){
   const payload = {
     token: SHARED_TOKEN,
     row: [
-      nama.value.trim(),
-      kodePas.value.trim(),
-      instansi.value.trim(),
+      nama.textContent.trim(),
+      kodePas.textContent.trim(),
+      instansi.textContent.trim(),
       prohibited.value.trim(),
       lokasi.value.trim(),
       jamMasuk.value.trim(),
@@ -277,14 +278,15 @@ async function receiveBarcode(code){
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
-      nama.value     = j.columns.B || '';
-      kodePas.value  = j.columns.D || '';
-      instansi.value = j.columns.E || '';
+      nama.textContent     = j.columns.B || '';
+      kodePas.textContent  = j.columns.D || '';
+      instansi.textContent = j.columns.E || '';
+      infoCard.classList.remove('hidden');
       prohibited.value = '';
       lokasi.value     = '';
       jamKeluar.value  = '';
       supervisor.value = '';
-      if (!/P/i.test(kodePas.value)){
+      if (!/P/i.test(kodePas.textContent)){
         clearInputs();
         modal.classList.remove('hidden');
       }
