@@ -18,6 +18,9 @@ const pemeriksa  = document.getElementById("pemeriksa");
 const supervisor = document.getElementById("supervisor");
 const submitBtn  = document.getElementById("submitBtn");
 const scanBtn    = document.getElementById("scanBtn");
+const spinner    = document.getElementById("spinner");
+const modal      = document.getElementById("noPModal");
+const modalClose = document.getElementById("modalClose");
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
 
 const auth = getAuth();
@@ -28,6 +31,16 @@ onAuthStateChanged(auth, (user) => {
 
 pemeriksa.addEventListener("input", (e) => {
   e.target.value = e.target.value.toUpperCase();
+});
+modalClose.addEventListener("click", () => modal.classList.add("hidden"));
+function showSpinner(){ spinner.classList.remove("hidden"); }
+function hideSpinner(){ spinner.classList.add("hidden"); }
+function clearInputs(){ [nama,kodePas,instansi,prohibited,lokasi,jamMasuk,jamKeluar,supervisor].forEach(el=>el.value=""); }
+kodePas.addEventListener("input", () => {
+  if (kodePas.value && !/P/i.test(kodePas.value)){
+    clearInputs();
+    modal.classList.remove("hidden");
+  }
 });
 
 submitBtn.addEventListener("click", onSubmit);
@@ -40,21 +53,20 @@ if (scanBtn) scanBtn.addEventListener("click", () => {
 });
 
 async function onSubmit(){
-  // Kirim data dengan nama field sesuai Google Apps Script
-  const payload = {
-    token: SHARED_TOKEN,
-    namaLengkap: nama.value.trim(),
-    kodePas: kodePas.value.trim(),
-    instansi: instansi.value.trim(),
-    prohibitedItem: prohibited.value.trim(),
-    lokasiAcp: lokasi.value.trim(),
-    jamMasuk: jamMasuk.value.trim(),
-    jamKeluar: jamKeluar.value.trim(),
-    pemeriksa: pemeriksa.value.trim(),
-    supervisor: supervisor.value.trim()
-  };
-
+  const row = [
+    nama.value.trim(),
+    kodePas.value.trim(),
+    instansi.value.trim(),
+    prohibited.value.trim(),
+    lokasi.value.trim(),
+    jamMasuk.value.trim(),
+    jamKeluar.value.trim(),
+    pemeriksa.value.trim(),
+    supervisor.value.trim()
+  ];
+  const payload = { token: SHARED_TOKEN, row };
   submitBtn.disabled = true;
+  showSpinner();
   try {
     const res = await fetch(SCRIPT_URL, {
       method: "POST",
@@ -64,11 +76,12 @@ async function onSubmit(){
     const j = await res.json();
     if (!j || (!j.success && !j.ok)) throw new Error(j?.error || "Gagal mengirim");
     alert("Data berhasil dikirim");
-    [nama, kodePas, instansi, prohibited, lokasi, jamMasuk, jamKeluar, supervisor].forEach(el => el.value = "");
+    clearInputs();
   } catch(err){
     alert("Gagal: " + (err?.message || err));
   } finally {
     submitBtn.disabled = false;
+    hideSpinner();
   }
 }
 
@@ -251,13 +264,14 @@ async function handleScanSuccess(raw){
 
 async function receiveBarcode(code){
   try{
+    showSpinner();
     jamMasuk.value = new Intl.DateTimeFormat('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
       timeZone: 'Asia/Jakarta'
     }).format(new Date());
-    const url = `${LOOKUP_URL}?token=${SHARED_TOKEN}&key=${encodeURIComponent(code)}`;
+    const url = LOOKUP_URL + '?token=' + SHARED_TOKEN + '&key=' + encodeURIComponent(code);
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
@@ -268,11 +282,17 @@ async function receiveBarcode(code){
       lokasi.value     = '';
       jamKeluar.value  = '';
       supervisor.value = '';
+      if (!/P/i.test(kodePas.value)){
+        clearInputs();
+        modal.classList.remove('hidden');
+      }
     } else {
       alert(j?.error || 'Data tidak ditemukan');
     }
   }catch(err){
     alert('Gagal mengambil data: ' + (err?.message || err));
+  } finally {
+    hideSpinner();
   }
 }
 
