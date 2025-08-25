@@ -66,13 +66,13 @@ if (scanBtn) scanBtn.addEventListener("click", () => {
   if (scanState.running) stopScan(); else startScan();
 });
 
-function showOverlay(state, title, desc){
+function showOverlay(state, title, desc, autoHide = true){
   overlay.classList.remove("hidden");
   ovIcon.className = "icon " + state;
   ovTitle.textContent = title;
   ovDesc.textContent = desc || "";
   ovClose.classList.toggle("hidden", state === "spinner");
-  if (state !== "spinner") {
+  if (autoHide && state !== "spinner") {
     setTimeout(() => overlay.classList.add("hidden"), 1500);
   }
 }
@@ -88,7 +88,7 @@ submitBtn.addEventListener("click", async () => {
     !namaAvsec.textContent.trim() ||
     !instansiAvsec.textContent.trim();
   if (someEmpty) {
-    alert("Mohon lengkapi semua data sebelum mengirim.");
+    showOverlay('stop', 'Data belum lengkap', 'Mohon lengkapi semua data sebelum mengirim.', false);
     return;
   }
 
