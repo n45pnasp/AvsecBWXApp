@@ -145,7 +145,9 @@ async function init(){
 
       try {
         const classified = classifyRoster(data);
-        await set(ref(db, "roster"), classified);
+        const user = auth.currentUser;
+        if (!user) throw new Error("User belum login");
+        await set(ref(db, `roster/${user.uid}`), classified);
         alert("Roster data berhasil terkirim ke RTDB");
       } catch (err) {
         console.error("sync rtdb", err);
