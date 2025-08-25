@@ -1,30 +1,35 @@
+// gun.js (FINAL)
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyNjrkZcAejnsKKtd9_OW8s69J41PDuGNyp2lZ63CPEI1Q7oS_OkJf5oIxgTAjnphCB/exec"; // URL Apps Script
+// Pakai Cloudflare Worker proxy (bukan URL Apps Script langsung)
+const SCRIPT_URL = "https://loggun.avsecbwx2018.workers.dev/";
 
+// ====== Auth guard ======
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
-const nama          = document.getElementById("nama");
-const pekerjaan     = document.getElementById("pekerjaan");
-const flight        = document.getElementById("flight");
-const seat          = document.getElementById("seat");
-const kta           = document.getElementById("kta");
-const tipe          = document.getElementById("tipe");
-const jenisPeluru   = document.getElementById("jenisPeluru");
-const jumlahPeluru  = document.getElementById("jumlahPeluru");
-const namaAvsec     = document.getElementById("namaAvsec");
-const instansiAvsec = document.getElementById("instansiAvsec");
-const petugas       = document.getElementById("petugas");
-const supervisor    = document.getElementById("supervisor");
-const submitBtn     = document.getElementById("submitBtn");
+// ====== DOM ======
+const nama            = document.getElementById("nama");
+const pekerjaan       = document.getElementById("pekerjaan");
+const flight          = document.getElementById("flight");
+const seat            = document.getElementById("seat");
+const kta             = document.getElementById("kta");
+const tipe            = document.getElementById("tipe");
+const jenisPeluru     = document.getElementById("jenisPeluru");
+const jumlahPeluru    = document.getElementById("jumlahPeluru");
+const namaAvsec       = document.getElementById("namaAvsec");
+const instansiAvsec   = document.getElementById("instansiAvsec");
+const petugas         = document.getElementById("petugas");
+const supervisor      = document.getElementById("supervisor");
+const submitBtn       = document.getElementById("submitBtn");
 const fotoEvidenceInp = document.getElementById("fotoEvidence");
-const btnEvidence   = document.getElementById("btnEvidence");
-const scanBtn       = document.getElementById("scanBtn");
-const imgAvsec      = document.getElementById("imgAvsec");
-const fotoIdInp     = document.getElementById("fotoId");
+const btnEvidence     = document.getElementById("btnEvidence");
+const scanBtn         = document.getElementById("scanBtn");
+const imgAvsec        = document.getElementById("imgAvsec");
+const fotoIdInp       = document.getElementById("fotoId");
 
+// ====== Firebase ======
 const { app, auth } = getFirebase();
 const db = getDatabase(app);
 
@@ -37,18 +42,17 @@ onValue(ref(db, "roster/spvHbs"), (snap) => {
   supervisor.value = typeof val === "string" ? val.toUpperCase() : "";
 });
 
-let fotoAvsecFormula = "";
-
+// ====== Lookup QR ======
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbwqJHoJjXpYCv2UstclVG_vHf5czAxDUfWmsSo6H4lcy3HgGZYSn7g1yAzbb8UFJHtrxw/exec";
-const SHARED_TOKEN = "N45p";
+const SHARED_TOKEN = "N45p"; // untuk LOOKUP_URL, bukan untuk kirim ke sheet (token disuntik di Worker)
 
+// ====== Overlay ======
 const overlay = document.getElementById("overlay");
 const ovIcon  = document.getElementById("ovIcon");
 const ovTitle = document.getElementById("ovTitle");
 const ovDesc  = document.getElementById("ovDesc");
 const ovClose = document.getElementById("ovClose");
 function hideOverlay(){ overlay.classList.add("hidden"); }
-
 ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
 
 btnEvidence.addEventListener("click", () => fotoEvidenceInp.click());
@@ -57,11 +61,7 @@ fotoEvidenceInp.addEventListener("change", () => {
 });
 
 if (scanBtn) scanBtn.addEventListener("click", () => {
-  if (scanState.running) {
-    stopScan();
-  } else {
-    startScan();
-  }
+  if (scanState.running) stopScan(); else startScan();
 });
 
 function showOverlay(state, title, desc){
@@ -75,6 +75,10 @@ function showOverlay(state, title, desc){
   }
 }
 
+// ====== State foto AVSEC (URL, bukan formula) ======
+let fotoAvsecURL = "";
+
+// ====== Submit ======
 submitBtn.addEventListener("click", async () => {
   const now = new Date();
   const pad = (n)=> String(n).padStart(2,"0");
@@ -82,34 +86,47 @@ submitBtn.addEventListener("click", async () => {
 
   const payload = {
     tanggal,
-    namaLengkap: nama.value.trim().toUpperCase(),
-    pekerjaan: pekerjaan.value.trim().toUpperCase(),
-    flightNumber: flight.value.trim().toUpperCase(),
-    seatNumber: seat.value.trim().toUpperCase(),
-    nomorKTA: kta.value.trim().toUpperCase(),
-    tipeSenjata: tipe.value.trim().toUpperCase(),
-    jenisPeluru: jenisPeluru.value.trim().toUpperCase(),
-    jumlahPeluru: jumlahPeluru.value.trim().toUpperCase(),
-    namaAvsec: namaAvsec.value.trim().toUpperCase(),
+    namaLengkap:   nama.value.trim().toUpperCase(),
+    pekerjaan:     pekerjaan.value.trim().toUpperCase(),
+    flightNumber:  flight.value.trim().toUpperCase(),
+    seatNumber:    seat.value.trim().toUpperCase(),
+    nomorKTA:      kta.value.trim().toUpperCase(),
+    tipeSenjata:   tipe.value.trim().toUpperCase(),
+    jenisPeluru:   jenisPeluru.value.trim().toUpperCase(),
+    jumlahPeluru:  jumlahPeluru.value.trim().toUpperCase(),
+    namaAvsec:     namaAvsec.value.trim().toUpperCase(),
     instansiAvsec: instansiAvsec.value.trim().toUpperCase(),
-    petugas: petugas.value.trim().toUpperCase(),
-    supervisor: supervisor.value.trim().toUpperCase(),
-    fotoId: fotoIdInp.value.trim(),
-    fotoAvsec: fotoAvsecFormula,
-    fotoEvidence: await getImageFormula(fotoEvidenceInp.files[0])
+    petugas:       petugas.value.trim().toUpperCase(),
+    supervisor:    supervisor.value.trim().toUpperCase(),
+    // Foto:
+    // - fotoId: bisa berisi fileId (tetap diteruskan apa adanya)
+    // - fotoAvsec: KIRIM URL langsung (nanti di-upload oleh code.gs)
+    // - fotoEvidence: KIRIM data URL (nanti di-upload oleh code.gs)
+    fotoId:        fotoIdInp.value.trim(),
+    fotoAvsec:     fotoAvsecURL || "",
+    fotoEvidence:  await getImageDataUrl(fotoEvidenceInp.files[0]) // <— penting: data URL, bukan formula
   };
+
   submitBtn.disabled = true;
   showOverlay('spinner','Mengirim data…','');
+
   try {
     await sendToSheet('GunFilesPDF', payload);
     await sendToSheet('Files', payload);
+
     showOverlay('ok','Data berhasil dikirim','');
-    [nama,pekerjaan,flight,seat,kta,tipe,jenisPeluru,jumlahPeluru,namaAvsec,instansiAvsec,petugas,supervisor,fotoIdInp]
-      .forEach(el=>{ if(el) el.value=""; });
-    fotoAvsecFormula = "";
+
+    // Reset form
+    [
+      nama, pekerjaan, flight, seat, kta, tipe, jenisPeluru,
+      jumlahPeluru, namaAvsec, instansiAvsec, petugas, supervisor, fotoIdInp
+    ].forEach(el => { if (el) el.value = ""; });
+
+    fotoAvsecURL = "";
     if (imgAvsec){ imgAvsec.src=""; imgAvsec.classList.add("hidden"); }
     fotoEvidenceInp.value = "";
     btnEvidence.textContent = "Ambil Foto";
+
   } catch(err){
     showOverlay('err','Gagal', err?.message || err);
   } finally {
@@ -124,20 +141,22 @@ async function sendToSheet(sheet, payload){
     body: JSON.stringify(payload)
   });
   const j = await res.json();
-  if (!j || (!j.success && !j.ok)) throw new Error(j?.error || 'Gagal mengirim');
+  if (!j || (!j.success && !j.ok)) {
+    throw new Error(j?.error || 'Gagal mengirim');
+  }
 }
 
-async function getImageFormula(file){
+// ====== Util gambar ======
+async function getImageDataUrl(file){
   if(!file) return "";
   try {
-    const b64 = await readAndCompress(file);
-    return `=IMAGE("data:image/jpeg;base64,${b64}")`;
+    return await readAndCompressToDataUrl(file); // hasil: "data:image/jpeg;base64,...."
   } catch {
     return "";
   }
 }
 
-async function readAndCompress(file){
+async function readAndCompressToDataUrl(file){
   const dataUrl = await new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result);
@@ -160,10 +179,11 @@ async function readAndCompress(file){
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, 0, width, height);
-  return canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
+  // KEMBALIKAN DATA URL penuh (bukan hanya base64)
+  return canvas.toDataURL("image/jpeg", 0.8);
 }
 
-// ====== SCAN BARCODE PAS ======
+// ====== SCAN BARCODE / QR ======
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
 
 function injectScanStyles(){
@@ -182,7 +202,8 @@ function injectScanStyles(){
     .scan-close{ pointer-events:auto; width:42px; height:42px; border-radius:999px; background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,255,255,.25); font-size:22px; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,.35); transition: transform .08s ease, filter .15s ease; }
     .scan-close:active{ transform:scale(.96); }
     .scan-close:focus-visible{ outline:2px solid rgba(255,255,255,.6); outline-offset:2px; }
-    .scan-reticle{ position:absolute; top:50%; left:50%; width:min(68vw, 520px); aspect-ratio:1/1; transform:translate(-50%,-50%); border-radius:16px; box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset; pointer-events:none; background: linear-gradient(#fff,#fff) left top/28px 2px no-repeat, linear-gradient(#fff,#fff) left top/2px 28px no-repeat, linear-gradient(#fff,#fff) right top/28px 2px no-repeat, linear-gradient(#fff,#fff) right top/2px 28px no-repeat, linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat, linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat, linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat, linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat; outline:2px dashed rgba(255,255,255,0); }
+    .scan-reticle{ position:absolute; top:50%; left:50%; width:min(68vw, 520px); aspect-ratio:1/1; transform:translate(-50%,-50%); border-radius:16px; box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset; pointer-events:none;
+      background: linear-gradient(#fff,#fff) left top/28px 2px no-repeat, linear-gradient(#fff,#fff) left top/2px 28px no-repeat, linear-gradient(#fff,#fff) right top/28px 2px no-repeat, linear-gradient(#fff,#fff) right top/2px 28px no-repeat, linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat, linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat, linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat, linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat; outline:2px dashed rgba(255,255,255,0); }
     .scan-hint{ position:absolute; left:50%; bottom:max(18px, calc(16px + env(safe-area-inset-bottom,0))); transform:translateX(-50%); background:rgba(0,0,0,.55); color:#fff; font-weight:600; padding:8px 12px; border-radius:999px; letter-spacing:.2px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
   `;
   const style = document.createElement('style');
@@ -190,7 +211,6 @@ function injectScanStyles(){
   style.textContent = css;
   document.head.appendChild(style);
 }
-
 injectScanStyles();
 
 async function startScan(){
@@ -342,6 +362,7 @@ async function handleScanSuccess(raw){
   receiveBarcode(raw);
 }
 
+// Hasil LOOKUP: set namaAvsec, instansiAvsec, fotoId, dan tampilkan thumbnail
 async function receiveBarcode(code){
   try{
     showOverlay('spinner','Mengambil data…','');
@@ -349,24 +370,29 @@ async function receiveBarcode(code){
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
-      namaAvsec.value = (j.columns.B || '').toUpperCase();
+      namaAvsec.value     = (j.columns.B || '').toUpperCase();
       instansiAvsec.value = (j.columns.E || '').toUpperCase();
-      const fotoId = (j.columns.H || '').trim();
+
+      const fotoId = (j.columns.H || '').trim();     // fileId dari Drive (opsional)
       if (fotoIdInp) fotoIdInp.value = fotoId;
+
+      // URL thumbnail untuk preview (jika ada foto)
       const urlFoto = fotoId ? `https://drive.google.com/thumbnail?id=${fotoId}` : '';
+
+      // Simpan URL asli ke state untuk dikirim (bukan formula)
+      fotoAvsecURL = urlFoto || "";
+
+      // Preview di UI
       if (urlFoto){
-        fotoAvsecFormula = `=IMAGE("${urlFoto}")`;
         if (imgAvsec){
           imgAvsec.src = urlFoto;
           imgAvsec.classList.remove('hidden');
         }
-      } else {
-        fotoAvsecFormula = "";
-        if (imgAvsec){
-          imgAvsec.src = "";
-          imgAvsec.classList.add('hidden');
-        }
+      } else if (imgAvsec){
+        imgAvsec.src = "";
+        imgAvsec.classList.add('hidden');
       }
+
       hideOverlay();
     } else {
       showOverlay('err', j?.error || 'Data tidak ditemukan','');
@@ -375,3 +401,4 @@ async function receiveBarcode(code){
     showOverlay('err','Gagal mengambil data', err?.message || err);
   }
 }
+
