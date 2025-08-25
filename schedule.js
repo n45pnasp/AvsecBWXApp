@@ -9,7 +9,6 @@ import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.22.2
 
 const { app, auth } = getFirebase();
 const db = getDatabase(app);
-const ADMIN_UID = "XrSOg13vcDM2npZYK9vxekbmQih2";
 
 // ===== KONFIG =====
 // Ganti dengan URL Cloudflare Worker kamu (bkn URL Apps Script langsung)
@@ -160,9 +159,8 @@ async function init(){
         let role = (token.claims?.role || "").toLowerCase();
         if (!role && nameMatch) role = "admin"; // fallback untuk akun Novan
         const roleMatch = role === "admin";
-        const uidMatch  = user.uid === ADMIN_UID;
-        console.log("Auth info", { uid: user.uid, displayName, claimName, role, uidMatch, nameMatch, roleMatch });
-        if (uidMatch && nameMatch && roleMatch) {
+        console.log("Auth info", { uid: user.uid, displayName, claimName, role, nameMatch, roleMatch });
+        if (nameMatch && roleMatch) {
           const payload = {
             name: "Novan Andrian",
             role: "admin",
