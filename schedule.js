@@ -65,6 +65,25 @@ const Overlay = {
 };
 window.App = { hideOverlay: Overlay.hide };
 
+// ===== Modal Notifikasi =====
+const Modal = {
+  show(msg, title = "Notifikasi") {
+    const back = $("#alertBack");
+    if (!back) return;
+    back.querySelector("#alertTitle").textContent = title;
+    back.querySelector("#alertMsg").textContent = msg;
+    back.classList.add("show");
+    back.setAttribute("aria-hidden", "false");
+  },
+  hide() {
+    const back = $("#alertBack");
+    if (!back) return;
+    back.classList.remove("show");
+    back.setAttribute("aria-hidden", "true");
+  }
+};
+document.getElementById("alertOk")?.addEventListener("click", Modal.hide);
+
 function fillText(id, value){
   const el = document.getElementById(id);
   if (el) el.textContent = (value ?? "").toString().trim() || "-";
@@ -151,14 +170,19 @@ async function init(){
         const nameMatch = (user.displayName || "").trim().toUpperCase() === "NOVAN ANDRIAN";
         const isAdmin  = token.claims?.role === "admin";
         if (nameMatch && isAdmin) {
-          await set(ref(db, `roster/${user.uid}`), classified);
-          alert("Roster data berhasil terkirim ke RTDB");
+          const payload = {
+            name: user.displayName,
+            role: token.claims?.role,
+            roster: classified
+          };
+          await set(ref(db, `roster/${user.uid}`), payload);
+          Modal.show("Roster berhasil terkirim ke RTDB");
         } else {
           console.log("Akun tidak memiliki hak untuk mengirim roster");
         }
       } catch (err) {
         console.error("sync rtdb", err);
-        alert(`Gagal mengirim data roster ke RTDB: ${err?.message || err}`);
+        Modal.show(`Gagal mengirim data roster ke RTDB: ${err?.message || err}`, "Gagal");
       }
 
     // Header (tanggal sudah sesuai format Sheet karena server pakai getDisplayValues)
