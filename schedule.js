@@ -63,7 +63,6 @@ const Overlay = {
     $("#loadingOverlay").style.display = "none";
   }
 };
-window.App = { hideOverlay: Overlay.hide };
 
 // ===== Modal Notifikasi =====
 const Modal = {

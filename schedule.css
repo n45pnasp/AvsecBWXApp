@@ -163,13 +163,6 @@ body.blur-bg > *:not(#loadingOverlay){
 #loadingOverlay .texts{ display:grid; gap:6px }
 #loadingOverlay .title{ font-weight:800; letter-spacing:.2px }
 #loadingOverlay .desc{ color:var(--muted); font-size:14px }
-#loadingOverlay .close{
-  appearance:none; border:1px solid var(--border); background:#0b1220; color:var(--text);
-  width:36px; height:36px; border-radius:10px; cursor:pointer;
-  transition:filter .15s ease, transform .06s ease;
-}
-#loadingOverlay .close:hover{ filter:brightness(1.05) }
-#loadingOverlay .close:active{ transform:translateY(1px) }
 
 @keyframes spin{ to{ transform:rotate(360deg) } }
 
