@@ -165,11 +165,13 @@ async function init(){
         const classified = classifyRoster(data);
         const user = auth.currentUser;
         if (!user) throw new Error("User belum login");
-        const token = await getIdTokenResult(user);
+        const token = await getIdTokenResult(user, true);
         const name = (user.displayName || token.claims?.name || "").trim();
+        const role = (token.claims?.role || "").toLowerCase();
         const nameMatch = name === "Novan Andrian";
-        const isAdmin   = token.claims?.role === "admin";
-        if (nameMatch && isAdmin) {
+        const roleMatch = role === "admin";
+        console.log("Auth info", { name, role, nameMatch, roleMatch });
+        if (nameMatch && roleMatch) {
           const payload = {
             name: user.displayName,
             role: token.claims?.role,
@@ -178,7 +180,7 @@ async function init(){
           await set(ref(db, `roster/${user.uid}`), payload);
           Modal.show("Roster berhasil terkirim ke RTDB");
         } else {
-          console.log("Akun tidak memiliki hak untuk mengirim roster");
+          console.warn(`Nama atau role tidak cocok, skip RTDB: name=${name}, role=${role}`);
         }
       } catch (err) {
         console.error("sync rtdb", err);
