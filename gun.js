@@ -85,8 +85,8 @@ submitBtn.addEventListener("click", async () => {
   // Validasi: semua field wajib terisi
   const requiredInputs = [nama, pekerjaan, flight, seat, kta, tipe, jenisPeluru, jumlahPeluru, petugas, supervisor];
   const someEmpty = requiredInputs.some(el => !el.value.trim()) ||
-    !namaAvsec.textContent.trim() ||
-    !instansiAvsec.textContent.trim();
+    ["", "-"].includes(namaAvsec.textContent.trim()) ||
+    ["", "-"].includes(instansiAvsec.textContent.trim());
   if (someEmpty) {
     showOverlay('stop', 'Data belum lengkap', 'Mohon lengkapi semua data sebelum mengirim.', false);
     return;
@@ -134,8 +134,8 @@ submitBtn.addEventListener("click", async () => {
       jumlahPeluru, fotoIdInp
     ].forEach(el => { if (el) el.value = ""; });
 
-    namaAvsec.textContent = "";
-    instansiAvsec.textContent = "";
+    namaAvsec.textContent = "-";
+    instansiAvsec.textContent = "-";
     supervisor.value = supervisorVal;
 
     fotoAvsecCell = "";
@@ -386,8 +386,10 @@ async function receiveBarcode(code){
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
-      namaAvsec.textContent     = (j.columns.B || '').toUpperCase();
-      instansiAvsec.textContent = (j.columns.E || '').toUpperCase();
+      const namaVal = (j.columns.B || '').toUpperCase();
+      namaAvsec.textContent = namaVal || '-';
+      const instansiVal = (j.columns.E || '').toUpperCase();
+      instansiAvsec.textContent = instansiVal || '-';
 
       const rawFoto = (j.columns.H || '').trim(); // kolom H berisi fileId atau URL thumbnail
       let fotoUrl = "";

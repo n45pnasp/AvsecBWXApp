@@ -18,19 +18,24 @@
   </div>
 
   <main class="container">
-    <section class="card avsec-card">
+    <section class="card qr-card">
       <button id="scanBtn" type="button" class="qr-btn">
         <img src="icons/qrcode.png" alt="QR" />
         <span>Scan Barcode PAS<br><small>Avsec Airlines</small></span>
       </button>
+    </section>
+
+    <section id="infoCard" class="card avsec-card">
       <div class="avsec-info">
         <div class="avsec-texts">
           <div class="label">Nama Avsec Airlines</div>
-          <div id="namaAvsec" class="value"></div>
+          <div id="namaAvsec" class="value">-</div>
           <div class="label">Instansi Avsec Airlines</div>
-          <div id="instansiAvsec" class="value"></div>
+          <div id="instansiAvsec" class="value">-</div>
         </div>
-        <img id="imgAvsec" alt="Foto Avsec Airlines" class="hidden avsec-photo" />
+        <div class="avsec-photo">
+          <img id="imgAvsec" alt="Foto Avsec Airlines" class="hidden" />
+        </div>
       </div>
       <input id="fotoId" type="hidden" />
     </section>
