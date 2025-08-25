@@ -2,7 +2,7 @@ import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"; // ganti dengan URL Apps Script
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyNjrkZcAejnsKKtd9_OW8s69J41PDuGNyp2lZ63CPEI1Q7oS_OkJf5oIxgTAjnphCB/exec"; // URL Apps Script
 
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
