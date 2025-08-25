@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Form Senjata Api</title>
+  <link rel="stylesheet" href="gun.css" />
+  <style>html{visibility:hidden}</style>
+</head>
+<body>
+  <div class="app-bar">
+    <a class="back-btn" href="home.html" aria-label="Kembali">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
+      </svg>
+    </a>
+    <h1 class="app-title">Form Senjata Api</h1>
+  </div>
+
+  <main class="container">
+    <section class="card avsec-card">
+      <button id="scanBtn" type="button" class="qr-btn">
+        <img src="icons/qrcode.png" alt="QR" />
+        <span>Scan Barcode PAS<br><small>Avsec Airlines</small></span>
+      </button>
+      <div class="avsec-info">
+        <div class="avsec-texts">
+          <div class="label">Nama Avsec Airlines</div>
+          <div id="namaAvsec" class="value"></div>
+          <div class="label">Instansi Avsec Airlines</div>
+          <div id="instansiAvsec" class="value"></div>
+        </div>
+        <img id="imgAvsec" alt="Foto Avsec Airlines" class="hidden avsec-photo" />
+      </div>
+      <input id="fotoId" type="hidden" />
+    </section>
+
+    <section class="card">
+      <h1 class="card-title">Input Data Senjata Api</h1>
+
+      <div class="field">
+        <label for="nama">Nama Lengkap</label>
+        <input id="nama" type="text" />
+      </div>
+      <div class="field">
+        <label for="pekerjaan">Pekerjaan</label>
+        <input id="pekerjaan" type="text" />
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="flight">Flight Number</label>
+          <select id="flight">
+            <option value="">Pilih Flight</option>
+            <option>IU371</option>
+            <option>QG701</option>
+            <option>ID6591</option>
+            <option>HELI IAT</option>
+            <option>CHARTER FLIGHT</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="seat">Seat Number</label>
+          <input id="seat" type="text" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="kta">Nomor KTA</label>
+        <input id="kta" type="text" />
+      </div>
+      <div class="field">
+        <label for="tipe">Tipe Senjata</label>
+        <input id="tipe" type="text" />
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="jenisPeluru">Jenis Peluru</label>
+          <select id="jenisPeluru">
+            <option value="">Pilih Jenis</option>
+            <option>API</option>
+            <option>KARET</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="jumlahPeluru">Jumlah Peluru</label>
+          <select id="jumlahPeluru">
+            <option value="">Pilih Jumlah</option>
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+            <option>4</option>
+            <option>5</option>
+            <option>6</option>
+            <option>7</option>
+            <option>8</option>
+            <option>9</option>
+            <option>10</option>
+            <option>11</option>
+            <option>12</option>
+          </select>
+        </div>
+      </div>
+      <div class="field hidden">
+        <label for="petugas">Petugas</label>
+        <input id="petugas" type="text" readonly />
+      </div>
+      <div class="field hidden">
+        <label for="supervisor">Supervisor</label>
+        <input id="supervisor" type="text" readonly />
+      </div>
+      <div class="field">
+        <label>Foto Evidence</label>
+        <button id="btnEvidence" type="button" class="btn secondary">Ambil Foto</button>
+        <input id="fotoEvidence" type="file" accept="image/*" capture="environment" class="hidden" />
+      </div>
+      <button id="submitBtn" type="button" class="btn primary full">Kirim Data</button>
+    </section>
+  </main>
+
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet" role="document">
+      <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="icon spinner" id="ovIcon"></div>
+      <div class="texts">
+        <div class="title" id="ovTitle"></div>
+        <div class="desc" id="ovDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="gun.js"></script>
+</body>
+</html>
