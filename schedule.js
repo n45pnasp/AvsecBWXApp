@@ -144,8 +144,10 @@ async function init(){
     try {
       const classified = classifyRoster(data);
       await set(ref(db, "roster"), classified);
+      alert("Roster data berhasil terkirim ke RTDB");
     } catch (err) {
       console.error("sync rtdb", err);
+      alert("Gagal mengirim data roster ke RTDB");
     }
 
     // Header (tanggal sudah sesuai format Sheet karena server pakai getDisplayValues)
