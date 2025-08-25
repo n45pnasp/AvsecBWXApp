@@ -16,7 +16,7 @@ const PROXY_ENDPOINT = "https://roster-proxy.avsecbwx2018.workers.dev"; // <-- g
 const SHARED_TOKEN   = "N45p"; // samakan dgn code.gs
 
 // UID akun Firebase Authentication yang diizinkan menulis ke RTDB (path "roster")
-const ALLOWED_UID = "XrSOg13vcDM2npZYK9vxekbmQih2";
+const UID_NOVAN = "XrSOg13vcDM2npZYK9vxekbmQih2";
 
 // ====== DOM utils & overlay ======
 function $(sel){ return document.querySelector(sel); }
@@ -158,9 +158,9 @@ async function init(){
 
         const uid = user.uid;
         console.log("🔑 UID login saat ini:", uid);
-        console.log("✅ UID yang diizinkan:", ALLOWED_UID);
+        console.log("✅ UID yang diizinkan:", UID_NOVAN);
 
-        if (uid === ALLOWED_UID) {
+        if (uid === UID_NOVAN) {
           // ✅ sesuai rules: hanya UID ini yang bisa menulis
           // Simpan hanya data roster sesuai struktur RTDB
           await set(ref(db, "roster"), classified);
