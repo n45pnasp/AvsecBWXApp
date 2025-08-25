@@ -154,8 +154,9 @@ async function init(){
         if (!user) throw new Error("User belum login");
         const token = await getIdTokenResult(user, true);
         const name = (user.displayName || token.claims?.name || "").trim();
-        const role = (token.claims?.role || "").toLowerCase();
         const nameMatch = name === "Novan Andrian";
+        let role = (token.claims?.role || "").toLowerCase();
+        if (!role && nameMatch) role = "admin"; // fallback untuk akun Novan
         const roleMatch = role === "admin";
         console.log("Auth info", { name, role, nameMatch, roleMatch });
         if (nameMatch && roleMatch) {
