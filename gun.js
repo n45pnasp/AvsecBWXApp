@@ -120,7 +120,7 @@ submitBtn.addEventListener("click", async () => {
     // Reset form
     [
       nama, pekerjaan, flight, seat, kta, tipe, jenisPeluru,
-      jumlahPeluru, namaAvsec, instansiAvsec, petugas, supervisor, fotoIdInp
+      jumlahPeluru, namaAvsec, instansiAvsec, supervisor, fotoIdInp
     ].forEach(el => { if (el) el.value = ""; });
 
     fotoAvsecCell = "";
