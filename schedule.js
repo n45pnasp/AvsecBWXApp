@@ -161,7 +161,7 @@ async function init(){
         if (nameMatch && roleMatch) {
           const payload = {
             name: user.displayName,
-            role: token.claims?.role,
+            role: role,
             roster: classified
           };
           await set(ref(db, `roster/${user.uid}`), payload);
