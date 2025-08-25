@@ -1,4 +1,6 @@
-import { requireAuth } from "./auth-guard.js";
+import { requireAuth, getFirebase } from "./auth-guard.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"; // ganti dengan URL Apps Script
 
@@ -21,6 +23,18 @@ const fotoEvidenceInp = document.getElementById("fotoEvidence");
 const btnEvidence   = document.getElementById("btnEvidence");
 const scanBtn       = document.getElementById("scanBtn");
 const imgAvsec      = document.getElementById("imgAvsec");
+
+const { app, auth } = getFirebase();
+const db = getDatabase(app);
+
+onAuthStateChanged(auth, (user) => {
+  if (user) petugas.value = user.displayName || user.email || "";
+});
+
+onValue(ref(db, "roster/spvHbs"), (snap) => {
+  const val = snap.val();
+  supervisor.value = typeof val === "string" ? val : "";
+});
 
 let fotoAvsecFormula = "";
 
