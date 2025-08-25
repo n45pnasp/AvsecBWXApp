@@ -147,8 +147,12 @@ async function init(){
         const classified = classifyRoster(data);
         const user = auth.currentUser;
         if (!user) throw new Error("User belum login");
-        await set(ref(db, `roster/${user.uid}`), classified);
-        alert("Roster data berhasil terkirim ke RTDB");
+        if ( (user.displayName || "").trim().toUpperCase() === "NOVAN ANDRIAN") {
+          await set(ref(db, `roster/${user.uid}`), classified);
+          alert("Roster data berhasil terkirim ke RTDB");
+        } else {
+          console.log("Akun bukan NOVAN ANDRIAN; skip kirim roster");
+        }
       } catch (err) {
         console.error("sync rtdb", err);
         alert(`Gagal mengirim data roster ke RTDB: ${err?.message || err}`);
