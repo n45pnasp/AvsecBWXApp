@@ -28,7 +28,6 @@ const btnEvidence     = document.getElementById("btnEvidence");
 const scanBtn         = document.getElementById("scanBtn");
 const imgAvsec        = document.getElementById("imgAvsec");
 const fotoIdInp       = document.getElementById("fotoId");
-const fotoAvsecLabel  = document.getElementById("fotoAvsecLabel");
 
 // ====== Firebase ======
 const { app, auth } = getFirebase();
@@ -38,9 +37,11 @@ onAuthStateChanged(auth, (user) => {
   if (user) petugas.value = (user.displayName || user.email || "").toUpperCase();
 });
 
+let supervisorVal = "";
 onValue(ref(db, "roster/spvHbs"), (snap) => {
   const val = snap.val();
-  supervisor.value = typeof val === "string" ? val.toUpperCase() : "";
+  supervisorVal = typeof val === "string" ? val.toUpperCase() : "";
+  supervisor.value = supervisorVal;
 });
 
 // ====== Lookup QR ======
@@ -95,8 +96,8 @@ submitBtn.addEventListener("click", async () => {
     tipeSenjata:   tipe.value.trim().toUpperCase(),
     jenisPeluru:   jenisPeluru.value.trim().toUpperCase(),
     jumlahPeluru:  jumlahPeluru.value.trim().toUpperCase(),
-    namaAvsec:     namaAvsec.value.trim().toUpperCase(),
-    instansiAvsec: instansiAvsec.value.trim().toUpperCase(),
+    namaAvsec:     namaAvsec.textContent.trim().toUpperCase(),
+    instansiAvsec: instansiAvsec.textContent.trim().toUpperCase(),
     petugas:       petugas.value.trim().toUpperCase(),
     supervisor:    supervisor.value.trim().toUpperCase(),
     // Foto:
@@ -120,12 +121,15 @@ submitBtn.addEventListener("click", async () => {
     // Reset form
     [
       nama, pekerjaan, flight, seat, kta, tipe, jenisPeluru,
-      jumlahPeluru, namaAvsec, instansiAvsec, supervisor, fotoIdInp
+      jumlahPeluru, fotoIdInp
     ].forEach(el => { if (el) el.value = ""; });
+
+    namaAvsec.textContent = "";
+    instansiAvsec.textContent = "";
+    supervisor.value = supervisorVal;
 
     fotoAvsecCell = "";
     if (imgAvsec){ imgAvsec.src=""; imgAvsec.classList.add("hidden"); }
-    if (fotoAvsecLabel){ fotoAvsecLabel.textContent = ""; fotoAvsecLabel.classList.add("hidden"); }
     fotoEvidenceInp.value = "";
     btnEvidence.textContent = "Ambil Foto";
 
@@ -372,34 +376,25 @@ async function receiveBarcode(code){
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
-      namaAvsec.value     = (j.columns.B || '').toUpperCase();
-      instansiAvsec.value = (j.columns.E || '').toUpperCase();
+      namaAvsec.textContent     = (j.columns.B || '').toUpperCase();
+      instansiAvsec.textContent = (j.columns.E || '').toUpperCase();
 
-      const fotoUrl = (j.columns.H || '').trim(); // kolom H berisi URL thumbnail
-      if (fotoIdInp) fotoIdInp.value = fotoUrl;
+      const fotoId = (j.columns.H || '').trim(); // kolom H berisi fileId
+      if (fotoIdInp) fotoIdInp.value = fotoId;
+      const fotoUrl = fotoId ? `https://drive.google.com/thumbnail?id=${fotoId}` : '';
 
       // Simpan formula =IMAGE("url") untuk dikirim ke sheet
       fotoAvsecCell = fotoUrl ? `=IMAGE("${fotoUrl}")` : "";
 
-      // Preview di UI dan tampilkan teks URL
+      // Preview di UI
       if (fotoUrl){
         if (imgAvsec){
           imgAvsec.src = fotoUrl;
           imgAvsec.classList.remove('hidden');
         }
-        if (fotoAvsecLabel){
-          fotoAvsecLabel.textContent = fotoUrl;
-          fotoAvsecLabel.classList.remove('hidden');
-        }
-      } else {
-        if (imgAvsec){
-          imgAvsec.src = "";
-          imgAvsec.classList.add('hidden');
-        }
-        if (fotoAvsecLabel){
-          fotoAvsecLabel.textContent = "";
-          fotoAvsecLabel.classList.add('hidden');
-        }
+      } else if (imgAvsec){
+        imgAvsec.src = "";
+        imgAvsec.classList.add('hidden');
       }
 
       hideOverlay();

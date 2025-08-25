@@ -18,6 +18,23 @@
   </div>
 
   <main class="container">
+    <section class="card avsec-card">
+      <button id="scanBtn" type="button" class="qr-btn">
+        <img src="icons/qrcode.png" alt="QR" />
+        <span>Scan Barcode PAS<br><small>Avsec Airlines</small></span>
+      </button>
+      <div class="avsec-info">
+        <div class="avsec-texts">
+          <div class="label">Nama Avsec Airlines</div>
+          <div id="namaAvsec" class="value"></div>
+          <div class="label">Instansi Avsec Airlines</div>
+          <div id="instansiAvsec" class="value"></div>
+        </div>
+        <img id="imgAvsec" alt="Foto Avsec Airlines" class="hidden avsec-photo" />
+      </div>
+      <input id="fotoId" type="hidden" />
+    </section>
+
     <section class="card">
       <h1 class="card-title">Input Data Senjata Api</h1>
 
@@ -58,32 +75,12 @@
         </div>
       </div>
       <div class="field">
-        <button id="scanBtn" type="button" class="qr-btn">
-          <img src="icons/qrcode.png" alt="QR" />
-          <span>Scan Barcode PAS<br><small>Avsec Airlines</small></span>
-        </button>
-        <input id="fotoId" type="hidden" />
-      </div>
-      <div class="field">
-        <label for="namaAvsec">Nama Avsec Airlines</label>
-        <input id="namaAvsec" type="text" />
-      </div>
-      <div class="field">
-        <label for="instansiAvsec">Instansi Avsec Airlines</label>
-        <input id="instansiAvsec" type="text" />
-      </div>
-      <div class="field">
         <label for="petugas">Petugas</label>
         <input id="petugas" type="text" readonly />
       </div>
       <div class="field">
         <label for="supervisor">Supervisor</label>
         <input id="supervisor" type="text" readonly />
-      </div>
-      <div class="field">
-        <label>Foto Avsec Airlines</label>
-        <img id="imgAvsec" alt="Foto Avsec Airlines" class="hidden" style="max-width:100%;height:auto;border-radius:8px;" />
-        <div id="fotoAvsecLabel" class="foto-url hidden"></div>
       </div>
       <div class="field">
         <label>Foto Evidence</label>
