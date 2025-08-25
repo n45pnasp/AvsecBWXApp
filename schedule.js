@@ -3,25 +3,12 @@
 // =============================
 
 // Wajib: type="module" di HTML
-import { requireAuth } from "./auth-guard.js";
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, getIdTokenResult } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { requireAuth, getFirebase } from "./auth-guard.js";
+import { onAuthStateChanged, getIdTokenResult } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
-  authDomain: "avsecbwx-4229c.firebaseapp.com",
-  projectId: "avsecbwx-4229c",
-  appId: "1:1029406629258:web:53e8f09585cd77823efc73",
-  storageBucket: "avsecbwx-4229c.appspot.com",
-  messagingSenderId: "1029406629258",
-  measurementId: "G-P37F88HGFE",
-  databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
-};
-
-const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const db   = getDatabase(app);
-const auth = getAuth(app);
+const { app, auth } = getFirebase();
+const db = getDatabase(app);
 
 // ===== KONFIG =====
 // Ganti dengan URL Cloudflare Worker kamu (bkn URL Apps Script langsung)

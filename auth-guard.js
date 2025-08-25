@@ -23,6 +23,10 @@ function getFb() {
   return { app, auth };
 }
 
+export function getFirebase() {
+  return getFb();
+}
+
 // --- Base prefix untuk GitHub Pages project site (mis. "/AvsecBWXApp/") ---
 function getBasePrefix() {
   const parts = location.pathname.split("/").filter(Boolean);
