@@ -154,23 +154,24 @@ async function init(){
         const user = auth.currentUser;
         if (!user) throw new Error("User belum login");
         const token = await getIdTokenResult(user, true);
-        const name = (user.displayName || token.claims?.name || "").trim();
-        const nameMatch = name === "Novan Andrian";
+        const displayName = (user.displayName || "").trim();
+        const claimName   = (token.claims?.name || "").trim();
+        const nameMatch   = claimName === "Novan Andrian";
         let role = (token.claims?.role || "").toLowerCase();
         if (!role && nameMatch) role = "admin"; // fallback untuk akun Novan
         const roleMatch = role === "admin";
         const uidMatch  = user.uid === ADMIN_UID;
-        console.log("Auth info", { uid: user.uid, name, role, uidMatch, nameMatch, roleMatch });
+        console.log("Auth info", { uid: user.uid, displayName, claimName, role, uidMatch, nameMatch, roleMatch });
         if (uidMatch && nameMatch && roleMatch) {
           const payload = {
-            name: "Novan Andrian",
+            name: claimName || displayName,
             role: "admin",
             roster: classified
           };
           await set(ref(db, `roster/${user.uid}`), payload);
           Modal.show("Roster berhasil terkirim ke RTDB");
         } else {
-          console.warn("Akun tidak diizinkan kirim roster", { uid: user.uid, name, role });
+          console.warn("Akun tidak diizinkan kirim roster", { uid: user.uid, displayName, claimName, role });
         }
       } catch (err) {
         console.error("sync rtdb", err);
