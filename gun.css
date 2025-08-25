@@ -7,3 +7,14 @@
 .avsec-card .label{ font-size:var(--fs-sm); color:var(--muted); }
 .avsec-card .value{ font-weight:600; margin-bottom:8px; }
 .avsec-photo{ width:96px; height:96px; object-fit:cover; border-radius:8px; }
+
+/* style select seperti input */
+.field select{
+  width:100%;
+  background:#0b1324;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  font-size:var(--fs-base);
+}

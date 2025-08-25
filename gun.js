@@ -379,19 +379,28 @@ async function receiveBarcode(code){
       namaAvsec.textContent     = (j.columns.B || '').toUpperCase();
       instansiAvsec.textContent = (j.columns.E || '').toUpperCase();
 
-      const fotoId = (j.columns.H || '').trim(); // kolom H berisi fileId
+      const rawFoto = (j.columns.H || '').trim(); // kolom H berisi fileId atau URL thumbnail
+      let fotoUrl = "";
+      let fotoId = "";
+      if (rawFoto) {
+        if (/^https?:/i.test(rawFoto)) {
+          fotoUrl = rawFoto;
+          const m = rawFoto.match(/id=([^&]+)/);
+          fotoId = m ? m[1] : "";
+        } else {
+          fotoId = rawFoto;
+          fotoUrl = `https://drive.google.com/thumbnail?id=${rawFoto}`;
+        }
+      }
       if (fotoIdInp) fotoIdInp.value = fotoId;
-      const fotoUrl = fotoId ? `https://drive.google.com/thumbnail?id=${fotoId}` : '';
 
       // Simpan formula =IMAGE("url") untuk dikirim ke sheet
       fotoAvsecCell = fotoUrl ? `=IMAGE("${fotoUrl}")` : "";
 
       // Preview di UI
-      if (fotoUrl){
-        if (imgAvsec){
-          imgAvsec.src = fotoUrl;
-          imgAvsec.classList.remove('hidden');
-        }
+      if (fotoUrl && imgAvsec){
+        imgAvsec.src = fotoUrl;
+        imgAvsec.classList.remove('hidden');
       } else if (imgAvsec){
         imgAvsec.src = "";
         imgAvsec.classList.add('hidden');
