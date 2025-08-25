@@ -1,10 +1,10 @@
 // =============================
-// schedule.js (FINAL via Cloudflare Worker proxy)
+// schedule.js (FINAL - pakai UID untuk rules RTDB)
 // =============================
 
 // Wajib: type="module" di HTML
 import { requireAuth, getFirebase } from "./auth-guard.js";
-import { onAuthStateChanged, getIdTokenResult } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 const { app, auth } = getFirebase();
@@ -14,6 +14,9 @@ const db = getDatabase(app);
 // Ganti dengan URL Cloudflare Worker kamu (bkn URL Apps Script langsung)
 const PROXY_ENDPOINT = "https://roster-proxy.avsecbwx2018.workers.dev"; // <-- ganti ini
 const SHARED_TOKEN   = "N45p"; // samakan dgn code.gs
+
+// UID yang diizinkan menulis roster (ganti dengan UID akunmu dari Firebase Console)
+const ALLOWED_UID = "XrSOg13vcDM2npZYK9vxekbmQih2";
 
 // ====== DOM utils & overlay ======
 function $(sel){ return document.querySelector(sel); }
@@ -152,20 +155,21 @@ async function init(){
         const classified = classifyRoster(data);
         const user = auth.currentUser;
         if (!user) throw new Error("User belum login");
-        const token = await getIdTokenResult(user, true);
-        const name  = (token.claims?.name || user.displayName || "").trim();
-        const nameMatch = name === "Novan Andrian";
-        let role = (token.claims?.role || "").toLowerCase();
-        if (!role && nameMatch) role = "admin"; // fallback untuk akun Novan
-        const roleMatch = role === "admin";
-        console.log("Auth info", { uid: user.uid, name, role, nameMatch, roleMatch });
-        if (nameMatch && roleMatch) {
-          // Kirim roster ke RTDB di bawah UID pengguna
-          const payload = { name, role, roster: classified };
-          await set(ref(db, `roster/${user.uid}`), payload);
+
+        const uid = user.uid;
+        console.log("🔑 UID login saat ini:", uid);
+        console.log("✅ UID yang diizinkan:", ALLOWED_UID);
+
+        if (uid === ALLOWED_UID) {
+          // ✅ sesuai rules: hanya UID ini yang bisa menulis
+          await set(ref(db, "roster"), {
+            uid,
+            roster: classified
+          });
           Modal.show("Roster sudah terkirim ke RTDB");
         } else {
-          console.warn("Akun tidak diizinkan kirim roster", { uid: user.uid, name, role });
+          console.warn("Akun tidak diizinkan kirim roster", { uid });
+          Modal.show("Akun Anda tidak memiliki izin untuk mengirim roster.", "Akses ditolak");
         }
       } catch (err) {
         console.error("sync rtdb", err);
