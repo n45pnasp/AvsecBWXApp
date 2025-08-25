@@ -165,7 +165,7 @@ async function init(){
             role: "admin",
             roster: classified
           };
-          await set(ref(db, `users/${user.uid}/roster`), payload);
+          await set(ref(db, `roster/${user.uid}`), payload);
           Modal.show("Roster sudah terkirim ke RTDB");
         } else {
           console.warn("Akun tidak diizinkan kirim roster", { uid: user.uid, name, role });
