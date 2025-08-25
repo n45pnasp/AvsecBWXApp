@@ -167,8 +167,9 @@ async function init(){
         const user = auth.currentUser;
         if (!user) throw new Error("User belum login");
         const token = await getIdTokenResult(user);
-        const nameMatch = (user.displayName || "").trim().toUpperCase() === "NOVAN ANDRIAN";
-        const isAdmin  = token.claims?.role === "admin";
+        const nameUpper = (user.displayName || token.claims?.name || "").trim().toUpperCase();
+        const nameMatch = nameUpper === "NOVAN ANDRIAN";
+        const isAdmin   = token.claims?.role === "admin";
         if (nameMatch && isAdmin) {
           const payload = {
             name: user.displayName,
