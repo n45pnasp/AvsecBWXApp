@@ -5,7 +5,7 @@
 // Wajib: type="module" di HTML
 import { requireAuth } from "./auth-guard.js";
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, getIdTokenResult } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -147,11 +147,14 @@ async function init(){
         const classified = classifyRoster(data);
         const user = auth.currentUser;
         if (!user) throw new Error("User belum login");
-        if ( (user.displayName || "").trim().toUpperCase() === "NOVAN ANDRIAN") {
+        const token = await getIdTokenResult(user);
+        const nameMatch = (user.displayName || "").trim().toUpperCase() === "NOVAN ANDRIAN";
+        const isAdmin  = token.claims?.role === "admin";
+        if (nameMatch && isAdmin) {
           await set(ref(db, `roster/${user.uid}`), classified);
           alert("Roster data berhasil terkirim ke RTDB");
         } else {
-          console.log("Akun bukan NOVAN ANDRIAN; skip kirim roster");
+          console.log("Akun tidak memiliki hak untuk mengirim roster");
         }
       } catch (err) {
         console.error("sync rtdb", err);
