@@ -1,14 +1,22 @@
 // =============================
-// schedule.js (FINAL via Cloudflare Worker proxy)
+// schedule.js (FINAL - pakai UID untuk rules RTDB)
 // =============================
 
 // Wajib: type="module" di HTML
-import { requireAuth } from "./auth-guard.js";
+import { requireAuth, getFirebase } from "./auth-guard.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+const { app, auth } = getFirebase();
+const db = getDatabase(app);
 
 // ===== KONFIG =====
 // Ganti dengan URL Cloudflare Worker kamu (bkn URL Apps Script langsung)
 const PROXY_ENDPOINT = "https://roster-proxy.avsecbwx2018.workers.dev"; // <-- ganti ini
 const SHARED_TOKEN   = "N45p"; // samakan dgn code.gs
+
+// UID yang diizinkan menulis roster (ganti dengan UID akunmu dari Firebase Console)
+const ALLOWED_UID = "XrSOg13vcDM2npZYK9vxekbmQih2";
 
 // ====== DOM utils & overlay ======
 function $(sel){ return document.querySelector(sel); }
@@ -45,7 +53,25 @@ const Overlay = {
     $("#loadingOverlay").style.display = "none";
   }
 };
-window.App = { hideOverlay: Overlay.hide };
+
+// ===== Modal Notifikasi =====
+const Modal = {
+  show(msg, title = "Notifikasi") {
+    const back = $("#alertBack");
+    if (!back) return;
+    back.querySelector("#alertTitle").textContent = title;
+    back.querySelector("#alertMsg").textContent = msg;
+    back.classList.add("show");
+    back.setAttribute("aria-hidden", "false");
+  },
+  hide() {
+    const back = $("#alertBack");
+    if (!back) return;
+    back.classList.remove("show");
+    back.setAttribute("aria-hidden", "true");
+  }
+};
+document.getElementById("alertOk")?.addEventListener("click", Modal.hide);
 
 function fillText(id, value){
   const el = document.getElementById(id);
@@ -66,6 +92,36 @@ function renderTable(tableId, rows){
 }
 function bySection(data, section){
   return (data.rosters || []).filter(r => (r.section || "").toUpperCase() === section);
+}
+
+function classifyRoster(data){
+  const getName = (arr, idx) => (arr?.[idx]?.nama) || "-";
+  const hbs   = bySection(data, "HBSCP");
+  const cabin = bySection(data, "PSCP");
+  const pos1  = bySection(data, "POS1");
+  const patroli = bySection(data, "PATROLI");
+  const cargo = bySection(data, "MALAM");
+  return {
+    chief: data.config?.chief || "-",
+    asstChief: data.config?.assistant_chief || "-",
+    spvCabin: data.config?.supervisor_pscp || "-",
+    spvHbs: data.config?.supervisor_hbscp || "-",
+    spvLandside: data.config?.supervisor_pos1 || "-",
+    spvCargo: data.config?.supervisor_patroli || "-",
+    spvCctv: data.config?.supervisor_cctv || "-",
+    angHbs1: getName(hbs,0),
+    angHbs2: getName(hbs,1),
+    angHbs3: getName(hbs,2),
+    angCabin1: getName(cabin,0),
+    angCabin2: getName(cabin,1),
+    angCabin3: getName(cabin,2),
+    angCabin4: getName(cabin,3),
+    angArrival: getName(pos1,0),
+    angPos1: getName(pos1,1),
+    angDropzone1: getName(patroli,0),
+    angDropzone2: getName(patroli,1),
+    angCargo: getName(cargo,0)
+  };
 }
 
 // ====== FETCH via Cloudflare Worker (no JSONP) ======
@@ -94,6 +150,31 @@ async function init(){
   try{
     Overlay.show("Mengambil data…", "Memuat daftar tugas");
     const data = await fetchData();
+
+      try {
+        const classified = classifyRoster(data);
+        const user = auth.currentUser;
+        if (!user) throw new Error("User belum login");
+
+        const uid = user.uid;
+        console.log("🔑 UID login saat ini:", uid);
+        console.log("✅ UID yang diizinkan:", ALLOWED_UID);
+
+        if (uid === ALLOWED_UID) {
+          // ✅ sesuai rules: hanya UID ini yang bisa menulis
+          await set(ref(db, "roster"), {
+            uid,
+            roster: classified
+          });
+          Modal.show("Roster sudah terkirim ke RTDB");
+        } else {
+          console.warn("Akun tidak diizinkan kirim roster", { uid });
+          Modal.show("Akun Anda tidak memiliki izin untuk mengirim roster.", "Akses ditolak");
+        }
+      } catch (err) {
+        console.error("sync rtdb", err);
+        Modal.show(`Gagal mengirim data roster ke RTDB: ${err?.message || err}`, "Gagal");
+      }
 
     // Header (tanggal sudah sesuai format Sheet karena server pakai getDisplayValues)
     fillText("tgl", data.config?.tanggal);
@@ -133,4 +214,11 @@ requireAuth({
   requireEmailVerified: false
 });
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", () => {
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    if (user) {
+      unsubscribe();
+      init();
+    }
+  });
+});
