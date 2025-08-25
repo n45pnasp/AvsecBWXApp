@@ -5,6 +5,7 @@
 // Wajib: type="module" di HTML
 import { requireAuth } from "./auth-guard.js";
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -20,6 +21,7 @@ const firebaseConfig = {
 
 const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db   = getDatabase(app);
+const auth = getAuth(app);
 
 // ===== KONFIG =====
 // Ganti dengan URL Cloudflare Worker kamu (bkn URL Apps Script langsung)
@@ -141,14 +143,14 @@ async function init(){
     Overlay.show("Mengambil data…", "Memuat daftar tugas");
     const data = await fetchData();
 
-    try {
-      const classified = classifyRoster(data);
-      await set(ref(db, "roster"), classified);
-      alert("Roster data berhasil terkirim ke RTDB");
-    } catch (err) {
-      console.error("sync rtdb", err);
-      alert("Gagal mengirim data roster ke RTDB");
-    }
+      try {
+        const classified = classifyRoster(data);
+        await set(ref(db, "roster"), classified);
+        alert("Roster data berhasil terkirim ke RTDB");
+      } catch (err) {
+        console.error("sync rtdb", err);
+        alert(`Gagal mengirim data roster ke RTDB: ${err?.message || err}`);
+      }
 
     // Header (tanggal sudah sesuai format Sheet karena server pakai getDisplayValues)
     fillText("tgl", data.config?.tanggal);
@@ -188,4 +190,11 @@ requireAuth({
   requireEmailVerified: false
 });
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", () => {
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    if (user) {
+      unsubscribe();
+      init();
+    }
+  });
+});
