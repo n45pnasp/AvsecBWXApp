@@ -17,6 +17,10 @@ const instansiAvsec = document.getElementById("instansiAvsec");
 const petugas       = document.getElementById("petugas");
 const supervisor    = document.getElementById("supervisor");
 const submitBtn     = document.getElementById("submitBtn");
+const fotoAvsecInp  = document.getElementById("fotoAvsec");
+const fotoEvidenceInp = document.getElementById("fotoEvidence");
+const btnFotoAvsec  = document.getElementById("btnFotoAvsec");
+const btnEvidence   = document.getElementById("btnEvidence");
 
 const overlay = document.getElementById("overlay");
 const ovIcon  = document.getElementById("ovIcon");
@@ -25,6 +29,15 @@ const ovDesc  = document.getElementById("ovDesc");
 const ovClose = document.getElementById("ovClose");
 
 ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
+
+btnFotoAvsec.addEventListener("click", () => fotoAvsecInp.click());
+btnEvidence.addEventListener("click", () => fotoEvidenceInp.click());
+fotoAvsecInp.addEventListener("change", () => {
+  btnFotoAvsec.textContent = fotoAvsecInp.files[0] ? "1 Foto Dipilih" : "Ambil Foto";
+});
+fotoEvidenceInp.addEventListener("change", () => {
+  btnEvidence.textContent = fotoEvidenceInp.files[0] ? "1 Foto Dipilih" : "Ambil Foto";
+});
 
 function showOverlay(state, title, desc){
   overlay.classList.remove("hidden");
@@ -38,7 +51,12 @@ function showOverlay(state, title, desc){
 }
 
 submitBtn.addEventListener("click", async () => {
+  const now = new Date();
+  const pad = (n)=> String(n).padStart(2,"0");
+  const tanggal = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
+
   const payload = {
+    tanggal,
     namaLengkap: nama.value.trim(),
     pekerjaan: pekerjaan.value.trim(),
     flightNumber: flight.value.trim(),
@@ -50,7 +68,9 @@ submitBtn.addEventListener("click", async () => {
     namaAvsec: namaAvsec.value.trim(),
     instansiAvsec: instansiAvsec.value.trim(),
     petugas: petugas.value.trim(),
-    supervisor: supervisor.value.trim()
+    supervisor: supervisor.value.trim(),
+    fotoAvsec: await getImageFormula(fotoAvsecInp.files[0]),
+    fotoEvidence: await getImageFormula(fotoEvidenceInp.files[0])
   };
   submitBtn.disabled = true;
   showOverlay('spinner','Mengirim data…','');
@@ -60,6 +80,9 @@ submitBtn.addEventListener("click", async () => {
     showOverlay('ok','Data berhasil dikirim','');
     [nama,pekerjaan,flight,seat,kta,tipe,jenisPeluru,jumlahPeluru,namaAvsec,instansiAvsec,petugas,supervisor]
       .forEach(el=>el.value="");
+    [fotoAvsecInp,fotoEvidenceInp].forEach(el=>el.value="");
+    btnFotoAvsec.textContent = "Ambil Foto";
+    btnEvidence.textContent = "Ambil Foto";
   } catch(err){
     showOverlay('err','Gagal', err?.message || err);
   } finally {
@@ -75,4 +98,40 @@ async function sendToSheet(sheet, payload){
   });
   const j = await res.json();
   if (!j || (!j.success && !j.ok)) throw new Error(j?.error || 'Gagal mengirim');
+}
+
+async function getImageFormula(file){
+  if(!file) return "";
+  try {
+    const b64 = await readAndCompress(file);
+    return `=IMAGE("data:image/jpeg;base64,${b64}")`;
+  } catch {
+    return "";
+  }
+}
+
+async function readAndCompress(file){
+  const dataUrl = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = dataUrl;
+  });
+  let { width, height } = img;
+  const max = Math.max(width, height);
+  const scale = max > 800 ? 800 / max : 1;
+  width = Math.round(width * scale);
+  height = Math.round(height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
 }
