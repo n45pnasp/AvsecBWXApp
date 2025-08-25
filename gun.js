@@ -17,11 +17,12 @@ const instansiAvsec = document.getElementById("instansiAvsec");
 const petugas       = document.getElementById("petugas");
 const supervisor    = document.getElementById("supervisor");
 const submitBtn     = document.getElementById("submitBtn");
-const fotoAvsecInp  = document.getElementById("fotoAvsec");
 const fotoEvidenceInp = document.getElementById("fotoEvidence");
-const btnFotoAvsec  = document.getElementById("btnFotoAvsec");
 const btnEvidence   = document.getElementById("btnEvidence");
 const scanBtn       = document.getElementById("scanBtn");
+const imgAvsec      = document.getElementById("imgAvsec");
+
+let fotoAvsecFormula = "";
 
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbwqJHoJjXpYCv2UstclVG_vHf5czAxDUfWmsSo6H4lcy3HgGZYSn7g1yAzbb8UFJHtrxw/exec";
 const SHARED_TOKEN = "N45p";
@@ -35,11 +36,7 @@ function hideOverlay(){ overlay.classList.add("hidden"); }
 
 ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
 
-btnFotoAvsec.addEventListener("click", () => fotoAvsecInp.click());
 btnEvidence.addEventListener("click", () => fotoEvidenceInp.click());
-fotoAvsecInp.addEventListener("change", () => {
-  btnFotoAvsec.textContent = fotoAvsecInp.files[0] ? "1 Foto Dipilih" : "Ambil Foto";
-});
 fotoEvidenceInp.addEventListener("change", () => {
   btnEvidence.textContent = fotoEvidenceInp.files[0] ? "1 Foto Dipilih" : "Ambil Foto";
 });
@@ -82,7 +79,7 @@ submitBtn.addEventListener("click", async () => {
     instansiAvsec: instansiAvsec.value.trim(),
     petugas: petugas.value.trim(),
     supervisor: supervisor.value.trim(),
-    fotoAvsec: await getImageFormula(fotoAvsecInp.files[0]),
+    fotoAvsec: fotoAvsecFormula,
     fotoEvidence: await getImageFormula(fotoEvidenceInp.files[0])
   };
   submitBtn.disabled = true;
@@ -93,8 +90,9 @@ submitBtn.addEventListener("click", async () => {
     showOverlay('ok','Data berhasil dikirim','');
     [nama,pekerjaan,flight,seat,kta,tipe,jenisPeluru,jumlahPeluru,namaAvsec,instansiAvsec,petugas,supervisor]
       .forEach(el=>el.value="");
-    [fotoAvsecInp,fotoEvidenceInp].forEach(el=>el.value="");
-    btnFotoAvsec.textContent = "Ambil Foto";
+    fotoAvsecFormula = "";
+    if (imgAvsec){ imgAvsec.src=""; imgAvsec.classList.add("hidden"); }
+    fotoEvidenceInp.value = "";
     btnEvidence.textContent = "Ambil Foto";
   } catch(err){
     showOverlay('err','Gagal', err?.message || err);
@@ -337,6 +335,20 @@ async function receiveBarcode(code){
     if (j && j.columns){
       namaAvsec.value = (j.columns.B || '').toUpperCase();
       instansiAvsec.value = (j.columns.E || '').toUpperCase();
+      const urlFoto = (j.columns.F || '').trim();
+      if (urlFoto){
+        fotoAvsecFormula = `=IMAGE("${urlFoto}")`;
+        if (imgAvsec){
+          imgAvsec.src = urlFoto;
+          imgAvsec.classList.remove('hidden');
+        }
+      } else {
+        fotoAvsecFormula = "";
+        if (imgAvsec){
+          imgAvsec.src = "";
+          imgAvsec.classList.add('hidden');
+        }
+      }
       hideOverlay();
     } else {
       showOverlay('err', j?.error || 'Data tidak ditemukan','');
