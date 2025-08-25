@@ -1,11 +1,11 @@
 // =============================
-// schedule.js (FINAL - UID diambil dari RTDB config)
+// schedule.js (FINAL - UID ditetapkan di variabel ALLOWED_UID)
 // =============================
 
 // Wajib: type="module" di HTML
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 const { app, auth } = getFirebase();
 const db = getDatabase(app);
@@ -14,8 +14,9 @@ const db = getDatabase(app);
 // Ganti dengan URL Cloudflare Worker kamu (bkn URL Apps Script langsung)
 const PROXY_ENDPOINT = "https://roster-proxy.avsecbwx2018.workers.dev"; // <-- ganti ini
 const SHARED_TOKEN   = "N45p"; // samakan dgn code.gs
+const ALLOWED_UID = "XrSOg13vcDM2npZYK9vxekbmQih2"; // UID yang diperbolehkan menulis ke "roster"
 
-// UID akun yang boleh menulis ke "roster" disimpan di RTDB pada path "config/UID-NOVAN"
+// UID akun yang boleh menulis ke "roster" ditetapkan pada variabel ALLOWED_UID
 
 
 // ====== DOM utils & overlay ======
@@ -157,12 +158,10 @@ async function init(){
         if (!user) throw new Error("User belum login");
 
         const uid = user.uid;
-        const allowedSnap = await get(ref(db, "config/UID-NOVAN"));
-        const allowedUid = allowedSnap.val();
         console.log("🔑 UID login saat ini:", uid);
-        console.log("✅ UID yang diizinkan:", allowedUid);
+        console.log("✅ UID yang diizinkan:", ALLOWED_UID);
 
-        if (uid === allowedUid) {
+        if (uid === ALLOWED_UID) {
           // ✅ sesuai rules: hanya UID ini yang bisa menulis
           // Simpan hanya data roster sesuai struktur RTDB
           await set(ref(db, "roster"), classified);
