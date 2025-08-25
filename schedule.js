@@ -160,7 +160,8 @@ async function init(){
         const roleMatch = role === "admin";
         console.log("Auth info", { uid: user.uid, name, role, nameMatch, roleMatch });
         if (nameMatch && roleMatch) {
-          await set(ref(db, "roster"), classified);
+          const payload = { name, role, roster: classified };
+          await set(ref(db, `roster/${user.uid}`), payload);
           Modal.show("Roster sudah terkirim ke RTDB");
         } else {
           console.warn("Akun tidak diizinkan kirim roster", { uid: user.uid, name, role });
