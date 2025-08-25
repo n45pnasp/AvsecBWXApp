@@ -16,7 +16,8 @@ const PROXY_ENDPOINT = "https://roster-proxy.avsecbwx2018.workers.dev"; // <-- g
 const SHARED_TOKEN   = "N45p"; // samakan dgn code.gs
 
 // UID yang diizinkan menulis roster (ganti dengan UID akunmu dari Firebase Console)
-const ALLOWED_UID = "XrSOg13vcDM2npZYK9vxekbmQih2";
+// Sesuaikan dengan rules RTDB yang hanya memperbolehkan satu UID.
+const ALLOWED_UID = "UID-NOVAN";
 
 // ====== DOM utils & overlay ======
 function $(sel){ return document.querySelector(sel); }
@@ -162,10 +163,8 @@ async function init(){
 
         if (uid === ALLOWED_UID) {
           // ✅ sesuai rules: hanya UID ini yang bisa menulis
-          await set(ref(db, "roster"), {
-            uid,
-            roster: classified
-          });
+          // Simpan hanya data roster sesuai struktur RTDB
+          await set(ref(db, "roster"), classified);
           Modal.show("Roster sudah terkirim ke RTDB");
         } else {
           console.warn("Akun tidak diizinkan kirim roster", { uid });
