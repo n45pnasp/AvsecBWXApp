@@ -82,6 +82,16 @@ let fotoAvsecCell = "";
 
 // ====== Submit ======
 submitBtn.addEventListener("click", async () => {
+  // Validasi: semua field wajib terisi
+  const requiredInputs = [nama, pekerjaan, flight, seat, kta, tipe, jenisPeluru, jumlahPeluru, petugas, supervisor];
+  const someEmpty = requiredInputs.some(el => !el.value.trim()) ||
+    !namaAvsec.textContent.trim() ||
+    !instansiAvsec.textContent.trim();
+  if (someEmpty) {
+    alert("Mohon lengkapi semua data sebelum mengirim.");
+    return;
+  }
+
   const now = new Date();
   const pad = (n)=> String(n).padStart(2,"0");
   const tanggal = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
