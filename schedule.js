@@ -164,11 +164,11 @@ async function init(){
         console.log("Auth info", { uid: user.uid, displayName, claimName, role, uidMatch, nameMatch, roleMatch });
         if (uidMatch && nameMatch && roleMatch) {
           const payload = {
-            name: claimName || displayName,
+            name: "Novan Andrian",
             role: "admin",
             roster: classified
           };
-          await set(ref(db, `roster/${user.uid}`), payload);
+          await set(ref(db, "roster"), payload);
           Modal.show("Roster berhasil terkirim ke RTDB");
         } else {
           console.warn("Akun tidak diizinkan kirim roster", { uid: user.uid, displayName, claimName, role });
