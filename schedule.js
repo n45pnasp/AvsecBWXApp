@@ -4,6 +4,22 @@
 
 // Wajib: type="module" di HTML
 import { requireAuth } from "./auth-guard.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
+  authDomain: "avsecbwx-4229c.firebaseapp.com",
+  projectId: "avsecbwx-4229c",
+  appId: "1:1029406629258:web:53e8f09585cd77823efc73",
+  storageBucket: "avsecbwx-4229c.appspot.com",
+  messagingSenderId: "1029406629258",
+  measurementId: "G-P37F88HGFE",
+  databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
+};
+
+const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const db   = getDatabase(app);
 
 // ===== KONFIG =====
 // Ganti dengan URL Cloudflare Worker kamu (bkn URL Apps Script langsung)
@@ -68,6 +84,36 @@ function bySection(data, section){
   return (data.rosters || []).filter(r => (r.section || "").toUpperCase() === section);
 }
 
+function classifyRoster(data){
+  const getName = (arr, idx) => (arr?.[idx]?.nama) || "-";
+  const hbs   = bySection(data, "HBSCP");
+  const cabin = bySection(data, "PSCP");
+  const pos1  = bySection(data, "POS1");
+  const patroli = bySection(data, "PATROLI");
+  const cargo = bySection(data, "MALAM");
+  return {
+    chief: data.config?.chief || "-",
+    asstChief: data.config?.assistant_chief || "-",
+    spvCabin: data.config?.supervisor_pscp || "-",
+    spvHbs: data.config?.supervisor_hbscp || "-",
+    spvLandside: data.config?.supervisor_pos1 || "-",
+    spvCargo: data.config?.supervisor_patroli || "-",
+    spvCctv: data.config?.supervisor_cctv || "-",
+    angHbs1: getName(hbs,0),
+    angHbs2: getName(hbs,1),
+    angHbs3: getName(hbs,2),
+    angCabin1: getName(cabin,0),
+    angCabin2: getName(cabin,1),
+    angCabin3: getName(cabin,2),
+    angCabin4: getName(cabin,3),
+    angArrival: getName(pos1,0),
+    angPos1: getName(pos1,1),
+    angDropzone1: getName(patroli,0),
+    angDropzone2: getName(patroli,1),
+    angCargo: getName(cargo,0)
+  };
+}
+
 // ====== FETCH via Cloudflare Worker (no JSONP) ======
 async function fetchData(){
   const url = new URL(PROXY_ENDPOINT);
@@ -94,6 +140,13 @@ async function init(){
   try{
     Overlay.show("Mengambil data…", "Memuat daftar tugas");
     const data = await fetchData();
+
+    try {
+      const classified = classifyRoster(data);
+      await set(ref(db, "roster"), classified);
+    } catch (err) {
+      console.error("sync rtdb", err);
+    }
 
     // Header (tanggal sudah sesuai format Sheet karena server pakai getDisplayValues)
     fillText("tgl", data.config?.tanggal);
