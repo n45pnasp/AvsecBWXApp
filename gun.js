@@ -76,8 +76,8 @@ function showOverlay(state, title, desc){
   }
 }
 
-// ====== State foto AVSEC (URL, bukan formula) ======
-let fotoAvsecURL = "";
+// ====== State foto AVSEC (formula =IMAGE("URL")) ======
+let fotoAvsecCell = "";
 
 // ====== Submit ======
 submitBtn.addEventListener("click", async () => {
@@ -101,10 +101,10 @@ submitBtn.addEventListener("click", async () => {
     supervisor:    supervisor.value.trim().toUpperCase(),
     // Foto:
     // - fotoId: bisa berisi fileId (tetap diteruskan apa adanya)
-    // - fotoAvsec: KIRIM URL langsung (nanti di-upload oleh code.gs)
-    // - fotoEvidence: KIRIM data URL (nanti di-upload oleh code.gs)
+    // - fotoAvsec: kirim sebagai teks formula =IMAGE("URL")
+    // - fotoEvidence: kirim data URL (nanti di-upload oleh code.gs)
     fotoId:        fotoIdInp.value.trim(),
-    fotoAvsec:     fotoAvsecURL || "",
+    fotoAvsec:     fotoAvsecCell || "",
     fotoEvidence:  await getImageDataUrl(fotoEvidenceInp.files[0]) // <— penting: data URL, bukan formula
   };
 
@@ -123,7 +123,7 @@ submitBtn.addEventListener("click", async () => {
       jumlahPeluru, namaAvsec, instansiAvsec, petugas, supervisor, fotoIdInp
     ].forEach(el => { if (el) el.value = ""; });
 
-    fotoAvsecURL = "";
+    fotoAvsecCell = "";
     if (imgAvsec){ imgAvsec.src=""; imgAvsec.classList.add("hidden"); }
     if (fotoAvsecLabel){ fotoAvsecLabel.textContent = ""; fotoAvsecLabel.classList.add("hidden"); }
     fotoEvidenceInp.value = "";
@@ -378,8 +378,8 @@ async function receiveBarcode(code){
       const fotoUrl = (j.columns.H || '').trim(); // kolom H berisi URL thumbnail
       if (fotoIdInp) fotoIdInp.value = fotoUrl;
 
-      // Simpan URL asli ke state untuk dikirim (bukan formula)
-      fotoAvsecURL = fotoUrl || "";
+      // Simpan formula =IMAGE("url") untuk dikirim ke sheet
+      fotoAvsecCell = fotoUrl ? `=IMAGE("${fotoUrl}")` : "";
 
       // Preview di UI dan tampilkan teks URL
       if (fotoUrl){
