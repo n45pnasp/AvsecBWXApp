@@ -28,6 +28,7 @@ const btnEvidence     = document.getElementById("btnEvidence");
 const scanBtn         = document.getElementById("scanBtn");
 const imgAvsec        = document.getElementById("imgAvsec");
 const fotoIdInp       = document.getElementById("fotoId");
+const fotoAvsecLabel  = document.getElementById("fotoAvsecLabel");
 
 // ====== Firebase ======
 const { app, auth } = getFirebase();
@@ -124,6 +125,7 @@ submitBtn.addEventListener("click", async () => {
 
     fotoAvsecURL = "";
     if (imgAvsec){ imgAvsec.src=""; imgAvsec.classList.add("hidden"); }
+    if (fotoAvsecLabel){ fotoAvsecLabel.textContent = ""; fotoAvsecLabel.classList.add("hidden"); }
     fotoEvidenceInp.value = "";
     btnEvidence.textContent = "Ambil Foto";
 
@@ -373,24 +375,31 @@ async function receiveBarcode(code){
       namaAvsec.value     = (j.columns.B || '').toUpperCase();
       instansiAvsec.value = (j.columns.E || '').toUpperCase();
 
-      const fotoId = (j.columns.H || '').trim();     // fileId dari Drive (opsional)
-      if (fotoIdInp) fotoIdInp.value = fotoId;
-
-      // URL thumbnail untuk preview (jika ada foto)
-      const urlFoto = fotoId ? `https://drive.google.com/thumbnail?id=${fotoId}` : '';
+      const fotoUrl = (j.columns.H || '').trim(); // kolom H berisi URL thumbnail
+      if (fotoIdInp) fotoIdInp.value = fotoUrl;
 
       // Simpan URL asli ke state untuk dikirim (bukan formula)
-      fotoAvsecURL = urlFoto || "";
+      fotoAvsecURL = fotoUrl || "";
 
-      // Preview di UI
-      if (urlFoto){
+      // Preview di UI dan tampilkan teks URL
+      if (fotoUrl){
         if (imgAvsec){
-          imgAvsec.src = urlFoto;
+          imgAvsec.src = fotoUrl;
           imgAvsec.classList.remove('hidden');
         }
-      } else if (imgAvsec){
-        imgAvsec.src = "";
-        imgAvsec.classList.add('hidden');
+        if (fotoAvsecLabel){
+          fotoAvsecLabel.textContent = fotoUrl;
+          fotoAvsecLabel.classList.remove('hidden');
+        }
+      } else {
+        if (imgAvsec){
+          imgAvsec.src = "";
+          imgAvsec.classList.add('hidden');
+        }
+        if (fotoAvsecLabel){
+          fotoAvsecLabel.textContent = "";
+          fotoAvsecLabel.classList.add('hidden');
+        }
       }
 
       hideOverlay();

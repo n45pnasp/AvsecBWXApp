@@ -1,1 +1,3 @@
 @import url('./ACP.css');
+
+.foto-url{ font-size:var(--fs-sm); color:var(--muted); word-break:break-all; }
