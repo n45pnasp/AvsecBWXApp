@@ -9,6 +9,7 @@ import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.22.2
 
 const { app, auth } = getFirebase();
 const db = getDatabase(app);
+const ADMIN_UID = "XrSOg13vcDM2npZYK9vxekbmQih2";
 
 // ===== KONFIG =====
 // Ganti dengan URL Cloudflare Worker kamu (bkn URL Apps Script langsung)
@@ -158,17 +159,18 @@ async function init(){
         let role = (token.claims?.role || "").toLowerCase();
         if (!role && nameMatch) role = "admin"; // fallback untuk akun Novan
         const roleMatch = role === "admin";
-        console.log("Auth info", { name, role, nameMatch, roleMatch });
-        if (nameMatch && roleMatch) {
+        const uidMatch  = user.uid === ADMIN_UID;
+        console.log("Auth info", { uid: user.uid, name, role, uidMatch, nameMatch, roleMatch });
+        if (uidMatch && nameMatch && roleMatch) {
           const payload = {
-            name: user.displayName,
-            role: role,
+            name: "Novan Andrian",
+            role: "admin",
             roster: classified
           };
           await set(ref(db, `roster/${user.uid}`), payload);
           Modal.show("Roster berhasil terkirim ke RTDB");
         } else {
-          console.warn(`Nama atau role tidak cocok, skip RTDB: name=${name}, role=${role}`);
+          console.warn("Akun tidak diizinkan kirim roster", { uid: user.uid, name, role });
         }
       } catch (err) {
         console.error("sync rtdb", err);
