@@ -1,11 +1,11 @@
 // =============================
-// schedule.js (FINAL - UID ditetapkan di variabel ALLOWED_UID)
+// schedule.js (FINAL - UID diambil dari path config/UID-NOVAN)
 // =============================
 
 // Wajib: type="module" di HTML
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 const { app, auth } = getFirebase();
 const db = getDatabase(app);
@@ -14,9 +14,8 @@ const db = getDatabase(app);
 // Ganti dengan URL Cloudflare Worker kamu (bkn URL Apps Script langsung)
 const PROXY_ENDPOINT = "https://roster-proxy.avsecbwx2018.workers.dev"; // <-- ganti ini
 const SHARED_TOKEN   = "N45p"; // samakan dgn code.gs
-const ALLOWED_UID = "XrSOg13vcDM2npZYK9vxekbmQih2"; // UID yang diperbolehkan menulis ke "roster"
 
-// UID akun yang boleh menulis ke "roster" ditetapkan pada variabel ALLOWED_UID
+// UID akun yang boleh menulis ke "roster" disimpan di RTDB pada path config/UID-NOVAN
 
 
 // ====== DOM utils & overlay ======
@@ -159,11 +158,16 @@ async function init(){
 
         const uid = user.uid;
         console.log("🔑 UID login saat ini:", uid);
-        console.log("✅ UID yang diizinkan:", ALLOWED_UID);
 
-        if (uid === ALLOWED_UID) {
+        // Ambil UID yang diizinkan dari RTDB
+        const snap = await get(ref(db, "config/UID-NOVAN"));
+        const allowedUid = snap.val();
+        if (!allowedUid) throw new Error("UID referensi tidak ditemukan");
+        console.log("✅ UID yang diizinkan:", allowedUid);
+
+        if (uid === allowedUid) {
           // ✅ sesuai rules: hanya UID ini yang bisa menulis
-          // Simpan hanya data roster sesuai struktur RTDB
+          if (Object.keys(classified).length === 0) throw new Error("Data roster kosong");
           await set(ref(db, "roster"), classified);
           Modal.show("Roster sudah terkirim ke RTDB");
         } else {
