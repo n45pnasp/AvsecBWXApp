@@ -95,7 +95,7 @@ submitBtn.addEventListener("click", async () => {
     nomorKTA:      kta.value.trim().toUpperCase(),
     tipeSenjata:   tipe.value.trim().toUpperCase(),
     jenisPeluru:   jenisPeluru.value.trim().toUpperCase(),
-    jumlahPeluru:  jumlahPeluru.value.trim().toUpperCase(),
+    jumlahPeluru:  (jumlahPeluru.value || "").trim().toUpperCase(),
     namaAvsec:     namaAvsec.textContent.trim().toUpperCase(),
     instansiAvsec: instansiAvsec.textContent.trim().toUpperCase(),
     petugas:       petugas.value.trim().toUpperCase(),
