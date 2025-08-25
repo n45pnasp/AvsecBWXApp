@@ -23,17 +23,18 @@ const fotoEvidenceInp = document.getElementById("fotoEvidence");
 const btnEvidence   = document.getElementById("btnEvidence");
 const scanBtn       = document.getElementById("scanBtn");
 const imgAvsec      = document.getElementById("imgAvsec");
+const fotoIdInp     = document.getElementById("fotoId");
 
 const { app, auth } = getFirebase();
 const db = getDatabase(app);
 
 onAuthStateChanged(auth, (user) => {
-  if (user) petugas.value = user.displayName || user.email || "";
+  if (user) petugas.value = (user.displayName || user.email || "").toUpperCase();
 });
 
 onValue(ref(db, "roster/spvHbs"), (snap) => {
   const val = snap.val();
-  supervisor.value = typeof val === "string" ? val : "";
+  supervisor.value = typeof val === "string" ? val.toUpperCase() : "";
 });
 
 let fotoAvsecFormula = "";
@@ -81,18 +82,19 @@ submitBtn.addEventListener("click", async () => {
 
   const payload = {
     tanggal,
-    namaLengkap: nama.value.trim(),
-    pekerjaan: pekerjaan.value.trim(),
-    flightNumber: flight.value.trim(),
-    seatNumber: seat.value.trim(),
-    nomorKTA: kta.value.trim(),
-    tipeSenjata: tipe.value.trim(),
-    jenisPeluru: jenisPeluru.value.trim(),
-    jumlahPeluru: jumlahPeluru.value.trim(),
-    namaAvsec: namaAvsec.value.trim(),
-    instansiAvsec: instansiAvsec.value.trim(),
-    petugas: petugas.value.trim(),
-    supervisor: supervisor.value.trim(),
+    namaLengkap: nama.value.trim().toUpperCase(),
+    pekerjaan: pekerjaan.value.trim().toUpperCase(),
+    flightNumber: flight.value.trim().toUpperCase(),
+    seatNumber: seat.value.trim().toUpperCase(),
+    nomorKTA: kta.value.trim().toUpperCase(),
+    tipeSenjata: tipe.value.trim().toUpperCase(),
+    jenisPeluru: jenisPeluru.value.trim().toUpperCase(),
+    jumlahPeluru: jumlahPeluru.value.trim().toUpperCase(),
+    namaAvsec: namaAvsec.value.trim().toUpperCase(),
+    instansiAvsec: instansiAvsec.value.trim().toUpperCase(),
+    petugas: petugas.value.trim().toUpperCase(),
+    supervisor: supervisor.value.trim().toUpperCase(),
+    fotoId: fotoIdInp.value.trim(),
     fotoAvsec: fotoAvsecFormula,
     fotoEvidence: await getImageFormula(fotoEvidenceInp.files[0])
   };
@@ -102,8 +104,8 @@ submitBtn.addEventListener("click", async () => {
     await sendToSheet('GunFilesPDF', payload);
     await sendToSheet('Files', payload);
     showOverlay('ok','Data berhasil dikirim','');
-    [nama,pekerjaan,flight,seat,kta,tipe,jenisPeluru,jumlahPeluru,namaAvsec,instansiAvsec,petugas,supervisor]
-      .forEach(el=>el.value="");
+    [nama,pekerjaan,flight,seat,kta,tipe,jenisPeluru,jumlahPeluru,namaAvsec,instansiAvsec,petugas,supervisor,fotoIdInp]
+      .forEach(el=>{ if(el) el.value=""; });
     fotoAvsecFormula = "";
     if (imgAvsec){ imgAvsec.src=""; imgAvsec.classList.add("hidden"); }
     fotoEvidenceInp.value = "";
@@ -349,7 +351,9 @@ async function receiveBarcode(code){
     if (j && j.columns){
       namaAvsec.value = (j.columns.B || '').toUpperCase();
       instansiAvsec.value = (j.columns.E || '').toUpperCase();
-      const urlFoto = (j.columns.F || '').trim();
+      const fotoId = (j.columns.H || '').trim();
+      if (fotoIdInp) fotoIdInp.value = fotoId;
+      const urlFoto = fotoId ? `https://drive.google.com/thumbnail?id=${fotoId}` : '';
       if (urlFoto){
         fotoAvsecFormula = `=IMAGE("${urlFoto}")`;
         if (imgAvsec){
