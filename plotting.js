@@ -292,36 +292,23 @@ class SiteMachine {
     console.log("[lookup]", name, "->", key);
     let spec = [];
     try{
-      // Ambil UID via tabel pemetaan agar tidak membaca keseluruhan node "users"
       let uid = this._uidCache[key];
       if(uid === undefined){
-        try{
-          const uidSnap = await get(child(this.nameToUidRef, key));
-          const mapVal = uidSnap.val();
-          if(mapVal && typeof mapVal === "object"){
-            uid = Object.keys(mapVal)[0];
-          } else if(typeof mapVal === "string"){
-            uid = mapVal; // dukung format lama
-          }
-        }catch(err){
-          // Jika tidak ada akses ke nameToUid, asumsikan key sama dengan UID
-          console.warn("[lookup-uid-fail]", name, err.message);
-        }
-        if(!uid) uid = key; // fallback akhir
-        this._uidCache[key] = uid || null;
+        const uidSnap = await get(child(this.nameToUidRef, key));
+        const mapVal = uidSnap.val();
+        uid = (mapVal && typeof mapVal === "object") ? Object.keys(mapVal)[0] : null;
+        this._uidCache[key] = uid;
       }
       console.log("[lookup-uid]", name, uid);
       if(uid){
         try{
-          const snap = await get(child(this.usersRef, uid));
-          const s = snap.val()?.spec;
+          const specSnap = await get(child(this.usersRef, `${uid}/spec`));
+          const s = specSnap.val();
           if(Array.isArray(s))      spec = s.map(x=>String(x).toLowerCase());
           else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
         }catch(err){
           console.error("[spec-read-fail]", name, err.message);
         }
-      } else {
-        console.log("[lookup] tidak ditemukan", name);
       }
       console.log("[spec]", name, spec);
     }catch(err){
