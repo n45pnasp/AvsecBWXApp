@@ -1,7 +1,8 @@
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import {
-  getDatabase, ref, child, onValue, set, update, get, runTransaction
+  getDatabase, ref, child, onValue, set, update, get, runTransaction,
+  query, orderByChild, equalTo
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
@@ -186,9 +187,9 @@ class SiteMachine {
     this.stateRef       = child(this.baseRef, "control/state"); // {running,nextAt,mode2040,lastCycleAt}
 
     this.rosterRef = ref(db, "roster");
-    this.usersRef  = ref(db, "users");
+    this.usersRef  = ref(db, "users"); // data auth per pengguna
     this._rosterData = {};
-    this._usersData  = {};
+    this._specCache  = {};
 
     this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
     this.running = false;
@@ -218,7 +219,6 @@ class SiteMachine {
       this.setRunningUI(this.running);
     });
     this._listen(this.rosterRef, s=>{ this._rosterData = s.val()||{}; this.syncRosterPeople(); });
-    this._listen(this.usersRef,  s=>{ this._usersData  = s.val()||{}; this.syncRosterPeople(); });
 
     this.dueTimer = setInterval(()=>{
       if (this.running && this.nextAtLocal && Date.now() >= this.nextAtLocal) {
@@ -276,18 +276,28 @@ class SiteMachine {
     if(!this.running && startBtn){ startBtn.disabled = hasMissingSpec; }
   }
 
-  _resolveSpec(name){
-    const users = this._usersData || {};
-    const lc = String(name||"").trim().toLowerCase();
-    for(const uid in users){
-      const u = users[uid];
-      if(u && typeof u.name === "string" && u.name.trim().toLowerCase() === lc){
-        const spec = u.spec;
-        if(Array.isArray(spec)) return spec.map(s=>String(s).toLowerCase());
-        if(typeof spec === "string" && spec) return [String(spec).toLowerCase()];
+  async _resolveSpec(name){
+    const key = String(name||"").trim().toLowerCase();
+    if(this._specCache[key]) return this._specCache[key];
+    try{
+      const q = query(this.usersRef, orderByChild("name"), equalTo(name));
+      const snap = await get(q);
+      const val = snap.val();
+      let spec = [];
+      if(val){
+        const first = Object.values(val)[0];
+        if(first){
+          const s = first.spec;
+          if(Array.isArray(s)) spec = s.map(x=>String(x).toLowerCase());
+          else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
+        }
       }
+      this._specCache[key] = spec;
+      return spec;
+    }catch(err){
+      console.error("Ambil spec gagal", name, err);
+      return [];
     }
-    return [];
   }
 
   async syncRosterPeople(){
@@ -302,10 +312,11 @@ class SiteMachine {
       names = arr.filter(n=>n && n!=="-");
       if(arr.some(n=>n==="-") && r.spvHbs && r.spvHbs!=="-") names.push(r.spvHbs);
     }
-    const people={};
-    names.forEach(n=>{
-      people[n.toLowerCase()] = { name:n, spec:this._resolveSpec(n) };
-    });
+    const entries = await Promise.all(names.map(async n=>{
+      const spec = await this._resolveSpec(n);
+      return [n.toLowerCase(), { name:n, spec }];
+    }));
+    const people = Object.fromEntries(entries);
     try{
       await set(this.peopleRef, people);
     }catch(err){
