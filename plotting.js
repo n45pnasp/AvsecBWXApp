@@ -93,6 +93,7 @@ const downloadBtn  = $("downloadPdfBtn");
 const assignTable  = document.querySelector("table.assign");
 const assignRows   = $("assignRows");
 const manageBox    = document.querySelector(".manage");
+const manageTitle  = $("manageTitle");
 const peopleRows   = $("peopleRows");
 const btnPSCP      = $("pscpBtn");
 const btnHBSCP     = $("hbscpBtn");
@@ -535,6 +536,10 @@ function bootSite(siteKey){
   machine.mount();
   selectSiteButtonUI(siteKey);
   currentSite = siteKey;
+  if (manageTitle) {
+    manageTitle.textContent = `Petugas ${siteKey}`;
+    manageBox?.setAttribute("aria-label", `Petugas ${siteKey}`);
+  }
   if (downloadBtn) downloadBtn.disabled = false;
 }
 
