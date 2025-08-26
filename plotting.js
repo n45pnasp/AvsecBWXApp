@@ -295,16 +295,26 @@ class SiteMachine {
       // Ambil UID via tabel pemetaan agar tidak membaca keseluruhan node "users"
       let uid = this._uidCache[key];
       if(uid === undefined){
-        const uidSnap = await get(child(this.nameToUidRef, key));
-        uid = uidSnap.val() || null;
-        this._uidCache[key] = uid;
+        try{
+          const uidSnap = await get(child(this.nameToUidRef, key));
+          uid = uidSnap.val();
+        }catch(err){
+          // Jika tidak ada akses ke nameToUid, asumsikan key sama dengan UID
+          console.warn("[lookup-uid-fail]", name, err.message);
+          uid = key;
+        }
+        this._uidCache[key] = uid || null;
       }
       console.log("[lookup-uid]", name, uid);
       if(uid){
-        const snap = await get(child(this.usersRef, uid));
-        const s = snap.val()?.spec;
-        if(Array.isArray(s))      spec = s.map(x=>String(x).toLowerCase());
-        else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
+        try{
+          const snap = await get(child(this.usersRef, uid));
+          const s = snap.val()?.spec;
+          if(Array.isArray(s))      spec = s.map(x=>String(x).toLowerCase());
+          else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
+        }catch(err){
+          console.error("[spec-read-fail]", name, err.message);
+        }
       } else {
         console.log("[lookup] tidak ditemukan", name);
       }
