@@ -189,6 +189,7 @@ class SiteMachine {
     this.rosterRef = ref(db, "roster");
     this.usersRef  = ref(db, "users"); // data auth per pengguna
     this._rosterData = {};
+    this._usersData  = {};
     this._specCache  = {};
 
     this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
@@ -219,6 +220,8 @@ class SiteMachine {
       this.setRunningUI(this.running);
     });
     this._listen(this.rosterRef, s=>{ this._rosterData = s.val()||{}; this.syncRosterPeople(); });
+    // Ketika data users (spesifikasi) berubah, kosongkan cache dan sinkron ulang
+    this._listen(this.usersRef, s=>{ this._usersData = s.val()||{}; this._specCache = {}; this.syncRosterPeople(); });
 
     this.dueTimer = setInterval(()=>{
       if (this.running && this.nextAtLocal && Date.now() >= this.nextAtLocal) {
@@ -279,25 +282,20 @@ class SiteMachine {
   async _resolveSpec(name){
     const key = String(name||"").trim().toLowerCase();
     if(this._specCache[key]) return this._specCache[key];
+    let spec = [];
     try{
-      const q = query(this.usersRef, orderByChild("name"), equalTo(name));
-      const snap = await get(q);
-      const val = snap.val();
-      let spec = [];
-      if(val){
-        const first = Object.values(val)[0];
-        if(first){
-          const s = first.spec;
-          if(Array.isArray(s)) spec = s.map(x=>String(x).toLowerCase());
-          else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
-        }
+      const users = this._usersData || {};
+      const match = Object.values(users).find(u => String(u.name||"").trim().toLowerCase() === key);
+      if(match){
+        const s = match.spec;
+        if(Array.isArray(s)) spec = s.map(x=>String(x).toLowerCase());
+        else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
       }
-      this._specCache[key] = spec;
-      return spec;
     }catch(err){
       console.error("Ambil spec gagal", name, err);
-      return [];
     }
+    this._specCache[key] = spec;
+    return spec;
   }
 
   async syncRosterPeople(){
