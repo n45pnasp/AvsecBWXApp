@@ -309,14 +309,14 @@
       submitBtn.disabled = true;
     });
 
-    // submit daftar → buat akun langsung, simpan profil
+    // submit daftar → buat akun langsung (Auth), lalu tulis profil ke RTDB (users/<uid>)
     form.addEventListener("submit", async (e)=>{
       e.preventDefault(); msgBox.style.display="none";
 
       let nama = namaEl.value.trim();
       const spec = specEl.value;
       const roleReq = roleEl.value;
-      const adminCode = adminCodeEl.value.trim();
+      const adminCode = adminCodeEl.value?.trim() || "";
       const email = emailEl.value.trim();
       const pass  = passEl.value;
 
@@ -336,19 +336,33 @@
       }
 
       nama = formatNama(nama);
+      const nameLower = nama.toLowerCase();
+
       submitBtn.disabled = true; overlay.classList.add("show");
 
       try{
+        // 1) Buat akun Auth
         const cred = await createUserWithEmailAndPassword(auth, email, pass);
+
+        // 2) Update profile di Auth (optional, untuk display di app)
         await updateProfile(cred.user, { displayName: nama, photoURL: uploadedPhotoURL });
+
+        // 3) Tulis profil ke RTDB (sesuai rule: hanya users/<uid> sendiri)
         await set(ref(db, `users/${cred.user.uid}`), {
-          name:nama, spec, role:isAdmin?"admin":"user", isAdmin,
-          email: cred.user.email, photoURL: uploadedPhotoURL, createdAt: Date.now()
+          name: nama,
+          nameLower,              // <-- PENTING utk indexOn
+          spec,                   // string: "basic" | "junior" | "senior"
+          role: isAdmin ? "admin" : "user",
+          isAdmin,
+          email: cred.user.email,
+          photoURL: uploadedPhotoURL,
+          createdAt: Date.now()
         });
 
+        // notifikasi ke Kodular (opsional)
         const payload = JSON.stringify({
           event:"register", status:"success", uid:cred.user.uid, email:cred.user.email,
-          name:nama, spec, role:isAdmin?"admin":"user", isAdmin, photoURL:uploadedPhotoURL, ts:Date.now()
+          name:nama, nameLower, spec, role:isAdmin?"admin":"user", isAdmin, photoURL:uploadedPhotoURL, ts:Date.now()
         });
         if (window.AppInventor?.setWebViewString) window.AppInventor.setWebViewString(payload);
 
