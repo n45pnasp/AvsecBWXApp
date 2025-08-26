@@ -297,11 +297,19 @@ class SiteMachine {
 
   async _resolveSpec(name){
     const key = String(name||"").trim().toLowerCase();
-    if(this._specCache[key]) return this._specCache[key];
+    if(this._specCache[key]){
+      console.log("[spec-cache]", name, this._specCache[key]);
+      return this._specCache[key];
+    }
+
+    console.log("[lookup]", name, "->", key);
     let spec = [];
     try{
       const q = query(this.usersRef, orderByChild("nameLower"), equalTo(key));
       const snap = await get(q);
+      if(!snap.exists()){
+        console.log("[lookup] tidak ditemukan", name);
+      }
       snap.forEach(childSnap => {
         const s = childSnap.val()?.spec;
         if(Array.isArray(s)) spec = s.map(x=>String(x).toLowerCase());
