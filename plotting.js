@@ -189,7 +189,6 @@ class SiteMachine {
     this.rosterRef = ref(db, "roster");
     this.usersRef  = ref(db, "users"); // data auth per pengguna
     this._rosterData = {};
-    this._usersData  = {};
     this._specCache  = {};
 
     this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
@@ -220,8 +219,6 @@ class SiteMachine {
       this.setRunningUI(this.running);
     });
     this._listen(this.rosterRef, s=>{ this._rosterData = s.val()||{}; this.syncRosterPeople(); });
-    // Ketika data users (spesifikasi) berubah, kosongkan cache dan sinkron ulang
-    this._listen(this.usersRef, s=>{ this._usersData = s.val()||{}; this._specCache = {}; this.syncRosterPeople(); });
 
     this.dueTimer = setInterval(()=>{
       if (this.running && this.nextAtLocal && Date.now() >= this.nextAtLocal) {
@@ -284,13 +281,14 @@ class SiteMachine {
     if(this._specCache[key]) return this._specCache[key];
     let spec = [];
     try{
-      const users = this._usersData || {};
-      const match = Object.values(users).find(u => String(u.name||"").trim().toLowerCase() === key);
-      if(match){
-        const s = match.spec;
+      const nameKey = String(name||"").trim();
+      const q = query(this.usersRef, orderByChild("name"), equalTo(nameKey));
+      const snap = await get(q);
+      snap.forEach(childSnap => {
+        const s = childSnap.val()?.spec;
         if(Array.isArray(s)) spec = s.map(x=>String(x).toLowerCase());
         else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
-      }
+      });
     }catch(err){
       console.error("Ambil spec gagal", name, err);
     }
@@ -299,6 +297,7 @@ class SiteMachine {
   }
 
   async syncRosterPeople(){
+    this._specCache = {}; // selalu ambil spec terbaru saat sinkronisasi
     const r = this._rosterData || {};
     let names = [];
     if(this.siteKey === "PSCP"){
