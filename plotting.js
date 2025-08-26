@@ -210,7 +210,10 @@ class SiteMachine {
 
     this._listen(this.assignmentsRef, s => this.renderAssignments(s.val()||{}));
     this._listen(this.peopleRef,      s => this.renderPeople(s.val()||{}));
-    this._listen(this.usersRef,       s => { this._usersData = s.val()||{}; });
+    this._listen(this.usersRef,       s => {
+      this._usersData = s.val()||{};
+      this.syncRosterPeople();
+    });
     this._listen(this.stateRef, s=>{
       const st = s.val() || {};
       this.running         = !!st.running;
