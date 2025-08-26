@@ -4,7 +4,7 @@ import {
   getDatabase, ref, child, onValue, set, update, get, runTransaction,
   query, orderByChild, equalTo
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 // ======== Konfigurasi (samakan dgn auth-guard.js) ========
 const firebaseConfig = {
@@ -23,20 +23,6 @@ const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db   = getDatabase(app);
 const auth = getAuth(app);
 
-// Log data auth (name dan spec) jika user login
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    try {
-      const snap = await get(child(ref(db, "users"), user.uid));
-      const data = snap.val() || {};
-      console.log("[auth] name:", data.name, "spec:", data.spec);
-    } catch (err) {
-      console.error("Gagal ambil data auth user:", err);
-    }
-  } else {
-    console.log("[auth] belum login");
-  }
-});
 
 // ========= Cloud Functions download PDF (endpoint) =========
 const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
