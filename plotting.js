@@ -272,6 +272,8 @@ class SiteMachine {
     });
     peopleRows.onchange = null;
     peopleRows.onclick = null;
+    const hasMissingSpec = Object.values(people||{}).some(p => !Array.isArray(p.spec) || p.spec.length===0);
+    if(!this.running && startBtn){ startBtn.disabled = hasMissingSpec; }
   }
 
   _resolveSpec(name){
@@ -427,11 +429,17 @@ class SiteMachine {
       return;
     }
 
+    const pSnap = await get(this.peopleRef);
+    const people = pSnap.val() || {};
+    const missing = Object.values(people).filter(p => !Array.isArray(p?.spec) || p.spec.length===0).map(p=>p.name);
+    if(missing.length){
+      alert("Spesifikasi belum tersedia untuk: " + missing.join(", "));
+      return;
+    }
+
     let enable2040Now=false;
     if(this.cfg.enable2040){
-      const pSnap=await get(this.peopleRef);
-      const people=pSnap.val()||{};
-      const jsCount=Object.values(people).filter(p =>
+      const jsCount = Object.values(people).filter(p =>
         Array.isArray(p?.spec) && p.spec.some(s=>["junior","senior"].includes(String(s).toLowerCase()))
       ).length;
       enable2040Now = (jsCount>=3);
