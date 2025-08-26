@@ -1,7 +1,8 @@
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import {
-  getDatabase, ref, child, onValue, set, update, get, runTransaction
+  getDatabase, ref, child, onValue, set, update, get, runTransaction,
+  query, orderByChild, equalTo
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
@@ -186,12 +187,10 @@ class SiteMachine {
     this.cooldownRef    = child(this.baseRef, "control/xrayCooldown");
     this.stateRef       = child(this.baseRef, "control/state"); // {running,nextAt,mode2040,lastCycleAt}
 
-    this.rosterRef    = ref(db, "roster");
-    this.usersRef     = ref(db, "users");        // referensi data pengguna
-    this.nameToUidRef = ref(db, "nameToUid");     // pemetaan nameLower -> uid
-    this._rosterData  = {};
-    this._specCache   = {};
-    this._uidCache    = {};
+    this.rosterRef   = ref(db, "roster");
+    this.usersRef    = ref(db, "users");        // referensi data pengguna
+    this._rosterData = {};
+    this._specCache  = {};
 
     this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
     this.running = false;
@@ -292,23 +291,18 @@ class SiteMachine {
     console.log("[lookup]", name, "->", key);
     let spec = [];
     try{
-      let uid = this._uidCache[key];
-      if(uid === undefined){
-        const uidSnap = await get(child(this.nameToUidRef, key));
-        const mapVal = uidSnap.val();
-        uid = (mapVal && typeof mapVal === "object") ? Object.keys(mapVal)[0] : null;
-        this._uidCache[key] = uid;
-      }
+      const q = query(this.usersRef, orderByChild("nameLower"), equalTo(key));
+      const snap = await get(q);
+      let uid = null;
+      snap.forEach(childSnap => {
+        if(!uid){ uid = childSnap.key; }
+      });
       console.log("[lookup-uid]", name, uid);
       if(uid){
-        try{
-          const specSnap = await get(child(this.usersRef, `${uid}/spec`));
-          const s = specSnap.val();
-          if(Array.isArray(s))      spec = s.map(x=>String(x).toLowerCase());
-          else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
-        }catch(err){
-          console.error("[spec-read-fail]", name, err.message);
-        }
+        const data = snap.child(uid).val();
+        const s = data?.spec;
+        if(Array.isArray(s))      spec = s.map(x=>String(x).toLowerCase());
+        else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
       }
       console.log("[spec]", name, spec);
     }catch(err){
@@ -320,7 +314,6 @@ class SiteMachine {
 
   async syncRosterPeople(){
     this._specCache = {}; // selalu ambil spec terbaru saat sinkronisasi
-    this._uidCache  = {};
     const r = this._rosterData || {};
     let names = [];
     if(this.siteKey === "PSCP"){
