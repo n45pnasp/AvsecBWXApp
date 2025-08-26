@@ -1,8 +1,7 @@
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import {
-  getDatabase, ref, child, onValue, set, update, get, runTransaction,
-  query, orderByChild, equalTo
+  getDatabase, ref, child, onValue, set, update, get, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
@@ -189,6 +188,7 @@ class SiteMachine {
     this.rosterRef = ref(db, "roster");
     this.usersRef  = ref(db, "users"); // data auth per pengguna
     this._rosterData = {};
+    this._usersData  = {};
     this._specCache  = {};
 
     this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
@@ -210,6 +210,7 @@ class SiteMachine {
 
     this._listen(this.assignmentsRef, s => this.renderAssignments(s.val()||{}));
     this._listen(this.peopleRef,      s => this.renderPeople(s.val()||{}));
+    this._listen(this.usersRef,       s => { this._usersData = s.val()||{}; });
     this._listen(this.stateRef, s=>{
       const st = s.val() || {};
       this.running         = !!st.running;
@@ -281,14 +282,17 @@ class SiteMachine {
     if(this._specCache[key]) return this._specCache[key];
     let spec = [];
     try{
-      const nameKey = String(name||"").trim();
-      const q = query(this.usersRef, orderByChild("name"), equalTo(nameKey));
-      const snap = await get(q);
-      snap.forEach(childSnap => {
-        const s = childSnap.val()?.spec;
-        if(Array.isArray(s)) spec = s.map(x=>String(x).toLowerCase());
-        else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
-      });
+      const users = this._usersData || {};
+      for (const uid of Object.keys(users)) {
+        const u = users[uid];
+        const nm = (u?.name || "").trim().toLowerCase();
+        if (nm === key) {
+          const s = u?.spec;
+          if (Array.isArray(s)) spec = s.map(x=>String(x).toLowerCase());
+          else if (typeof s === "string" && s) spec = [String(s).toLowerCase()];
+          break;
+        }
+      }
     }catch(err){
       console.error("Ambil spec gagal", name, err);
     }
