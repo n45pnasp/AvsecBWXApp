@@ -1,8 +1,7 @@
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import {
-  getDatabase, ref, child, onValue, set, update, get, runTransaction,
-  query, orderByChild, equalTo
+  getDatabase, ref, child, onValue, set, update, get, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
@@ -187,10 +186,12 @@ class SiteMachine {
     this.cooldownRef    = child(this.baseRef, "control/xrayCooldown");
     this.stateRef       = child(this.baseRef, "control/state"); // {running,nextAt,mode2040,lastCycleAt}
 
-    this.rosterRef = ref(db, "roster");
-    this.usersRef  = ref(db, "users"); // referensi data pengguna
-    this._rosterData = {};
-    this._specCache  = {};
+    this.rosterRef    = ref(db, "roster");
+    this.usersRef     = ref(db, "users");        // referensi data pengguna
+    this.nameToUidRef = ref(db, "nameToUid");     // pemetaan nameLower -> uid
+    this._rosterData  = {};
+    this._specCache   = {};
+    this._uidCache    = {};
 
     this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
     this.running = false;
@@ -291,17 +292,21 @@ class SiteMachine {
     console.log("[lookup]", name, "->", key);
     let spec = [];
     try{
-      // Cari user berdasar field "nameLower" tanpa membaca keseluruhan node "users"
-      const q = query(this.usersRef, orderByChild("nameLower"), equalTo(key));
-      const snap = await get(q);
-      if(!snap.exists()){
-        console.log("[lookup] tidak ditemukan", name);
+      // Ambil UID via tabel pemetaan agar tidak membaca keseluruhan node "users"
+      let uid = this._uidCache[key];
+      if(uid === undefined){
+        const uidSnap = await get(child(this.nameToUidRef, key));
+        uid = uidSnap.val() || null;
+        this._uidCache[key] = uid;
+      }
+      console.log("[lookup-uid]", name, uid);
+      if(uid){
+        const snap = await get(child(this.usersRef, uid));
+        const s = snap.val()?.spec;
+        if(Array.isArray(s))      spec = s.map(x=>String(x).toLowerCase());
+        else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
       } else {
-        snap.forEach(childSnap => {
-          const s = childSnap.val()?.spec;
-          if(Array.isArray(s))      spec = s.map(x=>String(x).toLowerCase());
-          else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
-        });
+        console.log("[lookup] tidak ditemukan", name);
       }
       console.log("[spec]", name, spec);
     }catch(err){
@@ -313,6 +318,7 @@ class SiteMachine {
 
   async syncRosterPeople(){
     this._specCache = {}; // selalu ambil spec terbaru saat sinkronisasi
+    this._uidCache  = {};
     const r = this._rosterData || {};
     let names = [];
     if(this.siteKey === "PSCP"){
