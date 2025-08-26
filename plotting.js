@@ -291,16 +291,15 @@ class SiteMachine {
     console.log("[lookup]", name, "->", key);
     let spec = [];
     try{
-      const q = query(this.usersRef, orderByChild("nameLower"), equalTo(key));
-      const snap = await get(q);
+      const safeKey = key.replace(/[.#$\[\]]/g, "_");
+      const snap = await get(child(this.usersRef, safeKey));
       if(!snap.exists()){
         console.log("[lookup] tidak ditemukan", name);
-      }
-      snap.forEach(childSnap => {
-        const s = childSnap.val()?.spec;
-        if(Array.isArray(s)) spec = s.map(x=>String(x).toLowerCase());
+      } else {
+        const s = snap.val()?.spec;
+        if(Array.isArray(s))      spec = s.map(x=>String(x).toLowerCase());
         else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
-      });
+      }
       console.log("[spec]", name, spec);
     }catch(err){
       console.error("Ambil spec gagal", name, err);
