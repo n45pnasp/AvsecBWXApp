@@ -1,7 +1,7 @@
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import {
-  getDatabase, ref, child, onValue, set, update, remove, get, runTransaction
+  getDatabase, ref, child, onValue, set, update, get, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
@@ -92,11 +92,6 @@ const downloadBtn  = $("downloadPdfBtn");
 const assignTable  = document.querySelector("table.assign");
 const assignRows   = $("assignRows");
 const manageBox    = document.querySelector(".manage");
-const nameInput    = $("nameInput");
-const seniorSpecEl = $("seniorSpec");
-const juniorSpec   = $("juniorSpec");
-const basicSpec    = $("basicSpec");
-const addPersonBtn = $("addPersonBtn");
 const peopleRows   = $("peopleRows");
 const btnPSCP      = $("pscpBtn");
 const btnHBSCP     = $("hbscpBtn");
@@ -190,6 +185,11 @@ class SiteMachine {
     this.cooldownRef    = child(this.baseRef, "control/xrayCooldown");
     this.stateRef       = child(this.baseRef, "control/state"); // {running,nextAt,mode2040,lastCycleAt}
 
+    this.rosterRef = ref(db, "roster");
+    this.usersRef  = ref(db, "users");
+    this._rosterData = {};
+    this._usersData  = {};
+
     this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
     this.running = false;
     this.nextAtLocal = null;
@@ -217,6 +217,8 @@ class SiteMachine {
       this.lastCycleAtLocal= (Number(st.lastCycleAt)||0) > 0 ? Number(st.lastCycleAt) : null;
       this.setRunningUI(this.running);
     });
+    this._listen(this.rosterRef, s=>{ this._rosterData = s.val()||{}; this.syncRosterPeople(); });
+    this._listen(this.usersRef,  s=>{ this._usersData  = s.val()||{}; this.syncRosterPeople(); });
 
     this.dueTimer = setInterval(()=>{
       if (this.running && this.nextAtLocal && Date.now() >= this.nextAtLocal) {
@@ -227,8 +229,6 @@ class SiteMachine {
     startBtn.onclick = ()=> this.onStart();
     stopBtn.onclick  = ()=> this.onStop();
     nextBtn.onclick  = ()=> this.onNext();
-    addPersonBtn.onclick = ()=> this.onAddPerson();
-
     this.setRunningUI(false);
     clockEl && (clockEl.textContent = fmt(new Date()));
     nextEl  && (nextEl.textContent  = "-");
@@ -237,7 +237,7 @@ class SiteMachine {
   unmount(){
     if (this.clockTimer) clearInterval(this.clockTimer);
     if (this.dueTimer)   clearInterval(this.dueTimer);
-    startBtn.onclick = stopBtn.onclick = nextBtn.onclick = addPersonBtn.onclick = null;
+    startBtn.onclick = stopBtn.onclick = nextBtn.onclick = null;
     this._unsubs.forEach(u=>{ try{u&&u();}catch(e){} });
     this._unsubs = [];
   }
@@ -264,39 +264,51 @@ class SiteMachine {
 
   renderPeople(people){
     peopleRows.innerHTML = "";
-    Object.entries(people||{}).forEach(([id,p])=>{
-      const has = s => Array.isArray(p.spec) && p.spec.includes(s);
+    Object.values(people||{}).forEach(p=>{
+      const specText = Array.isArray(p.spec) ? p.spec.join(", ") : "";
       const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${p.name}</td>
-        <td><input type="checkbox" ${has("senior")?"checked":""} data-id="${id}" data-spec="senior"/></td>
-        <td><input type="checkbox" ${has("junior")?"checked":""} data-id="${id}" data-spec="junior"/></td>
-        <td><input type="checkbox" ${has("basic")?"checked":""}  data-id="${id}" data-spec="basic"/></td>
-        <td><button data-del="${id}">Hapus</button></td>`;
+      tr.innerHTML = `<td>${p.name}</td><td>${specText}</td>`;
       peopleRows.appendChild(tr);
     });
-    peopleRows.onchange = async (e)=>{
-      if(e.target.type!=="checkbox") return;
-      const id=e.target.dataset.id, spec=e.target.dataset.spec;
-      try{
-        const snap = await get(child(this.peopleRef,id));
-        let person = snap.val(); if(!person) return;
-        if(!Array.isArray(person.spec)) person.spec=[];
-        if(e.target.checked){ if(!person.spec.includes(spec)) person.spec.push(spec); }
-        else { person.spec = person.spec.filter(s=>s!==spec); }
-        await update(child(this.peopleRef,id), person);
-      }catch(err){
-        alert("Update spesifikasi gagal: " + (err?.message||err));
+    peopleRows.onchange = null;
+    peopleRows.onclick = null;
+  }
+
+  _resolveSpec(name){
+    const users = this._usersData || {};
+    const lc = String(name||"").trim().toLowerCase();
+    for(const uid in users){
+      const u = users[uid];
+      if(u && typeof u.name === "string" && u.name.trim().toLowerCase() === lc){
+        const spec = u.spec;
+        if(Array.isArray(spec)) return spec.map(s=>String(s).toLowerCase());
+        if(typeof spec === "string" && spec) return [String(spec).toLowerCase()];
       }
-    };
-    peopleRows.onclick = async (e)=>{
-      if(!e.target.dataset.del) return;
-      try{
-        await remove(child(this.peopleRef, e.target.dataset.del));
-      }catch(err){
-        alert("Hapus personil gagal: " + (err?.message||err));
-      }
-    };
+    }
+    return [];
+  }
+
+  async syncRosterPeople(){
+    const r = this._rosterData || {};
+    let names = [];
+    if(this.siteKey === "PSCP"){
+      const arr=[r.angCabin1,r.angCabin2,r.angCabin3,r.angCabin4];
+      names = arr.filter(n=>n && n!=="-");
+      if(arr.some(n=>n==="-") && r.spvCabin && r.spvCabin!=="-") names.push(r.spvCabin);
+    } else if(this.siteKey === "HBSCP"){
+      const arr=[r.angHbs1,r.angHbs2,r.angHbs3];
+      names = arr.filter(n=>n && n!=="-");
+      if(arr.some(n=>n==="-") && r.spvHbs && r.spvHbs!=="-") names.push(r.spvHbs);
+    }
+    const people={};
+    names.forEach(n=>{
+      people[n.toLowerCase()] = { name:n, spec:this._resolveSpec(n) };
+    });
+    try{
+      await set(this.peopleRef, people);
+    }catch(err){
+      console.error("Sync roster gagal:", err);
+    }
   }
 
   rotate(arr, idx){ return arr.length ? arr.slice(idx).concat(arr.slice(0,idx)) : []; }
@@ -462,26 +474,6 @@ class SiteMachine {
       this.mode2040State=!!cur.mode2040;
       await this.tryAdvanceCycle(true);
     }
-  }
-
-  async onAddPerson(){
-    if(!auth.currentUser){
-      alert("Harus login terlebih dulu.");
-      return;
-    }
-    const name=nameInput?.value?.trim();
-    if(!name) return;
-    const specs=[];
-    if(seniorSpecEl?.checked) specs.push("senior");
-    if(juniorSpec?.checked)   specs.push("junior");
-    if(basicSpec?.checked)    specs.push("basic");
-    try{
-      await update(child(this.peopleRef, name.toLowerCase()), { name, spec: specs });
-    }catch(err){
-      alert("Tambah personil gagal: " + (err?.message||err));
-      return;
-    }
-    nameInput.value=""; seniorSpecEl.checked=false; juniorSpec.checked=false; basicSpec.checked=false;
   }
 }
 

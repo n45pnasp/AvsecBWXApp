@@ -59,20 +59,14 @@
     <tbody id="assignRows"></tbody>
   </table>
 
-  <!-- Kelola Personil -->
-  <div class="manage" aria-label="Kelola Personil">
-    <h2>Kelola Personil</h2>
-    <div class="add-person">
-      <input id="nameInput" type="text" placeholder="Nama" />
-      <label><input type="checkbox" id="seniorSpec" /> Senior</label>
-      <label><input type="checkbox" id="juniorSpec" /> Junior</label>
-      <label><input type="checkbox" id="basicSpec" /> Basic</label>
-      <button id="addPersonBtn" type="button">Tambah</button>
-    </div>
+    <!-- Kelola Personil -->
+    <div class="manage" aria-label="Kelola Personil">
+      <h2>Kelola Personil</h2>
+      <p class="auto-note">Daftar personil diambil otomatis dari roster.</p>
 
-    <table class="people" aria-label="Daftar Personil">
+      <table class="people" aria-label="Daftar Personil">
       <thead>
-        <tr><th>Nama</th><th>Senior</th><th>Junior</th><th>Basic</th><th>Aksi</th></tr>
+        <tr><th>Nama</th><th>Spesifikasi</th></tr>
       </thead>
       <tbody id="peopleRows"></tbody>
     </table>
