@@ -230,9 +230,37 @@ input[type="text"]{
 .sheet-body{ color: var(--muted); font-size: 14px; line-height: 1.4; }
 
 /* =========================
+   ALERT MODAL
+   ========================= */
+#alertModal{
+  position: fixed; inset: 0;
+  display: none;                 /* di-show via JS */
+  align-items: center; justify-content: center;
+  background: rgba(15,23,42,.55);
+  backdrop-filter: blur(2px);
+  z-index: 9998;
+  padding: 16px;
+}
+
+#alertModal .modal-card{
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 18px;
+  width: min(360px, 92vw);
+  box-shadow: 0 16px 40px rgba(0,0,0,.45);
+  text-align: center;
+  animation: pop .18s ease-out both;
+}
+
+#alertModal .modal-card button{
+  margin-top: 14px;
+}
+
+/* =========================
    LOADING OVERLAY + CARD POPUP
    ========================= */
-body.blur-bg > *:not(#loadingOverlay){
+body.blur-bg > *:not(#loadingOverlay):not(#alertModal){
   filter: blur(5px);
   pointer-events: none;
   user-select: none;
@@ -346,4 +374,5 @@ body.blur-bg > *:not(#loadingOverlay){
     grid-template-columns: 48px 1fr auto;
     padding: 14px;
   }
+  #alertModal .modal-card{ padding: 14px; }
 }

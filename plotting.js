@@ -154,6 +154,27 @@ const btnHBSCP     = $("hbscpBtn");
   overlay.querySelector("#loadClose")?.addEventListener("click", ()=> __loadingUI.hide());
 })();
 
+// ========= Modal sederhana untuk pesan =========
+(function setupAlertModal(){
+  const overlay = document.createElement("div");
+  overlay.id = "alertModal";
+  overlay.innerHTML = `
+    <div class="modal-card" role="alertdialog" aria-modal="true">
+      <p id="alertText"></p>
+      <button id="alertClose" type="button">OK</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const textEl  = overlay.querySelector("#alertText");
+  const btn     = overlay.querySelector("#alertClose");
+  function hide(){ overlay.style.display = "none"; document.body.classList.remove("blur-bg"); }
+  function show(msg){ textEl.textContent = msg; overlay.style.display = "flex"; document.body.classList.add("blur-bg"); }
+  btn.addEventListener("click", hide);
+  overlay.addEventListener("click", e => { if(e.target === overlay) hide(); });
+  window.showModal = show;
+})();
+
 // ========= Indikator koneksi =========
 onValue(ref(db, ".info/connected"), snap => { connDot?.classList.toggle("ok", !!snap.val()); });
 
@@ -425,7 +446,7 @@ class SiteMachine {
         await set(this.assignmentsRef, finalAssign);
       }
     }catch(err){
-      alert("Tulis assignments gagal: " + (err?.message||err));
+      showModal("Tulis assignments gagal: " + (err?.message||err));
     }
 
     this.advanceRotIdx(pools);
@@ -453,7 +474,7 @@ class SiteMachine {
 
   async onStart(){
     if(!auth.currentUser){
-      alert("Harus login terlebih dulu.");
+      showModal("Harus login terlebih dulu.");
       return;
     }
 
@@ -461,7 +482,7 @@ class SiteMachine {
     const people = pSnap.val() || {};
     const missing = Object.values(people).filter(p => !Array.isArray(p?.spec) || p.spec.length===0).map(p=>p.name);
     if(missing.length){
-      alert("Spesifikasi belum tersedia untuk: " + missing.join(", "));
+      showModal("Spesifikasi belum tersedia untuk: " + missing.join(", "));
       return;
     }
 
@@ -479,7 +500,7 @@ class SiteMachine {
     try{
       await set(this.stateRef, { running:true, nextAt: next, mode2040: this.mode2040State, lastCycleAt: now });
     }catch(err){
-      alert("Gagal memulai: " + (err?.message||err));
+      showModal("Gagal memulai: " + (err?.message||err));
       return;
     }
     this.nextAtLocal      = next;
@@ -495,7 +516,7 @@ class SiteMachine {
     try{
       await Promise.all(tasks);
     }catch(err){
-      alert("Gagal menghentikan: " + (err?.message||err));
+      showModal("Gagal menghentikan: " + (err?.message||err));
     }
     this.setRunningUI(false);
     this.nextAtLocal=null;
@@ -546,7 +567,7 @@ function bootSite(siteKey){
 // ====== Download PDF (dengan card popup + status bertahap) ======
 async function downloadViaFunctions(siteKey) {
   const user = auth.currentUser;
-  if (!user) { alert("Harus login terlebih dulu."); return; }
+  if (!user) { showModal("Harus login terlebih dulu."); return; }
 
   const idToken = await user.getIdToken(true); // paksa refresh
 
@@ -593,7 +614,7 @@ async function downloadViaFunctions(siteKey) {
 
 // ====== Handler klik tombol Download ======
 function onClickDownload(){
-  if(!currentSite){ alert("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
+  if(!currentSite){ showModal("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
   downloadViaFunctions(currentSite);
 }
 
