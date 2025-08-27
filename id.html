@@ -24,14 +24,17 @@
         <span>SURABAYA</span>
         <span>BANDAR UDARA BANYUWANGI</span>
       </div>
-      <div class="pass-date">08 Agu 2026</div>
-      <div class="pass-photo">
-        <img src="icons/id-check.png" alt="Foto" />
+      <div class="pass-date" id="passDate">-</div>
+      <div class="pass-row">
+        <div class="pass-photo">
+          <img id="passPhoto" src="icons/id-check.png" alt="Foto" />
+        </div>
+        <div class="pass-code" id="passCode">-</div>
       </div>
-      <div class="pass-name">CITRA RANA KALYANA</div>
-      <div class="pass-role">SANITASI LINGKUNGAN TERAMPIL</div>
-      <div class="pass-qr">
-        <img src="icons/qrcode.png" alt="QR" />
+      <div class="pass-name" id="passName">-</div>
+      <div class="pass-role" id="passRole">-</div>
+      <div class="pass-barcode">
+        <img id="barcodeImg" alt="Barcode" />
       </div>
     </section>
 
@@ -44,6 +47,21 @@
 
     <button id="inputBtn" type="button" class="btn full">Input Data</button>
   </main>
+
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet" role="document">
+      <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="icon spinner" id="ovIcon"></div>
+      <div class="texts">
+        <div class="title" id="ovTitle"></div>
+        <div class="desc" id="ovDesc"></div>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="id.js"></script>
 </body>

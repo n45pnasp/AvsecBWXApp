@@ -21,18 +21,30 @@
 
 .pass-date{ font-weight:600; }
 
+.pass-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
 .pass-photo{
   width:120px;
   height:160px;
   border-radius:8px;
   overflow:hidden;
   border:2px solid #fff;
+  flex-shrink:0;
 }
 
 .pass-photo img{
   width:100%;
   height:100%;
   object-fit:cover;
+}
+
+.pass-code{
+  font-weight:700;
+  font-size:clamp(18px,2vw,22px);
 }
 
 .pass-name{
@@ -45,8 +57,8 @@
   text-transform:uppercase;
 }
 
-.pass-qr img{
-  width:80px;
-  height:80px;
+.pass-barcode img{
+  width:120px;
+  height:auto;
 }
 
