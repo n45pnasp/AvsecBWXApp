@@ -13,10 +13,11 @@
   box-shadow:none;
   border-radius:16px;
   padding:16px;
-  display:grid;
-  justify-items:center;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
   gap:8px;
-  text-align:center;
+  text-align:left;
   width:100%;
 }
 
@@ -40,7 +41,6 @@
   flex-direction:column;
 }
 
-.pass-date{ font-weight:600; }
 
 .pass-row{
   display:flex;
@@ -74,15 +74,6 @@
   text-orientation:upright;
 }
 
-.pass-name{
-  font-weight:700;
-  font-size:clamp(18px,2vw,22px);
-}
-
-.pass-role{
-  font-size:var(--fs-sm);
-  text-transform:uppercase;
-}
 
 .pass-barcode{
   display:flex;
@@ -99,12 +90,16 @@
   display:flex;
   flex-direction:column;
   align-items:flex-start;
-  font-weight:600;
-  font-size:var(--fs-sm);
   text-align:left;
 }
 
-.pass-info #passId{
-  font-size:var(--fs-base);
+.pass-date,
+.pass-name,
+.pass-role,
+.pass-info div{
+  font-weight:700;
+  font-size:clamp(18px,2vw,22px);
 }
+
+.pass-role{ text-transform:none; }
 
