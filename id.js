@@ -266,8 +266,8 @@ async function receiveBarcode(code){
         passCard.style.color = col.text;
       }
 
-      const rawFoto = (j.columns.H || j.columns.L || j.columns.J || '').trim();
-      console.log('Kolom H/L/J (foto mentah):', rawFoto);
+      const rawFoto = (j.columns.H || '').trim();
+      console.log('Kolom H (foto mentah):', rawFoto);
       if (rawFoto){
         let fotoUrl = rawFoto;
         if (!/^https?:/i.test(rawFoto)){
