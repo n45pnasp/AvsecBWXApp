@@ -22,8 +22,8 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 /* ====== LAYOUT ====== */
 .container{
   width:100%;
-  margin:0 auto;
-  padding:16px;
+  margin:0;
+  padding:0;
   display:flex;
   flex-direction:column;
   gap:16px;
@@ -44,8 +44,8 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
   border-radius:clamp(12px, 2.4vw, 20px);
   padding:clamp(12px, 2.5vw, 20px);
 
-  /* Lebar ~80% dengan batas min & max */
-  width:clamp(280px, 80%, 720px);
+  /* Kartu memenuhi lebar perangkat */
+  width:100%;
   max-width:100%;
 
   display:flex;
@@ -81,10 +81,10 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
   gap:12px;              /* gap juga dihitung dalam lebar total */
 }
 
-/* Foto dikunci 65% baris */
+/* Foto diperbesar hingga 80% baris */
 .pass-photo{
-  flex:0 0 65%;          /* grow=0, shrink=0, basis=65% */
-  max-width:65%;
+  flex:0 0 80%;          /* grow=0, shrink=0, basis=80% */
+  max-width:80%;
   aspect-ratio:3/4;
   border-radius:8px;
   overflow:hidden;
@@ -102,7 +102,7 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 .pass-code{
   flex:0 0 auto;         /* jangan minta ruang tambahan */
   font-weight:700;
-  font-size:clamp(16px,1.6vw,20px);
+  font-size:clamp(32px,3.2vw,40px);
   writing-mode:vertical-rl;
   text-orientation:upright;
 }
@@ -117,11 +117,19 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
   text-align:left;
 }
 
-.pass-date{ font-weight:700; font-size:clamp(20px,2vw,24px); }
+.pass-date{
+  font-weight:700;
+  font-size:clamp(30px,3vw,36px);
+  align-self:center;
+  text-align:center;
+}
 .pass-name{ font-weight:700; font-size:clamp(16px,1.6vw,20px); }
 .pass-role,
 .pass-info div{ font-weight:700; font-size:clamp(14px,1.4vw,18px); }
 .pass-role{ text-transform:none; }
+
+/* Kode PAS lebih besar */
+#passId{ font-size:clamp(28px,2.8vw,36px); }
 
 /* ====== BARCODE + INFO ====== */
 .pass-barcode{
@@ -195,9 +203,9 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 /* ====== RESPONSIVE TWEAKS ====== */
 @media (max-width:420px){
   .pass-row{ flex-wrap:wrap; }
-  .pass-photo{ flex-basis:70%; max-width:70%; } /* foto lebih dominan di HP kecil */
+  .pass-photo{ flex-basis:80%; max-width:80%; } /* foto lebih dominan di HP kecil */
 }
 
 @media (min-width:1024px){
-  .pass-card{ width:clamp(480px, 80%, 820px); }
+  .pass-card{ width:100%; }
 }
