@@ -26,6 +26,8 @@
   border-radius:10px; border:1px solid var(--border);
 }
 
+.foto-note{ text-align:center; margin-top:8px; }
+
 /* style select seperti input */
 .field select{
   width:100%;
