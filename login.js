@@ -172,22 +172,6 @@ function getTimeOfDayUTC7(){
 
 /** ===== Offline Sheet ===== */
 (function setupOfflineSheet(){
-  const style = document.createElement("style");
-  style.textContent = `
-    .net-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9999;
-      background:#7f1d1d;color:#fecaca;border-top:1px solid #fecaca33;
-      padding:12px 14px;display:none;gap:10px;align-items:center}
-    .net-sheet.show{display:flex;animation:slideUp .18s ease-out both}
-    .net-dot{width:10px;height:10px;border-radius:50%;background:#ef4444}
-    .net-msg{flex:1;font-size:14px;line-height:1.3}
-    .net-act{display:flex;gap:8px}
-    .net-btn{background:#9C27B0FF;color:#fff;border:1px solid #6A1B9A;
-      padding:8px 10px;border-radius:10px;cursor:pointer}
-    .net-btn:hover{background:#6A1B9A;}
-    @keyframes slideUp{from{transform:translateY(8px);opacity:.0}to{transform:none;opacity:1}}
-  `;
-  document.head.appendChild(style);
-
   const sheet = document.createElement("div");
   sheet.className = "net-sheet";
   sheet.innerHTML = `
