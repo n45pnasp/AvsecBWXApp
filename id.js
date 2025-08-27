@@ -253,14 +253,14 @@ async function receiveBarcode(code){
       if (passIdEl) passIdEl.textContent = code.toUpperCase();
       barcodeImg.src = 'https://bwipjs-api.metafloor.com/?bcid=qrcode&scale=5&text=' + encodeURIComponent(code.toUpperCase());
 
-      const warna = (j.columns.c || '-').toUpperCase();
+      const warna = (j.columns.C || '-').toUpperCase(); 
       const colorMap = {
         KUNING:{ bg:'#facc15', text:'#000' },
         PUTIH:{ bg:'#ffffff', text:'#000' },
-        HIJAU:{ bg:'#16a34a', text:'#fff' },
+
         BIRU :{ bg:'#3b82f6', text:'#fff' },
         MERAH:{ bg:'#ef4444', text:'#fff' },
-        UNGU :{ bg:'#a855f7', text:'#fff' }
+
       };
       if (passCard){
         const col = colorMap[warna] || colorMap.KUNING;
