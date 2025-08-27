@@ -229,7 +229,7 @@ async function receiveBarcode(code){
     const j = await res.json();
     if (j && j.columns){
       console.log('Hasil scan barcode:', j.columns);
-      console.log('Kolom H:', j.columns.H);
+      console.log('Kolom C:', j.columns.C);
       const tanggalRaw = j.columns.G || j.columns.A || '';
       let tanggal = '';
       if (tanggalRaw){
@@ -265,10 +265,14 @@ async function receiveBarcode(code){
         passCard.style.color = col.text;
       }
 
-      const rawFoto = (j.columns.H || '').trim();
+      const rawFoto = (j.columns.H || j.columns.L || j.columns.J || '').trim();
       console.log('Kolom H (foto mentah):', rawFoto);
       if (rawFoto){
-        passPhoto.src = rawFoto;
+        let fotoUrl = rawFoto;
+        if (!/^https?:/i.test(rawFoto)){
+          fotoUrl = `https://drive.google.com/thumbnail?id=${rawFoto}`;
+        }
+        passPhoto.src = fotoUrl;
       } else {
         passPhoto.removeAttribute('src');
       }
