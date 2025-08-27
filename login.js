@@ -46,6 +46,23 @@ const yearEl     = $("#year");
 const logoEl     = $("#appLogo");
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
+// Loading overlay util
+const Overlay = {
+  show(desc = "Memproses…", title = "Harap tunggu") {
+    document.body.classList.add("blur-bg");
+    const o = document.getElementById("loadingOverlay");
+    if (!o) return;
+    o.style.display = "flex";
+    o.querySelector(".title").textContent = title;
+    o.querySelector(".desc").textContent = desc;
+  },
+  hide() {
+    document.body.classList.remove("blur-bg");
+    const o = document.getElementById("loadingOverlay");
+    if (o) o.style.display = "none";
+  }
+};
+
 /** Inject custom color styles (Ungu) */
 (function injectCustomColors(){
   const style = document.createElement("style");
@@ -155,22 +172,6 @@ function getTimeOfDayUTC7(){
 
 /** ===== Offline Sheet ===== */
 (function setupOfflineSheet(){
-  const style = document.createElement("style");
-  style.textContent = `
-    .net-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9999;
-      background:#7f1d1d;color:#fecaca;border-top:1px solid #fecaca33;
-      padding:12px 14px;display:none;gap:10px;align-items:center}
-    .net-sheet.show{display:flex;animation:slideUp .18s ease-out both}
-    .net-dot{width:10px;height:10px;border-radius:50%;background:#ef4444}
-    .net-msg{flex:1;font-size:14px;line-height:1.3}
-    .net-act{display:flex;gap:8px}
-    .net-btn{background:#9C27B0FF;color:#fff;border:1px solid #6A1B9A;
-      padding:8px 10px;border-radius:10px;cursor:pointer}
-    .net-btn:hover{background:#6A1B9A;}
-    @keyframes slideUp{from{transform:translateY(8px);opacity:.0}to{transform:none;opacity:1}}
-  `;
-  document.head.appendChild(style);
-
   const sheet = document.createElement("div");
   sheet.className = "net-sheet";
   sheet.innerHTML = `
@@ -313,10 +314,13 @@ form?.addEventListener("submit", async (e)=>{
   if (!email || !pass){ err("Email & kata sandi wajib diisi."); return; }
 
   disableForm(true);
+  Overlay.show("Memproses login…");
   try{
     const cred = await signInWithEmailAndPassword(auth, email, pass);
+    Overlay.show("Mengalihkan ke Home…");
     await notifyKodularAndGoHome("success", cred.user);
   }catch(e){
+    Overlay.hide();
     const map = {
       "auth/invalid-email":"Format email tidak valid.",
       "auth/user-not-found":"Akun tidak ditemukan.",
@@ -325,7 +329,6 @@ form?.addEventListener("submit", async (e)=>{
       "auth/user-disabled":"Akun dinonaktifkan."
     };
     err(map[e.code] || ("Gagal login: " + (e.message || e)));
-  }finally{
     disableForm(false);
   }
 });
@@ -342,8 +345,10 @@ onAuthStateChanged(auth, async (user)=>{
   }
 
   if (user){
+    Overlay.show("Mengalihkan ke Home…");
     await notifyKodularAndGoHome("already_signed_in", user);
   }else{
+    Overlay.hide();
     show(welcome);
   }
 });
@@ -356,6 +361,7 @@ window.logout = async function(){
     sessionStorage.removeItem("justSignedIn");
     ok("Berhasil keluar.");
     show(welcome);
+    Overlay.hide();
   }catch(e){
     err("Gagal logout: " + (e.message || e));
   }

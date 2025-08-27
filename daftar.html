@@ -26,8 +26,6 @@
     .msg { margin-top:12px; font-size:14px; padding:10px; border-radius:8px; display:none; }
     .error { background:#7f1d1d; color:#fecaca; }
     .success { background:#14532d; color:#bbf7d0; }
-    .small { text-align:center; font-size:12px; color:var(--muted); margin-top:8px; }
-    .small a { color:#a7f3d0; text-decoration:none; }
     .hidden { display:none; }
 
     .modal-backdrop { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); z-index:50; }
@@ -60,7 +58,7 @@
     <form id="registerForm" novalidate>
       <label for="nama">Nama Lengkap (2 kata)</label>
       <input type="text" id="nama" placeholder="Contoh: Budi Santoso" required />
-      <div class="hint">Huruf & spasi saja (boleh titik, apostrof, tanda hubung). Tepat 2 kata.</div>
+      <div class="hint">Huruf & spasi saja</div>
 
       <label for="spec">Spesifikasi</label>
       <select id="spec" required>
@@ -98,11 +96,10 @@
       <input type="password" id="password" placeholder="Minimal 6 karakter" minlength="6" required />
 
       <button id="submitBtn" type="submit" disabled>Daftar</button>
-      <div class="hint">Tombol Daftar aktif setelah foto berhasil diupload & disimpan.</div>
+      <div class="hint" style="margin-top:8px">Tombol "Daftar" akan aktif setelah foto diunggah dan disimpan.</div>
     </form>
 
     <div id="msgBox" class="msg"></div>
-    <div class="small">Sudah punya akun? <a href="index.html">Masuk</a></div>
   </div>
 
   <!-- Modal upload -->
@@ -189,6 +186,10 @@
     const showMsg=(t,type="error")=>{ msgBox.textContent=t; msgBox.className="msg "+type; msgBox.style.display="block"; };
     const showModalMsg=(t,type="error")=>{ modalMsg.textContent=t; modalMsg.className="msg "+type; modalMsg.style.display="block"; };
     const formatNama=(s)=>s.trim().split(/\s+/).map(k=>k[0]?.toUpperCase()+k.slice(1).toLowerCase()).join(" ");
+
+    // normalisasi nameLower yang stabil
+    const normalizeNameLower = (s)=>
+      s.trim().toLowerCase().replace(/\s+/g,' ');
 
     roleEl.addEventListener("change", ()=>{
       const wantAdmin = roleEl.value === "admin";
@@ -309,14 +310,14 @@
       submitBtn.disabled = true;
     });
 
-    // submit daftar → buat akun langsung (Auth), lalu tulis profil ke RTDB (users/<uid>)
+    // submit daftar → buat akun langsung (Auth), lalu tulis profil + indeks nameToUid
     form.addEventListener("submit", async (e)=>{
       e.preventDefault(); msgBox.style.display="none";
 
       let nama = namaEl.value.trim();
       const spec = specEl.value;
       const roleReq = roleEl.value;
-      const adminCode = adminCodeEl.value?.trim() || "";
+      const adminCode = (document.getElementById("adminCode")?.value || "").trim();
       const email = emailEl.value.trim();
       const pass  = passEl.value;
 
@@ -336,7 +337,7 @@
       }
 
       nama = formatNama(nama);
-      const nameLower = nama.toLowerCase();
+      const nameLower = normalizeNameLower(nama);
 
       submitBtn.disabled = true; overlay.classList.add("show");
 
@@ -350,14 +351,22 @@
         // 3) Tulis profil ke RTDB (sesuai rule: hanya users/<uid> sendiri)
         await set(ref(db, `users/${cred.user.uid}`), {
           name: nama,
-          nameLower,              // <-- PENTING utk indexOn
-          spec,                   // string: "basic" | "junior" | "senior"
+          nameLower,              // diperlukan untuk index/pencarian
+          spec,                   // "basic" | "junior" | "senior"
           role: isAdmin ? "admin" : "user",
           isAdmin,
           email: cred.user.email,
           photoURL: uploadedPhotoURL,
           createdAt: Date.now()
         });
+
+        // 4) Tulis indeks nameToUid → membutuhkan rule yang mengizinkan user menulis daunnya sendiri
+        try{
+          await set(ref(db, `nameToUid/${nameLower}/${cred.user.uid}`), true);
+        } catch (idxErr){
+          // Jika rule tidak mengizinkan, jangan blokir pendaftaran.
+          console.warn("Gagal tulis nameToUid:", idxErr);
+        }
 
         // notifikasi ke Kodular (opsional)
         const payload = JSON.stringify({

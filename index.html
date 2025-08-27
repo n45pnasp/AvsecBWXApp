@@ -19,7 +19,7 @@
     redirectIfAuthed({ homePath: "home.html" });
   </script>
 </head>
-<body>
+<body class="blur-bg">
   <main class="wrap">
     <article class="card" aria-live="polite">
       <!-- WELCOME -->
@@ -72,6 +72,17 @@
 
   <!-- OPSIONAL: override logo default -->
   <!-- <script>window.LOGO_URL = "https://domainmu.com/logohome.png";</script> -->
+
+  <!-- Loading overlay -->
+  <div id="loadingOverlay" style="display:flex">
+    <div class="load-card">
+      <span class="icon spinner"></span>
+      <div class="texts" aria-hidden="true">
+        <div class="title"></div>
+        <div class="desc"></div>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="login.js"></script>
 </body>

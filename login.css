@@ -165,15 +165,43 @@ input:focus{
 }
 .toggle-eye:active{ background:rgba(255,255,255,.06) }
 
+/* Loading Overlay */
+body.blur-bg > *:not(#loadingOverlay){
+  filter:blur(5px); pointer-events:none; user-select:none; transition:filter .2s ease;
+}
+#loadingOverlay{
+  position:fixed; inset:0; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(15,23,42,.55); z-index:9999; backdrop-filter:blur(2px); padding:16px;
+}
+#loadingOverlay .load-card{
+  background:var(--card);
+  border:1px solid rgba(148,163,184,.15);
+  border-radius:16px;
+  padding:20px;
+  box-shadow:0 16px 40px rgba(0,0,0,.45);
+  display:flex; align-items:center; justify-content:center;
+}
+#loadingOverlay .icon{
+  width:48px; height:48px; border-radius:50%; display:inline-block; position:relative;
+  border:5px solid rgba(255,255,255,.15);
+  border-top-color:var(--accent);
+  animation:spin .9s linear infinite !important;
+}
+#loadingOverlay .texts{ display:none }
+#loadingOverlay .title{ font-weight:800; letter-spacing:.2px }
+#loadingOverlay .desc{ color:var(--muted); font-size:14px }
+@keyframes spin{ to{ transform:rotate(360deg) } }
+
 /* Offline sheet (dipakai JS, warna dari vars) */
 .net-sheet{
   position:fixed; left:0; right:0; bottom:0; z-index:9999;
-  background:var(--danger); color:var(--text);
-  border-top:1px solid #ffffff22;
+  background:var(--card); color:var(--text);
+  border-top:1px solid rgba(148,163,184,.25);
   padding:12px 14px; display:none; gap:10px; align-items:center;
 }
 .net-sheet.show{ display:flex; animation:slideUp .18s ease-out both }
-.net-dot{ width:10px; height:10px; border-radius:50%; background:#ef4444 }
+.net-dot{ width:10px; height:10px; border-radius:50%; background:var(--danger) }
 .net-msg{ flex:1; font-size:14px; line-height:1.3 }
 .net-act{ display:flex; gap:8px }
 .net-btn{

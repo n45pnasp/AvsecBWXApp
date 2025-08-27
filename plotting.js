@@ -22,6 +22,7 @@ const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db   = getDatabase(app);
 const auth = getAuth(app);
 
+
 // ========= Cloud Functions download PDF (endpoint) =========
 const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
 
@@ -92,6 +93,7 @@ const downloadBtn  = $("downloadPdfBtn");
 const assignTable  = document.querySelector("table.assign");
 const assignRows   = $("assignRows");
 const manageBox    = document.querySelector(".manage");
+const manageTitle  = $("manageTitle");
 const peopleRows   = $("peopleRows");
 const btnPSCP      = $("pscpBtn");
 const btnHBSCP     = $("hbscpBtn");
@@ -185,11 +187,12 @@ class SiteMachine {
     this.cooldownRef    = child(this.baseRef, "control/xrayCooldown");
     this.stateRef       = child(this.baseRef, "control/state"); // {running,nextAt,mode2040,lastCycleAt}
 
-    this.rosterRef = ref(db, "roster");
-    this.usersRef  = ref(db, "users"); // data auth per pengguna
-    this._rosterData = {};
-    this._usersData  = {};
-    this._specCache  = {};
+    this.rosterRef    = ref(db, "roster");
+    this.usersRef     = ref(db, "users");       // data pengguna
+    this.nameToUidRef = ref(db, "nameToUid");   // pemetaan nameLower -> uid
+    this._rosterData  = {};
+    this._specCache   = {};
+    this._uidCache    = {};
 
     this.rotIdx = {}; this.cfg.positions.forEach(p => this.rotIdx[p.id] = 0);
     this.running = false;
@@ -210,10 +213,6 @@ class SiteMachine {
 
     this._listen(this.assignmentsRef, s => this.renderAssignments(s.val()||{}));
     this._listen(this.peopleRef,      s => this.renderPeople(s.val()||{}));
-    this._listen(this.usersRef,       s => {
-      this._usersData = s.val()||{};
-      this.syncRosterPeople();
-    });
     this._listen(this.stateRef, s=>{
       const st = s.val() || {};
       this.running         = !!st.running;
@@ -222,7 +221,11 @@ class SiteMachine {
       this.lastCycleAtLocal= (Number(st.lastCycleAt)||0) > 0 ? Number(st.lastCycleAt) : null;
       this.setRunningUI(this.running);
     });
-    this._listen(this.rosterRef, s=>{ this._rosterData = s.val()||{}; this.syncRosterPeople(); });
+    this._listen(this.rosterRef, s=>{
+      this._rosterData = s.val()||{};
+      console.log("[roster]", this._rosterData);
+      this.syncRosterPeople();
+    });
 
     this.dueTimer = setInterval(()=>{
       if (this.running && this.nextAtLocal && Date.now() >= this.nextAtLocal) {
@@ -282,20 +285,29 @@ class SiteMachine {
 
   async _resolveSpec(name){
     const key = String(name||"").trim().toLowerCase();
-    if(this._specCache[key]) return this._specCache[key];
+    if(this._specCache[key]){
+      console.log("[spec-cache]", name, this._specCache[key]);
+      return this._specCache[key];
+    }
+
+    console.log("[lookup]", name, "->", key);
     let spec = [];
     try{
-      const users = this._usersData || {};
-      for (const uid of Object.keys(users)) {
-        const u = users[uid];
-        const nm = (u?.name || "").trim().toLowerCase();
-        if (nm === key) {
-          const s = u?.spec;
-          if (Array.isArray(s)) spec = s.map(x=>String(x).toLowerCase());
-          else if (typeof s === "string" && s) spec = [String(s).toLowerCase()];
-          break;
-        }
+      let uid = this._uidCache[key];
+      if(!uid){
+        const snap = await get(child(this.nameToUidRef, key));
+        const obj = snap.val() || {};
+        uid = Object.keys(obj)[0] || null;
+        this._uidCache[key] = uid;
+        console.log("[lookup-uid]", name, uid);
       }
+      if(uid){
+        const specSnap = await get(child(this.usersRef, `${uid}/spec`));
+        const s = specSnap.val();
+        if(Array.isArray(s))      spec = s.map(x=>String(x).toLowerCase());
+        else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
+      }
+      console.log("[spec]", name, spec);
     }catch(err){
       console.error("Ambil spec gagal", name, err);
     }
@@ -304,7 +316,8 @@ class SiteMachine {
   }
 
   async syncRosterPeople(){
-    this._specCache = {}; // selalu ambil spec terbaru saat sinkronisasi
+    this._specCache = {}; // selalu ambil data terbaru saat sinkronisasi
+    this._uidCache  = {};
     const r = this._rosterData || {};
     let names = [];
     if(this.siteKey === "PSCP"){
@@ -523,6 +536,10 @@ function bootSite(siteKey){
   machine.mount();
   selectSiteButtonUI(siteKey);
   currentSite = siteKey;
+  if (manageTitle) {
+    manageTitle.textContent = `Petugas ${siteKey}`;
+    manageBox?.setAttribute("aria-label", `Petugas ${siteKey}`);
+  }
   if (downloadBtn) downloadBtn.disabled = false;
 }
 
