@@ -1,85 +1,156 @@
 @import url('./ACP.css');
 
-.pass-card{
-  background:#facc15; /* kuning seperti contoh */
-  color:#000;
-  border:none;
-  box-shadow:none;
-  border-radius:16px;
+/* ========== Layout umum ========== */
+* { box-sizing: border-box; }
+:root{
+  --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#94a3b8;
+  --accent:#facc15;
+}
+html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
+
+.app-bar{
+  position:sticky; top:0; z-index:10;
+  display:flex; align-items:center; gap:8px;
+  height:56px; padding:0 12px; background:var(--panel);
+  border-bottom:1px solid #ffffff1a;
+}
+.back-btn{ display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; color:var(--text); }
+.app-title{ font-size:18px; font-weight:700; margin:0; }
+
+.container{
+  width:100%;
+  margin:0 auto;
   padding:16px;
-  display:grid;
-  justify-items:center;
-  gap:8px;
-  text-align:center;
+  display:flex; flex-direction:column; gap:16px;
+}
+.card{
+  background:#0b1220aa;
+  border:1px solid #ffffff1a;
+  border-radius:12px;
+  padding:12px;
 }
 
+/* ========== PASS CARD ========== */
+.pass-card{
+  background:var(--accent);
+  color:#000;
+  border:none; box-shadow:none;
+  border-radius:clamp(12px, 2.4vw, 20px);
+  padding:clamp(12px, 2.5vw, 20px);
+
+  width:clamp(280px, 80%, 720px);
+  max-width:100%;
+  margin:0 auto;
+
+  display:flex; flex-direction:column; gap:8px;
+  text-align:left;
+}
+
+/* Header lembaga */
 .pass-head{
   font-size:var(--fs-sm);
-  font-weight:600;
-  line-height:1.2;
+  font-weight:600; line-height:1.2;
+  display:flex; align-items:center; gap:8px;
+}
+.pass-head img{ width:clamp(32px,8vw,48px); height:auto; }
+.pass-head .head-text{ display:flex; flex-direction:column; }
+
+/* Tanggal (80%) */
+.pass-date{
+  font-weight:700;
+  font-size:clamp(26px,2.6vw,32px); /* 80% dari ukuran besar */
+  text-align:center;
+  width:100%;
 }
 
-.pass-date{ font-weight:600; }
-
+/* ========== Foto + Kode: grid 65% / auto ========== */
 .pass-row{
-  display:flex;
-  align-items:center;
-  gap:12px;
+  display:grid;
+  grid-template-columns:65% auto;
+  align-items:stretch;
+  column-gap:12px;
 }
 
+/* Foto tepat 65% card */
 .pass-photo{
-  width:120px;
-  height:160px;
+  width:100%;            /* isi penuh kolom 65% */
+  max-width:none;
+  aspect-ratio:3/4;
   border-radius:8px;
   overflow:hidden;
   border:2px solid #fff;
-  flex-shrink:0;
 }
-
 .pass-photo img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
+  display:block; width:100%; height:100%; object-fit:cover;
 }
+.pass-photo img:not([src]){ display:none; }
 
+/* Kode vertikal (200% dari awal) */
 .pass-code{
+  align-self:center;          
+  justify-self:start;         
   font-weight:700;
-  font-size:clamp(18px,2vw,22px);
+  font-size:clamp(32px,3.2vw,40px);  /* 200% dari 16–20px */
   writing-mode:vertical-rl;
   text-orientation:upright;
 }
 
+/* Info nama/role/dll */
+.pass-info{
+  display:flex; flex-direction:column; align-items:flex-start; text-align:left;
+}
+
+/* Nama (70%) */
 .pass-name{
   font-weight:700;
-  font-size:clamp(18px,2vw,22px);
+  font-size:clamp(22px,2.2vw,28px);  /* 70% dari ukuran besar */
 }
 
-.pass-role{
-  font-size:var(--fs-sm);
-  text-transform:uppercase;
+.pass-role,
+.pass-info div{
+  font-weight:700;
+  font-size:clamp(14px,1.4vw,18px);
 }
+.pass-role{ text-transform:none; }
 
+/* Barcode + info */
 .pass-barcode{
-  display:flex;
-  align-items:center;
-  gap:8px;
+  display:flex; align-items:center; gap:8px;
 }
+.pass-barcode img{ width:clamp(42px,17%,56px); height:auto; }
 
-.pass-barcode img{
-  width:80px;
-  height:auto;
+/* ========== QR SECTION (tetap seperti sebelumnya) ========== */
+.qr-card{ text-align:center; }
+.qr-btn{
+  display:inline-flex; align-items:center; gap:10px;
+  padding:12px 16px;
+  border-radius:12px;
+  border:1px solid #ffffff22;
+  background:#111827;
+  color:#e5e7eb;
+  cursor:pointer;
+  width:100%;
+  justify-content:center;
 }
+.qr-btn img{ width:22px; height:22px; }
 
-.pass-info{
-  display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  font-weight:600;
-  font-size:var(--fs-sm);
-  text-align:left;
+/* Tombol umum */
+.btn.full{
+  width:100%;
+  padding:12px 16px;
+  border:none;
+  border-radius:12px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
 }
+.btn.full:active{ transform:translateY(1px); }
 
-.pass-info #passId{
-  font-size:var(--fs-base);
+/* ========== Responsif ========== */
+@media (max-width:420px){
+  .pass-row{ grid-template-columns:65% auto; }
 }
-
+@media (min-width:1024px){
+  .pass-card{ width:clamp(480px, 80%, 820px); }
+}
