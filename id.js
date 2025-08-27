@@ -247,7 +247,7 @@ async function receiveBarcode(code){
       const instansiVal = (j.columns.E || '-').toUpperCase();
       if (passInstansi) passInstansi.textContent = instansiVal;
       if (passIdEl) passIdEl.textContent = code.toUpperCase();
-      barcodeImg.src = 'https://bwipjs-api.metafloor.com/?bcid=qrcode&scale=5&text=' + encodeURIComponent(code.toUpperCase());
+      barcodeImg.src = 'https://bwipjs-api.metafloor.com/?bcid=qrcode&scale=3&text=' + encodeURIComponent(code.toUpperCase());
 
       const rawColor = j.columns.C ?? j.columns.c ?? '-';
       const warna = String(rawColor).replace(/[^a-zA-Z]/g, '').trim().toUpperCase();

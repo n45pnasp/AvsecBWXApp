@@ -50,7 +50,7 @@
 }
 
 .pass-photo{
-  width:45%;
+  width:65%;
   aspect-ratio:3/4;
   border-radius:8px;
   overflow:hidden;
@@ -83,7 +83,7 @@
 }
 
 .pass-barcode img{
-  width:clamp(60px,25%,80px);
+  width:clamp(42px,17%,56px);
   height:auto;
 }
 
@@ -94,12 +94,20 @@
   text-align:left;
 }
 
-.pass-date,
-.pass-name,
+.pass-date{
+  font-weight:700;
+  font-size:clamp(20px,2vw,24px);
+}
+
+.pass-name{
+  font-weight:700;
+  font-size:clamp(16px,1.6vw,20px);
+}
+
 .pass-role,
 .pass-info div{
   font-weight:700;
-  font-size:clamp(16px,1.6vw,20px);
+  font-size:clamp(14px,1.4vw,18px);
 }
 
 .pass-role{ text-transform:none; }
