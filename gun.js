@@ -30,6 +30,7 @@ const evidenceImg     = document.getElementById("evidenceImg");
 const scanBtn         = document.getElementById("scanBtn");
 const imgAvsec        = document.getElementById("imgAvsec");
 const fotoIdInp       = document.getElementById("fotoId");
+const fotoNote        = document.querySelector(".foto-note");
 
 // ====== Firebase ======
 const { app, auth } = getFirebase();
@@ -66,9 +67,11 @@ fotoEvidenceInp.addEventListener("change", () => {
   if (file) {
     evidenceImg.src = URL.createObjectURL(file);
     evidencePreview.classList.remove("hidden");
+    if (fotoNote) fotoNote.classList.add("hidden");
   } else {
     evidenceImg.removeAttribute("src");
     evidencePreview.classList.add("hidden");
+    if (fotoNote) fotoNote.classList.remove("hidden");
   }
 });
 
@@ -154,6 +157,7 @@ submitBtn.addEventListener("click", async () => {
     btnEvidence.textContent = "Ambil Foto";
     evidenceImg.removeAttribute("src");
     evidencePreview.classList.add("hidden");
+    if (fotoNote) fotoNote.classList.remove("hidden");
 
   } catch(err){
     showOverlay('err','Gagal', err?.message || err);
