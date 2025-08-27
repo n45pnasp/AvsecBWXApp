@@ -46,6 +46,23 @@ const yearEl     = $("#year");
 const logoEl     = $("#appLogo");
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
+// Loading overlay util
+const Overlay = {
+  show(desc = "Memproses…", title = "Harap tunggu") {
+    document.body.classList.add("blur-bg");
+    const o = document.getElementById("loadingOverlay");
+    if (!o) return;
+    o.style.display = "flex";
+    o.querySelector(".title").textContent = title;
+    o.querySelector(".desc").textContent = desc;
+  },
+  hide() {
+    document.body.classList.remove("blur-bg");
+    const o = document.getElementById("loadingOverlay");
+    if (o) o.style.display = "none";
+  }
+};
+
 /** Inject custom color styles (Ungu) */
 (function injectCustomColors(){
   const style = document.createElement("style");
@@ -313,10 +330,13 @@ form?.addEventListener("submit", async (e)=>{
   if (!email || !pass){ err("Email & kata sandi wajib diisi."); return; }
 
   disableForm(true);
+  Overlay.show("Memproses login…");
   try{
     const cred = await signInWithEmailAndPassword(auth, email, pass);
+    Overlay.show("Mengalihkan ke Home…");
     await notifyKodularAndGoHome("success", cred.user);
   }catch(e){
+    Overlay.hide();
     const map = {
       "auth/invalid-email":"Format email tidak valid.",
       "auth/user-not-found":"Akun tidak ditemukan.",
@@ -325,7 +345,6 @@ form?.addEventListener("submit", async (e)=>{
       "auth/user-disabled":"Akun dinonaktifkan."
     };
     err(map[e.code] || ("Gagal login: " + (e.message || e)));
-  }finally{
     disableForm(false);
   }
 });
@@ -342,8 +361,10 @@ onAuthStateChanged(auth, async (user)=>{
   }
 
   if (user){
+    Overlay.show("Mengalihkan ke Home…");
     await notifyKodularAndGoHome("already_signed_in", user);
   }else{
+    Overlay.hide();
     show(welcome);
   }
 });
@@ -356,6 +377,7 @@ window.logout = async function(){
     sessionStorage.removeItem("justSignedIn");
     ok("Berhasil keluar.");
     show(welcome);
+    Overlay.hide();
   }catch(e){
     err("Gagal logout: " + (e.message || e));
   }
