@@ -72,20 +72,19 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
   flex-direction:column;
 }
 
-/* ====== BARIS FOTO + KODE (KANAN) ====== */
+/* ====== BARIS FOTO + KODE (GRID 65% + AUTO) ====== */
 .pass-row{
-  display:flex;
+  display:grid;
+  grid-template-columns:65% auto;
   align-items:stretch;
-  gap:12px;
-  flex-wrap:nowrap;
-  justify-content:flex-start;   /* jangan space-between */
+  column-gap:12px;
 }
 
-/* Foto kembali ke 65% */
+/* Foto mengisi penuh kolom-1 (65% dari card) */
 .pass-photo{
-  width:65%;        /* lebar pasti 65% */
-  flex:0 0 65%;     /* basis 65% dan tidak boleh shrink */
-  max-width:65%;
+  width:100%;
+  max-width:none;
+  flex:unset;
   aspect-ratio:3/4;
   border-radius:8px;
   overflow:hidden;
@@ -99,15 +98,14 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 }
 .pass-photo img:not([src]){ display:none; }
 
-/* Label kode A B C G diperbesar 200% */
+/* Kode vertikal menempel di kolom-2 */
 .pass-code{
-  flex:0 0 auto;
   font-weight:700;
   font-size:clamp(32px,3.2vw,40px); /* tetap 200% */
   writing-mode:vertical-rl;
   text-orientation:upright;
-  align-self:center;   /* center secara vertikal dengan foto */
-  margin-left:auto;    /* dorong ke paling kanan */
+  align-self:center;
+  justify-self:start;
 }
 
 /* ====== INFO TEKS ====== */
@@ -224,8 +222,8 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 
 /* ====== RESPONSIVE TWEAKS ====== */
 @media (max-width:420px){
-  .pass-row{ flex-wrap:wrap; }
-  .pass-photo{ flex-basis:85%; max-width:85%; }
+  .pass-row{ grid-template-columns:65% auto; }
+  .pass-photo{ width:100%; }
 }
 @media (min-width:1024px){
   .pass-card{ width:clamp(480px, 80%, 820px); }
