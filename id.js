@@ -228,6 +228,8 @@ async function receiveBarcode(code){
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
+      console.log('Hasil scan barcode:', j.columns);
+      console.log('Kolom H:', j.columns.H);
       const tanggalRaw = j.columns.G || j.columns.A || '';
       let tanggal = '';
       if (tanggalRaw){
@@ -248,6 +250,7 @@ async function receiveBarcode(code){
       barcodeImg.src = 'https://bwipjs-api.metafloor.com/?bcid=qrcode&scale=5&text=' + encodeURIComponent(code.toUpperCase());
 
       const warna = (j.columns.C || '-').trim().toUpperCase();
+      console.log('Warna kartu:', warna);
       const colorMap = {
         KUNING:{ bg:'#facc15', text:'#000' },
         PUTIH:{ bg:'#ffffff', text:'#000' },
