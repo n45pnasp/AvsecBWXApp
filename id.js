@@ -249,8 +249,9 @@ async function receiveBarcode(code){
       if (passIdEl) passIdEl.textContent = code.toUpperCase();
       barcodeImg.src = 'https://bwipjs-api.metafloor.com/?bcid=qrcode&scale=5&text=' + encodeURIComponent(code.toUpperCase());
 
-      const warna = (j.columns.C || '-').trim().toUpperCase();
-      console.log('Warna kartu:', warna);
+      const rawColor = j.columns.C ?? j.columns.c ?? '-';
+      const warna = String(rawColor).replace(/[^a-zA-Z]/g, '').trim().toUpperCase();
+      console.log('Kolom C (raw):', rawColor, '=> warna kartu:', warna);
       const colorMap = {
         KUNING:{ bg:'#facc15', text:'#000' },
         PUTIH:{ bg:'#ffffff', text:'#000' },
@@ -265,7 +266,7 @@ async function receiveBarcode(code){
         passCard.style.color = col.text;
       }
 
-      const rawFoto = (j.columns.H || j.columns.L || j.columns.J || '').trim();
+      const rawFoto = (j.columns.H || '').trim();
       console.log('Kolom H (foto mentah):', rawFoto);
       if (rawFoto){
         let fotoUrl = rawFoto;
