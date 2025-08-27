@@ -266,12 +266,9 @@ async function receiveBarcode(code){
       }
 
       const rawFoto = (j.columns.H || '').trim();
+      console.log('Kolom H (foto mentah):', rawFoto);
       if (rawFoto){
-        let fotoUrl = rawFoto;
-        if (!/^https?:/i.test(rawFoto)){
-          fotoUrl = `https://drive.google.com/thumbnail?id=${rawFoto}`;
-        }
-        passPhoto.src = fotoUrl;
+        passPhoto.src = rawFoto;
       } else {
         passPhoto.removeAttribute('src');
       }
