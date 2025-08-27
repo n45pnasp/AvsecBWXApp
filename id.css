@@ -118,14 +118,20 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
   text-align:left;
 }
 
-/* ====== TANGGAL (CENTER) ====== */
+/* ====== TANGGAL (CENTER, BESAR) ====== */
 .pass-date{
   font-weight:700;
-  font-size:clamp(20px,2vw,24px);
+  font-size:clamp(32px,3.2vw,40px); /* samakan dengan .pass-code */
   text-align:center;
   width:100%;
 }
-.pass-name{ font-weight:700; font-size:clamp(16px,1.6vw,20px); }
+
+/* ====== NAMA (lebih besar 80%) ====== */
+.pass-name{
+  font-weight:700;
+  font-size:clamp(29px,2.9vw,36px); /* diperbesar 80% dari awal */
+}
+
 .pass-role,
 .pass-info div{ font-weight:700; font-size:clamp(14px,1.4vw,18px); }
 .pass-role{ text-transform:none; }
