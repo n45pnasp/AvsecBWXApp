@@ -190,6 +190,10 @@
     const showModalMsg=(t,type="error")=>{ modalMsg.textContent=t; modalMsg.className="msg "+type; modalMsg.style.display="block"; };
     const formatNama=(s)=>s.trim().split(/\s+/).map(k=>k[0]?.toUpperCase()+k.slice(1).toLowerCase()).join(" ");
 
+    // normalisasi nameLower yang stabil
+    const normalizeNameLower = (s)=>
+      s.trim().toLowerCase().replace(/\s+/g,' ');
+
     roleEl.addEventListener("change", ()=>{
       const wantAdmin = roleEl.value === "admin";
       adminWrap.classList.toggle("hidden", !wantAdmin);
@@ -309,14 +313,14 @@
       submitBtn.disabled = true;
     });
 
-    // submit daftar → buat akun langsung (Auth), lalu tulis profil ke RTDB (users/<uid>)
+    // submit daftar → buat akun langsung (Auth), lalu tulis profil + indeks nameToUid
     form.addEventListener("submit", async (e)=>{
       e.preventDefault(); msgBox.style.display="none";
 
       let nama = namaEl.value.trim();
       const spec = specEl.value;
       const roleReq = roleEl.value;
-      const adminCode = adminCodeEl.value?.trim() || "";
+      const adminCode = (document.getElementById("adminCode")?.value || "").trim();
       const email = emailEl.value.trim();
       const pass  = passEl.value;
 
@@ -336,7 +340,7 @@
       }
 
       nama = formatNama(nama);
-      const nameLower = nama.toLowerCase();
+      const nameLower = normalizeNameLower(nama);
 
       submitBtn.disabled = true; overlay.classList.add("show");
 
@@ -350,14 +354,22 @@
         // 3) Tulis profil ke RTDB (sesuai rule: hanya users/<uid> sendiri)
         await set(ref(db, `users/${cred.user.uid}`), {
           name: nama,
-          nameLower,              // <-- PENTING utk indexOn
-          spec,                   // string: "basic" | "junior" | "senior"
+          nameLower,              // diperlukan untuk index/pencarian
+          spec,                   // "basic" | "junior" | "senior"
           role: isAdmin ? "admin" : "user",
           isAdmin,
           email: cred.user.email,
           photoURL: uploadedPhotoURL,
           createdAt: Date.now()
         });
+
+        // 4) Tulis indeks nameToUid → membutuhkan rule yang mengizinkan user menulis daunnya sendiri
+        try{
+          await set(ref(db, `nameToUid/${nameLower}/${cred.user.uid}`), true);
+        } catch (idxErr){
+          // Jika rule tidak mengizinkan, jangan blokir pendaftaran.
+          console.warn("Gagal tulis nameToUid:", idxErr);
+        }
 
         // notifikasi ke Kodular (opsional)
         const payload = JSON.stringify({
