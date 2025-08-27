@@ -268,13 +268,15 @@ async function receiveBarcode(code){
         passCard.style.color = col.text;
       }
 
-      const rawFoto = (j.columns.H || j.columns.L || j.columns.J || '').trim();
+      const rawFoto = (j.columns.H || '').trim();
       if (rawFoto){
         let fotoUrl = rawFoto;
         if (!/^https?:/i.test(rawFoto)){
           fotoUrl = `https://drive.google.com/thumbnail?id=${rawFoto}`;
         }
         passPhoto.src = fotoUrl;
+      } else {
+        passPhoto.removeAttribute('src');
       }
       hideOverlay();
     } else {
