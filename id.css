@@ -1,5 +1,11 @@
 @import url('./ACP.css');
 
+.container{
+  width:100%;
+  margin:0;
+  padding:0;
+}
+
 .pass-card{
   background:#facc15; /* kuning seperti contoh */
   color:#000;
@@ -11,6 +17,7 @@
   justify-items:center;
   gap:8px;
   text-align:center;
+  width:100%;
 }
 
 .pass-head{
@@ -54,6 +61,10 @@
   width:100%;
   height:100%;
   object-fit:cover;
+}
+
+.pass-photo img:not([src]){
+  display:none;
 }
 
 .pass-code{
