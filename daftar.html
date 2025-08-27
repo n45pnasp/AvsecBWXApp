@@ -315,7 +315,7 @@
       e.preventDefault(); msgBox.style.display="none";
 
       let nama = namaEl.value.trim();
-      const spec = specEl.value;
+      const spec = specEl.value.toUpperCase();
       const roleReq = roleEl.value;
       const adminCode = (document.getElementById("adminCode")?.value || "").trim();
       const email = emailEl.value.trim();
@@ -352,7 +352,7 @@
         await set(ref(db, `users/${cred.user.uid}`), {
           name: nama,
           nameLower,              // diperlukan untuk index/pencarian
-          spec,                   // "basic" | "junior" | "senior"
+          spec,                   // "BASIC" | "JUNIOR" | "SENIOR"
           role: isAdmin ? "admin" : "user",
           isAdmin,
           email: cred.user.email,

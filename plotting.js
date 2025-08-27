@@ -64,19 +64,19 @@ const SITE_CONFIG = {
     enable2040: true,
     cycleMs: 20_000,
     positions: [
-      { id:"pos1", name:"Operator Xray",    allowed:["senior","junior"] },
-      { id:"pos2", name:"Pemeriksa Barang", allowed:["senior","junior","basic"] },
-      { id:"pos3", name:"Pemeriksa Orang",  allowed:["junior","basic"] },
-      { id:"pos4", name:"Flow Control",     allowed:["junior","basic"] },
+      { id:"pos1", name:"Operator Xray",    allowed:["SENIOR","JUNIOR"] },
+      { id:"pos2", name:"Pemeriksa Barang", allowed:["SENIOR","JUNIOR","BASIC"] },
+      { id:"pos3", name:"Pemeriksa Orang",  allowed:["JUNIOR","BASIC"] },
+      { id:"pos4", name:"Flow Control",     allowed:["JUNIOR","BASIC"] },
     ],
   },
   HBSCP: {
     enable2040: true, // aktif jika jr/sr >= 3
     cycleMs: 20_000,
     positions: [
-      { id:"pos1",  name:"Operator Xray",       allowed:["senior","junior"] },
-      { id:"pos2a", name:"Pemeriksa Barang 1",  allowed:["senior","junior","basic"] },
-      { id:"pos2b", name:"Pemeriksa Barang 2",  allowed:["senior","junior","basic"] },
+      { id:"pos1",  name:"Operator Xray",       allowed:["SENIOR","JUNIOR"] },
+      { id:"pos2a", name:"Pemeriksa Barang 1",  allowed:["SENIOR","JUNIOR","BASIC"] },
+      { id:"pos2b", name:"Pemeriksa Barang 2",  allowed:["SENIOR","JUNIOR","BASIC"] },
     ],
   }
 };
@@ -152,6 +152,27 @@ const btnHBSCP     = $("hbscpBtn");
 
   // Tombol tutup (optional)
   overlay.querySelector("#loadClose")?.addEventListener("click", ()=> __loadingUI.hide());
+})();
+
+// ========= Modal sederhana untuk pesan =========
+(function setupAlertModal(){
+  const overlay = document.createElement("div");
+  overlay.id = "alertModal";
+  overlay.innerHTML = `
+    <div class="modal-card" role="alertdialog" aria-modal="true">
+      <p id="alertText"></p>
+      <button id="alertClose" type="button">OK</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const textEl  = overlay.querySelector("#alertText");
+  const btn     = overlay.querySelector("#alertClose");
+  function hide(){ overlay.style.display = "none"; document.body.classList.remove("blur-bg"); }
+  function show(msg){ textEl.textContent = msg; overlay.style.display = "flex"; document.body.classList.add("blur-bg"); }
+  btn.addEventListener("click", hide);
+  overlay.addEventListener("click", e => { if(e.target === overlay) hide(); });
+  window.showModal = show;
 })();
 
 // ========= Indikator koneksi =========
@@ -304,8 +325,8 @@ class SiteMachine {
       if(uid){
         const specSnap = await get(child(this.usersRef, `${uid}/spec`));
         const s = specSnap.val();
-        if(Array.isArray(s))      spec = s.map(x=>String(x).toLowerCase());
-        else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
+        if(Array.isArray(s))      spec = s.map(x=>String(x).toUpperCase());
+        else if(typeof s === "string" && s) spec = [String(s).toUpperCase()];
       }
       console.log("[spec]", name, spec);
     }catch(err){
@@ -343,7 +364,7 @@ class SiteMachine {
 
   rotate(arr, idx){ return arr.length ? arr.slice(idx).concat(arr.slice(0,idx)) : []; }
   isEligible(person, allowed){
-    return Array.isArray(person.spec) && person.spec.some(s=>allowed.includes(String(s).toLowerCase()));
+    return Array.isArray(person.spec) && person.spec.some(s=>allowed.includes(String(s).toUpperCase()));
   }
 
   async buildPools(useCooldown){
@@ -352,7 +373,7 @@ class SiteMachine {
       useCooldown ? get(this.cooldownRef) : Promise.resolve({ val:()=>({}) })
     ]);
     const folks = Object.values(pSnap.val()||{}).map(p=>({
-      ...p, spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toLowerCase()) : []
+      ...p, spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toUpperCase()) : []
     }));
     const cooldown = useCooldown ? (cdSnap.val()||{}) : {};
 
@@ -425,7 +446,7 @@ class SiteMachine {
         await set(this.assignmentsRef, finalAssign);
       }
     }catch(err){
-      alert("Tulis assignments gagal: " + (err?.message||err));
+      showModal("Tulis assignments gagal: " + (err?.message||err));
     }
 
     this.advanceRotIdx(pools);
@@ -453,7 +474,7 @@ class SiteMachine {
 
   async onStart(){
     if(!auth.currentUser){
-      alert("Harus login terlebih dulu.");
+      showModal("Harus login terlebih dulu.");
       return;
     }
 
@@ -461,14 +482,14 @@ class SiteMachine {
     const people = pSnap.val() || {};
     const missing = Object.values(people).filter(p => !Array.isArray(p?.spec) || p.spec.length===0).map(p=>p.name);
     if(missing.length){
-      alert("Spesifikasi belum tersedia untuk: " + missing.join(", "));
+      showModal("Spesifikasi belum tersedia untuk: " + missing.join(", "));
       return;
     }
 
     let enable2040Now=false;
     if(this.cfg.enable2040){
       const jsCount = Object.values(people).filter(p =>
-        Array.isArray(p?.spec) && p.spec.some(s=>["junior","senior"].includes(String(s).toLowerCase()))
+        Array.isArray(p?.spec) && p.spec.some(s=>["JUNIOR","SENIOR"].includes(String(s).toUpperCase()))
       ).length;
       enable2040Now = (jsCount>=3);
     }
@@ -479,7 +500,7 @@ class SiteMachine {
     try{
       await set(this.stateRef, { running:true, nextAt: next, mode2040: this.mode2040State, lastCycleAt: now });
     }catch(err){
-      alert("Gagal memulai: " + (err?.message||err));
+      showModal("Gagal memulai: " + (err?.message||err));
       return;
     }
     this.nextAtLocal      = next;
@@ -495,7 +516,7 @@ class SiteMachine {
     try{
       await Promise.all(tasks);
     }catch(err){
-      alert("Gagal menghentikan: " + (err?.message||err));
+      showModal("Gagal menghentikan: " + (err?.message||err));
     }
     this.setRunningUI(false);
     this.nextAtLocal=null;
@@ -546,7 +567,7 @@ function bootSite(siteKey){
 // ====== Download PDF (dengan card popup + status bertahap) ======
 async function downloadViaFunctions(siteKey) {
   const user = auth.currentUser;
-  if (!user) { alert("Harus login terlebih dulu."); return; }
+  if (!user) { showModal("Harus login terlebih dulu."); return; }
 
   const idToken = await user.getIdToken(true); // paksa refresh
 
@@ -593,7 +614,7 @@ async function downloadViaFunctions(siteKey) {
 
 // ====== Handler klik tombol Download ======
 function onClickDownload(){
-  if(!currentSite){ alert("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
+  if(!currentSite){ showModal("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
   downloadViaFunctions(currentSite);
 }
 

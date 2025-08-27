@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scan PAS</title>
+  <link rel="stylesheet" href="id.css" />
+  <style>html{visibility:hidden}</style>
+</head>
+<body>
+  <div class="app-bar">
+    <a class="back-btn" aria-label="Kembali" href="index.html">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
+      </svg>
+    </a>
+    <h1 class="app-title">Scan PAS</h1>
+  </div>
+
+  <main class="container">
+    <section id="passCard" class="card pass-card">
+      <div class="pass-head">
+        <span>OTORITAS BANDAR UDARA WILAYAH III</span>
+        <span>SURABAYA</span>
+        <span>BANDAR UDARA BANYUWANGI</span>
+      </div>
+      <div class="pass-date" id="passDate">-</div>
+      <div class="pass-row">
+        <div class="pass-photo">
+          <img id="passPhoto" src="icons/id-check.png" alt="Foto" />
+        </div>
+        <div class="pass-code" id="passCode">-</div>
+      </div>
+      <div class="pass-name" id="passName">-</div>
+      <div class="pass-role" id="passRole">-</div>
+      <div class="pass-barcode">
+        <img id="barcodeImg" alt="QR Code" />
+        <div class="pass-info">
+          <div id="passInstansi">-</div>
+          <div id="passId">-</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card qr-card">
+      <button id="scanBtn" type="button" class="qr-btn">
+        <img src="icons/qrcode.png" alt="QR" />
+        <span>Scan QR Code</span>
+      </button>
+    </section>
+
+    <button id="inputBtn" type="button" class="btn full">Input Data</button>
+  </main>
+
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet" role="document">
+      <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="icon spinner" id="ovIcon"></div>
+      <div class="texts">
+        <div class="title" id="ovTitle"></div>
+        <div class="desc" id="ovDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="id.js"></script>
+</body>
+</html>

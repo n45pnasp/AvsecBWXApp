@@ -1,83 +1,28 @@
-// gun.js (FINAL)
-import { requireAuth, getFirebase } from "./auth-guard.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { requireAuth } from "./auth-guard.js";
 
-// Pakai Cloudflare Worker proxy (bukan URL Apps Script langsung)
-const SCRIPT_URL = "https://loggun.avsecbwx2018.workers.dev/";
+const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbwqJHoJjXpYCv2UstclVG_vHf5czAxDUfWmsSo6H4lcy3HgGZYSn7g1yAzbb8UFJHtrxw/exec";
+const SHARED_TOKEN = "N45p";
 
-// ====== Auth guard ======
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
-// ====== DOM ======
-const nama            = document.getElementById("nama");
-const pekerjaan       = document.getElementById("pekerjaan");
-const flight          = document.getElementById("flight");
-const seat            = document.getElementById("seat");
-const kta             = document.getElementById("kta");
-const tipe            = document.getElementById("tipe");
-const jenisPeluru     = document.getElementById("jenisPeluru");
-const jumlahPeluru    = document.getElementById("jumlahPeluru");
-const namaAvsec       = document.getElementById("namaAvsec");
-const instansiAvsec   = document.getElementById("instansiAvsec");
-const petugas         = document.getElementById("petugas");
-const supervisor      = document.getElementById("supervisor");
-const submitBtn       = document.getElementById("submitBtn");
-const fotoEvidenceInp = document.getElementById("fotoEvidence");
-const btnEvidence     = document.getElementById("btnEvidence");
-const evidencePreview = document.getElementById("evidencePreview");
-const evidenceImg     = document.getElementById("evidenceImg");
-const scanBtn         = document.getElementById("scanBtn");
-const imgAvsec        = document.getElementById("imgAvsec");
-const fotoIdInp       = document.getElementById("fotoId");
-const fotoNote        = document.querySelector(".foto-note");
+const passDate   = document.getElementById("passDate");
+const passPhoto  = document.getElementById("passPhoto");
+const passCode   = document.getElementById("passCode");
+const passName   = document.getElementById("passName");
+const passRole   = document.getElementById("passRole");
+const barcodeImg = document.getElementById("barcodeImg");
+const passInstansi = document.getElementById("passInstansi");
+const passIdEl = document.getElementById("passId");
+const passCard = document.getElementById("passCard");
+const scanBtn    = document.getElementById("scanBtn");
+const inputBtn   = document.getElementById("inputBtn");
 
-// ====== Firebase ======
-const { app, auth } = getFirebase();
-const db = getDatabase(app);
-
-onAuthStateChanged(auth, (user) => {
-  if (user) petugas.value = (user.displayName || user.email || "").toUpperCase();
-});
-
-let supervisorVal = "";
-onValue(ref(db, "roster/spvHbs"), (snap) => {
-  const val = snap.val();
-  supervisorVal = typeof val === "string" ? val.toUpperCase() : "";
-  supervisor.value = supervisorVal;
-});
-
-// ====== Lookup QR ======
-const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbwqJHoJjXpYCv2UstclVG_vHf5czAxDUfWmsSo6H4lcy3HgGZYSn7g1yAzbb8UFJHtrxw/exec";
-const SHARED_TOKEN = "N45p"; // untuk LOOKUP_URL, bukan untuk kirim ke sheet (token disuntik di Worker)
-
-// ====== Overlay ======
 const overlay = document.getElementById("overlay");
 const ovIcon  = document.getElementById("ovIcon");
 const ovTitle = document.getElementById("ovTitle");
 const ovDesc  = document.getElementById("ovDesc");
 const ovClose = document.getElementById("ovClose");
-function hideOverlay(){ overlay.classList.add("hidden"); }
 ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
-
-btnEvidence.addEventListener("click", () => fotoEvidenceInp.click());
-fotoEvidenceInp.addEventListener("change", () => {
-  const file = fotoEvidenceInp.files[0];
-  btnEvidence.textContent = "Ambil Foto";
-  if (file) {
-    evidenceImg.src = URL.createObjectURL(file);
-    evidencePreview.classList.remove("hidden");
-    if (fotoNote) fotoNote.classList.add("hidden");
-  } else {
-    evidenceImg.removeAttribute("src");
-    evidencePreview.classList.add("hidden");
-    if (fotoNote) fotoNote.classList.remove("hidden");
-  }
-});
-
-if (scanBtn) scanBtn.addEventListener("click", () => {
-  if (scanState.running) stopScan(); else startScan();
-});
 
 function showOverlay(state, title, desc, autoHide = true){
   overlay.classList.remove("hidden");
@@ -89,133 +34,22 @@ function showOverlay(state, title, desc, autoHide = true){
     setTimeout(() => overlay.classList.add("hidden"), 1500);
   }
 }
+function hideOverlay(){ overlay.classList.add("hidden"); }
 
-// ====== State foto AVSEC (formula =IMAGE("URL")) ======
-let fotoAvsecCell = "";
+function decodeMaybeBase64(str){
+  try{
+    const dec = atob(str);
+    return /^[\x20-\x7E]+$/.test(dec) ? dec : str;
+  }catch(_){ return str; }
+}
 
-// ====== Submit ======
-submitBtn.addEventListener("click", async () => {
-  // Validasi: semua field wajib terisi
-  const requiredInputs = [nama, pekerjaan, flight, seat, kta, tipe, jenisPeluru, jumlahPeluru, petugas, supervisor];
-  const someEmpty = requiredInputs.some(el => !el.value.trim()) ||
-    ["", "-"].includes(namaAvsec.textContent.trim()) ||
-    ["", "-"].includes(instansiAvsec.textContent.trim());
-  if (someEmpty) {
-    showOverlay('stop', 'Data belum lengkap', 'Mohon lengkapi semua data sebelum mengirim.', false);
-    return;
-  }
-
-  const now = new Date();
-  const pad = (n)=> String(n).padStart(2,"0");
-  const tanggal = `${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
-
-  const payload = {
-    tanggal,
-    namaLengkap:   nama.value.trim().toUpperCase(),
-    pekerjaan:     pekerjaan.value.trim().toUpperCase(),
-    flightNumber:  flight.value.trim().toUpperCase(),
-    seatNumber:    seat.value.trim().toUpperCase(),
-    nomorKTA:      kta.value.trim().toUpperCase(),
-    tipeSenjata:   tipe.value.trim().toUpperCase(),
-    jenisPeluru:   jenisPeluru.value.trim().toUpperCase(),
-    jumlahPeluru:  (jumlahPeluru.value || "").trim().toUpperCase(),
-    namaAvsec:     namaAvsec.textContent.trim().toUpperCase(),
-    instansiAvsec: instansiAvsec.textContent.trim().toUpperCase(),
-    petugas:       petugas.value.trim().toUpperCase(),
-    supervisor:    supervisor.value.trim().toUpperCase(),
-    // Foto:
-    // - fotoId: bisa berisi fileId (tetap diteruskan apa adanya)
-    // - fotoAvsec: kirim sebagai teks formula =IMAGE("URL")
-    // - fotoEvidence: kirim data URL (nanti di-upload oleh code.gs)
-    fotoId:        fotoIdInp.value.trim(),
-    fotoAvsec:     fotoAvsecCell || "",
-    fotoEvidence:  await getImageDataUrl(fotoEvidenceInp.files[0]) // <— penting: data URL, bukan formula
-  };
-
-  submitBtn.disabled = true;
-  showOverlay('spinner','Mengirim data…','');
-
-  try {
-    await sendToSheet('GunFilesPDF', payload);
-    await sendToSheet('Files', payload);
-
-    showOverlay('ok','Data berhasil dikirim','');
-
-    // Reset form
-    [
-      nama, pekerjaan, flight, seat, kta, tipe, jenisPeluru,
-      jumlahPeluru, fotoIdInp
-    ].forEach(el => { if (el) el.value = ""; });
-
-    namaAvsec.textContent = "-";
-    instansiAvsec.textContent = "-";
-    supervisor.value = supervisorVal;
-
-    fotoAvsecCell = "";
-    if (imgAvsec){ imgAvsec.src=""; imgAvsec.classList.add("hidden"); }
-    fotoEvidenceInp.value = "";
-    btnEvidence.textContent = "Ambil Foto";
-    evidenceImg.removeAttribute("src");
-    evidencePreview.classList.add("hidden");
-    if (fotoNote) fotoNote.classList.remove("hidden");
-
-  } catch(err){
-    showOverlay('err','Gagal', err?.message || err);
-  } finally {
-    submitBtn.disabled = false;
-  }
+if (scanBtn) scanBtn.addEventListener("click", () => {
+  if (scanState.running) stopScan(); else startScan();
+});
+if (inputBtn) inputBtn.addEventListener("click", () => {
+  console.log("Input Data diklik");
 });
 
-async function sendToSheet(sheet, payload){
-  const res = await fetch(`${SCRIPT_URL}?sheet=${encodeURIComponent(sheet)}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  const j = await res.json();
-  if (!j || (!j.success && !j.ok)) {
-    throw new Error(j?.error || 'Gagal mengirim');
-  }
-}
-
-// ====== Util gambar ======
-async function getImageDataUrl(file){
-  if(!file) return "";
-  try {
-    return await readAndCompressToDataUrl(file); // hasil: "data:image/jpeg;base64,...."
-  } catch {
-    return "";
-  }
-}
-
-async function readAndCompressToDataUrl(file){
-  const dataUrl = await new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-  const img = await new Promise((resolve, reject) => {
-    const i = new Image();
-    i.onload = () => resolve(i);
-    i.onerror = reject;
-    i.src = dataUrl;
-  });
-  let { width, height } = img;
-  const max = Math.max(width, height);
-  const scale = max > 800 ? 800 / max : 1;
-  width = Math.round(width * scale);
-  height = Math.round(height * scale);
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0, width, height);
-  // KEMBALIKAN DATA URL penuh (bukan hanya base64)
-  return canvas.toDataURL("image/jpeg", 0.8);
-}
-
-// ====== SCAN BARCODE / QR ======
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
 
 function injectScanStyles(){
@@ -394,7 +228,6 @@ async function handleScanSuccess(raw){
   receiveBarcode(raw);
 }
 
-// Hasil LOOKUP: set namaAvsec, instansiAvsec, fotoId, dan tampilkan thumbnail
 async function receiveBarcode(code){
   try{
     showOverlay('spinner','Mengambil data…','');
@@ -402,38 +235,44 @@ async function receiveBarcode(code){
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
-      const namaVal = (j.columns.B || '').toUpperCase();
-      namaAvsec.textContent = namaVal || '-';
-      const instansiVal = (j.columns.E || '').toUpperCase();
-      instansiAvsec.textContent = instansiVal || '-';
+      const tanggalRaw = j.columns.G || j.columns.A || '';
+      let tanggal = '';
+      if (tanggalRaw){
+        const dt = new Date(tanggalRaw);
+        tanggal = isNaN(dt) ? String(tanggalRaw).toUpperCase() : dt.toLocaleDateString('id-ID',{ day:'2-digit', month:'short', year:'numeric' });
+      }
+      passDate.textContent = tanggal || '-';
+      passName.textContent = (j.columns.B || '-').toUpperCase();
+      passRole.textContent = (j.columns.F || '-').toUpperCase();
 
-      const rawFoto = (j.columns.H || '').trim(); // kolom H berisi fileId atau URL thumbnail
-      let fotoUrl = "";
-      let fotoId = "";
-      if (rawFoto) {
-        if (/^https?:/i.test(rawFoto)) {
-          fotoUrl = rawFoto;
-          const m = rawFoto.match(/id=([^&]+)/);
-          fotoId = m ? m[1] : "";
-        } else {
-          fotoId = rawFoto;
+      const rawKode = j.columns.D || '';
+      let kode = rawKode;
+      try {
+        let decoded = atob(rawKode);
+        try { decoded = decodeURIComponent(decoded); } catch(__){}
+        if (/^[\x20-\x7E]+$/.test(decoded)) kode = decoded;
+      } catch(_){ }
+      kode = kode.replace(/\s+/g,'').replace(/=+$/,'').toUpperCase();
+      passCode.textContent = kode;
+
+      const instansiVal = (j.columns.E || '-').toUpperCase();
+      if (passInstansi) passInstansi.textContent = instansiVal;
+      if (passIdEl) passIdEl.textContent = code.toUpperCase();
+      barcodeImg.src = 'https://bwipjs-api.metafloor.com/?bcid=qrcode&scale=5&text=' + encodeURIComponent(code.toUpperCase());
+
+      const warnaRaw = (j.columns.C || '').trim();
+      let warna = decodeMaybeBase64(warnaRaw).replace(/=+$/,'').toUpperCase();
+      const colorMap = { KUNING:'#facc15', PUTIH:'#ffffff', HIJAU:'#16a34a', BIRU:'#3b82f6', MERAH:'#ef4444', UNGU:'#a855f7' };
+      if (warna && passCard) passCard.style.background = colorMap[warna] || passCard.style.background;
+
+      const rawFoto = (j.columns.H || j.columns.L || j.columns.J || '').trim();
+      if (rawFoto){
+        let fotoUrl = rawFoto;
+        if (!/^https?:/i.test(rawFoto)){
           fotoUrl = `https://drive.google.com/thumbnail?id=${rawFoto}`;
         }
+        passPhoto.src = fotoUrl;
       }
-      if (fotoIdInp) fotoIdInp.value = fotoId;
-
-      // Simpan formula =IMAGE("url") untuk dikirim ke sheet
-      fotoAvsecCell = fotoUrl ? `=IMAGE("${fotoUrl}")` : "";
-
-      // Preview di UI
-      if (fotoUrl && imgAvsec){
-        imgAvsec.src = fotoUrl;
-        imgAvsec.classList.remove('hidden');
-      } else if (imgAvsec){
-        imgAvsec.src = "";
-        imgAvsec.classList.add('hidden');
-      }
-
       hideOverlay();
     } else {
       showOverlay('err', j?.error || 'Data tidak ditemukan','');
@@ -442,4 +281,7 @@ async function receiveBarcode(code){
     showOverlay('err','Gagal mengambil data', err?.message || err);
   }
 }
+
+window.receiveBarcode = receiveBarcode;
+
 
