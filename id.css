@@ -17,6 +17,20 @@
   font-size:var(--fs-sm);
   font-weight:600;
   line-height:1.2;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  text-align:left;
+}
+
+.pass-head img{
+  width:48px;
+  height:auto;
+}
+
+.pass-head .head-text{
+  display:flex;
+  flex-direction:column;
 }
 
 .pass-date{ font-weight:600; }
