@@ -48,7 +48,7 @@ onValue(ref(db, "roster/spvHbs"), (snap) => {
 });
 
 // ====== Lookup QR ======
-const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbwqJHoJjXpYCv2UstclVG_vHf5czAxDUfWmsSo6H4lcy3HgGZYSn7g1yAzbb8UFJHtrxw/exec";
+const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";
 const SHARED_TOKEN = "N45p"; // untuk LOOKUP_URL, bukan untuk kirim ke sheet (token disuntik di Worker)
 
 // ====== Overlay ======
