@@ -22,8 +22,8 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 /* ====== LAYOUT ====== */
 .container{
   width:100%;
-  margin:0;
-  padding:0;
+  margin:0 auto;
+  padding:16px;
   display:flex;
   flex-direction:column;
   gap:16px;
@@ -44,8 +44,7 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
   border-radius:clamp(12px, 2.4vw, 20px);
   padding:clamp(12px, 2.5vw, 20px);
 
-  /* Kartu memenuhi lebar perangkat */
-  width:100%;
+  width:clamp(280px, 80%, 720px);
   max-width:100%;
 
   display:flex;
@@ -78,12 +77,12 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 .pass-row{
   display:flex;
   align-items:center;
-  gap:12px;              /* gap juga dihitung dalam lebar total */
+  gap:12px;
 }
 
-/* Foto diperbesar hingga 80% baris */
+/* Foto dilebarkan 80% */
 .pass-photo{
-  flex:0 0 80%;          /* grow=0, shrink=0, basis=80% */
+  flex:0 0 80%;
   max-width:80%;
   aspect-ratio:3/4;
   border-radius:8px;
@@ -98,38 +97,31 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 }
 .pass-photo img:not([src]){ display:none; }
 
-/* Kode vertikal */
+/* Label kode (kanan foto) diperbesar 50% */
 .pass-code{
-  flex:0 0 auto;         /* jangan minta ruang tambahan */
+  flex:0 0 auto;
   font-weight:700;
-  font-size:clamp(32px,3.2vw,40px);
+  font-size:clamp(24px,2.4vw,30px);
   writing-mode:vertical-rl;
   text-orientation:upright;
 }
 
 /* ====== TEKS & INFO ====== */
 .pass-info{
-  flex:1 1 0;            /* ambil sisa ruang */
-  min-width:0;           /* biar teks boleh mengecil, tidak mendorong layout */
+  flex:1 1 0;
+  min-width:0;
   display:flex;
   flex-direction:column;
   align-items:flex-start;
   text-align:left;
 }
 
-.pass-date{
-  font-weight:700;
-  font-size:clamp(30px,3vw,36px);
-  align-self:center;
-  text-align:center;
-}
-.pass-name{ font-weight:700; font-size:clamp(16px,1.6vw,20px); }
+/* Semua label teks diperbesar 50% */
+.pass-date{ font-weight:700; font-size:clamp(30px,3vw,36px); }
+.pass-name{ font-weight:700; font-size:clamp(24px,2.4vw,30px); }
 .pass-role,
-.pass-info div{ font-weight:700; font-size:clamp(14px,1.4vw,18px); }
+.pass-info div{ font-weight:700; font-size:clamp(21px,2.1vw,27px); }
 .pass-role{ text-transform:none; }
-
-/* Kode PAS lebih besar */
-#passId{ font-size:clamp(28px,2.8vw,36px); }
 
 /* ====== BARCODE + INFO ====== */
 .pass-barcode{
@@ -170,7 +162,7 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 }
 .btn.full:active{ transform:translateY(1px); }
 
-/* ====== OVERLAY (sesuai HTML) ====== */
+/* ====== OVERLAY ====== */
 .overlay{
   position:fixed; inset:0; display:flex;
   align-items:flex-end; justify-content:center;
@@ -203,9 +195,8 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 /* ====== RESPONSIVE TWEAKS ====== */
 @media (max-width:420px){
   .pass-row{ flex-wrap:wrap; }
-  .pass-photo{ flex-basis:80%; max-width:80%; } /* foto lebih dominan di HP kecil */
+  .pass-photo{ flex-basis:85%; max-width:85%; }
 }
-
 @media (min-width:1024px){
-  .pass-card{ width:100%; }
+  .pass-card{ width:clamp(480px, 80%, 820px); }
 }
