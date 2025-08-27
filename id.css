@@ -1,114 +1,203 @@
 @import url('./ACP.css');
 
+/* ====== RESET RINGAN ====== */
+* { box-sizing: border-box; }
+:root{
+  --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#94a3b8;
+  --accent:#facc15; --radius:16px;
+}
+html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
+
+/* ====== APP BAR ====== */
+.app-bar{
+  position:sticky; top:0; z-index:10;
+  display:flex; align-items:center; gap:8px;
+  height:56px; padding:0 12px;
+  background:var(--panel);
+  border-bottom:1px solid #ffffff1a;
+}
+.back-btn{ display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; color:var(--text); }
+.app-title{ font-size:18px; font-weight:700; margin:0; }
+
+/* ====== LAYOUT ====== */
 .container{
   width:100%;
-  margin:0;
-  padding:0;
+  margin:0 auto;
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.card{
+  background:#0b1220aa;
+  border:1px solid #ffffff1a;
+  border-radius:12px;
+  padding:12px;
 }
 
+/* ====== PASS CARD ====== */
 .pass-card{
-  background:#facc15; /* kuning seperti contoh */
+  background:var(--accent);
   color:#000;
   border:none;
   box-shadow:none;
-  border-radius:16px;
-  padding:16px;
+  border-radius:clamp(12px, 2.4vw, 20px);
+  padding:clamp(12px, 2.5vw, 20px);
+
+  /* Lebar ~80% dengan batas min & max */
+  width:clamp(280px, 80%, 720px);
+  max-width:100%;
+
   display:flex;
   flex-direction:column;
   align-items:flex-start;
   gap:8px;
   text-align:left;
-  width:70%;
   margin:0 auto;
 }
 
+/* Header di dalam pass-card */
 .pass-head{
-  font-size:var(--fs-sm);
+  font-size:14px;
   font-weight:600;
   line-height:1.2;
   display:flex;
   align-items:center;
   gap:8px;
-  text-align:left;
 }
-
 .pass-head img{
   width:clamp(32px,8vw,48px);
   height:auto;
 }
-
 .pass-head .head-text{
   display:flex;
   flex-direction:column;
 }
 
-
+/* ====== BARIS FOTO + KODE ====== */
 .pass-row{
   display:flex;
   align-items:center;
-  gap:12px;
+  gap:12px;              /* gap juga dihitung dalam lebar total */
 }
 
+/* Foto dikunci 65% baris */
 .pass-photo{
-  width:65%;
+  flex:0 0 65%;          /* grow=0, shrink=0, basis=65% */
+  max-width:65%;
   aspect-ratio:3/4;
   border-radius:8px;
   overflow:hidden;
   border:2px solid #fff;
-  flex-shrink:0;
 }
-
 .pass-photo img{
+  display:block;
   width:100%;
   height:100%;
   object-fit:cover;
 }
+.pass-photo img:not([src]){ display:none; }
 
-.pass-photo img:not([src]){
-  display:none;
-}
-
+/* Kode vertikal */
 .pass-code{
+  flex:0 0 auto;         /* jangan minta ruang tambahan */
   font-weight:700;
   font-size:clamp(16px,1.6vw,20px);
   writing-mode:vertical-rl;
   text-orientation:upright;
 }
 
-
-.pass-barcode{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-
-.pass-barcode img{
-  width:clamp(42px,17%,56px);
-  height:auto;
-}
-
+/* ====== TEKS & INFO ====== */
 .pass-info{
+  flex:1 1 0;            /* ambil sisa ruang */
+  min-width:0;           /* biar teks boleh mengecil, tidak mendorong layout */
   display:flex;
   flex-direction:column;
   align-items:flex-start;
   text-align:left;
 }
 
-.pass-date{
-  font-weight:700;
-  font-size:clamp(20px,2vw,24px);
-}
-
-.pass-name{
-  font-weight:700;
-  font-size:clamp(16px,1.6vw,20px);
-}
-
+.pass-date{ font-weight:700; font-size:clamp(20px,2vw,24px); }
+.pass-name{ font-weight:700; font-size:clamp(16px,1.6vw,20px); }
 .pass-role,
-.pass-info div{
-  font-weight:700;
-  font-size:clamp(14px,1.4vw,18px);
-}
-
+.pass-info div{ font-weight:700; font-size:clamp(14px,1.4vw,18px); }
 .pass-role{ text-transform:none; }
 
+/* ====== BARCODE + INFO ====== */
+.pass-barcode{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.pass-barcode img{
+  width:clamp(42px,17%,56px);
+  height:auto;
+}
+
+/* ====== QR SECTION ====== */
+.qr-card{ text-align:center; }
+.qr-btn{
+  display:inline-flex; align-items:center; gap:10px;
+  padding:12px 16px;
+  border-radius:12px;
+  border:1px solid #ffffff22;
+  background:#111827;
+  color:#e5e7eb;
+  cursor:pointer;
+  width:100%;
+  justify-content:center;
+}
+.qr-btn img{ width:22px; height:22px; }
+
+/* ====== BUTTON UMUM ====== */
+.btn.full{
+  width:100%;
+  padding:12px 16px;
+  border:none;
+  border-radius:12px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn.full:active{ transform:translateY(1px); }
+
+/* ====== OVERLAY (sesuai HTML) ====== */
+.overlay{
+  position:fixed; inset:0; display:flex;
+  align-items:flex-end; justify-content:center;
+  background:#00000080;
+}
+.overlay.hidden{ display:none; }
+.sheet{
+  width:clamp(280px, 92vw, 560px);
+  background:#111827;
+  color:#e5e7eb;
+  border:1px solid #ffffff1a;
+  border-radius:16px 16px 0 0;
+  padding:16px;
+}
+.icon.spinner{
+  width:24px; height:24px; border-radius:50%;
+  border:3px solid #ffffff33; border-top-color:#fff;
+  animation:spin 1s linear infinite;
+}
+.icon-x{
+  position:absolute; right:12px; top:12px;
+  width:32px; height:32px; border:none; background:transparent; color:#e5e7eb; cursor:pointer;
+}
+.icon-x.hidden{ display:none; }
+.texts .title{ font-weight:700; margin-top:8px; }
+.texts .desc{ color:var(--muted); font-size:14px; }
+
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ====== RESPONSIVE TWEAKS ====== */
+@media (max-width:420px){
+  .pass-row{ flex-wrap:wrap; }
+  .pass-photo{ flex-basis:70%; max-width:70%; } /* foto lebih dominan di HP kecil */
+}
+
+@media (min-width:1024px){
+  .pass-card{ width:clamp(480px, 80%, 820px); }
+}
