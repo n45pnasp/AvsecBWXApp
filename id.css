@@ -80,10 +80,10 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
   flex-wrap:nowrap;
 }
 
-/* Foto dilebarkan 80% */
+/* Foto kembali ke 65% */
 .pass-photo{
-  flex:0 0 80%;
-  max-width:80%;
+  flex:0 0 65%;
+  max-width:65%;
   aspect-ratio:3/4;
   border-radius:8px;
   overflow:hidden;
@@ -97,11 +97,11 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 }
 .pass-photo img:not([src]){ display:none; }
 
-/* Label kode (kanan foto) */
+/* Label kode A B C G diperbesar 200% */
 .pass-code{
   flex:0 0 auto;
   font-weight:700;
-  font-size:clamp(16px,1.6vw,20px);
+  font-size:clamp(32px,3.2vw,40px); /* awal 16–20px → sekarang 32–40px */
   writing-mode:vertical-rl;
   text-orientation:upright;
 }
