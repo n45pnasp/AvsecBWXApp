@@ -75,14 +75,16 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 /* ====== BARIS FOTO + KODE (KANAN) ====== */
 .pass-row{
   display:flex;
-  align-items:center;
+  align-items:stretch;
   gap:12px;
   flex-wrap:nowrap;
+  justify-content:flex-start;   /* jangan space-between */
 }
 
 /* Foto kembali ke 65% */
 .pass-photo{
-  flex:0 0 65%;
+  width:65%;        /* lebar pasti 65% */
+  flex:0 0 65%;     /* basis 65% dan tidak boleh shrink */
   max-width:65%;
   aspect-ratio:3/4;
   border-radius:8px;
@@ -101,9 +103,11 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 .pass-code{
   flex:0 0 auto;
   font-weight:700;
-  font-size:clamp(32px,3.2vw,40px); /* awal 16–20px → sekarang 32–40px */
+  font-size:clamp(32px,3.2vw,40px); /* tetap 200% */
   writing-mode:vertical-rl;
   text-orientation:upright;
+  align-self:center;   /* center secara vertikal dengan foto */
+  margin-left:auto;    /* dorong ke paling kanan */
 }
 
 /* ====== INFO TEKS ====== */
