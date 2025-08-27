@@ -55,10 +55,10 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 .pass-head img{ width:clamp(32px,8vw,48px); height:auto; }
 .pass-head .head-text{ display:flex; flex-direction:column; }
 
-/* Tanggal (60%) */
+/* Tanggal (80%) */
 .pass-date{
   font-weight:700;
-  font-size:clamp(19px,1.9vw,24px);  /* 60% dari ukuran besar */
+  font-size:clamp(26px,2.6vw,32px); /* 80% dari ukuran besar */
   text-align:center;
   width:100%;
 }
@@ -87,8 +87,8 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 
 /* Kode vertikal (200% dari awal) */
 .pass-code{
-  align-self:center;          /* vertikal sejajar dengan foto */
-  justify-self:start;         /* rapat ke kiri kolom-2 (menempel foto) */
+  align-self:center;          
+  justify-self:start;         
   font-weight:700;
   font-size:clamp(32px,3.2vw,40px);  /* 200% dari 16–20px */
   writing-mode:vertical-rl;
@@ -106,7 +106,6 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
   font-size:clamp(22px,2.2vw,28px);  /* 70% dari ukuran besar */
 }
 
-/* Ukuran default lainnya tetap */
 .pass-role,
 .pass-info div{
   font-weight:700;
@@ -120,13 +119,38 @@ html, body { margin:0; padding:0; background:var(--bg); color:var(--text); }
 }
 .pass-barcode img{ width:clamp(42px,17%,56px); height:auto; }
 
+/* ========== QR SECTION (tetap seperti sebelumnya) ========== */
+.qr-card{ text-align:center; }
+.qr-btn{
+  display:inline-flex; align-items:center; gap:10px;
+  padding:12px 16px;
+  border-radius:12px;
+  border:1px solid #ffffff22;
+  background:#111827;
+  color:#e5e7eb;
+  cursor:pointer;
+  width:100%;
+  justify-content:center;
+}
+.qr-btn img{ width:22px; height:22px; }
+
+/* Tombol umum */
+.btn.full{
+  width:100%;
+  padding:12px 16px;
+  border:none;
+  border-radius:12px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn.full:active{ transform:translateY(1px); }
+
 /* ========== Responsif ========== */
 @media (max-width:420px){
-  /* tetap pakai grid 65%/auto agar kode tidak turun */
   .pass-row{ grid-template-columns:65% auto; }
 }
-
-/* Card boleh sedikit lebih lebar di desktop */
 @media (min-width:1024px){
   .pass-card{ width:clamp(480px, 80%, 820px); }
 }
