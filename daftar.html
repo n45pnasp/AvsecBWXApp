@@ -26,8 +26,6 @@
     .msg { margin-top:12px; font-size:14px; padding:10px; border-radius:8px; display:none; }
     .error { background:#7f1d1d; color:#fecaca; }
     .success { background:#14532d; color:#bbf7d0; }
-    .small { text-align:center; font-size:12px; color:var(--muted); margin-top:8px; }
-    .small a { color:#a7f3d0; text-decoration:none; }
     .hidden { display:none; }
 
     .modal-backdrop { position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); z-index:50; }
@@ -98,11 +96,10 @@
       <input type="password" id="password" placeholder="Minimal 6 karakter" minlength="6" required />
 
       <button id="submitBtn" type="submit" disabled>Daftar</button>
-      <div class="hint">Tombol Daftar aktif setelah foto berhasil diupload & disimpan.</div>
+      <div class="hint">Tombol "Daftar" akan aktif setelah foto diunggah dan disimpan.</div>
     </form>
 
     <div id="msgBox" class="msg"></div>
-    <div class="small">Sudah punya akun? <a href="index.html">Masuk</a></div>
   </div>
 
   <!-- Modal upload -->
