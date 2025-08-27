@@ -25,6 +25,8 @@ const supervisor      = document.getElementById("supervisor");
 const submitBtn       = document.getElementById("submitBtn");
 const fotoEvidenceInp = document.getElementById("fotoEvidence");
 const btnEvidence     = document.getElementById("btnEvidence");
+const evidencePreview = document.getElementById("evidencePreview");
+const evidenceImg     = document.getElementById("evidenceImg");
 const scanBtn         = document.getElementById("scanBtn");
 const imgAvsec        = document.getElementById("imgAvsec");
 const fotoIdInp       = document.getElementById("fotoId");
@@ -59,7 +61,15 @@ ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
 
 btnEvidence.addEventListener("click", () => fotoEvidenceInp.click());
 fotoEvidenceInp.addEventListener("change", () => {
-  btnEvidence.textContent = fotoEvidenceInp.files[0] ? "1 Foto Dipilih" : "Ambil Foto";
+  const file = fotoEvidenceInp.files[0];
+  btnEvidence.textContent = "Ambil Foto";
+  if (file) {
+    evidenceImg.src = URL.createObjectURL(file);
+    evidencePreview.classList.remove("hidden");
+  } else {
+    evidenceImg.removeAttribute("src");
+    evidencePreview.classList.add("hidden");
+  }
 });
 
 if (scanBtn) scanBtn.addEventListener("click", () => {
@@ -142,6 +152,8 @@ submitBtn.addEventListener("click", async () => {
     if (imgAvsec){ imgAvsec.src=""; imgAvsec.classList.add("hidden"); }
     fotoEvidenceInp.value = "";
     btnEvidence.textContent = "Ambil Foto";
+    evidenceImg.removeAttribute("src");
+    evidencePreview.classList.add("hidden");
 
   } catch(err){
     showOverlay('err','Gagal', err?.message || err);

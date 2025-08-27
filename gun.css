@@ -17,6 +17,15 @@
 }
 .avsec-photo img{ width:100%; height:100%; object-fit:cover; }
 
+.upload-info{
+  display:flex; gap:12px; align-items:center; margin-top:12px;
+  padding:8px; border:1px dashed var(--border); border-radius:12px;
+}
+.upload-info img{
+  width:64px; height:64px; object-fit:cover;
+  border-radius:10px; border:1px solid var(--border);
+}
+
 /* style select seperti input */
 .field select{
   width:100%;

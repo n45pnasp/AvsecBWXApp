@@ -41,6 +41,14 @@
     </section>
 
     <section class="card">
+      <button id="btnEvidence" type="button" class="btn full">Ambil Foto</button>
+      <input id="fotoEvidence" type="file" accept="image/*" capture="environment" class="hidden" />
+      <div id="evidencePreview" class="upload-info hidden">
+        <img id="evidenceImg" alt="Foto Evidence" />
+      </div>
+    </section>
+
+    <section class="card">
       <h1 class="card-title">Input Data Senjata Api</h1>
 
       <div class="field">
@@ -111,11 +119,6 @@
       <div class="field hidden">
         <label for="supervisor">Supervisor</label>
         <input id="supervisor" type="text" readonly />
-      </div>
-      <div class="field">
-        <label>Foto Evidence</label>
-        <button id="btnEvidence" type="button" class="btn secondary">Ambil Foto</button>
-        <input id="fotoEvidence" type="file" accept="image/*" capture="environment" class="hidden" />
       </div>
       <button id="submitBtn" type="button" class="btn primary full">Kirim Data</button>
     </section>
