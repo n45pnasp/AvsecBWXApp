@@ -11,6 +11,9 @@ const passCode   = document.getElementById("passCode");
 const passName   = document.getElementById("passName");
 const passRole   = document.getElementById("passRole");
 const barcodeImg = document.getElementById("barcodeImg");
+const passInstansi = document.getElementById("passInstansi");
+const passIdEl = document.getElementById("passId");
+const passCard = document.getElementById("passCard");
 const scanBtn    = document.getElementById("scanBtn");
 const inputBtn   = document.getElementById("inputBtn");
 
@@ -32,6 +35,13 @@ function showOverlay(state, title, desc, autoHide = true){
   }
 }
 function hideOverlay(){ overlay.classList.add("hidden"); }
+
+function decodeMaybeBase64(str){
+  try{
+    const dec = atob(str);
+    return /^[\x20-\x7E]+$/.test(dec) ? dec : str;
+  }catch(_){ return str; }
+}
 
 if (scanBtn) scanBtn.addEventListener("click", () => {
   if (scanState.running) stopScan(); else startScan();
@@ -233,12 +243,36 @@ async function receiveBarcode(code){
       }
       passDate.textContent = tanggal || '-';
       passName.textContent = (j.columns.B || '-').toUpperCase();
-      passRole.textContent = (j.columns.C || '-').toUpperCase();
-      const kode = (j.columns.D || code).trim().toUpperCase();
+      passRole.textContent = (j.columns.F || '-').toUpperCase();
+
+      const rawKode = j.columns.D || '';
+      let kode = rawKode;
+      try {
+        let decoded = atob(rawKode);
+        try { decoded = decodeURIComponent(decoded); } catch(__){}
+        if (/^[\x20-\x7E]+$/.test(decoded)) kode = decoded;
+      } catch(_){ }
+      kode = kode.replace(/\s+/g,'').replace(/=+$/,'').toUpperCase();
       passCode.textContent = kode;
-      barcodeImg.src = 'https://bwipjs-api.metafloor.com/?bcid=code128&includetext&scale=2&text=' + encodeURIComponent(kode);
-      const foto = (j.columns.L || j.columns.J || '').trim();
-      if (foto){ passPhoto.src = foto; }
+
+      const instansiVal = (j.columns.E || '-').toUpperCase();
+      if (passInstansi) passInstansi.textContent = instansiVal;
+      if (passIdEl) passIdEl.textContent = code.toUpperCase();
+      barcodeImg.src = 'https://bwipjs-api.metafloor.com/?bcid=qrcode&scale=5&text=' + encodeURIComponent(code.toUpperCase());
+
+      const warnaRaw = (j.columns.C || '').trim();
+      let warna = decodeMaybeBase64(warnaRaw).replace(/=+$/,'').toUpperCase();
+      const colorMap = { KUNING:'#facc15', PUTIH:'#ffffff', HIJAU:'#16a34a', BIRU:'#3b82f6', MERAH:'#ef4444', UNGU:'#a855f7' };
+      if (warna && passCard) passCard.style.background = colorMap[warna] || passCard.style.background;
+
+      const rawFoto = (j.columns.H || j.columns.L || j.columns.J || '').trim();
+      if (rawFoto){
+        let fotoUrl = rawFoto;
+        if (!/^https?:/i.test(rawFoto)){
+          fotoUrl = `https://drive.google.com/thumbnail?id=${rawFoto}`;
+        }
+        passPhoto.src = fotoUrl;
+      }
       hideOverlay();
     } else {
       showOverlay('err', j?.error || 'Data tidak ditemukan','');

@@ -45,6 +45,8 @@
 .pass-code{
   font-weight:700;
   font-size:clamp(18px,2vw,22px);
+  writing-mode:vertical-rl;
+  text-orientation:upright;
 }
 
 .pass-name{
@@ -57,8 +59,27 @@
   text-transform:uppercase;
 }
 
+.pass-barcode{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
 .pass-barcode img{
-  width:120px;
+  width:80px;
   height:auto;
+}
+
+.pass-info{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  font-weight:600;
+  font-size:var(--fs-sm);
+  text-align:left;
+}
+
+.pass-info #passId{
+  font-size:var(--fs-base);
 }
 
