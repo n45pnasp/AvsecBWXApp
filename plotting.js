@@ -64,19 +64,19 @@ const SITE_CONFIG = {
     enable2040: true,
     cycleMs: 20_000,
     positions: [
-      { id:"pos1", name:"Operator Xray",    allowed:["senior","junior"] },
-      { id:"pos2", name:"Pemeriksa Barang", allowed:["senior","junior","basic"] },
-      { id:"pos3", name:"Pemeriksa Orang",  allowed:["junior","basic"] },
-      { id:"pos4", name:"Flow Control",     allowed:["junior","basic"] },
+      { id:"pos1", name:"Operator Xray",    allowed:["SENIOR","JUNIOR"] },
+      { id:"pos2", name:"Pemeriksa Barang", allowed:["SENIOR","JUNIOR","BASIC"] },
+      { id:"pos3", name:"Pemeriksa Orang",  allowed:["JUNIOR","BASIC"] },
+      { id:"pos4", name:"Flow Control",     allowed:["JUNIOR","BASIC"] },
     ],
   },
   HBSCP: {
     enable2040: true, // aktif jika jr/sr >= 3
     cycleMs: 20_000,
     positions: [
-      { id:"pos1",  name:"Operator Xray",       allowed:["senior","junior"] },
-      { id:"pos2a", name:"Pemeriksa Barang 1",  allowed:["senior","junior","basic"] },
-      { id:"pos2b", name:"Pemeriksa Barang 2",  allowed:["senior","junior","basic"] },
+      { id:"pos1",  name:"Operator Xray",       allowed:["SENIOR","JUNIOR"] },
+      { id:"pos2a", name:"Pemeriksa Barang 1",  allowed:["SENIOR","JUNIOR","BASIC"] },
+      { id:"pos2b", name:"Pemeriksa Barang 2",  allowed:["SENIOR","JUNIOR","BASIC"] },
     ],
   }
 };
@@ -325,8 +325,8 @@ class SiteMachine {
       if(uid){
         const specSnap = await get(child(this.usersRef, `${uid}/spec`));
         const s = specSnap.val();
-        if(Array.isArray(s))      spec = s.map(x=>String(x).toLowerCase());
-        else if(typeof s === "string" && s) spec = [String(s).toLowerCase()];
+        if(Array.isArray(s))      spec = s.map(x=>String(x).toUpperCase());
+        else if(typeof s === "string" && s) spec = [String(s).toUpperCase()];
       }
       console.log("[spec]", name, spec);
     }catch(err){
@@ -364,7 +364,7 @@ class SiteMachine {
 
   rotate(arr, idx){ return arr.length ? arr.slice(idx).concat(arr.slice(0,idx)) : []; }
   isEligible(person, allowed){
-    return Array.isArray(person.spec) && person.spec.some(s=>allowed.includes(String(s).toLowerCase()));
+    return Array.isArray(person.spec) && person.spec.some(s=>allowed.includes(String(s).toUpperCase()));
   }
 
   async buildPools(useCooldown){
@@ -373,7 +373,7 @@ class SiteMachine {
       useCooldown ? get(this.cooldownRef) : Promise.resolve({ val:()=>({}) })
     ]);
     const folks = Object.values(pSnap.val()||{}).map(p=>({
-      ...p, spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toLowerCase()) : []
+      ...p, spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toUpperCase()) : []
     }));
     const cooldown = useCooldown ? (cdSnap.val()||{}) : {};
 
@@ -489,7 +489,7 @@ class SiteMachine {
     let enable2040Now=false;
     if(this.cfg.enable2040){
       const jsCount = Object.values(people).filter(p =>
-        Array.isArray(p?.spec) && p.spec.some(s=>["junior","senior"].includes(String(s).toLowerCase()))
+        Array.isArray(p?.spec) && p.spec.some(s=>["JUNIOR","SENIOR"].includes(String(s).toUpperCase()))
       ).length;
       enable2040Now = (jsCount>=3);
     }

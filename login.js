@@ -237,7 +237,7 @@ async function fetchProfile(user){
 
     const name = nameSnap.exists() ? String(nameSnap.val()).trim()
                : (user.displayName?.trim() || (user.email?.split("@")[0] ?? "Pengguna"));
-    const spec = specSnap.exists() ? String(specSnap.val()).trim() : "";
+    const spec = specSnap.exists() ? String(specSnap.val()).trim().toUpperCase() : "";
     const role = roleSnap.exists() ? String(roleSnap.val()).trim()
                : (isAdminSnap.exists() && isAdminSnap.val() ? "admin" : "user");
     const isAdmin  = isAdminSnap.exists() ? !!isAdminSnap.val() : role === "admin";
