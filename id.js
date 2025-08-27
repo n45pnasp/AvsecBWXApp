@@ -36,13 +36,6 @@ function showOverlay(state, title, desc, autoHide = true){
 }
 function hideOverlay(){ overlay.classList.add("hidden"); }
 
-function decodeMaybeBase64(str){
-  try{
-    const dec = atob(str);
-    return /^[\x20-\x7E]+$/.test(dec) ? dec : str;
-  }catch(_){ return str; }
-}
-
 if (scanBtn) scanBtn.addEventListener("click", () => {
   if (scanState.running) stopScan(); else startScan();
 });
@@ -260,10 +253,20 @@ async function receiveBarcode(code){
       if (passIdEl) passIdEl.textContent = code.toUpperCase();
       barcodeImg.src = 'https://bwipjs-api.metafloor.com/?bcid=qrcode&scale=5&text=' + encodeURIComponent(code.toUpperCase());
 
-      const warnaRaw = (j.columns.C || '').trim();
-      let warna = decodeMaybeBase64(warnaRaw).replace(/=+$/,'').toUpperCase();
-      const colorMap = { KUNING:'#facc15', PUTIH:'#ffffff', HIJAU:'#16a34a', BIRU:'#3b82f6', MERAH:'#ef4444', UNGU:'#a855f7' };
-      if (warna && passCard) passCard.style.background = colorMap[warna] || passCard.style.background;
+      const warna = (j.columns.c || '-').toUpperCase();
+      const colorMap = {
+        KUNING:{ bg:'#facc15', text:'#000' },
+        PUTIH:{ bg:'#ffffff', text:'#000' },
+        HIJAU:{ bg:'#16a34a', text:'#fff' },
+        BIRU :{ bg:'#3b82f6', text:'#fff' },
+        MERAH:{ bg:'#ef4444', text:'#fff' },
+        UNGU :{ bg:'#a855f7', text:'#fff' }
+      };
+      if (passCard){
+        const col = colorMap[warna] || colorMap.KUNING;
+        passCard.style.background = col.bg;
+        passCard.style.color = col.text;
+      }
 
       const rawFoto = (j.columns.H || j.columns.L || j.columns.J || '').trim();
       if (rawFoto){
