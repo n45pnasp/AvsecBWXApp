@@ -239,13 +239,7 @@ async function receiveBarcode(code){
       passRole.textContent = (j.columns.F || '-').toUpperCase();
 
       const rawKode = j.columns.D || '';
-      let kode = rawKode;
-      try {
-        let decoded = atob(rawKode);
-        try { decoded = decodeURIComponent(decoded); } catch(__){}
-        if (/^[\x20-\x7E]+$/.test(decoded)) kode = decoded;
-      } catch(_){ }
-      kode = kode.replace(/\s+/g,'').replace(/=+$/,'').toUpperCase();
+      const kode = rawKode.replace(/\s+/g, '').toUpperCase();
       passCode.textContent = kode;
 
       const instansiVal = (j.columns.E || '-').toUpperCase();
@@ -253,7 +247,7 @@ async function receiveBarcode(code){
       if (passIdEl) passIdEl.textContent = code.toUpperCase();
       barcodeImg.src = 'https://bwipjs-api.metafloor.com/?bcid=qrcode&scale=5&text=' + encodeURIComponent(code.toUpperCase());
 
-      const warna = (j.columns.C || '-').toUpperCase(); 
+      const warna = (j.columns.C || '-').trim().toUpperCase();
       const colorMap = {
         KUNING:{ bg:'#facc15', text:'#000' },
         PUTIH:{ bg:'#ffffff', text:'#000' },
