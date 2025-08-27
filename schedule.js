@@ -151,32 +151,32 @@ async function init(){
     Overlay.show("Mengambil data…", "Memuat daftar tugas");
     const data = await fetchData();
 
-      try {
-        const classified = classifyRoster(data);
-        const user = auth.currentUser;
-        if (!user) throw new Error("User belum login");
+      const classified = classifyRoster(data);
+      const user = auth.currentUser;
+      if (!user) throw new Error("User belum login");
 
-        const uid = user.uid;
-        console.log("🔑 UID login saat ini:", uid);
+      const uid = user.uid;
+      console.log("🔑 UID login saat ini:", uid);
 
-        // Ambil UID yang diizinkan dari RTDB
-        const snap = await get(ref(db, "config/UID-NOVAN"));
-        const allowedUid = snap.val();
-        if (!allowedUid) throw new Error("UID referensi tidak ditemukan");
-        console.log("✅ UID yang diizinkan:", allowedUid);
+      // Ambil UID yang diizinkan dari RTDB
+      const snap = await get(ref(db, "config/UID-NOVAN"));
+      const allowedUid = snap.val();
+      if (!allowedUid) throw new Error("UID referensi tidak ditemukan");
+      console.log("✅ UID yang diizinkan:", allowedUid);
 
-        if (uid === allowedUid) {
-          // ✅ sesuai rules: hanya UID ini yang bisa menulis
+      if (uid === allowedUid) {
+        // ✅ sesuai rules: hanya UID ini yang bisa menulis
+        try {
           if (Object.keys(classified).length === 0) throw new Error("Data roster kosong");
           await set(ref(db, "roster"), classified);
           Modal.show("Roster sudah terkirim ke RTDB");
-        } else {
-          console.warn("Akun tidak diizinkan kirim roster", { uid });
-          Modal.show("Akun Anda tidak memiliki izin untuk mengirim roster.", "Akses ditolak");
+        } catch (err) {
+          console.error("sync rtdb", err);
+          Modal.show(`Gagal mengirim data roster ke RTDB: ${err?.message || err}`, "Gagal");
         }
-      } catch (err) {
-        console.error("sync rtdb", err);
-        Modal.show(`Gagal mengirim data roster ke RTDB: ${err?.message || err}`, "Gagal");
+      } else {
+        console.warn("Akun tidak diizinkan kirim roster", { uid });
+        // Tidak menampilkan modal apa pun untuk user yang tidak diizinkan
       }
 
     // Header (tanggal sudah sesuai format Sheet karena server pakai getDisplayValues)
