@@ -1,6 +1,6 @@
 import { requireAuth } from "./auth-guard.js";
 
-const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbwqJHoJjXpYCv2UstclVG_vHf5czAxDUfWmsSo6H4lcy3HgGZYSn7g1yAzbb8UFJHtrxw/exec";
+const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";
 const SHARED_TOKEN = "N45p";
 
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
