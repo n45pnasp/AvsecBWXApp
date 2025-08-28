@@ -447,7 +447,6 @@ async function loadLogs(){
       li.className = 'log-item';
       li.dataset.id = r.id || '';
       li.innerHTML = `
-        <img alt="Foto" />
         <div class="log-content">
           <div class="log-main">${r.kodePas || '-'} - ${r.namaPetugas || '-'}</div>
           <div class="log-meta">
@@ -456,7 +455,8 @@ async function loadLogs(){
             <div>Penyerah: ${r.penyerah || '-'}</div>
             <div>Jam pengembalian: <span class="ret">${r.jamKembali || ''}</span></div>
           </div>
-        </div>`;
+        </div>
+        <img alt="Foto" />`;
       addLongPress(li, () => openActionModal(li.dataset.id));
       logList.appendChild(li);
       lookupFoto(r.kodePas).then(u=>{ const img=li.querySelector('img'); if(u){ img.src=u; } else { img.classList.add('hidden'); } });
