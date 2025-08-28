@@ -449,7 +449,7 @@ async function loadLogs(){
       logList.innerHTML = '<li class="muted">Belum ada data</li>';
       return;
     }
-    for(const r of j.rows){
+    for (const r of j.rows) {
       const gate = r.gate || (r.kodeKunci === '1139' ? 'GATE 1' : (r.kodeKunci === '1140' ? 'GATE 2' : ''));
       const retTime = formatTimeWIB(r.jamKembali);
       const li = document.createElement('li');
@@ -458,7 +458,6 @@ async function loadLogs(){
       li.innerHTML = `
         <div class="log-main">${r.namaPetugas || '-'}</div>
         <div class="log-body">
-          <img alt="Foto" />
           <div class="log-meta">
             <div>Kode Kunci: ${r.kodeKunci || '-'}</div>
             <div>Gate: ${gate || '-'}</div>
@@ -466,10 +465,18 @@ async function loadLogs(){
             <div>Kode Pass: ${r.kodePas || '-'}</div>
             <div>Jam pengembalian: <span class="ret">${retTime}</span></div>
           </div>
+          <img alt="Foto" />
         </div>`;
       addLongPress(li, () => openActionModal(li.dataset.id));
       logList.appendChild(li);
-      lookupFoto(r.kodePas).then(u=>{ const img=li.querySelector('img'); if(u){ img.src=u; } else { img.classList.add('hidden'); } });
+      lookupFoto(r.kodePas).then(u => {
+        const img = li.querySelector('img');
+        if (u) {
+          img.src = u;
+        } else {
+          img.classList.add('hidden');
+        }
+      });
     }
   }catch(err){
     logList.innerHTML = '<li>Gagal memuat</li>';
