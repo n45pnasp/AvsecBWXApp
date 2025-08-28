@@ -93,7 +93,7 @@ function closeActionModal(){ actionModal.classList.add("hidden"); activeLogId=""
 function clearForm(){
   timeInput.value = ""; timeLabel.textContent = "Pilih Waktu";
   namaEl.textContent = "-"; instansiEl.textContent = "-";
-  if(fotoEl){ fotoEl.src = ""; fotoEl.classList.add("hidden"); }
+  if(fotoEl){ fotoEl.src = "icons/idperson.png"; fotoEl.classList.remove("hidden"); }
   flightSel.value = ""; kodeSel.value = ""; kodePas = "";
 }
 
@@ -381,10 +381,8 @@ async function receiveBarcode(code){
       if(fotoEl){
         if(fotoUrl){
           fotoEl.src = fotoUrl;
-          fotoEl.classList.remove('hidden');
         } else {
-          fotoEl.src = '';
-          fotoEl.classList.add('hidden');
+          fotoEl.src = 'icons/idperson.png';
         }
       }
       hideOverlay();
