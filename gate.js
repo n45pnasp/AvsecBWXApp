@@ -31,7 +31,7 @@ const ovClose = document.getElementById("ovClose");
 const actionModal = document.getElementById("actionModal");
 const actReturn   = document.getElementById("actReturn");
 const actDelete   = document.getElementById("actDelete");
-const actCancel   = document.getElementById("actCancel");
+const actClose    = document.getElementById("actClose");
 let activeLogId   = "";
 
 const timeModal = document.getElementById("timeModal");
@@ -62,7 +62,7 @@ scanBtn.addEventListener("click", () => {
 
 ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
 submitBtn.addEventListener("click", onSubmit);
-actCancel.addEventListener("click", closeActionModal);
+actClose.addEventListener("click", closeActionModal);
 actReturn.addEventListener("click", () => { const id = activeLogId; closeActionModal(); editReturn(id); });
 actDelete.addEventListener("click", () => { const id = activeLogId; closeActionModal(); deleteLog(id); });
 
