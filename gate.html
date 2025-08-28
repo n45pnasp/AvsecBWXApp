@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gate</title>
+  <link rel="stylesheet" href="gate.css" />
+  <style>html{visibility:hidden}</style>
+</head>
+<body>
+  <div class="app-bar">
+    <a class="back-btn" aria-label="Kembali" href="index.html">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
+      </svg>
+    </a>
+    <h1 class="app-title">Gate</h1>
+  </div>
+
+  <main class="container">
+    <section class="card">
+      <button id="scanBtn" type="button" class="btn full">
+        <img src="icons/qrcode.png" alt="QR" />
+        <span>Scan Barcode</span>
+      </button>
+      <div class="avsec-info">
+        <div class="avsec-texts">
+          <div class="label">Nama Petugas</div>
+          <div id="namaPetugas" class="value">-</div>
+          <div class="label">Instansi Petugas</div>
+          <div id="instansiPetugas" class="value">-</div>
+        </div>
+        <div class="avsec-photo">
+          <img id="fotoPetugas" src="icons/idperson.png" alt="Foto Petugas" />
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <label class="btn-like full" aria-label="Pilih Waktu" id="timeBtn">
+        <input id="timeInput" type="time" required />
+        <span id="timeLabel">Pilih Waktu</span>
+      </label>
+      <div class="row-2">
+        <div class="field">
+          <label for="flight">Flight</label>
+          <select id="flight">
+            <option value="">Pilih Flight</option>
+            <option>IU371</option>
+            <option>QG701</option>
+            <option>ID6591</option>
+            <option>HELI IAT</option>
+            <option>CHARTER FLIGHT</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="kodeKunci">Kode Kunci</label>
+          <select id="kodeKunci">
+            <option value="">Pilih Kode</option>
+            <option>1139</option>
+            <option>1140</option>
+          </select>
+        </div>
+      </div>
+      <button id="submitBtn" class="btn primary full" type="button">Kirim Data</button>
+    </section>
+
+    <section class="card">
+      <ul id="logList" class="log-list"></ul>
+    </section>
+  </main>
+
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet" role="document">
+      <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="icon spinner" id="ovIcon"></div>
+      <div class="texts">
+        <div class="title" id="ovTitle"></div>
+        <div class="desc" id="ovDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="timeModal" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="time-sheet">
+      <div class="time-header">
+        <button type="button" class="t-btn t-cancel" aria-label="Batal">✕</button>
+        <div class="t-title">Pilih Waktu</div>
+        <button type="button" class="t-btn t-save">Simpan</button>
+      </div>
+      <div class="wheels">
+        <div class="wheel" id="wheelHour"></div>
+        <div class="sep">:</div>
+        <div class="wheel" id="wheelMin"></div>
+        <div class="picker-highlight"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="actionModal" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="sheet-mini" role="document">
+      <button id="actClose" class="icon-x" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="sheet-title">Aksi</div>
+      <div class="sheet-actions">
+        <button id="actReturn" type="button" class="t-btn">Update Jam Pengembalian</button>
+        <button id="actDelete" type="button" class="t-btn danger">Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="gate.js"></script>
+</body>
+</html>
