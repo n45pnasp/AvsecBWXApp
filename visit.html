@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Visitor Pass</title>
+  <link rel="stylesheet" href="visit.css" />
+  <style>html{visibility:hidden}</style>
+</head>
+<body>
+  <div class="app-bar">
+    <a class="back-btn" aria-label="Kembali" href="index.html">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
+      </svg>
+    </a>
+    <h1 class="app-title">Visitor Pass</h1>
+  </div>
+
+  <main class="container">
+    <!-- Card 1: Scan -->
+    <section class="card">
+      <button id="scanBtn" type="button" class="btn full">
+        <img src="icons/qrcode.png" alt="QR" />
+        <span>Scan Barcode</span>
+      </button>
+      <div class="info-card">
+        <div class="info-field">
+          <div class="info-label">Nama Pendamping</div>
+          <div id="namaPendamping" class="info-value">-</div>
+        </div>
+        <div class="info-field">
+          <div class="info-label">Instansi Pendamping</div>
+          <div id="instansiPendamping" class="info-value">-</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Card 2: Input -->
+    <section class="card">
+      <div class="row-2">
+        <label class="btn-like" aria-label="Pilih Waktu" id="timeBtn">
+          <input id="timeInput" type="time" required />
+          <span id="timeLabel">Pilih Waktu</span>
+        </label>
+        <div class="upload-wrap">
+          <button id="pickPhotoBtn" type="button" class="btn">📷 Ambil Foto ID</button>
+          <input id="fileInput" type="file" accept="image/*" capture="environment" class="hidden" />
+        </div>
+      </div>
+      <div id="uploadInfo" class="upload-info hidden">
+        <img id="preview" alt="Preview ID" />
+        <div class="meta">
+          <div id="uploadStatus">Menunggu foto…</div>
+          <div id="uploadName" class="muted"></div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="info-label">Pemberi Pas</div>
+        <div id="pemberiPas" class="info-value">-</div>
+      </div>
+      <button id="submitBtn" class="btn primary full" type="button">Kirim</button>
+    </section>
+
+    <!-- Card 3: List -->
+    <section class="card">
+      <ul id="logList" class="log-list"></ul>
+    </section>
+  </main>
+
+  <!-- Overlay -->
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet" role="document">
+      <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="icon spinner" id="ovIcon"></div>
+      <div class="texts">
+        <div class="title" id="ovTitle"></div>
+        <div class="desc" id="ovDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Time Picker Modal -->
+  <div id="timeModal" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="time-sheet">
+      <div class="time-header">
+        <button type="button" class="t-btn t-cancel">Batal</button>
+        <div class="t-title">Pilih Waktu</div>
+        <button type="button" class="t-btn t-save">Simpan</button>
+      </div>
+      <div class="wheels">
+        <div class="wheel" id="wheelHour"></div>
+        <div class="sep">:</div>
+        <div class="wheel" id="wheelMin"></div>
+        <div class="picker-highlight"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="visit.js"></script>
+</body>
+</html>
