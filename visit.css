@@ -20,6 +20,8 @@
 .btn-like:active{ transform:translateY(1px); }
 .btn-like input[type="time"]{ position:absolute; inset:0; opacity:0; pointer-events:none; }
 #timeLabel{ pointer-events:none; }
+.row-2 > *{ width:100%; }
+.row-2 .btn{ width:100%; }
 
 /* Preview upload seperti lb_all */
 .upload-info{

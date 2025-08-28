@@ -21,6 +21,9 @@ const scanBtn      = document.getElementById("scanBtn");
 const scanPassBtn  = document.getElementById("scanPassBtn");
 const namaEl       = document.getElementById("namaPendamping");
 const instansiEl   = document.getElementById("instansiPendamping");
+const pendampingInfo = document.getElementById("pendampingInfo");
+const namaPendampingText = document.getElementById("namaPendampingText");
+const instansiPendampingText = document.getElementById("instansiPendampingText");
 const namaPasDisp  = document.getElementById("namaPasDisplay");
 const pickPhoto    = document.getElementById("pickPhotoBtn");
 const fileInput    = document.getElementById("fileInput");
@@ -196,6 +199,9 @@ async function receiveBarcode(code){
       const inst = (j.columns.E || '-').toUpperCase();
       namaEl.value = nama;
       instansiEl.value = inst;
+      if(namaPendampingText) namaPendampingText.textContent = nama;
+      if(instansiPendampingText) instansiPendampingText.textContent = inst;
+      if(pendampingInfo) pendampingInfo.classList.remove('hidden');
       hideOverlay();
     } else {
       showOverlay('err', j?.error || 'Data tidak ditemukan','');
@@ -306,7 +312,11 @@ async function onSubmit(){
 function clearForm(){
   timeInput.value=""; timeLabel.textContent="Pilih Waktu"; photoData=""; jenisPas="";
   uploadInfo.classList.add('hidden'); uploadName.textContent=""; uploadStatus.textContent="Menunggu foto…";
-  namaEl.value=""; instansiEl.value=""; if (namaPasDisp) namaPasDisp.textContent="-";
+  namaEl.value=""; instansiEl.value="";
+  if (namaPasDisp) namaPasDisp.textContent="-";
+  if (namaPendampingText) namaPendampingText.textContent = '-';
+  if (instansiPendampingText) instansiPendampingText.textContent = '-';
+  if (pendampingInfo) pendampingInfo.classList.add('hidden');
 }
 
 // ====== Load list ======
