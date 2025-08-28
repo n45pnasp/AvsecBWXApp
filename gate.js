@@ -161,16 +161,19 @@ btnCancel.addEventListener("click",()=>closeTimePicker(false));
 btnSave.addEventListener("click",()=>closeTimePicker(true));
 
 async function onSubmit(){
-  const payload = {
-    token: SHARED_TOKEN,
-    waktu: timeInput.value.trim(),
-    kodePas: kodePas.trim(),
-    namaPetugas: namaEl.textContent.trim().toUpperCase(),
-    instansiPetugas: instansiEl.textContent.trim().toUpperCase(),
-    flight: flightSel.value.trim().toUpperCase(),
-    kodeKunci: kodeSel.value.trim().toUpperCase(),
-    penyerah: authName
-  };
+  const waktu    = timeInput.value.trim();
+  const kode     = kodePas.trim();
+  const flight   = flightSel.value.trim().toUpperCase();
+  const kunci    = kodeSel.value.trim().toUpperCase();
+  const nama     = namaEl.textContent.trim().toUpperCase();
+  const instansi = instansiEl.textContent.trim().toUpperCase();
+
+  if (!waktu || !kode || !flight || !kunci || !nama || nama === '-' || !instansi || instansi === '-') {
+    showOverlay('err','Data belum lengkap','Harap isi semua field');
+    return;
+  }
+
+  const payload = { token: SHARED_TOKEN, waktu, kodePas: kode, namaPetugas: nama, instansiPetugas: instansi, flight, kodeKunci: kunci, penyerah: authName };
   submitBtn.disabled = true;
   showOverlay('spinner','Mengirim data…','');
   try {
