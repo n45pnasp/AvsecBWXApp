@@ -443,6 +443,7 @@ async function loadLogs(){
     }
     for(const r of j.rows){
       const gate = r.gate || (r.kodeKunci === '1139' ? 'GATE 1' : (r.kodeKunci === '1140' ? 'GATE 2' : ''));
+      const retTime = r.jamKembali ? `${r.jamKembali} WIB` : '';
       const li = document.createElement('li');
       li.className = 'log-item';
       li.dataset.id = r.id || '';
@@ -453,7 +454,7 @@ async function loadLogs(){
             <div>Kode Kunci: ${r.kodeKunci || '-'}</div>
             <div>Gate: ${gate || '-'}</div>
             <div>Penyerah: ${r.penyerah || '-'}</div>
-            <div>Jam pengembalian: <span class="ret">${r.jamKembali || ''}</span></div>
+            <div>Jam pengembalian: <span class="ret">${retTime}</span></div>
           </div>
         </div>
         <img alt="Foto" />`;
