@@ -275,7 +275,7 @@ async function receiveBarcode(code){
         }
         passPhoto.src = fotoUrl;
       } else {
-        passPhoto.removeAttribute('src');
+        passPhoto.src = 'icons/idperson.png';
       }
       hideOverlay();
     } else {
