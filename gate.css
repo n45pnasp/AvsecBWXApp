@@ -92,7 +92,7 @@
   background:var(--card);
   border:1px solid var(--border);
   border-radius:16px;
-  padding:40px 12px 12px;
+  padding:32px 12px 12px;
   width:min(300px,90vw);
   box-shadow:0 16px 40px rgba(0,0,0,.45);
   display:flex;
@@ -105,3 +105,20 @@
 .action-sheet button:hover{ background:rgba(255,255,255,.06); }
 .actions-row button{ flex:1; }
 .action-sheet button.danger{ color:var(--danger); }
+.action-sheet #actClose{
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:28px;
+  height:28px;
+  display:grid;
+  place-items:center;
+  background:transparent;
+  border:none;
+  color:var(--muted);
+  padding:0;
+  cursor:pointer;
+  transition:transform .08s ease, color .12s ease, opacity .12s ease;
+}
+.action-sheet #actClose:hover{ color:#fff; transform:scale(1.06); }
+.action-sheet #actClose:active{ transform:scale(.94); }
