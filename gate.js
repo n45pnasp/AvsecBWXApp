@@ -363,8 +363,6 @@ async function loadLogs(){
     const url = new URL(SCRIPT_URL);
     url.searchParams.set('action','list');
     url.searchParams.set('token',SHARED_TOKEN);
-    const today = new Date().toISOString().slice(0,10);
-    url.searchParams.set('date', today);
     const res = await fetch(url);
     const j = await res.json();
     logList.innerHTML = '';
@@ -373,7 +371,7 @@ async function loadLogs(){
       return;
     }
     for(const r of j.rows){
-      const gate = r.kodeKunci === '1139' ? 'Gate 1' : (r.kodeKunci === '1140' ? 'Gate 2' : '');
+      const gate = r.gate || (r.kodeKunci === '1139' ? 'GATE 1' : (r.kodeKunci === '1140' ? 'GATE 2' : ''));
       const li = document.createElement('li');
       li.className = 'log-item';
       li.dataset.id = r.id || '';
@@ -381,7 +379,7 @@ async function loadLogs(){
         <div class="log-main">${r.kodePas || '-'} - ${r.namaPetugas || '-'}</div>
         <div class="log-meta">
           <div>Kode Kunci: ${r.kodeKunci || '-'}</div>
-          <div>Gate: ${gate}</div>
+          <div>Gate: ${gate || '-'}</div>
           <div>Penyerah: ${r.penyerah || '-'}</div>
           <div>Jam pengembalian: <span class="ret">${r.jamKembali || ''}</span></div>
         </div>`;
