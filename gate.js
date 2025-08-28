@@ -408,9 +408,8 @@ async function editReturn(id){
     });
     const j = await res.json();
     if(!j || !j.ok) throw new Error(j?.error || 'Gagal');
-    showOverlay('ok','Tersimpan','');
+    showOverlay('ok','Jam pengembalian diperbarui','');
     loadLogs();
-    alert('Jam pengembalian diperbarui');
   }catch(err){
     showOverlay('err','Gagal', err?.message || err);
   }
@@ -427,9 +426,8 @@ async function deleteLog(id){
     });
     const j = await res.json();
     if(!j || !j.ok) throw new Error(j?.error || 'Gagal');
-    showOverlay('ok','Dihapus','');
+    showOverlay('ok','Data berhasil dihapus','');
     loadLogs();
-    alert('Data berhasil dihapus');
   }catch(err){
     showOverlay('err','Gagal', err?.message || err);
   }
