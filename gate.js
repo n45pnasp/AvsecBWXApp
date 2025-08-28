@@ -1,19 +1,25 @@
-import { requireAuth } from "./auth-guard.js";
+import { requireAuth, getFirebase } from "./auth-guard.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 const SCRIPT_URL   = "https://loggate.avsecbwx2018.workers.dev/";
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";
 const SHARED_TOKEN = "N45p";
 
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+const { auth } = getFirebase();
+let authName = "";
+onAuthStateChanged(auth, u => { authName = u?.displayName || u?.email || ""; });
 
 const timeInput    = document.getElementById("timeInput");
 const timeLabel    = document.getElementById("timeLabel");
+const timeBtn      = document.getElementById("timeBtn");
 const scanBtn      = document.getElementById("scanBtn");
 const namaEl       = document.getElementById("namaPetugas");
 const instansiEl   = document.getElementById("instansiPetugas");
 const flightSel    = document.getElementById("flight");
 const kodeSel      = document.getElementById("kodeKunci");
 const submitBtn    = document.getElementById("submitBtn");
+const logList      = document.getElementById("logList");
 
 const overlay = document.getElementById("overlay");
 const ovIcon  = document.getElementById("ovIcon");
@@ -21,7 +27,19 @@ const ovTitle = document.getElementById("ovTitle");
 const ovDesc  = document.getElementById("ovDesc");
 const ovClose = document.getElementById("ovClose");
 
+const timeModal = document.getElementById("timeModal");
+const wheelHour = document.getElementById("wheelHour");
+const wheelMin  = document.getElementById("wheelMin");
+const btnCancel = timeModal.querySelector(".t-cancel");
+const btnSave   = timeModal.querySelector(".t-save");
+let wheelsBuilt = false;
+
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
+let kodePas = "";
+
+const pad2 = n => String(n).padStart(2,"0");
+const clamp = (v,min,max)=> v<min?min : v>max?max : v;
+const ITEM_H=36, VISIBLE=5, SPACER=((VISIBLE-1)/2)*ITEM_H;
 
 timeInput.addEventListener("change", () => {
   timeLabel.textContent = timeInput.value || "Pilih Waktu";
@@ -54,17 +72,66 @@ function hideOverlay(){ overlay.classList.add("hidden"); }
 function clearForm(){
   timeInput.value = ""; timeLabel.textContent = "Pilih Waktu";
   namaEl.textContent = "-"; instansiEl.textContent = "-";
-  flightSel.value = ""; kodeSel.value = "";
+  flightSel.value = ""; kodeSel.value = ""; kodePas = "";
 }
+
+// ===== TIME PICKER (Wheel) =====
+function buildWheel(el, count){
+  const frag = document.createDocumentFragment();
+  const top = document.createElement("div"); top.style.height = SPACER+"px";
+  const bottom = document.createElement("div"); bottom.style.height = SPACER+"px";
+  frag.appendChild(top);
+  for(let i=0;i<count;i++){
+    const it=document.createElement("div");
+    it.className="item"; it.textContent=pad2(i); it.dataset.val=i;
+    frag.appendChild(it);
+  }
+  frag.appendChild(bottom);
+  el.innerHTML=""; el.appendChild(frag);
+}
+function centerIndex(el,max){
+  const centerTop=el.scrollTop+el.clientHeight/2;
+  const relative=centerTop-SPACER-ITEM_H/2;
+  return clamp(Math.round(relative/ITEM_H),0,max);
+}
+function snapToCenter(el,idx){ el.scrollTop=idx*ITEM_H; }
+function enableWheel(el,max){
+  let dragging=false,startY=0,startTop=0,isSnapping=false,timer=null;
+  el.addEventListener("pointerdown",e=>{ dragging=true; startY=e.clientY; startTop=el.scrollTop; el.setPointerCapture(e.pointerId); clearTimeout(timer); });
+  el.addEventListener("pointermove",e=>{ if(!dragging)return; const next=startTop+(e.clientY-startY); el.scrollTop=clamp(next,0,SPACER+max*ITEM_H+SPACER); });
+  function endDrag(){ if(!dragging)return; dragging=false; isSnapping=true; snapToCenter(el,centerIndex(el,max)); requestAnimationFrame(()=>{isSnapping=false;}); }
+  el.addEventListener("pointerup",endDrag); el.addEventListener("pointercancel",endDrag); el.addEventListener("pointerleave",endDrag);
+  el.addEventListener("scroll",()=>{ if(isSnapping)return; clearTimeout(timer); timer=setTimeout(()=>{ isSnapping=true; snapToCenter(el,centerIndex(el,max)); requestAnimationFrame(()=>{isSnapping=false;}); },140); },{passive:true});
+  el.addEventListener("click",e=>{ const it=e.target.closest(".item"); if(!it)return; isSnapping=true; snapToCenter(el,+it.dataset.val); requestAnimationFrame(()=>{isSnapping=false;}); });
+}
+function openTimePicker(){
+  if(!wheelsBuilt){ buildWheel(wheelHour,24); buildWheel(wheelMin,60); enableWheel(wheelHour,23); enableWheel(wheelMin,59); wheelsBuilt=true; }
+  let h=0,m=0; if(timeInput.value){ const [hh,mm]=timeInput.value.split(":"); h=parseInt(hh||"0",10); m=parseInt(mm||"0",10); } else { const now=new Date(); h=now.getHours(); m=now.getMinutes(); }
+  snapToCenter(wheelHour,h); snapToCenter(wheelMin,m); timeModal.classList.remove("hidden");
+}
+function closeTimePicker(save){
+  if(save){ const h=centerIndex(wheelHour,23); const m=centerIndex(wheelMin,59); snapToCenter(wheelHour,h); snapToCenter(wheelMin,m); const val=`${pad2(h)}:${pad2(m)}`; timeInput.value=val; timeLabel.textContent=val; }
+  timeModal.classList.add("hidden");
+}
+function disableNativeTimePicker(){
+  timeInput.setAttribute("readonly","");
+  timeInput.setAttribute("inputmode","none");
+  timeInput.addEventListener("focus",e=>{ e.preventDefault(); e.target.blur(); openTimePicker(); });
+  timeBtn.addEventListener("click",openTimePicker);
+}
+btnCancel.addEventListener("click",()=>closeTimePicker(false));
+btnSave.addEventListener("click",()=>closeTimePicker(true));
 
 async function onSubmit(){
   const payload = {
     token: SHARED_TOKEN,
     waktu: timeInput.value.trim(),
+    kodePas: kodePas.trim(),
     namaPetugas: namaEl.textContent.trim().toUpperCase(),
     instansiPetugas: instansiEl.textContent.trim().toUpperCase(),
     flight: flightSel.value.trim().toUpperCase(),
-    kodeKunci: kodeSel.value.trim().toUpperCase()
+    kodeKunci: kodeSel.value.trim().toUpperCase(),
+    penyerah: authName
   };
   submitBtn.disabled = true;
   showOverlay('spinner','Mengirim data…','');
@@ -78,6 +145,7 @@ async function onSubmit(){
     if (!j || (!j.success && !j.ok)) throw new Error(j?.error || "Gagal mengirim");
     showOverlay('ok','Data berhasil dikirim','');
     clearForm();
+    loadLogs();
   } catch(err){
     showOverlay('err','Gagal', err?.message || err);
   } finally {
@@ -252,6 +320,7 @@ async function handleScanSuccess(raw){
 
 async function receiveBarcode(code){
   try{
+    kodePas = code.trim();
     showOverlay('spinner','Mengambil data…','');
     const url = LOOKUP_URL + '?token=' + SHARED_TOKEN + '&key=' + encodeURIComponent(code);
     const res = await fetch(url);
@@ -267,5 +336,64 @@ async function receiveBarcode(code){
     showOverlay('err','Gagal mengambil data', err?.message || err);
   }
 }
+
+async function editReturn(li){
+  const id = li.dataset.id;
+  if(!id) return;
+  const time = prompt("Jam pengembalian (HH:MM)", "");
+  if(!time) return;
+  try{
+    showOverlay('spinner','Mengirim data…','');
+    const res = await fetch(SCRIPT_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: SHARED_TOKEN, action:'updateReturn', id, jamKembali: time })
+    });
+    const j = await res.json();
+    if(!j || (!j.success && !j.ok)) throw new Error(j?.error || 'Gagal');
+    showOverlay('ok','Tersimpan','');
+    loadLogs();
+  }catch(err){
+    showOverlay('err','Gagal', err?.message || err);
+  }
+}
+
+async function loadLogs(){
+  logList.innerHTML = '<li>Memuat…</li>';
+  try{
+    const url = new URL(SCRIPT_URL);
+    url.searchParams.set('action','list');
+    url.searchParams.set('token',SHARED_TOKEN);
+    const today = new Date().toISOString().slice(0,10);
+    url.searchParams.set('date', today);
+    const res = await fetch(url);
+    const j = await res.json();
+    logList.innerHTML = '';
+    if(!res.ok || !j.rows || !j.rows.length){
+      logList.innerHTML = '<li class="muted">Belum ada data</li>';
+      return;
+    }
+    for(const r of j.rows){
+      const gate = r.kodeKunci === '1139' ? 'Gate 1' : (r.kodeKunci === '1140' ? 'Gate 2' : '');
+      const li = document.createElement('li');
+      li.className = 'log-item';
+      li.dataset.id = r.id || '';
+      li.innerHTML = `
+        <div class="log-main">${r.kodePas || '-'} - ${r.namaPetugas || '-'}</div>
+        <div class="log-meta">
+          <div>Kode Kunci: ${r.kodeKunci || '-'}</div>
+          <div>Gate: ${gate}</div>
+          <div>Penyerah: ${r.penyerah || '-'}</div>
+          <div>Jam pengembalian: <span class="ret">${r.jamKembali || ''}</span></div>
+        </div>`;
+      li.addEventListener('click',()=>editReturn(li));
+      logList.appendChild(li);
+    }
+  }catch(err){
+    logList.innerHTML = '<li>Gagal memuat</li>';
+  }
+}
+
+disableNativeTimePicker();
+loadLogs();
 
 window.receiveBarcode = receiveBarcode;

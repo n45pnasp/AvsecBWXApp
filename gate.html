@@ -26,9 +26,6 @@
         </label>
         <button id="scanBtn" type="button" class="btn">Scan Barcode</button>
       </div>
-    </section>
-
-    <section class="card info-card" id="infoCard">
       <div class="info-field">
         <div class="info-label">Nama Petugas</div>
         <div id="namaPetugas" class="info-value">-</div>
@@ -63,6 +60,10 @@
       </div>
       <button id="submitBtn" class="btn primary full" type="button">Kirim Data</button>
     </section>
+
+    <section class="card">
+      <ul id="logList" class="log-list"></ul>
+    </section>
   </main>
 
   <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
@@ -76,6 +77,22 @@
       <div class="texts">
         <div class="title" id="ovTitle"></div>
         <div class="desc" id="ovDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="timeModal" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="time-sheet">
+      <div class="time-header">
+        <button type="button" class="t-btn t-cancel">Batal</button>
+        <div class="t-title">Pilih Waktu</div>
+        <button type="button" class="t-btn t-save">Simpan</button>
+      </div>
+      <div class="wheels">
+        <div class="wheel" id="wheelHour"></div>
+        <div class="sep">:</div>
+        <div class="wheel" id="wheelMin"></div>
+        <div class="picker-highlight"></div>
       </div>
     </div>
   </div>
