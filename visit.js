@@ -8,18 +8,20 @@ const SHARED_TOKEN = "N45p";
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 const { auth } = getFirebase();
 let authName = "";
-const pemberiPasEl = document.getElementById("pemberiPas");
+const pemberiPasInput = document.getElementById("pemberiPas");
 onAuthStateChanged(auth, u => {
   authName = u?.displayName || u?.email || "";
-  if (pemberiPasEl) pemberiPasEl.textContent = authName;
+  if (pemberiPasInput) pemberiPasInput.value = authName;
 });
 
 const timeInput    = document.getElementById("timeInput");
 const timeLabel    = document.getElementById("timeLabel");
 const timeBtn      = document.getElementById("timeBtn");
 const scanBtn      = document.getElementById("scanBtn");
+const scanPassBtn  = document.getElementById("scanPassBtn");
 const namaEl       = document.getElementById("namaPendamping");
 const instansiEl   = document.getElementById("instansiPendamping");
+const namaPasDisp  = document.getElementById("namaPasDisplay");
 const pickPhoto    = document.getElementById("pickPhotoBtn");
 const fileInput    = document.getElementById("fileInput");
 const preview      = document.getElementById("preview");
@@ -38,6 +40,7 @@ ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
 
 let jenisPas = "";
 let photoData = "";
+let scanMode = "pendamping";
 
 function showOverlay(state, title, desc){
   overlay.classList.remove("hidden");
@@ -105,7 +108,8 @@ function ensureOverlay(){
   }
 }
 
-if (scanBtn) scanBtn.addEventListener('click', () => { if (scanState.running) stopScan(); else startScan(); });
+if (scanBtn) scanBtn.addEventListener('click', () => { if (scanState.running) stopScan(); else { scanMode='pendamping'; startScan(); } });
+if (scanPassBtn) scanPassBtn.addEventListener('click', () => { if (scanState.running) stopScan(); else { scanMode='pass'; startScan(); } });
 
 async function startScan(){
   try{
@@ -177,7 +181,8 @@ function detectLoop_jsQR(){
 
 async function handleScanSuccess(code){
   await stopScan();
-  receiveBarcode(code);
+  if (scanMode === 'pendamping') receiveBarcode(code);
+  else receivePass(code);
 }
 
 async function receiveBarcode(code){
@@ -189,9 +194,8 @@ async function receiveBarcode(code){
     if (j && j.columns){
       const nama = (j.columns.B || '-').toUpperCase();
       const inst = (j.columns.E || '-').toUpperCase();
-      jenisPas = (j.columns.C || 'VISITOR').toUpperCase();
-      namaEl.textContent = nama;
-      instansiEl.textContent = inst;
+      namaEl.value = nama;
+      instansiEl.value = inst;
       hideOverlay();
     } else {
       showOverlay('err', j?.error || 'Data tidak ditemukan','');
@@ -199,6 +203,12 @@ async function receiveBarcode(code){
   }catch(err){
     showOverlay('err','Gagal mengambil data', err.message||err);
   }
+}
+
+function receivePass(code){
+  jenisPas = (code || '').trim().toUpperCase();
+  if (namaPasDisp) namaPasDisp.textContent = jenisPas || '-';
+  hideOverlay();
 }
 
 // ====== Photo Upload ======
@@ -275,10 +285,10 @@ submitBtn.addEventListener('click', onSubmit);
 
 async function onSubmit(){
   const waktu = timeInput.value.trim();
-  const nama  = namaEl.textContent.trim();
-  const inst  = instansiEl.textContent.trim();
-  const jenis = jenisPas || 'VISITOR';
-  if (!waktu || !photoData || !nama || nama==='-' || !inst || inst==='-'){ showOverlay('err','Data belum lengkap',''); return; }
+  const nama  = namaEl.value.trim();
+  const inst  = instansiEl.value.trim();
+  const jenis = jenisPas.trim();
+  if (!waktu || !photoData || !nama || !inst || !jenis){ showOverlay('err','Data belum lengkap',''); return; }
   const payload = { token:SHARED_TOKEN, waktu, namaPendamping:nama, instansiPendamping:inst, jenisPas:jenis, pemberiPas:authName, photo:photoData };
   submitBtn.disabled=true;
   showOverlay('spinner','Mengirim data…','');
@@ -294,7 +304,9 @@ async function onSubmit(){
 }
 
 function clearForm(){
-  timeInput.value=""; timeLabel.textContent="Pilih Waktu"; photoData=""; uploadInfo.classList.add('hidden'); uploadName.textContent=""; uploadStatus.textContent="Menunggu foto…";
+  timeInput.value=""; timeLabel.textContent="Pilih Waktu"; photoData=""; jenisPas="";
+  uploadInfo.classList.add('hidden'); uploadName.textContent=""; uploadStatus.textContent="Menunggu foto…";
+  namaEl.value=""; instansiEl.value=""; if (namaPasDisp) namaPasDisp.textContent="-";
 }
 
 // ====== Load list ======

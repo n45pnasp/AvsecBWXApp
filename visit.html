@@ -20,20 +20,12 @@
   <main class="container">
     <!-- Card 1: Scan -->
     <section class="card">
-      <button id="scanBtn" type="button" class="btn full">
+      <button id="scanBtn" type="button" class="qr-btn">
         <img src="icons/qrcode.png" alt="QR" />
         <span>Scan Barcode</span>
       </button>
-      <div class="info-card">
-        <div class="info-field">
-          <div class="info-label">Nama Pendamping</div>
-          <div id="namaPendamping" class="info-value">-</div>
-        </div>
-        <div class="info-field">
-          <div class="info-label">Instansi Pendamping</div>
-          <div id="instansiPendamping" class="info-value">-</div>
-        </div>
-      </div>
+      <input id="namaPendamping" type="hidden" />
+      <input id="instansiPendamping" type="hidden" />
     </section>
 
     <!-- Card 2: Input -->
@@ -55,10 +47,12 @@
           <div id="uploadName" class="muted"></div>
         </div>
       </div>
+      <button id="scanPassBtn" type="button" class="btn full">Scan Pas Visitor</button>
       <div class="field">
-        <div class="info-label">Pemberi Pas</div>
-        <div id="pemberiPas" class="info-value">-</div>
+        <div class="info-label">Nama Pas</div>
+        <div id="namaPasDisplay" class="info-value">-</div>
       </div>
+      <input id="pemberiPas" type="hidden" />
       <button id="submitBtn" class="btn primary full" type="button">Kirim</button>
     </section>
 
