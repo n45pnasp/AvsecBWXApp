@@ -24,15 +24,21 @@
           <input id="timeInput" type="time" required />
           <span id="timeLabel">Pilih Waktu</span>
         </label>
-        <button id="scanBtn" type="button" class="btn">Scan Barcode</button>
+        <button id="scanBtn" type="button" class="btn">
+          <img src="icons/qrcode.png" alt="QR" />
+          <span>Scan Barcode</span>
+        </button>
       </div>
-      <div class="info-field">
-        <div class="info-label">Nama Petugas</div>
-        <div id="namaPetugas" class="info-value">-</div>
-      </div>
-      <div class="info-field">
-        <div class="info-label">Instansi Petugas</div>
-        <div id="instansiPetugas" class="info-value">-</div>
+      <div class="avsec-info">
+        <div class="avsec-texts">
+          <div class="label">Nama Petugas</div>
+          <div id="namaPetugas" class="value">-</div>
+          <div class="label">Instansi Petugas</div>
+          <div id="instansiPetugas" class="value">-</div>
+        </div>
+        <div class="avsec-photo">
+          <img id="fotoPetugas" alt="Foto Petugas" class="hidden" />
+        </div>
       </div>
     </section>
 

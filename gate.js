@@ -16,6 +16,7 @@ const timeBtn      = document.getElementById("timeBtn");
 const scanBtn      = document.getElementById("scanBtn");
 const namaEl       = document.getElementById("namaPetugas");
 const instansiEl   = document.getElementById("instansiPetugas");
+const fotoEl       = document.getElementById("fotoPetugas");
 const flightSel    = document.getElementById("flight");
 const kodeSel      = document.getElementById("kodeKunci");
 const submitBtn    = document.getElementById("submitBtn");
@@ -72,6 +73,7 @@ function hideOverlay(){ overlay.classList.add("hidden"); }
 function clearForm(){
   timeInput.value = ""; timeLabel.textContent = "Pilih Waktu";
   namaEl.textContent = "-"; instansiEl.textContent = "-";
+  if(fotoEl){ fotoEl.src = ""; fotoEl.classList.add("hidden"); }
   flightSel.value = ""; kodeSel.value = ""; kodePas = "";
 }
 
@@ -328,6 +330,24 @@ async function receiveBarcode(code){
     if (j && j.columns){
       namaEl.textContent     = (j.columns.B || '-').toUpperCase();
       instansiEl.textContent = (j.columns.E || '-').toUpperCase();
+      const rawFoto = (j.columns.H || '').trim();
+      let fotoUrl = '';
+      if(rawFoto){
+        if(/^https?:/i.test(rawFoto)){
+          fotoUrl = rawFoto;
+        } else {
+          fotoUrl = `https://drive.google.com/thumbnail?id=${rawFoto}`;
+        }
+      }
+      if(fotoEl){
+        if(fotoUrl){
+          fotoEl.src = fotoUrl;
+          fotoEl.classList.remove('hidden');
+        } else {
+          fotoEl.src = '';
+          fotoEl.classList.add('hidden');
+        }
+      }
       hideOverlay();
     } else {
       showOverlay('err', j?.error || 'Data tidak ditemukan','');

@@ -30,8 +30,14 @@
 .btn-like input[type="time"]{ position:absolute; inset:0; opacity:0; pointer-events:none; }
 #timeLabel{ pointer-events:none; }
 
-.info-label{ font-size:var(--fs-sm); color:var(--muted); }
-.info-value{ font-weight:600; }
+/* Info petugas dengan foto */
+.avsec-info{ display:flex; gap:16px; margin-top:12px; align-items:flex-start; }
+.avsec-texts{ flex:1; }
+.label{ font-size:var(--fs-sm); color:var(--muted); }
+.value{ font-weight:600; margin-bottom:8px; }
+.avsec-photo{ width:96px; height:96px; border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.avsec-photo img{ width:100%; height:100%; object-fit:cover; }
+.btn img{ width:20px; height:20px; margin-right:6px; }
 
 .log-list{ list-style:none; margin:0; padding:0; display:grid; gap:8px; }
 .log-item{ background:#1f2937; border:1px solid var(--border); border-radius:12px; padding:8px; cursor:pointer; }
