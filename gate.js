@@ -183,7 +183,7 @@ async function onSubmit(){
       body: JSON.stringify(payload)
     });
     const j = await res.json();
-    if (!j || (!j.success && !j.ok)) throw new Error(j?.error || "Gagal mengirim");
+    if (!j || !j.ok) throw new Error(j?.error || "Gagal mengirim");
     showOverlay('ok','Data berhasil dikirim','');
     clearForm();
     loadLogs();
@@ -407,7 +407,7 @@ async function editReturn(id){
       body: JSON.stringify({ token: SHARED_TOKEN, action:'updateReturn', id, jamKembali: time })
     });
     const j = await res.json();
-    if(!j || (!j.success && !j.ok)) throw new Error(j?.error || 'Gagal');
+    if(!j || !j.ok) throw new Error(j?.error || 'Gagal');
     showOverlay('ok','Tersimpan','');
     loadLogs();
   }catch(err){
@@ -421,10 +421,11 @@ async function deleteLog(id){
     showOverlay('spinner','Menghapus…','');
     const res = await fetch(SCRIPT_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ token: SHARED_TOKEN, action:'delete', id })
+      // hard:true ⇒ hapus baris (remove).  Omit / false ⇒ clearContent.
+      body: JSON.stringify({ token: SHARED_TOKEN, action:'delete', id, hard:true })
     });
     const j = await res.json();
-    if(!j || (!j.success && !j.ok)) throw new Error(j?.error || 'Gagal');
+    if(!j || !j.ok) throw new Error(j?.error || 'Gagal');
     showOverlay('ok','Dihapus','');
     loadLogs();
   }catch(err){
