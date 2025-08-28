@@ -387,8 +387,8 @@ async function receiveBarcode(code){
 
 async function editReturn(id){
   if(!id) return;
-  const time = prompt("Jam pengembalian (HH:MM)", "");
-  if(!time) return;
+  const now = new Date();
+  const time = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
   try{
     showOverlay('spinner','Mengirim data…','');
     const res = await fetch(SCRIPT_URL, {
