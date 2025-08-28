@@ -456,16 +456,17 @@ async function loadLogs(){
       li.className = 'log-item';
       li.dataset.id = r.id || '';
       li.innerHTML = `
-        <div class="log-content">
-          <div class="log-main">${r.kodePas || '-'} - ${r.namaPetugas || '-'}</div>
+        <div class="log-main">${r.namaPetugas || '-'}</div>
+        <div class="log-body">
+          <img alt="Foto" />
           <div class="log-meta">
             <div>Kode Kunci: ${r.kodeKunci || '-'}</div>
             <div>Gate: ${gate || '-'}</div>
             <div>Penyerah: ${r.penyerah || '-'}</div>
+            <div>Kode Pass: ${r.kodePas || '-'}</div>
             <div>Jam pengembalian: <span class="ret">${retTime}</span></div>
           </div>
-        </div>
-        <img alt="Foto" />`;
+        </div>`;
       addLongPress(li, () => openActionModal(li.dataset.id));
       logList.appendChild(li);
       lookupFoto(r.kodePas).then(u=>{ const img=li.querySelector('img'); if(u){ img.src=u; } else { img.classList.add('hidden'); } });
