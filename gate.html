@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gate</title>
+  <link rel="stylesheet" href="gate.css" />
+  <style>html{visibility:hidden}</style>
+</head>
+<body>
+  <div class="app-bar">
+    <a class="back-btn" aria-label="Kembali" href="index.html">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
+      </svg>
+    </a>
+    <h1 class="app-title">Gate</h1>
+  </div>
+
+  <main class="container">
+    <section class="card">
+      <div class="row-2">
+        <label class="btn-like" aria-label="Pilih Waktu" id="timeBtn">
+          <input id="timeInput" type="time" required />
+          <span id="timeLabel">Pilih Waktu</span>
+        </label>
+        <button id="scanBtn" type="button" class="btn">Scan Barcode</button>
+      </div>
+    </section>
+
+    <section class="card info-card" id="infoCard">
+      <div class="info-field">
+        <div class="info-label">Nama Petugas</div>
+        <div id="namaPetugas" class="info-value">-</div>
+      </div>
+      <div class="info-field">
+        <div class="info-label">Instansi Petugas</div>
+        <div id="instansiPetugas" class="info-value">-</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row-2">
+        <div class="field">
+          <label for="flight">Flight</label>
+          <select id="flight">
+            <option value="">Pilih Flight</option>
+            <option>IU371</option>
+            <option>QG701</option>
+            <option>ID6591</option>
+            <option>HELI IAT</option>
+            <option>CHARTER FLIGHT</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="kodeKunci">Kode Kunci</label>
+          <select id="kodeKunci">
+            <option value="">Pilih Kode</option>
+            <option>1139</option>
+            <option>1140</option>
+          </select>
+        </div>
+      </div>
+      <button id="submitBtn" class="btn primary full" type="button">Kirim Data</button>
+    </section>
+  </main>
+
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet" role="document">
+      <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="icon spinner" id="ovIcon"></div>
+      <div class="texts">
+        <div class="title" id="ovTitle"></div>
+        <div class="desc" id="ovDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="gate.js"></script>
+</body>
+</html>

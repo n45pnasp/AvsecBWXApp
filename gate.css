@@ -1,0 +1,36 @@
+@import url('./ACP.css');
+
+.field select{
+  width:100%;
+  background:#0b1324;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  font-size:var(--fs-base);
+}
+
+.btn-like{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:#1f2937;
+  color:#fff;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  cursor:pointer;
+  user-select:none;
+  transition:filter .15s ease, transform .06s ease;
+  text-align:center;
+}
+.btn-like:hover{ filter:brightness(1.05); }
+.btn-like:active{ transform:translateY(1px); }
+.btn-like input[type="time"]{ position:absolute; inset:0; opacity:0; pointer-events:none; }
+#timeLabel{ pointer-events:none; }
+
+.info-label{ font-size:var(--fs-sm); color:var(--muted); }
+.info-value{ font-weight:600; }
+
+.hidden{ display:none !important; }
