@@ -28,6 +28,12 @@ const ovTitle = document.getElementById("ovTitle");
 const ovDesc  = document.getElementById("ovDesc");
 const ovClose = document.getElementById("ovClose");
 
+const actionModal = document.getElementById("actionModal");
+const actReturn   = document.getElementById("actReturn");
+const actDelete   = document.getElementById("actDelete");
+const actCancel   = document.getElementById("actCancel");
+let activeLogId   = "";
+
 const timeModal = document.getElementById("timeModal");
 const wheelHour = document.getElementById("wheelHour");
 const wheelMin  = document.getElementById("wheelMin");
@@ -56,6 +62,9 @@ scanBtn.addEventListener("click", () => {
 
 ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
 submitBtn.addEventListener("click", onSubmit);
+actCancel.addEventListener("click", closeActionModal);
+actReturn.addEventListener("click", () => { const id = activeLogId; closeActionModal(); editReturn(id); });
+actDelete.addEventListener("click", () => { const id = activeLogId; closeActionModal(); deleteLog(id); });
 
 function showOverlay(state, title, desc){
   overlay.classList.remove("hidden");
@@ -70,11 +79,30 @@ function showOverlay(state, title, desc){
 }
 function hideOverlay(){ overlay.classList.add("hidden"); }
 
+function openActionModal(id){ activeLogId = id; actionModal.classList.remove("hidden"); }
+function closeActionModal(){ actionModal.classList.add("hidden"); activeLogId=""; }
+
 function clearForm(){
   timeInput.value = ""; timeLabel.textContent = "Pilih Waktu";
   namaEl.textContent = "-"; instansiEl.textContent = "-";
   if(fotoEl){ fotoEl.src = ""; fotoEl.classList.add("hidden"); }
   flightSel.value = ""; kodeSel.value = ""; kodePas = "";
+}
+
+async function lookupFoto(kode){
+  if(!kode) return "";
+  try{
+    const url = LOOKUP_URL + '?token=' + SHARED_TOKEN + '&key=' + encodeURIComponent(kode);
+    const res = await fetch(url);
+    const j = await res.json();
+    const raw = (j?.columns?.H || '').trim();
+    if(raw){
+      return /^https?:/i.test(raw) ? raw : `https://drive.google.com/thumbnail?id=${raw}`;
+    }
+  }catch(err){
+    // ignore
+  }
+  return "";
 }
 
 // ===== TIME PICKER (Wheel) =====
@@ -357,8 +385,7 @@ async function receiveBarcode(code){
   }
 }
 
-async function editReturn(li){
-  const id = li.dataset.id;
+async function editReturn(id){
   if(!id) return;
   const time = prompt("Jam pengembalian (HH:MM)", "");
   if(!time) return;
@@ -375,6 +402,30 @@ async function editReturn(li){
   }catch(err){
     showOverlay('err','Gagal', err?.message || err);
   }
+}
+
+async function deleteLog(id){
+  if(!id) return;
+  try{
+    showOverlay('spinner','Menghapus…','');
+    const res = await fetch(SCRIPT_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: SHARED_TOKEN, action:'delete', id })
+    });
+    const j = await res.json();
+    if(!j || (!j.success && !j.ok)) throw new Error(j?.error || 'Gagal');
+    showOverlay('ok','Dihapus','');
+    loadLogs();
+  }catch(err){
+    showOverlay('err','Gagal', err?.message || err);
+  }
+}
+
+function addLongPress(el, handler){
+  let timer;
+  el.addEventListener('pointerdown', () => { timer = setTimeout(handler, 600); });
+  ['pointerup','pointerleave','pointercancel'].forEach(ev => el.addEventListener(ev, () => clearTimeout(timer)));
+  el.addEventListener('contextmenu', e => { e.preventDefault(); handler(); });
 }
 
 async function loadLogs(){
@@ -396,15 +447,19 @@ async function loadLogs(){
       li.className = 'log-item';
       li.dataset.id = r.id || '';
       li.innerHTML = `
-        <div class="log-main">${r.kodePas || '-'} - ${r.namaPetugas || '-'}</div>
-        <div class="log-meta">
-          <div>Kode Kunci: ${r.kodeKunci || '-'}</div>
-          <div>Gate: ${gate || '-'}</div>
-          <div>Penyerah: ${r.penyerah || '-'}</div>
-          <div>Jam pengembalian: <span class="ret">${r.jamKembali || ''}</span></div>
+        <img alt="Foto" />
+        <div class="log-content">
+          <div class="log-main">${r.kodePas || '-'} - ${r.namaPetugas || '-'}</div>
+          <div class="log-meta">
+            <div>Kode Kunci: ${r.kodeKunci || '-'}</div>
+            <div>Gate: ${gate || '-'}</div>
+            <div>Penyerah: ${r.penyerah || '-'}</div>
+            <div>Jam pengembalian: <span class="ret">${r.jamKembali || ''}</span></div>
+          </div>
         </div>`;
-      li.addEventListener('click',()=>editReturn(li));
+      addLongPress(li, () => openActionModal(li.dataset.id));
       logList.appendChild(li);
+      lookupFoto(r.kodePas).then(u=>{ const img=li.querySelector('img'); if(u){ img.src=u; } else { img.classList.add('hidden'); } });
     }
   }catch(err){
     logList.innerHTML = '<li>Gagal memuat</li>';
