@@ -410,6 +410,7 @@ async function editReturn(id){
     if(!j || !j.ok) throw new Error(j?.error || 'Gagal');
     showOverlay('ok','Tersimpan','');
     loadLogs();
+    alert('Jam pengembalian diperbarui');
   }catch(err){
     showOverlay('err','Gagal', err?.message || err);
   }
@@ -428,6 +429,7 @@ async function deleteLog(id){
     if(!j || !j.ok) throw new Error(j?.error || 'Gagal');
     showOverlay('ok','Dihapus','');
     loadLogs();
+    alert('Data berhasil dihapus');
   }catch(err){
     showOverlay('err','Gagal', err?.message || err);
   }

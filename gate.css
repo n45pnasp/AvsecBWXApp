@@ -63,6 +63,7 @@
   padding:8px 12px; border-radius:10px; cursor:pointer;
 }
 .t-btn:hover{ filter:brightness(1.05) }
+.t-btn.danger{ background:#7a1c1c; border-color:#a43434; }
 
 .wheels{
   position:relative;
