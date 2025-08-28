@@ -47,6 +47,14 @@ let kodePas = "";
 const pad2 = n => String(n).padStart(2,"0");
 const clamp = (v,min,max)=> v<min?min : v>max?max : v;
 const ITEM_H=36, VISIBLE=5, SPACER=((VISIBLE-1)/2)*ITEM_H;
+const formatTimeWIB = str => {
+  if(!str) return "";
+  const m = String(str).trim().match(/(\d{1,2})[:.](\d{2})/);
+  if(!m) return "";
+  const h = pad2(parseInt(m[1],10));
+  const mn = pad2(parseInt(m[2],10));
+  return `${h}:${mn} WIB`;
+};
 
 timeInput.addEventListener("change", () => {
   timeLabel.textContent = timeInput.value || "Pilih Waktu";
@@ -443,7 +451,7 @@ async function loadLogs(){
     }
     for(const r of j.rows){
       const gate = r.gate || (r.kodeKunci === '1139' ? 'GATE 1' : (r.kodeKunci === '1140' ? 'GATE 2' : ''));
-      const retTime = r.jamKembali ? `${r.jamKembali} WIB` : '';
+      const retTime = formatTimeWIB(r.jamKembali);
       const li = document.createElement('li');
       li.className = 'log-item';
       li.dataset.id = r.id || '';
