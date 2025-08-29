@@ -1,7 +1,7 @@
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-const SCRIPT_URL   = "https://pasvisit.avsecbwx2018.workers.dev/";
+const SCRIPT_URL   = "https://script.google.com/macros/s/AKfycbyz34RVSCPWSP8WU4vj-OiFUghRzp_xuKoRH1t_QTOXYn1nfbbdwBxUj9FWcGwQCLN3/exec";
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";
 const SHARED_TOKEN = "N45p";
 
