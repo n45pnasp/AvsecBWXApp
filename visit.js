@@ -10,7 +10,7 @@ const { auth } = getFirebase();
 let authName = "";
 const pemberiPasInput = document.getElementById("pemberiPas");
 onAuthStateChanged(auth, u => {
-  authName = u?.displayName || u?.email || "";
+  authName = (u?.displayName || u?.email || "").toUpperCase();
   if (pemberiPasInput) pemberiPasInput.value = authName;
 });
 
@@ -364,28 +364,28 @@ submitBtn.addEventListener('click', onSubmit);
 async function onSubmit(){
   if (submitting) return;
   const waktu = timeInput.value.trim();
-  const nama  = namaEl.value.trim();
-  const inst  = instansiEl.value.trim();
-  const namaPinjam = namaPeminjamEl.value.trim();
-  const instPinjam = instansiPeminjamEl.value.trim();
-  const jenis = jenisPas.trim();
+  const nama  = namaEl.value.trim().toUpperCase();
+  const inst  = instansiEl.value.trim().toUpperCase();
+  const namaPinjam = namaPeminjamEl.value.trim().toUpperCase();
+  const instPinjam = instansiPeminjamEl.value.trim().toUpperCase();
+  const jenis = jenisPas.trim().toUpperCase();
 
   if (!waktu || !photoData || !nama || !inst || !namaPinjam || !instPinjam || !jenis){
     showOverlay('err','Data belum lengkap','');
     return;
   }
 
-  const payload = { 
-    action:"add", // eksplisit
-    token:SHARED_TOKEN, 
-    waktu, 
-    namaPendamping:nama, 
-    instansiPendamping:inst, 
-    namaPeminjam:namaPinjam, 
-    instansiPeminjam:instPinjam, 
-    jenisPas:jenis, 
-    pemberiPas:authName, 
-    photo:photoData 
+  const payload = {
+    action:"ADD", // eksplisit
+    token:SHARED_TOKEN,
+    waktu,
+    namaPendamping:nama,
+    instansiPendamping:inst,
+    namaPeminjam:namaPinjam,
+    instansiPeminjam:instPinjam,
+    jenisPas:jenis,
+    pemberiPas:authName,
+    photo:photoData
   };
 
   submitting = true; refreshSubmitState();
@@ -438,7 +438,7 @@ async function loadLogs(){
       const timeStr = r.waktu ? formatTime(r.waktu) + ' WIB' : '-';
       li.innerHTML = `\
         <div><span class="label">Jam Peminjaman :</span> ${timeStr}</div>\
-        <div><span class="label">Jenis PAS :</span> ${r.jenisPas || '-'}</div>\
+        <div><span class="label">Jenis PAS :</span> ${(r.jenisPas || '-').toUpperCase()}</div>\
         <div><span class="label">Penyerah PAS :</span> ${(r.pemberiPas || '-').toUpperCase()}</div>`;
       logList.appendChild(li);
     }
