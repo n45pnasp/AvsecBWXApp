@@ -7,6 +7,7 @@ requireAuth({ loginPath: "index.html", hideWhileChecking: true });
    KONFIG KIRIMAN & UPLOAD
    ========================= */
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwAPnJy8zZlae5B6pc6L8rQzTzqHw5veDrBwlTaYuSf39-gOQsArJXSWA9w0Oh227J4/exec"; // Web App / proxy
+const SHARED_TOKEN = "N45p"; // samakan dengan Apps Script
 
 // (Opsional) endpoint upload fotomu (Cloudflare Worker / Apps Script upload) → return {url: "https://..."}
 const UPLOAD_ENDPOINT = ""; // contoh: "https://upload.avsecbwx2018.workers.dev"; kosong = skip upload
@@ -26,6 +27,7 @@ const manualForm = document.getElementById("manualForm");
 const manualNama = document.getElementById("manualNama");
 const manualFlight = document.getElementById("manualFlight");
 const manualNamaLabel = manualForm.querySelector('label[for="manualNama"]');
+const metodeSel = document.getElementById("jenisPemeriksaan");
 
 const objekSel = document.getElementById("objek");
 const objekField = objekSel.parentElement;
@@ -136,6 +138,7 @@ function setMode(m){
   flightEl.textContent = "-";
   manualNama.value = "";
   manualFlight.value = "";
+  metodeSel.value = "";
   isiBarangInp.value = "";
   tindakanSel.value = "";
   tipePiSel.value = "";
@@ -579,6 +582,7 @@ async function submitRandom() {
     const tipePi = (tipePiSel.value || "").trim();         // Jenis DG/DA
     const petugas = (petugasInp.value || "").trim();
     const supervisor = (supervisorInp.value || "").trim();
+    const metode = (metodeSel.value || "").trim();
 
     // Validasi ringan
     if (!nama) throw new Error("Nama tidak boleh kosong.");
@@ -587,6 +591,7 @@ async function submitRandom() {
     if ((mode === "PSCP" && objekSel.value === "barang") || mode !== "PSCP") {
       if (!jenisBarang) throw new Error("Isi/Jenis barang belum diisi.");
     }
+    if (!metode) throw new Error("Metode pemeriksaan belum dipilih.");
 
     // Upload foto (opsional)
     const fotoUrl = await uploadPhotoIfAny();
@@ -603,7 +608,7 @@ async function submitRandom() {
         ...(mode === "PSCP" ? { objekPemeriksaan: objekSel.value || "" } : {}),
         jenisBarang,
         petugas,
-        metode: "Manual", // kalau punya dropdown metode, ganti ambil dari input
+        metode,
         supervisor,
         fotoUrl,
       }
