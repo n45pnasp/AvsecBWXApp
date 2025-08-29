@@ -262,6 +262,7 @@ async function startScan(){
     setWaitingUI(true);
     ensureVideo();
     ensureOverlay();
+    if (!scanState.video) throw new Error('Video element tidak tersedia');
     document.body.classList.add('scan-active');
 
     const constraints = {
@@ -274,11 +275,16 @@ async function startScan(){
       audio: false
     };
 
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Kamera tidak didukung');
+    }
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     scanState.stream = stream;
-    scanState.video.srcObject = stream;
+    const vid = scanState.video;
+    if (!vid) throw new Error('Video element hilang');
+    vid.srcObject = stream;
 
-    await scanState.video.play();
+    await vid.play();
 
     scanState.usingDetector = false;
     scanState.detector = null;
@@ -629,6 +635,7 @@ async function submitRandom() {
     // POST ke Web App / Proxy
     const res = await fetch(SCRIPT_URL, {
       method: "POST",
+      mode: "cors",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
@@ -658,7 +665,10 @@ async function submitRandom() {
 
   } catch (err) {
     console.error(err);
-    alert(err.message || err);
+    const msg = err?.message === "Failed to fetch"
+      ? "Tidak dapat terhubung ke server."
+      : (err.message || err);
+    alert(msg);
   } finally {
     submitBtn.disabled = false;
     submitBtn.setAttribute("aria-busy", "false");
