@@ -52,6 +52,7 @@
 /* List view */
 .log-list{ list-style:none; margin:0; padding:0; display:grid; gap:8px; }
 .log-item{ background:#1f2937; border:1px solid var(--border); border-radius:12px; padding:8px; }
+.log-item .label{ font-weight:600; }
 
 /* Time picker wheel */
 .time-sheet{

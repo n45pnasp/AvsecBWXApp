@@ -1,7 +1,7 @@
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-const SCRIPT_URL   = "https://script.google.com/macros/s/AKfycbyz34RVSCPWSP8WU4vj-OiFUghRzp_xuKoRH1t_QTOXYn1nfbbdwBxUj9FWcGwQCLN3/exec";
+const SCRIPT_URL   = "https://pasvisit.avsecbwx2018.workers.dev/";
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";
 const SHARED_TOKEN = "N45p";
 
@@ -342,6 +342,15 @@ function clearForm(){
 }
 
 // ====== Load list ======
+function formatTime(val){
+  const d = new Date(val);
+  if(!isNaN(d)){
+    return d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',hour12:false});
+  }
+  const m = /^(\d{1,2}):(\d{2})/.exec(val || '');
+  return m ? `${m[1].padStart(2,'0')}:${m[2]}` : val;
+}
+
 async function loadLogs(){
   logList.innerHTML = '<li class="muted">Memuat…</li>';
   try{
@@ -354,8 +363,11 @@ async function loadLogs(){
     if(!res.ok || !j.rows || !j.rows.length){ logList.innerHTML='<li class="muted">Belum ada data</li>'; return; }
     for(const r of j.rows){
       const li=document.createElement('li'); li.className='log-item';
-      const timeStr = r.waktu ? `${r.waktu} WIB` : '-';
-      li.textContent = `${timeStr} - ${r.jenisPas || '-'} - ${r.pemberiPas || '-'}`;
+      const timeStr = r.waktu ? formatTime(r.waktu) + ' WIB' : '-';
+      li.innerHTML = `\
+        <div><span class="label">Jam Peminjaman :</span> ${timeStr}</div>\
+        <div><span class="label">Jenis PAS :</span> ${r.jenisPas || '-'}</div>\
+        <div><span class="label">Penyerah PAS :</span> ${r.pemberiPas || '-'}</div>`;
       logList.appendChild(li);
     }
   }catch(err){ logList.innerHTML='<li class="muted">Gagal memuat</li>'; }
