@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Random Check</title>
+  <link rel="stylesheet" href="random.css" />
+  <style>html{visibility:hidden}</style>
+</head>
+<body>
+  <div class="app-bar">
+    <a class="back-btn" aria-label="Kembali" href="index.html">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
+      </svg>
+    </a>
+    <h1 class="app-title">Random Check</h1>
+  </div>
+
+  <main class="container">
+    <section class="card">
+      <div class="btn-group">
+        <button type="button" class="btn" id="btnPSCP">PSCP</button>
+        <button type="button" class="btn" id="btnHBS">HBS</button>
+        <button type="button" class="btn" id="btnCARGO">CARGO</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <button id="scanBtn" type="button" class="btn full">Scan Boarding Pass</button>
+      <div class="field">
+        <label>Nama Penumpang</label>
+        <div id="namaPenumpang">-</div>
+      </div>
+      <div class="field">
+        <label>No Flight</label>
+        <div id="noFlight">-</div>
+      </div>
+      <div class="field">
+        <label>Waktu Scan</label>
+        <div id="waktuScan">-</div>
+      </div>
+      <div class="field">
+        <label for="jenisPemeriksaan">Pilih Pemeriksaan</label>
+        <select id="jenisPemeriksaan">
+          <option value="">Pilih</option>
+          <option>Manual Check</option>
+          <option>Random Check</option>
+          <option>ETD</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="objek">Pilih Objek Pemeriksaan</label>
+        <select id="objek">
+          <option value="">Pilih</option>
+          <option value="orang">Orang</option>
+          <option value="barang">Barang</option>
+        </select>
+      </div>
+    </section>
+
+    <section id="barangCard" class="card hidden">
+      <div class="field">
+        <label for="isiBarang">Isi Barang</label>
+        <input id="isiBarang" type="text" />
+      </div>
+      <div class="field">
+        <label for="tindakanBarang">Tindakan Barang</label>
+        <select id="tindakanBarang">
+          <option value="">Pilih</option>
+          <option>Dibawa</option>
+          <option>Ditinggal</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="tipePi">Tipe Prohibited Item</label>
+        <select id="tipePi">
+          <option value="">Pilih</option>
+          <option>Dangerous Goods</option>
+          <option>Dangerous Article</option>
+        </select>
+      </div>
+    </section>
+
+    <button id="submitBtn" class="btn primary full" type="button">Kirim</button>
+  </main>
+
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet" role="document">
+      <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="icon spinner" id="ovIcon"></div>
+      <div class="texts">
+        <div class="title" id="ovTitle"></div>
+        <div class="desc" id="ovDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="random.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+@import url('./ACP.css');
+
+.field select{
+  width:100%;
+  background:#0b1324;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  font-size:var(--fs-base);
+}
+
+.btn-group{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
