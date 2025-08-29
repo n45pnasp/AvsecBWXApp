@@ -25,7 +25,10 @@ const tipePiField = tipePiSel.parentElement;
 let mode = "PSCP";
 
 function updateTipePiVisibility(){
-  if (mode === "PSCP" && tindakanSel.value === "Ditinggal"){
+  const needTipePi =
+    (mode === "PSCP" && objekSel.value === "barang" && tindakanSel.value === "Ditinggal") ||
+    (mode === "HBSCP" && tindakanSel.value === "Ditinggal");
+  if (needTipePi){
     tipePiField.classList.remove("hidden");
   }else{
     tipePiField.classList.add("hidden");
@@ -41,7 +44,11 @@ function updateBarangCard(){
     }else{
       barangCard.classList.add("hidden");
     }
-  }else{
+  }else if (mode === "HBSCP"){
+    barangCard.classList.remove("hidden");
+    tindakanField.classList.remove("hidden");
+    updateTipePiVisibility();
+  }else{ // CARGO
     barangCard.classList.remove("hidden");
     tindakanField.classList.add("hidden");
     tipePiField.classList.add("hidden");
