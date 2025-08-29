@@ -24,7 +24,8 @@
 .row-2 .btn{ width:100%; }
 .row-2{ gap:12px; }
 
-#scanPassBtn{ margin-top:12px; }
+#scanPassBtn{ margin:12px 0; }
+#submitBtn{ margin-top:12px; }
 
 /* Preview upload seperti lb_all */
 .upload-info{

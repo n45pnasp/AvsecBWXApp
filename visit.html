@@ -22,9 +22,9 @@
     <section class="card">
       <button id="scanBtn" type="button" class="qr-btn">
         <img src="icons/qrcode.png" alt="QR" />
-        <span>Scan Barcode</span>
+        <span>Scan Pas Pendamping</span>
       </button>
-      <div id="pendampingInfo" class="info-card hidden">
+      <div id="pendampingInfo" class="info-card">
         <div class="info-name">
           <span class="info-label">Nama Pendamping</span>
           <span id="namaPendampingText" class="info-value">-</span>
@@ -57,7 +57,10 @@
           <div id="uploadName" class="muted"></div>
         </div>
       </div>
-      <button id="scanPassBtn" type="button" class="btn full">Scan Pas Visitor</button>
+      <button id="scanPassBtn" type="button" class="qr-btn">
+        <img src="icons/qrcode.png" alt="QR" />
+        <span>Scan Pas Visitor</span>
+      </button>
       <input id="jenisPas" type="hidden" />
       <input id="pemberiPas" type="hidden" />
       <button id="submitBtn" class="btn primary full" type="button">Kirim</button>
