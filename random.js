@@ -23,6 +23,9 @@ const tindakanSel = document.getElementById("tindakanBarang");
 const tipePiSel = document.getElementById("tipePi");
 const tindakanField = tindakanSel.parentElement;
 const tipePiField = tipePiSel.parentElement;
+const fotoBtn = document.getElementById("fotoBtn");
+const fotoInput = document.getElementById("fotoInput");
+const fotoPreview = document.getElementById("fotoPreview");
 
 const petugasInp = document.getElementById("petugas");
 const supervisorInp = document.getElementById("supervisor");
@@ -38,6 +41,24 @@ onAuthStateChanged(auth, (user) => {
 let mode = "PSCP";
 
 const supervisors = { PSCP: "", HBSCP: "", CARGO: "" };
+
+function resetFoto(){
+  fotoInput.value = "";
+  fotoPreview.src = "";
+  fotoPreview.classList.add("hidden");
+}
+
+fotoBtn.addEventListener("click", () => fotoInput.click());
+
+fotoInput.addEventListener("change", () => {
+  const file = fotoInput.files[0];
+  if (file){
+    fotoPreview.src = URL.createObjectURL(file);
+    fotoPreview.classList.remove("hidden");
+  }else{
+    resetFoto();
+  }
+});
 
 function setSupervisor(){
   const val = supervisors[mode] || "";
@@ -77,6 +98,7 @@ function updateBarangCard(){
       updateTipePiVisibility();
     }else{
       barangCard.classList.add("hidden");
+      resetFoto();
     }
   }else if (mode === "HBSCP"){
     barangCard.classList.remove("hidden");
@@ -102,6 +124,7 @@ function setMode(m){
   document.getElementById("isiBarang").value = "";
   tindakanSel.value = "";
   tipePiSel.value = "";
+  resetFoto();
 
   setSupervisor();
 

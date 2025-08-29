@@ -81,6 +81,11 @@
 
     <section id="barangCard" class="card hidden">
       <div class="field">
+        <button id="fotoBtn" type="button" class="btn full">Ambil Foto</button>
+        <input id="fotoInput" type="file" accept="image/*" capture="environment" class="hidden" />
+        <img id="fotoPreview" class="photo-preview hidden" alt="Foto barang" />
+      </div>
+      <div class="field">
         <label for="isiBarang">Isi Barang</label>
         <input id="isiBarang" type="text" />
       </div>

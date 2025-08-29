@@ -49,3 +49,13 @@
 .qr-btn img{ width:28px; height:28px; display:block; filter:invert(1); }
 .qr-btn small{ color:rgba(255,255,255,.85); font-weight:400; display:block; }
 .qr-btn.is-waiting{ opacity:.7; pointer-events:none; }
+
+/* Preview foto barang */
+#barangCard .photo-preview{
+  width:100%;
+  display:block;
+  border:1px solid var(--border);
+  border-radius:12px;
+  object-fit:cover;
+  max-height:240px;
+}
