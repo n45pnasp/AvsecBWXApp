@@ -1,25 +1,90 @@
 import { requireAuth } from "./auth-guard.js";
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
-const objekSel = document.getElementById("objek");
-const barangCard = document.getElementById("barangCard");
-objekSel.addEventListener("change", () => {
-  if (objekSel.value === "barang") {
-    barangCard.classList.remove("hidden");
-  } else {
-    barangCard.classList.add("hidden");
-  }
-});
-// =========================
-//  Scan Boarding Pass
-// =========================
+const btnPSCP = document.getElementById("btnPSCP");
+const btnHBSCP = document.getElementById("btnHBSCP");
+const btnCARGO = document.getElementById("btnCARGO");
+
 const scanBtn = document.getElementById("scanBtn");
+const scanResult = document.getElementById("scanResult");
 const namaEl = document.getElementById("namaPenumpang");
 const flightEl = document.getElementById("noFlight");
-const scanResult = document.getElementById("scanResult");
 const manualForm = document.getElementById("manualForm");
 const manualNama = document.getElementById("manualNama");
 const manualFlight = document.getElementById("manualFlight");
+const manualNamaLabel = manualForm.querySelector('label[for="manualNama"]');
+
+const objekSel = document.getElementById("objek");
+const objekField = objekSel.parentElement;
+const barangCard = document.getElementById("barangCard");
+const tindakanField = document.getElementById("tindakanBarang").parentElement;
+const tipePiField = document.getElementById("tipePi").parentElement;
+
+let mode = "PSCP";
+
+function updateBarangCard(){
+  if (mode === "PSCP"){
+    if (objekSel.value === "barang"){
+      barangCard.classList.remove("hidden");
+      tindakanField.classList.remove("hidden");
+      tipePiField.classList.remove("hidden");
+    }else{
+      barangCard.classList.add("hidden");
+    }
+  }else{
+    barangCard.classList.remove("hidden");
+    tindakanField.classList.add("hidden");
+    tipePiField.classList.add("hidden");
+  }
+}
+
+objekSel.addEventListener("change", updateBarangCard);
+
+function setMode(m){
+  mode = m;
+  stopScan();
+  namaEl.textContent = "-";
+  flightEl.textContent = "-";
+  manualNama.value = "";
+  manualFlight.value = "";
+  document.getElementById("isiBarang").value = "";
+  document.getElementById("tindakanBarang").value = "";
+  document.getElementById("tipePi").value = "";
+
+  if (m === "PSCP"){
+    scanBtn.classList.remove("hidden");
+    scanResult.classList.remove("hidden");
+    manualForm.classList.add("hidden");
+    manualNamaLabel.textContent = "Nama Penumpang";
+    objekField.classList.remove("hidden");
+    objekSel.value = "";
+    updateBarangCard();
+  }else if (m === "HBSCP"){
+    scanBtn.classList.remove("hidden");
+    scanResult.classList.remove("hidden");
+    manualForm.classList.add("hidden");
+    manualNamaLabel.textContent = "Nama Penumpang";
+    objekField.classList.add("hidden");
+    updateBarangCard();
+  }else if (m === "CARGO"){
+    scanBtn.classList.add("hidden");
+    scanResult.classList.add("hidden");
+    manualForm.classList.remove("hidden");
+    manualNamaLabel.textContent = "Nama Pengirim";
+    objekField.classList.add("hidden");
+    updateBarangCard();
+  }
+}
+
+btnPSCP.addEventListener("click", () => setMode("PSCP"));
+btnHBSCP.addEventListener("click", () => setMode("HBSCP"));
+btnCARGO.addEventListener("click", () => setMode("CARGO"));
+
+setMode("PSCP");
+
+// =========================
+//  Scan Boarding Pass
+// =========================
 
 function splitFromBack(str, maxSplits){
   const parts = []; let remaining = str;
