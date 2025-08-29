@@ -22,6 +22,9 @@
 #timeLabel{ pointer-events:none; }
 .row-2 > *{ width:100%; }
 .row-2 .btn{ width:100%; }
+.row-2{ gap:12px; }
+
+#scanPassBtn{ margin-top:12px; }
 
 /* Preview upload seperti lb_all */
 .upload-info{

@@ -24,7 +24,7 @@ const instansiEl   = document.getElementById("instansiPendamping");
 const pendampingInfo = document.getElementById("pendampingInfo");
 const namaPendampingText = document.getElementById("namaPendampingText");
 const instansiPendampingText = document.getElementById("instansiPendampingText");
-const namaPasDisp  = document.getElementById("namaPasDisplay");
+const jenisPasInput  = document.getElementById("jenisPas");
 const pickPhoto    = document.getElementById("pickPhotoBtn");
 const fileInput    = document.getElementById("fileInput");
 const preview      = document.getElementById("preview");
@@ -213,7 +213,8 @@ async function receiveBarcode(code){
 
 function receivePass(code){
   jenisPas = (code || '').trim().toUpperCase();
-  if (namaPasDisp) namaPasDisp.textContent = jenisPas || '-';
+  if (scanPassBtn) scanPassBtn.textContent = jenisPas || 'Scan Pas Visitor';
+  if (jenisPasInput) jenisPasInput.value = jenisPas;
   hideOverlay();
 }
 
@@ -313,7 +314,8 @@ function clearForm(){
   timeInput.value=""; timeLabel.textContent="Pilih Waktu"; photoData=""; jenisPas="";
   uploadInfo.classList.add('hidden'); uploadName.textContent=""; uploadStatus.textContent="Menunggu foto…";
   namaEl.value=""; instansiEl.value="";
-  if (namaPasDisp) namaPasDisp.textContent="-";
+  if (scanPassBtn) scanPassBtn.textContent = 'Scan Pas Visitor';
+  if (jenisPasInput) jenisPasInput.value = '';
   if (namaPendampingText) namaPendampingText.textContent = '-';
   if (instansiPendampingText) instansiPendampingText.textContent = '-';
   if (pendampingInfo) pendampingInfo.classList.add('hidden');
