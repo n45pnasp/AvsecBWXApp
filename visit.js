@@ -1,7 +1,7 @@
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-const SCRIPT_URL   = "https://pasvisit.avsecbwx2018.workers.dev/";
+const SCRIPT_URL   = "https://pasvisit.avsecbwx2018.workers.dev/"; // POST add/delete + GET list
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";
 const SHARED_TOKEN = "N45p";
 
@@ -47,7 +47,9 @@ ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
 let jenisPas = "";
 let photoData = "";
 let scanMode = "pendamping";
+let submitting = false;
 
+/* ====== Helpers ====== */
 function showOverlay(state, title, desc){
   overlay.classList.remove("hidden");
   ovIcon.className = "icon " + state;
@@ -60,7 +62,39 @@ function showOverlay(state, title, desc){
 }
 function hideOverlay(){ overlay.classList.add("hidden"); }
 
-// ====== Scan Barcode ======
+async function fetchJSON(url, opts={}, timeoutMs=15000, retries=1){
+  for(let attempt=0; attempt<=retries; attempt++){
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), timeoutMs);
+    try{
+      const res = await fetch(url, { ...opts, signal: ctrl.signal, headers:{ 'Accept':'application/json', ...(opts.headers||{}) }});
+      clearTimeout(t);
+      if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return await res.json();
+    }catch(e){
+      clearTimeout(t);
+      if(attempt===retries) throw e;
+      await new Promise(r=>setTimeout(r, 500*(attempt+1)));
+    }
+  }
+}
+
+function formReady(){
+  return !!(
+    timeInput.value.trim() &&
+    photoData &&
+    namaEl.value.trim() &&
+    instansiEl.value.trim() &&
+    namaPeminjamEl.value.trim() &&
+    instansiPeminjamEl.value.trim() &&
+    jenisPas.trim()
+  );
+}
+function refreshSubmitState(){
+  submitBtn.disabled = !formReady() || submitting;
+}
+
+/* ====== Scan Barcode ====== */
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
 
 function injectScanStyles(){
@@ -191,12 +225,12 @@ async function handleScanSuccess(code){
   else receivePass(code);
 }
 
+/* ====== Lookup ====== */
 async function receiveBarcode(code){
   try{
     showOverlay('spinner','Mengambil data…','');
     const url = LOOKUP_URL + '?token=' + SHARED_TOKEN + '&key=' + encodeURIComponent(code);
-    const res = await fetch(url);
-    const j = await res.json();
+    const j = await fetchJSON(url, {}, 12000, 1);
     if (j && j.columns){
       const nama = (j.columns.B || '-').toUpperCase();
       const inst = (j.columns.E || '-').toUpperCase();
@@ -217,13 +251,13 @@ async function receivePass(code){
   try{
     showOverlay('spinner','Mengambil data…','');
     const url = LOOKUP_URL + '?token=' + SHARED_TOKEN + '&key=' + encodeURIComponent(code);
-    const res = await fetch(url);
-    const j = await res.json();
+    const j = await fetchJSON(url, {}, 12000, 1);
     if (j && j.columns){
       jenisPas = (j.columns.B || j.columns.C || '').toUpperCase();
       if (scanPassText) scanPassText.textContent = jenisPas || 'Scan Pas Visitor';
       if (jenisPasInput) jenisPasInput.value = jenisPas;
       hideOverlay();
+      refreshSubmitState();
     } else {
       showOverlay('err', j?.error || 'Data tidak ditemukan','');
     }
@@ -232,23 +266,44 @@ async function receivePass(code){
   }
 }
 
-// ====== Photo Upload ======
+/* ====== Photo Upload (resize + compress) ====== */
+async function resizeImageFile(file, maxW=1200, maxH=1200, mime='image/jpeg', quality=0.8){
+  const imgUrl = URL.createObjectURL(file);
+  const img = new Image();
+  await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; img.src=imgUrl; });
+  const w = img.naturalWidth, h = img.naturalHeight;
+  let nw=w, nh=h;
+  if (w>maxW || h>maxH){
+    const ratio = Math.min(maxW/w, maxH/h);
+    nw = Math.round(w*ratio); nh = Math.round(h*ratio);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = nw; canvas.height = nh;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, nw, nh);
+  const dataUrl = canvas.toDataURL(mime, quality);
+  URL.revokeObjectURL(imgUrl);
+  return dataUrl;
+}
+
 if (pickPhoto) pickPhoto.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', () => {
+fileInput.addEventListener('change', async () => {
   const file = fileInput.files[0];
   if (!file){ return; }
-  const reader = new FileReader();
-  reader.onload = () => {
-    photoData = reader.result;
+  if (!/^image\//i.test(file.type)){ showOverlay('err','File bukan gambar',''); return; }
+  try{
+    photoData = await resizeImageFile(file, 1200, 1200, 'image/jpeg', 0.8);
     preview.src = photoData;
     uploadInfo.classList.remove('hidden');
-    uploadStatus.textContent = 'Foto siap diunggah';
+    uploadStatus.textContent = 'Foto siap diunggah (terkompres)';
     uploadName.textContent = file.name;
-  };
-  reader.readAsDataURL(file);
+  }catch(e){
+    showOverlay('err','Gagal memproses foto', e.message||e);
+  }
+  refreshSubmitState();
 });
 
-// ====== Time Picker ======
+/* ====== Time Picker ====== */
 const timeModal = document.getElementById('timeModal');
 const wheelHour = document.getElementById('wheelHour');
 const wheelMin  = document.getElementById('wheelMin');
@@ -270,16 +325,15 @@ function buildWheel(el,count){
 }
 function enableWheel(el,max){
   let startY=0,startTop=0,dragging=false,isSnapping=false,timer;
-  const maxScroll= (max+1)*ITEM_H;
   function snapTo(val){ val=clamp(val,0,max); el.scrollTo({top:val*ITEM_H,behavior:'instant'}); }
   function centerIndex(){ return clamp(Math.round(el.scrollTop/ITEM_H),0,max); }
   function snapToCenter(){ snapTo(centerIndex()); }
   el.addEventListener('pointerdown',e=>{ dragging=true; startY=e.clientY; startTop=el.scrollTop; el.setPointerCapture(e.pointerId); });
   el.addEventListener('pointermove',e=>{ if(!dragging)return; const dy=e.clientY-startY; el.scrollTop=startTop-dy; });
-  function end(){ if(!dragging)return; dragging=false; isSnapping=true; snapToCenter(); requestAnimationFrame(()=>{isSnapping=false;}); }
+  function end(){ if(!dragging)return; dragging=false; snapToCenter(); }
   el.addEventListener('pointerup',end); el.addEventListener('pointercancel',end); el.addEventListener('pointerleave',end);
-  el.addEventListener('scroll',()=>{ if(isSnapping)return; clearTimeout(timer); timer=setTimeout(()=>{ isSnapping=true; snapToCenter(); requestAnimationFrame(()=>{isSnapping=false;}); },140); },{passive:true});
-  el.addEventListener('click',e=>{ const it=e.target.closest('.item'); if(!it)return; isSnapping=true; snapTo(+it.dataset.val); requestAnimationFrame(()=>{isSnapping=false;}); });
+  el.addEventListener('scroll',()=>{ clearTimeout(timer); timer=setTimeout(()=>{ snapToCenter(); },140); },{passive:true});
+  el.addEventListener('click',e=>{ const it=e.target.closest('.item'); if(!it)return; snapTo(+it.dataset.val); });
 }
 function openTimePicker(){
   if(!wheelsBuilt){ buildWheel(wheelHour,24); buildWheel(wheelMin,60); enableWheel(wheelHour,23); enableWheel(wheelMin,59); wheelsBuilt=true; }
@@ -287,7 +341,7 @@ function openTimePicker(){
   wheelHour.scrollTop=h*ITEM_H; wheelMin.scrollTop=m*ITEM_H; timeModal.classList.remove('hidden');
 }
 function closeTimePicker(save){
-  if(save){ const h=Math.round(wheelHour.scrollTop/ITEM_H); const m=Math.round(wheelMin.scrollTop/ITEM_H); const val=`${pad2(h)}:${pad2(m)}`; timeInput.value=val; timeLabel.textContent=val; }
+  if(save){ const h=Math.round(wheelHour.scrollTop/ITEM_H); const m=Math.round(wheelMin.scrollTop/ITEM_H); const val=`${pad2(h)}:${pad2(m)}`; timeInput.value=val; timeLabel.textContent=val; refreshSubmitState(); }
   timeModal.classList.add('hidden');
 }
 function disableNativeTimePicker(){
@@ -298,35 +352,52 @@ function disableNativeTimePicker(){
 }
 btnCancel.addEventListener('click',()=>closeTimePicker(false));
 btnSave.addEventListener('click',()=>closeTimePicker(true));
-
 disableNativeTimePicker();
 
-// ====== Submit ======
+/* ====== Submit ====== */
+[namaEl, instansiEl, namaPeminjamEl, instansiPeminjamEl].forEach(el => {
+  el.addEventListener('input', refreshSubmitState);
+});
+
 submitBtn.addEventListener('click', onSubmit);
 
 async function onSubmit(){
+  if (submitting) return;
   const waktu = timeInput.value.trim();
   const nama  = namaEl.value.trim();
   const inst  = instansiEl.value.trim();
   const namaPinjam = namaPeminjamEl.value.trim();
   const instPinjam = instansiPeminjamEl.value.trim();
   const jenis = jenisPas.trim();
+
   if (!waktu || !photoData || !nama || !inst || !namaPinjam || !instPinjam || !jenis){
     showOverlay('err','Data belum lengkap','');
     return;
   }
-  const payload = { token:SHARED_TOKEN, waktu, namaPendamping:nama, instansiPendamping:inst, namaPeminjam:namaPinjam, instansiPeminjam:instPinjam, jenisPas:jenis, pemberiPas:authName, photo:photoData };
-  submitBtn.disabled=true;
+
+  const payload = { 
+    action:"add", // eksplisit
+    token:SHARED_TOKEN, 
+    waktu, 
+    namaPendamping:nama, 
+    instansiPendamping:inst, 
+    namaPeminjam:namaPinjam, 
+    instansiPeminjam:instPinjam, 
+    jenisPas:jenis, 
+    pemberiPas:authName, 
+    photo:photoData 
+  };
+
+  submitting = true; refreshSubmitState();
   showOverlay('spinner','Mengirim data…','');
   try{
-    const res = await fetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    const j = await res.json();
+    const j = await fetchJSON(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }, 20000, 1);
     if(!j || !j.ok) throw new Error(j?.error || 'Gagal');
     showOverlay('ok','Data terkirim','');
     clearForm();
-    loadLogs();
+    await loadLogs();
   }catch(err){ showOverlay('err','Gagal', err.message||err); }
-  submitBtn.disabled=false;
+  submitting = false; refreshSubmitState();
 }
 
 function clearForm(){
@@ -339,20 +410,18 @@ function clearForm(){
   if (jenisPasInput) jenisPasInput.value = '';
   if (namaPendampingText) namaPendampingText.textContent = '-';
   if (instansiPendampingText) instansiPendampingText.textContent = '-';
+  preview.src = "";
+  refreshSubmitState();
 }
 
-// ====== Load list ======
-function formatDateTime(val){
+/* ====== Load list ====== */
+function formatTime(val){
   const d = new Date(val);
   if(!isNaN(d)){
-    const parts = new Intl.DateTimeFormat('id-ID', {
-      timeZone:'Asia/Jakarta',
-      day:'2-digit', month:'2-digit', year:'numeric',
-      hour:'2-digit', minute:'2-digit', hour12:false
-    }).formatToParts(d).reduce((acc,p)=>{acc[p.type]=p.value;return acc;},{});
-    return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`;
+    return d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',hour12:false});
   }
-  return val;
+  const m = /^(\d{1,2}):(\d{2})/.exec(val || '');
+  return m ? `${m[1].padStart(2,'0')}:${m[2]}` : val;
 }
 
 async function loadLogs(){
@@ -361,15 +430,14 @@ async function loadLogs(){
     const url = new URL(SCRIPT_URL);
     url.searchParams.set('action','list');
     url.searchParams.set('token',SHARED_TOKEN);
-    const res = await fetch(url);
-    const j = await res.json();
+    const j = await fetchJSON(url.toString(), {}, 15000, 1);
     logList.innerHTML='';
-    if(!res.ok || !j.rows || !j.rows.length){ logList.innerHTML='<li class="muted">Belum ada data</li>'; return; }
+    if(!j.rows || !j.rows.length){ logList.innerHTML='<li class="muted">Belum ada data</li>'; return; }
     for(const r of j.rows){
       const li=document.createElement('li'); li.className='log-item';
-      const timeStr = r.waktu ? formatDateTime(r.waktu) + ' WIB' : '-';
+      const timeStr = r.waktu ? formatTime(r.waktu) + ' WIB' : '-';
       li.innerHTML = `\
-        <div><span class="label">Waktu Peminjaman :</span> ${timeStr}</div>\
+        <div><span class="label">Jam Peminjaman :</span> ${timeStr}</div>\
         <div><span class="label">Jenis PAS :</span> ${r.jenisPas || '-'}</div>\
         <div><span class="label">Penyerah PAS :</span> ${r.pemberiPas || '-'}</div>`;
       logList.appendChild(li);
@@ -378,4 +446,4 @@ async function loadLogs(){
 }
 
 loadLogs();
-
+refreshSubmitState();
