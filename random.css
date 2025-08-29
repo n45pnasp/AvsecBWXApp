@@ -16,6 +16,13 @@
   gap:8px;
 }
 
+#scanResult{
+  margin:12px 0;
+}
+#scanResult .field{
+  margin:0;
+}
+
 /* Tombol scan bergaya sama dengan boardingpass */
 .qr-btn{
   width:100%;
