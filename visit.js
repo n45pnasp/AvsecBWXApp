@@ -211,11 +211,23 @@ async function receiveBarcode(code){
   }
 }
 
-function receivePass(code){
-  jenisPas = (code || '').trim().toUpperCase();
-  if (scanPassText) scanPassText.textContent = jenisPas || 'Scan Pas Visitor';
-  if (jenisPasInput) jenisPasInput.value = jenisPas;
-  hideOverlay();
+async function receivePass(code){
+  try{
+    showOverlay('spinner','Mengambil data…','');
+    const url = LOOKUP_URL + '?token=' + SHARED_TOKEN + '&pass=' + encodeURIComponent(code);
+    const res = await fetch(url);
+    const j = await res.json();
+    if (j && j.columns){
+      jenisPas = (j.columns.B || j.columns.C || '').toUpperCase();
+      if (scanPassText) scanPassText.textContent = jenisPas || 'Scan Pas Visitor';
+      if (jenisPasInput) jenisPasInput.value = jenisPas;
+      hideOverlay();
+    } else {
+      showOverlay('err', j?.error || 'Data tidak ditemukan','');
+    }
+  }catch(err){
+    showOverlay('err','Gagal mengambil data', err.message || err);
+  }
 }
 
 // ====== Photo Upload ======
