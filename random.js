@@ -3,6 +3,17 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/fi
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
+/* =========================
+   KONFIG KIRIMAN & UPLOAD
+   ========================= */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwAPnJy8zZlae5B6pc6L8rQzTzqHw5veDrBwlTaYuSf39-gOQsArJXSWA9w0Oh227J4/exec"; // Web App / proxy
+
+// (Opsional) endpoint upload fotomu (Cloudflare Worker / Apps Script upload) → return {url: "https://..."}
+const UPLOAD_ENDPOINT = ""; // contoh: "https://upload.avsecbwx2018.workers.dev"; kosong = skip upload
+
+/* =========================
+   DOM
+   ========================= */
 const btnPSCP = document.getElementById("btnPSCP");
 const btnHBSCP = document.getElementById("btnHBSCP");
 const btnCARGO = document.getElementById("btnCARGO");
@@ -23,12 +34,15 @@ const tindakanSel = document.getElementById("tindakanBarang");
 const tipePiSel = document.getElementById("tipePi");
 const tindakanField = tindakanSel.parentElement;
 const tipePiField = tipePiSel.parentElement;
+const isiBarangInp = document.getElementById("isiBarang");
+
 const fotoBtn = document.getElementById("fotoBtn");
 const fotoInput = document.getElementById("fotoInput");
 const fotoPreview = document.getElementById("fotoPreview");
 
 const petugasInp = document.getElementById("petugas");
 const supervisorInp = document.getElementById("supervisor");
+const submitBtn = document.getElementById("submitBtn");
 
 const { app, auth } = getFirebase();
 const db = getDatabase(app);
@@ -38,8 +52,10 @@ onAuthStateChanged(auth, (user) => {
   console.log("Petugas:", petugasInp.value);
 });
 
+/* =========================
+   STATE & HELPERS UI
+   ========================= */
 let mode = "PSCP";
-
 const supervisors = { PSCP: "", HBSCP: "", CARGO: "" };
 
 function resetFoto(){
@@ -49,7 +65,6 @@ function resetFoto(){
 }
 
 fotoBtn.addEventListener("click", () => fotoInput.click());
-
 fotoInput.addEventListener("change", () => {
   const file = fotoInput.files[0];
   if (file){
@@ -121,7 +136,7 @@ function setMode(m){
   flightEl.textContent = "-";
   manualNama.value = "";
   manualFlight.value = "";
-  document.getElementById("isiBarang").value = "";
+  isiBarangInp.value = "";
   tindakanSel.value = "";
   tipePiSel.value = "";
   resetFoto();
@@ -156,13 +171,11 @@ function setMode(m){
 btnPSCP.addEventListener("click", () => setMode("PSCP"));
 btnHBSCP.addEventListener("click", () => setMode("HBSCP"));
 btnCARGO.addEventListener("click", () => setMode("CARGO"));
-
 setMode("PSCP");
 
-// =========================
-//  Scan Boarding Pass
-// =========================
-
+/* =========================
+   SCAN BOARDING PASS (unchanged)
+   ========================= */
 function splitFromBack(str, maxSplits){
   const parts = []; let remaining = str;
   for (let i=0; i<maxSplits; i++){
@@ -275,7 +288,7 @@ async function startScan(){
           scanState.detector = new window.BarcodeDetector({ formats });
           scanState.usingDetector = true;
         }
-      }catch(_){}
+      }catch(_){ }
     }
 
     scanState.running = true;
@@ -512,6 +525,139 @@ function injectScanStyles(){
   document.head.appendChild(style);
 }
 
-document.getElementById("submitBtn").addEventListener("click", () => {
-  // TODO: submission logic will be implemented later
-});
+/* =========================================================
+   SUBMISSION LOGIC — sesuai code.gs
+   ========================================================= */
+
+// util: ambil nama & flight tergantung mode
+function getNameAndFlight() {
+  if (mode === "CARGO") {
+    return {
+      nama: (manualNama.value || "").trim(),
+      flight: (manualFlight.value || "").trim()
+    };
+  }
+  // PSCP / HBSCP dari hasil scan (fallback ke manualForm jika terlihat)
+  const usingManual = !scanResult || scanResult.classList.contains("hidden");
+  return {
+    nama: usingManual ? (manualNama.value || "").trim() : (namaEl.textContent || "").trim(),
+    flight: usingManual ? (manualFlight.value || "").trim() : (flightEl.textContent || "").trim()
+  };
+}
+
+// opsional: unggah foto dan kembalikan URL
+async function uploadPhotoIfAny() {
+  const file = fotoInput.files?.[0];
+  if (!file) return "";
+
+  if (!UPLOAD_ENDPOINT) {
+    // Tidak ada endpoint upload → lewati, biarkan kosong.
+    return "";
+  }
+
+  // kirim multipart
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    const res = await fetch(UPLOAD_ENDPOINT, { method: "POST", body: form });
+    const j = await res.json().catch(()=> ({}));
+    return (j && (j.url || j.fileUrl || j.downloadUrl)) ? (j.url || j.fileUrl || j.downloadUrl) : "";
+  } catch (e) {
+    console.warn("Upload gagal:", e);
+    return "";
+  }
+}
+
+async function submitRandom() {
+  try {
+    submitBtn.disabled = true;
+    submitBtn.setAttribute("aria-busy", "true");
+
+    const { nama, flight } = getNameAndFlight();
+    const jenisBarang = (isiBarangInp.value || "").trim();
+    const tindakan = (tindakanSel.value || "").trim();     // "Ditinggal" / "Dibawa" / ""
+    const tipePi = (tipePiSel.value || "").trim();         // Jenis DG/DA
+    const petugas = (petugasInp.value || "").trim();
+    const supervisor = (supervisorInp.value || "").trim();
+
+    // Validasi ringan
+    if (!nama) throw new Error("Nama tidak boleh kosong.");
+    if (!flight) throw new Error("Flight tidak boleh kosong.");
+    if (mode === "PSCP" && objekSel.value === "") throw new Error("Pilih objek pemeriksaan.");
+    if ((mode === "PSCP" && objekSel.value === "barang") || mode !== "PSCP") {
+      if (!jenisBarang) throw new Error("Isi/Jenis barang belum diisi.");
+    }
+
+    // Upload foto (opsional)
+    const fotoUrl = await uploadPhotoIfAny();
+
+    // Susun payload sesuai code.gs
+    const payload = {
+      action: "submit",
+      token: SHARED_TOKEN,
+      target: mode, // "PSCP"|"HBSCP"|"CARGO"
+      data: {
+        nama,
+        flight,
+        // khusus PSCP
+        ...(mode === "PSCP" ? { objekPemeriksaan: objekSel.value || "" } : {}),
+        jenisBarang,
+        petugas,
+        metode: "Manual", // kalau punya dropdown metode, ganti ambil dari input
+        supervisor,
+        fotoUrl,
+      }
+    };
+
+    // Trigger PI_LIST jika Ditinggal pada PSCP/HBSCP
+    if ((mode === "PSCP" || mode === "HBSCP") && tindakan.toLowerCase() === "ditinggal") {
+      payload.data.tindakanBarang = "ditinggal";
+      payload.data.namaBarang = jenisBarang;     // atau pakai input nama barang spesifik jika ada
+      payload.data.jenisDGDA = tipePi;           // Jenis DG/DA
+      payload.data.fotoPiUrl = fotoUrl;          // pakai URL yang sama
+    } else if (mode === "CARGO") {
+      // di cargo tidak ada tindakan → jangan kirim field tindakan
+    } else {
+      payload.data.tindakanBarang = tindakan.toLowerCase(); // "dibawa" / ""
+    }
+
+    // POST ke Web App / Proxy
+    const res = await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.ok) {
+      throw new Error(j.error || `Gagal menyimpan (HTTP ${res.status})`);
+    }
+
+    // Berhasil
+    alert(`Tersimpan ke ${j.targetSheet} (row ${j.targetRow})${j.piListWritten ? ` + PI_LIST (row ${j.piListRow})` : ""}`);
+
+    // Reset minimal
+    if (mode === "CARGO") {
+      manualNama.value = "";
+      manualFlight.value = "";
+    } else {
+      namaEl.textContent = "-";
+      flightEl.textContent = "-";
+    }
+    isiBarangInp.value = "";
+    tindakanSel.value = "";
+    tipePiSel.value = "";
+    if (mode === "PSCP") objekSel.value = "";
+    resetFoto();
+    updateBarangCard();
+
+  } catch (err) {
+    console.error(err);
+    alert(err.message || err);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.setAttribute("aria-busy", "false");
+  }
+}
+
+submitBtn.addEventListener("click", () => { submitRandom(); });
