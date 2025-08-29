@@ -24,6 +24,9 @@
 .row-2 .btn{ width:100%; }
 .row-2{ gap:12px; }
 
+#pendampingInfo{ margin-top:12px; }
+#pendampingInfo .info-name{ margin-top:0; }
+
 #scanPassBtn{ margin:12px 0; }
 #submitBtn{ margin-top:12px; }
 
