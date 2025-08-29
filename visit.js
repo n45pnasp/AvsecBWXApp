@@ -439,7 +439,7 @@ async function loadLogs(){
       li.innerHTML = `\
         <div><span class="label">Jam Peminjaman :</span> ${timeStr}</div>\
         <div><span class="label">Jenis PAS :</span> ${r.jenisPas || '-'}</div>\
-        <div><span class="label">Penyerah PAS :</span> ${r.pemberiPas || '-'}</div>`;
+        <div><span class="label">Penyerah PAS :</span> ${(r.pemberiPas || '-').toUpperCase()}</div>`;
       logList.appendChild(li);
     }
   }catch(err){ logList.innerHTML='<li class="muted">Gagal memuat</li>'; }
