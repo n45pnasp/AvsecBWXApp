@@ -34,6 +34,8 @@ const uploadName   = document.getElementById("uploadName");
 const uploadStatus = document.getElementById("uploadStatus");
 const submitBtn    = document.getElementById("submitBtn");
 const logList      = document.getElementById("logList");
+const namaPeminjamEl     = document.getElementById("namaPeminjam");
+const instansiPeminjamEl = document.getElementById("instansiPeminjam");
 
 const overlay = document.getElementById("overlay");
 const ovIcon  = document.getElementById("ovIcon");
@@ -306,9 +308,14 @@ async function onSubmit(){
   const waktu = timeInput.value.trim();
   const nama  = namaEl.value.trim();
   const inst  = instansiEl.value.trim();
+  const namaPinjam = namaPeminjamEl.value.trim();
+  const instPinjam = instansiPeminjamEl.value.trim();
   const jenis = jenisPas.trim();
-  if (!waktu || !photoData || !nama || !inst || !jenis){ showOverlay('err','Data belum lengkap',''); return; }
-  const payload = { token:SHARED_TOKEN, waktu, namaPendamping:nama, instansiPendamping:inst, jenisPas:jenis, pemberiPas:authName, photo:photoData };
+  if (!waktu || !photoData || !nama || !inst || !namaPinjam || !instPinjam || !jenis){
+    showOverlay('err','Data belum lengkap','');
+    return;
+  }
+  const payload = { token:SHARED_TOKEN, waktu, namaPendamping:nama, instansiPendamping:inst, namaPeminjam:namaPinjam, instansiPeminjam:instPinjam, jenisPas:jenis, pemberiPas:authName, photo:photoData };
   submitBtn.disabled=true;
   showOverlay('spinner','Mengirim data…','');
   try{
@@ -326,6 +333,8 @@ function clearForm(){
   timeInput.value=""; timeLabel.textContent="Pilih Waktu"; photoData=""; jenisPas="";
   uploadInfo.classList.add('hidden'); uploadName.textContent=""; uploadStatus.textContent="Menunggu foto…";
   namaEl.value=""; instansiEl.value="";
+  if (namaPeminjamEl) namaPeminjamEl.value="";
+  if (instansiPeminjamEl) instansiPeminjamEl.value="";
   if (scanPassText) scanPassText.textContent = 'Scan Pas Visitor';
   if (jenisPasInput) jenisPasInput.value = '';
   if (namaPendampingText) namaPendampingText.textContent = '-';

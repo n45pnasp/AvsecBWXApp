@@ -27,7 +27,7 @@
 #pendampingInfo{ margin-top:12px; }
 #pendampingInfo .info-name{ margin-top:0; }
 
-#scanPassBtn{ margin:12px 0; }
+#scanPassBtn{ margin-bottom:12px; }
 #submitBtn{ margin-top:12px; }
 
 /* Preview upload seperti lb_all */

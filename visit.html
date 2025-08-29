@@ -40,6 +40,10 @@
 
     <!-- Card 2: Input -->
     <section class="card">
+      <button id="scanPassBtn" type="button" class="qr-btn">
+        <img src="icons/qrcode.png" alt="QR" />
+        <span>Scan Pas Visitor</span>
+      </button>
       <div class="row-2">
         <label class="btn-like" aria-label="Pilih Waktu" id="timeBtn">
           <input id="timeInput" type="time" required />
@@ -57,10 +61,14 @@
           <div id="uploadName" class="muted"></div>
         </div>
       </div>
-      <button id="scanPassBtn" type="button" class="qr-btn">
-        <img src="icons/qrcode.png" alt="QR" />
-        <span>Scan Pas Visitor</span>
-      </button>
+      <div class="field">
+        <label for="namaPeminjam">Nama Peminjam</label>
+        <input id="namaPeminjam" type="text" />
+      </div>
+      <div class="field">
+        <label for="instansiPeminjam">Instansi Peminjam</label>
+        <input id="instansiPeminjam" type="text" />
+      </div>
       <input id="jenisPas" type="hidden" />
       <input id="pemberiPas" type="hidden" />
       <button id="submitBtn" class="btn primary full" type="button">Kirim</button>
