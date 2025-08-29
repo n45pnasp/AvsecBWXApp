@@ -342,13 +342,17 @@ function clearForm(){
 }
 
 // ====== Load list ======
-function formatTime(val){
+function formatDateTime(val){
   const d = new Date(val);
   if(!isNaN(d)){
-    return d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',hour12:false});
+    const parts = new Intl.DateTimeFormat('id-ID', {
+      timeZone:'Asia/Jakarta',
+      day:'2-digit', month:'2-digit', year:'numeric',
+      hour:'2-digit', minute:'2-digit', hour12:false
+    }).formatToParts(d).reduce((acc,p)=>{acc[p.type]=p.value;return acc;},{});
+    return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`;
   }
-  const m = /^(\d{1,2}):(\d{2})/.exec(val || '');
-  return m ? `${m[1].padStart(2,'0')}:${m[2]}` : val;
+  return val;
 }
 
 async function loadLogs(){
@@ -363,9 +367,9 @@ async function loadLogs(){
     if(!res.ok || !j.rows || !j.rows.length){ logList.innerHTML='<li class="muted">Belum ada data</li>'; return; }
     for(const r of j.rows){
       const li=document.createElement('li'); li.className='log-item';
-      const timeStr = r.waktu ? formatTime(r.waktu) + ' WIB' : '-';
+      const timeStr = r.waktu ? formatDateTime(r.waktu) + ' WIB' : '-';
       li.innerHTML = `\
-        <div><span class="label">Jam Peminjaman :</span> ${timeStr}</div>\
+        <div><span class="label">Waktu Peminjaman :</span> ${timeStr}</div>\
         <div><span class="label">Jenis PAS :</span> ${r.jenisPas || '-'}</div>\
         <div><span class="label">Penyerah PAS :</span> ${r.pemberiPas || '-'}</div>`;
       logList.appendChild(li);
