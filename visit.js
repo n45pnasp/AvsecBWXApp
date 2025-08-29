@@ -214,7 +214,7 @@ async function receiveBarcode(code){
 async function receivePass(code){
   try{
     showOverlay('spinner','Mengambil data…','');
-    const url = LOOKUP_URL + '?token=' + SHARED_TOKEN + '&pass=' + encodeURIComponent(code);
+    const url = LOOKUP_URL + '?token=' + SHARED_TOKEN + '&key=' + encodeURIComponent(code);
     const res = await fetch(url);
     const j = await res.json();
     if (j && j.columns){
