@@ -18,6 +18,7 @@
 
 #scanResult{
   margin:12px 0;
+  grid-template-columns:7fr 3fr;
 }
 #scanResult .field{
   margin:0;
