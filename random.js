@@ -4,13 +4,13 @@ import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
 /* =========================
-   KONFIG KIRIMAN & UPLOAD
+   KONFIG KIRIMAN & LOOKUP (CLOUDFLARE + GAS)
    ========================= */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwAPnJy8zZlae5B6pc6L8rQzTzqHw5veDrBwlTaYuSf39-gOQsArJXSWA9w0Oh227J4/exec"; // Web App / proxy
-const SHARED_TOKEN = "N45p"; // samakan dengan Apps Script
-
-// (Opsional) endpoint upload fotomu (Cloudflare Worker / Apps Script upload) → return {url: "https://..."}
-const UPLOAD_ENDPOINT = ""; // contoh: "https://upload.avsecbwx2018.workers.dev"; kosong = skip upload
+// Worker proxy (POST submit)
+const SCRIPT_URL   = "https://rdcheck.avsecbwx2018.workers.dev/";
+// Endpoint GAS khusus lookup (GET/POST ringan bila diperlukan)
+const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbwAPnJy8zZlae5B6pc6L8rQzTzqHw5veDrBwlTaYuSf39-gOQsArJXSWA9w0Oh227J4/exec";
+const SHARED_TOKEN = "N45p"; // samakan dengan Apps Script & Worker
 
 /* =========================
    DOM
@@ -46,12 +46,14 @@ const petugasInp = document.getElementById("petugas");
 const supervisorInp = document.getElementById("supervisor");
 const submitBtn = document.getElementById("submitBtn");
 
+/* =========================
+   AUTH STATE
+   ========================= */
 const { app, auth } = getFirebase();
 const db = getDatabase(app);
-
-onAuthStateChanged(auth, (user) => {
-  petugasInp.value = user?.displayName || user?.email || "";
-  console.log("Petugas:", petugasInp.value);
+onAuthStateChanged(auth, (u) => {
+  const authName = (u?.displayName || u?.email || "").toUpperCase();
+  if (petugasInp) petugasInp.value = authName;
 });
 
 /* =========================
@@ -80,7 +82,6 @@ fotoInput.addEventListener("change", () => {
 function setSupervisor(){
   const val = supervisors[mode] || "";
   supervisorInp.value = val;
-  console.log("Supervisor:", val);
 }
 
 onValue(ref(db, "roster/spvCabin"), (snap) => {
@@ -100,11 +101,7 @@ function updateTipePiVisibility(){
   const needTipePi =
     (mode === "PSCP" && objekSel.value === "barang" && tindakanSel.value === "Ditinggal") ||
     (mode === "HBSCP" && tindakanSel.value === "Ditinggal");
-  if (needTipePi){
-    tipePiField.classList.remove("hidden");
-  }else{
-    tipePiField.classList.add("hidden");
-  }
+  tipePiField.classList.toggle("hidden", !needTipePi);
 }
 
 function updateBarangCard(){
@@ -133,7 +130,7 @@ tindakanSel.addEventListener("change", updateTipePiVisibility);
 
 function setMode(m){
   mode = m;
-  stopScan();
+  stopScan?.();
   namaEl.textContent = "-";
   flightEl.textContent = "-";
   manualNama.value = "";
@@ -535,7 +532,7 @@ function injectScanStyles(){
 }
 
 /* =========================================================
-   SUBMISSION LOGIC — sesuai code.gs
+   SUBMISSION LOGIC — via Cloudflare Worker proxy
    ========================================================= */
 
 // util: ambil nama & flight tergantung mode
@@ -554,26 +551,27 @@ function getNameAndFlight() {
   };
 }
 
-// opsional: unggah foto dan kembalikan URL
+// upload foto (DISABLED): selalu skip, tidak ada endpoint upload
 async function uploadPhotoIfAny() {
-  const file = fotoInput.files?.[0];
-  if (!file) return "";
+  return "";
+}
 
-  if (!UPLOAD_ENDPOINT) {
-    // Tidak ada endpoint upload → lewati, biarkan kosong.
-    return "";
-  }
-
-  // kirim multipart
-  const form = new FormData();
-  form.append("file", file);
+// fetch helper: timeout + retry
+async function fetchJSON(url, opts = {}, timeoutMs = 12000, retries = 1) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(UPLOAD_ENDPOINT, { method: "POST", body: form });
-    const j = await res.json().catch(()=> ({}));
-    return (j && (j.url || j.fileUrl || j.downloadUrl)) ? (j.url || j.fileUrl || j.downloadUrl) : "";
+    const res = await fetch(url, { ...opts, signal: controller.signal, mode: "cors" });
+    const text = await res.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+    if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+    return data;
   } catch (e) {
-    console.warn("Upload gagal:", e);
-    return "";
+    if (retries > 0) return fetchJSON(url, opts, timeoutMs, retries - 1);
+    throw e;
+  } finally {
+    clearTimeout(t);
   }
 }
 
@@ -584,11 +582,11 @@ async function submitRandom() {
 
     const { nama, flight } = getNameAndFlight();
     const jenisBarang = (isiBarangInp.value || "").trim();
-    const tindakan = (tindakanSel.value || "").trim();     // "Ditinggal" / "Dibawa" / ""
-    const tipePi = (tipePiSel.value || "").trim();         // Jenis DG/DA
-    const petugas = (petugasInp.value || "").trim();
-    const supervisor = (supervisorInp.value || "").trim();
-    const metode = (metodeSel.value || "").trim();
+    const tindakan = (tindakanSel.value || "").trim();
+    const tipePi    = (tipePiSel.value || "").trim();
+    const petugas   = (petugasInp.value || "").trim();
+    const supervisor= (supervisorInp.value || "").trim();
+    const metode    = (metodeSel.value || "").trim();
 
     // Validasi ringan
     if (!nama) throw new Error("Nama tidak boleh kosong.");
@@ -599,10 +597,10 @@ async function submitRandom() {
     }
     if (!metode) throw new Error("Metode pemeriksaan belum dipilih.");
 
-    // Upload foto (opsional)
+    // Foto selalu kosong (upload dinonaktifkan)
     const fotoUrl = await uploadPhotoIfAny();
 
-    // Susun payload sesuai code.gs
+    // Payload kompatibel GAS
     const payload = {
       action: "submit",
       token: SHARED_TOKEN,
@@ -610,45 +608,41 @@ async function submitRandom() {
       data: {
         nama,
         flight,
-        // khusus PSCP
         ...(mode === "PSCP" ? { objekPemeriksaan: objekSel.value || "" } : {}),
         jenisBarang,
         petugas,
         metode,
         supervisor,
-        fotoUrl,
+        fotoUrl
       }
     };
 
-    // Trigger PI_LIST jika Ditinggal pada PSCP/HBSCP
+    // PI_LIST bila Ditinggal
     if ((mode === "PSCP" || mode === "HBSCP") && tindakan.toLowerCase() === "ditinggal") {
       payload.data.tindakanBarang = "ditinggal";
-      payload.data.namaBarang = jenisBarang;     // atau pakai input nama barang spesifik jika ada
-      payload.data.jenisDGDA = tipePi;           // Jenis DG/DA
-      payload.data.fotoPiUrl = fotoUrl;          // pakai URL yang sama
-    } else if (mode === "CARGO") {
-      // di cargo tidak ada tindakan → jangan kirim field tindakan
-    } else {
+      payload.data.namaBarang = jenisBarang;
+      payload.data.jenisDGDA = tipePi;
+      payload.data.fotoPiUrl = fotoUrl;
+    } else if (mode !== "CARGO") {
       payload.data.tindakanBarang = tindakan.toLowerCase(); // "dibawa" / ""
     }
 
-    // POST ke Web App / Proxy
-    const res = await fetch(SCRIPT_URL, {
+    // Kirim ke Worker proxy
+    const j = await fetchJSON(SCRIPT_URL, {
       method: "POST",
-      mode: "cors",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shared-Token": SHARED_TOKEN,
+      },
       body: JSON.stringify(payload),
+      credentials: "omit",
     });
 
-    const j = await res.json().catch(() => ({}));
-    if (!res.ok || !j.ok) {
-      throw new Error(j.error || `Gagal menyimpan (HTTP ${res.status})`);
-    }
+    if (!j?.ok) throw new Error(j?.error || "Gagal menyimpan");
 
-    // Berhasil
     alert(`Tersimpan ke ${j.targetSheet} (row ${j.targetRow})${j.piListWritten ? ` + PI_LIST (row ${j.piListRow})` : ""}`);
 
-    // Reset minimal
+    // Reset minimal UI
     if (mode === "CARGO") {
       manualNama.value = "";
       manualFlight.value = "";
@@ -665,9 +659,9 @@ async function submitRandom() {
 
   } catch (err) {
     console.error(err);
-    const msg = err?.message === "Failed to fetch"
-      ? "Tidak dapat terhubung ke server."
-      : (err.message || err);
+    const msg = err?.name === "AbortError"
+      ? "Timeout: server lambat merespons."
+      : (err?.message || "Terjadi kesalahan");
     alert(msg);
   } finally {
     submitBtn.disabled = false;
