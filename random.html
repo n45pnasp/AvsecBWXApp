@@ -31,13 +31,34 @@
         <img src="icons/qrcode.png" alt="QR">
         <span>Scan Boarding Pass<br><small>Boarding Pass &amp; QR Code</small></span>
       </button>
-      <div class="field">
-        <label>Nama Penumpang</label>
-        <div id="namaPenumpang">-</div>
+
+      <div id="scanResult">
+        <div class="field">
+          <label>Nama Penumpang</label>
+          <div id="namaPenumpang">-</div>
+        </div>
+        <div class="field">
+          <label>No Flight</label>
+          <div id="noFlight">-</div>
+        </div>
       </div>
-      <div class="field">
-        <label>No Flight</label>
-        <div id="noFlight">-</div>
+
+      <div id="manualForm" class="hidden">
+        <div class="field">
+          <label for="manualNama">Nama Penumpang</label>
+          <input id="manualNama" type="text" />
+        </div>
+        <div class="field">
+          <label for="manualFlight">No Flight</label>
+          <select id="manualFlight">
+            <option value="">Pilih Flight</option>
+            <option>IU371</option>
+            <option>QG701</option>
+            <option>ID6591</option>
+            <option>HELI IAT</option>
+            <option>CHARTER FLIGHT</option>
+          </select>
+        </div>
       </div>
       <div class="field">
         <label for="jenisPemeriksaan">Pilih Pemeriksaan</label>

@@ -16,6 +16,10 @@ objekSel.addEventListener("change", () => {
 const scanBtn = document.getElementById("scanBtn");
 const namaEl = document.getElementById("namaPenumpang");
 const flightEl = document.getElementById("noFlight");
+const scanResult = document.getElementById("scanResult");
+const manualForm = document.getElementById("manualForm");
+const manualNama = document.getElementById("manualNama");
+const manualFlight = document.getElementById("manualFlight");
 
 function splitFromBack(str, maxSplits){
   const parts = []; let remaining = str;
@@ -54,6 +58,8 @@ function receiveBarcode(payload){
     if (parsed){
       namaEl.textContent = parsed.fullName;
       flightEl.textContent = parsed.flight;
+      scanResult.classList.remove('hidden');
+      manualForm.classList.add('hidden');
     }
   }catch(e){ console.error(e); }
 }
@@ -93,6 +99,8 @@ if (scanBtn){
 
 async function startScan(){
   try{
+    manualForm.classList.add('hidden');
+    scanResult.classList.remove('hidden');
     setWaitingUI(true);
     ensureVideo();
     ensureOverlay();
@@ -197,6 +205,9 @@ function ensureOverlay(){
   scanState.closeBtn.addEventListener('click', async (e) => {
     e.preventDefault(); e.stopPropagation();
     await stopScan();
+    manualForm.classList.remove('hidden');
+    scanResult.classList.add('hidden');
+    manualNama.focus();
   });
 }
 
