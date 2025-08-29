@@ -27,7 +27,10 @@
     </section>
 
     <section class="card">
-      <button id="scanBtn" type="button" class="btn full">Scan Boarding Pass</button>
+      <button id="scanBtn" type="button" class="qr-btn" aria-busy="false">
+        <img src="icons/qrcode.png" alt="QR">
+        <span>Scan Boarding Pass<br><small>Boarding Pass &amp; QR Code</small></span>
+      </button>
       <div class="field">
         <label>Nama Penumpang</label>
         <div id="namaPenumpang">-</div>
@@ -35,10 +38,6 @@
       <div class="field">
         <label>No Flight</label>
         <div id="noFlight">-</div>
-      </div>
-      <div class="field">
-        <label>Waktu Scan</label>
-        <div id="waktuScan">-</div>
       </div>
       <div class="field">
         <label for="jenisPemeriksaan">Pilih Pemeriksaan</label>
