@@ -1,4 +1,6 @@
-import { requireAuth } from "./auth-guard.js";
+import { requireAuth, getFirebase } from "./auth-guard.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
 const btnPSCP = document.getElementById("btnPSCP");
@@ -22,7 +24,39 @@ const tipePiSel = document.getElementById("tipePi");
 const tindakanField = tindakanSel.parentElement;
 const tipePiField = tipePiSel.parentElement;
 
+const petugasInp = document.getElementById("petugas");
+const supervisorInp = document.getElementById("supervisor");
+
+const { app, auth } = getFirebase();
+const db = getDatabase(app);
+
+onAuthStateChanged(auth, (user) => {
+  petugasInp.value = user?.displayName || user?.email || "";
+  console.log("Petugas:", petugasInp.value);
+});
+
 let mode = "PSCP";
+
+const supervisors = { PSCP: "", HBSCP: "", CARGO: "" };
+
+function setSupervisor(){
+  const val = supervisors[mode] || "";
+  supervisorInp.value = val;
+  console.log("Supervisor:", val);
+}
+
+onValue(ref(db, "roster/spvCabin"), (snap) => {
+  supervisors.PSCP = snap.val() || "";
+  if (mode === "PSCP") setSupervisor();
+});
+onValue(ref(db, "roster/spvHbs"), (snap) => {
+  supervisors.HBSCP = snap.val() || "";
+  if (mode === "HBSCP") setSupervisor();
+});
+onValue(ref(db, "roster/spvCargo"), (snap) => {
+  supervisors.CARGO = snap.val() || "";
+  if (mode === "CARGO") setSupervisor();
+});
 
 function updateTipePiVisibility(){
   const needTipePi =
@@ -68,6 +102,8 @@ function setMode(m){
   document.getElementById("isiBarang").value = "";
   tindakanSel.value = "";
   tipePiSel.value = "";
+
+  setSupervisor();
 
   if (m === "PSCP"){
     scanBtn.classList.remove("hidden");
