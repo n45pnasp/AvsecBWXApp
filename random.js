@@ -17,17 +17,27 @@ const manualNamaLabel = manualForm.querySelector('label[for="manualNama"]');
 const objekSel = document.getElementById("objek");
 const objekField = objekSel.parentElement;
 const barangCard = document.getElementById("barangCard");
-const tindakanField = document.getElementById("tindakanBarang").parentElement;
-const tipePiField = document.getElementById("tipePi").parentElement;
+const tindakanSel = document.getElementById("tindakanBarang");
+const tipePiSel = document.getElementById("tipePi");
+const tindakanField = tindakanSel.parentElement;
+const tipePiField = tipePiSel.parentElement;
 
 let mode = "PSCP";
+
+function updateTipePiVisibility(){
+  if (mode === "PSCP" && tindakanSel.value === "Ditinggal"){
+    tipePiField.classList.remove("hidden");
+  }else{
+    tipePiField.classList.add("hidden");
+  }
+}
 
 function updateBarangCard(){
   if (mode === "PSCP"){
     if (objekSel.value === "barang"){
       barangCard.classList.remove("hidden");
       tindakanField.classList.remove("hidden");
-      tipePiField.classList.remove("hidden");
+      updateTipePiVisibility();
     }else{
       barangCard.classList.add("hidden");
     }
@@ -39,6 +49,7 @@ function updateBarangCard(){
 }
 
 objekSel.addEventListener("change", updateBarangCard);
+tindakanSel.addEventListener("change", updateTipePiVisibility);
 
 function setMode(m){
   mode = m;
@@ -48,8 +59,8 @@ function setMode(m){
   manualNama.value = "";
   manualFlight.value = "";
   document.getElementById("isiBarang").value = "";
-  document.getElementById("tindakanBarang").value = "";
-  document.getElementById("tipePi").value = "";
+  tindakanSel.value = "";
+  tipePiSel.value = "";
 
   if (m === "PSCP"){
     scanBtn.classList.remove("hidden");
