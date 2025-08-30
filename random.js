@@ -184,7 +184,7 @@ async function openPhoto(suspect, barang, indikasi=""){
   showOverlay("loading","Memuat foto…");
   imgOverlay.classList.remove("hidden");
   if(indikasiEl){
-    indikasiEl.textContent = indikasi ? `Indikasi Suspect: ${indikasi}` : "";
+    indikasiEl.textContent = indikasi ? `INDIKASI SUSPECT: ${indikasi}` : "";
     indikasiEl.classList.toggle("hidden",!indikasi);
   }
   if(suspectImg) suspectImg.removeAttribute("src");
@@ -222,7 +222,7 @@ function renderSuspectList(rows){
     const dep     = flightTimes[flight.toUpperCase()] || "-";
     const sUrl    = it.fotoSuspectUrl || it.fotoSuspectId || "";
     const bUrl    = it.fotoBarangUrl  || it.fotoBarangId  || "";
-    const indikasi= it.indikasi || it.indikasiSuspect || "";
+    const indikasi= (it.indikasi || it.indikasiSuspect || "").toUpperCase();
 
     const tr=document.createElement("tr");
     tr.dataset.suspect=sUrl;

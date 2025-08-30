@@ -39,6 +39,14 @@
   margin:0;
 }
 
+#deleteOverlay .sheet{
+  grid-template-columns:1fr;
+  text-align:center;
+}
+#deleteOverlay .texts{
+  margin:0 0 12px;
+}
+
 /* Tombol scan bergaya sama dengan boardingpass */
 .qr-btn{
   width:100%;
