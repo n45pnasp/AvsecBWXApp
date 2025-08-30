@@ -374,7 +374,7 @@ function parseBagTagBSM(str){
   const flightRaw=(seg[1]||"").toUpperCase();
   const flight=flightRaw.replace(/\s+/g,"");
   const date=(seg[2]||"").toUpperCase();
-  const dest=((p[7]||"").trim().toUpperCase()) || "";
+  const dest=((p[5]||"").trim().toUpperCase()) || "";
   return { tagNo, paxName, origin, flight, date, dest };
 }
 
