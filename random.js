@@ -55,12 +55,14 @@ onAuthStateChanged(auth,(u)=>{
 /* ===== OVERLAY ===== */
 ovClose?.addEventListener("click",()=>overlay?.classList.add("hidden"));
 function showOverlay(state,title,desc=""){
+  // Kompatibel: "spinner" atau "loading" dianggap sama
+  const isSpin = (state === "spinner" || state === "loading");
   overlay?.classList.remove("hidden");
-  if(ovIcon) ovIcon.className="icon "+state;
-  if(ovTitle) ovTitle.textContent=title;
-  if(ovDesc) ovDesc.textContent=desc;
-  ovClose?.classList.toggle("hidden",state==="spinner");
-  if(state!=="spinner"){
+  if(ovIcon) ovIcon.className = "icon " + (isSpin ? "spinner" : state);
+  if(ovTitle) ovTitle.textContent = title;
+  if(ovDesc) ovDesc.textContent = desc;
+  ovClose?.classList.toggle("hidden", isSpin);
+  if(!isSpin){
     setTimeout(()=>overlay?.classList.add("hidden"), state==="stop"?3500:1500);
   }
 }
@@ -156,8 +158,12 @@ async function showPhotoModal(suspect, barang){
   if(barang)  urls.push({img:barangImg,  url:barang});
   if(!urls.length) return;
 
-  showOverlay("loading","Memuat foto…","");
+  showOverlay("spinner","Memuat foto…","");
   imgOverlay.classList.remove("hidden");
+
+  // Reset src dulu agar refresh gambar
+  if(suspectImg) suspectImg.removeAttribute("src");
+  if(barangImg)  barangImg.removeAttribute("src");
 
   let pending = urls.length;
   const done=()=>{ pending--; if(pending<=0) document.getElementById("overlay")?.classList.add("hidden"); };
@@ -166,11 +172,16 @@ async function showPhotoModal(suspect, barang){
     if(!img){ done(); return; }
     const direct=/^(?:https?:|data:|blob:)/i.test(url);
     const final= direct? url : `${LOOKUP_URL}?action=get_photo&token=${encodeURIComponent(SHARED_TOKEN)}&file=${encodeURIComponent(url)}`;
-    img.onload=img.onerror=done;
+    img.onload=done;
+    img.onerror=()=>{ done(); showOverlay("err","Gagal memuat foto","Coba lagi"); };
     img.src = final + (final.includes("?")?"&":"?") + "t=" + Date.now();
   });
 }
 imgClose?.addEventListener("click",()=>imgOverlay?.classList.add("hidden"));
+// tutup overlay jika klik backdrop
+imgOverlay?.addEventListener("click",(e)=>{ if(e.target===imgOverlay) imgOverlay.classList.add("hidden"); });
+// tutup dengan ESC
+document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") imgOverlay?.classList.add("hidden"); });
 
 function renderSuspectList(rows){
   if(!bagasiList) return; bagasiList.innerHTML="";
