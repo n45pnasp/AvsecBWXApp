@@ -137,6 +137,10 @@ tindakanSel?.addEventListener("change", updateTipePiVisibility);
 
 function setMode(m){
   mode = m;
+  [btnPSCP, btnHBSCP, btnCARGO].forEach(b=>b?.classList.remove("active"));
+  if(m==="PSCP") btnPSCP?.classList.add("active");
+  else if(m==="HBSCP") btnHBSCP?.classList.add("active");
+  else btnCARGO?.classList.add("active");
   stopScan?.();
   if(namaEl) namaEl.textContent="-";
   if(flightEl) flightEl.textContent="-";
