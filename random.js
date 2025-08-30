@@ -279,23 +279,11 @@ delConfirm?.addEventListener("click",deleteSuspect);
 
 async function markAksi(){
   if(!deleteTarget) return;
-  try{
-    const bagNo=deleteTarget.dataset.bagno||"";
-    delOverlay?.classList.add("hidden");
-    showOverlay("spinner","Memproses…","" );
-    const payload={action:"mark_aksi",token:SHARED_TOKEN,bagNo};
-    const j=await fetchJSON(PROXY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),credentials:"omit"});
-    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan");
-    showOverlay("ok","Aksi tersimpan","");
-    hbsCardsVisible=true;
-    scanCard?.classList.remove("hidden");
-    barangCard?.classList.remove("hidden");
-    updateBarangCard();
-    loadSuspectList();
-  }catch(err){
-    console.error(err);
-    showOverlay("err","Gagal",err?.message||"Gagal");
-  }
+  delOverlay?.classList.add("hidden");
+  hbsCardsVisible=true;
+  scanCard?.classList.remove("hidden");
+  barangCard?.classList.remove("hidden");
+  updateBarangCard();
 }
 delAction?.addEventListener("click",markAksi);
 
