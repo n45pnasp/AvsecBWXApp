@@ -134,6 +134,15 @@ function resetBagasiCard(){
 }
 
 /* ===== SUSPECT LIST (read via GET) ===== */
+function formatWib(timeStr){
+  const m=String(timeStr||"").match(/(\d{1,2}):(\d{2})/);
+  if(m){
+    const h=m[1].padStart(2,"0");
+    const mm=m[2].padStart(2,"0");
+    return `${h}:${mm} WIB`;
+  }
+  return String(timeStr||"");
+}
 const flightTimes={};
 async function loadFlightTimes(){
   if(Object.keys(flightTimes).length) return;
@@ -144,7 +153,7 @@ async function loadFlightTimes(){
     if(j?.ok && Array.isArray(j.rows)){
       j.rows.forEach(it=>{
         const fl=(it.flight||"").toUpperCase();
-        const tm=it.departure||"";
+        const tm=formatWib(it.departure||it.dep||it.time||it.jam||"");
         if(fl) flightTimes[fl]=tm;
       });
     }
