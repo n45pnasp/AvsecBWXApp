@@ -94,15 +94,21 @@
 #bagasiResult .bag-pair>div{flex:1 1 50%;display:flex;align-items:center;}
 #bagasiResult label{font-size:14px;margin-right:4px;}
 
+#photoOverlay .sheet{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+}
+#photoOverlay .indikasi{
+  text-align:center;
+  font-weight:600;
+}
 #photoOverlay .photo-wrap{
   display:flex;
   flex-direction:column;
   gap:12px;
-}
-#photoOverlay .indikasi{
-  margin-bottom:12px;
-  text-align:center;
-  font-weight:600;
+  width:100%;
 }
 #photoOverlay img{
   width:100%;
