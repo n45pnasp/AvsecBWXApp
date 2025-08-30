@@ -171,7 +171,7 @@ async function openPhoto(suspect, barang, indikasi=""){
   if(barang)  entries.push({img:barangImg,val:barang,label:"barang"});
   if(!entries.length) return;
 
-  showOverlay("loading");
+  showOverlay("loading","Memuat foto…");
   imgOverlay.classList.remove("hidden");
   if(indikasiEl){
     indikasiEl.textContent=indikasi||"";
