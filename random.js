@@ -4,13 +4,11 @@ import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
 /* =========================
-   KONFIG KIRIMAN & LOOKUP (CLOUDFLARE + GAS)
+   KONFIG KIRIMAN KE GOOGLE APPS SCRIPT
    ========================= */
-// Worker proxy (POST submit)
-const SCRIPT_URL   = "https://rdcheck.avsecbwx2018.workers.dev/";
-// Endpoint GAS khusus lookup (GET/POST ringan bila diperlukan)
-const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbwAPnJy8zZlae5B6pc6L8rQzTzqHw5veDrBwlTaYuSf39-gOQsArJXSWA9w0Oh227J4/exec";
-const SHARED_TOKEN = "N45p"; // samakan dengan Apps Script & Worker
+// Endpoint Web App (lihat code.gs)
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwAPnJy8zZlae5B6pc6L8rQzTzqHw5veDrBwlTaYuSf39-gOQsArJXSWA9w0Oh227J4/exec";
+const SHARED_TOKEN = "N45p"; // samakan dengan code.gs
 
 /* =========================
    DOM
