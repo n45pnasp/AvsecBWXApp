@@ -1,4 +1,4 @@
-// random.js — FINAL (Cloudflare Worker proxy + foto dataURL + BAG TAG BSM parser)
+// random.js — FINAL (Cloudflare Worker proxy + foto dataURL + BAG TAG BSM parser + list suspect via GET)
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
@@ -8,7 +8,7 @@ requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 /* ===== KONFIG ===== */
 const PROXY_URL    = "https://rdcheck.avsecbwx2018.workers.dev/";
 const SHARED_TOKEN = "N45p";
-const LOOKUP_URL   = "https://rdcheck.avsecbwx2018.workers.dev/"; // endpoint untuk read-only (SUSPECT_ITEMS)
+const LOOKUP_URL   = "https://rdcheck.avsecbwx2018.workers.dev/"; // GET ?action=list_suspect&token=...
 
 /* ===== DOM (dipersingkat) ===== */
 const $ = (s)=>document.querySelector(s);
@@ -36,7 +36,6 @@ const bagFotoBarangBtn=$("#bagFotoBarangBtn"),bagFotoBarangInput=$("#bagFotoBara
       bagFotoBarangPreview=$("#bagFotoBarangPreview");
 const bagSubmitBtn=$("#bagSubmitBtn");
 const bagasiList=$("#bagasiList");
-let flightTimes={};
 
 // modal foto suspect/barang
 const imgOverlay=$("#photoOverlay"),imgClose=$("#photoClose"),suspectImg=$("#suspectPhoto"),barangImg=$("#barangPhoto");
@@ -131,23 +130,27 @@ function resetBagasiCard(){
   resetBagFotoLayar(); resetBagFotoBarang();
 }
 
-// ===== SUSPECT LIST =====
+/* ===== SUSPECT LIST (read via GET) ===== */
 function showPhotoModal(suspect,barang){
   if(suspectImg) suspectImg.src=suspect||"";
-  if(barangImg) barangImg.src=barang||"";
+  if(barangImg)  barangImg.src =barang ||"";
   imgOverlay?.classList.remove("hidden");
 }
 imgClose?.addEventListener("click",()=>imgOverlay?.classList.add("hidden"));
 
-function renderSuspectList(arr){
+function renderSuspectList(rows){
   if(!bagasiList) return; bagasiList.innerHTML="";
-  arr.forEach(it=>{
+  rows.forEach(it=>{
+    const bagNo   = it.nomorBagasi || "-";
+    const flight  = it.flight      || "-";
+    const dest    = it.tujuan      || "-";
+    const sUrl    = it.fotoSuspectUrl || "";
+    const bUrl    = it.fotoBarangUrl  || "";
+
     const li=document.createElement("li");
-    const fl=(it.flight||"").toUpperCase().replace(/\s+/g,"");
-    const dep=flightTimes[fl]||"-";
-    li.textContent=`${it.bagNo||"-"} — ${it.flight||"-"} — ${it.dest||"-"} — ${dep}`;
-    li.dataset.suspect=it.fotoSuspect||"";
-    li.dataset.barang=it.fotoBarang||"";
+    li.textContent=`${bagNo} — ${flight} — ${dest}`;
+    li.dataset.suspect=sUrl;
+    li.dataset.barang=bUrl;
     li.addEventListener("contextmenu",e=>{e.preventDefault();showPhotoModal(li.dataset.suspect,li.dataset.barang);});
     let timer;
     li.addEventListener("touchstart",()=>{timer=setTimeout(()=>showPhotoModal(li.dataset.suspect,li.dataset.barang),600);});
@@ -156,18 +159,12 @@ function renderSuspectList(arr){
   });
 }
 
-async function loadFlightTimes(){
-  try{
-    const r=await fetchJSON(LOOKUP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"flight_update",token:SHARED_TOKEN})});
-    if(r?.items){ flightTimes={}; r.items.forEach(it=>{ const f=(it.flight||"").toUpperCase().replace(/\s+/g,""); const d=it.departure||it.depart||it.departureTime||it.dep||""; if(f) flightTimes[f]=d; }); }
-  }catch(err){ console.error(err); }
-}
-
 async function loadSuspectList(){
   try{
-    await loadFlightTimes();
-    const j=await fetchJSON(LOOKUP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"list_suspect",token:SHARED_TOKEN})});
-    if(j?.items) renderSuspectList(j.items);
+    const url = `${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&limit=200`;
+    const r = await fetch(url, { method:"GET", mode:"cors" });
+    const j = await r.json().catch(()=>({}));
+    if (j?.ok && Array.isArray(j.rows)) renderSuspectList(j.rows);
   }catch(err){ console.error(err); }
 }
 
@@ -398,7 +395,7 @@ function injectScanStyles(){
 }
 
 /* =========================================================
-   SUBMIT LOGIC (tetap sama; selaras code.gs terbaru)
+   SUBMIT LOGIC (selaras code.gs terbaru)
    ========================================================= */
 function getNameAndFlight(){
   if(mode==="CARGO") return { nama:val(manualNama).toUpperCase(), flight:val(manualFlight).toUpperCase() };
@@ -435,7 +432,7 @@ async function submitRandom(){
     if(!metode) throw new Error("Metode pemeriksaan belum dipilih.");
 
     const payload={ action:"submit", token:SHARED_TOKEN, target:mode, data:{
-      nama, flight, ...(mode==="PSCP"?{objekPemeriksaan:objek||""}:{}) , jenisBarang, petugas, metode, supervisor, ...(fotoDataUrl?{fotoDataUrl}:{})
+      nama, flight, ...(mode==="PSCP"?{objekPemeriksaan:objek||""}:{}) , jenisBarang, petugas, metode, supervisor, ...(fotoDataUrl?{fotoDataUrl}:{} )
     }};
 
     if((mode==="PSCP"||mode==="HBSCP") && tindakan==="ditinggal"){
