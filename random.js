@@ -36,6 +36,7 @@ const bagFotoBarangBtn=$("#bagFotoBarangBtn"),bagFotoBarangInput=$("#bagFotoBara
       bagFotoBarangPreview=$("#bagFotoBarangPreview");
 const bagSubmitBtn=$("#bagSubmitBtn");
 const bagasiList=$("#bagasiList");
+let flightTimes={};
 
 // modal foto suspect/barang
 const imgOverlay=$("#photoOverlay"),imgClose=$("#photoClose"),suspectImg=$("#suspectPhoto"),barangImg=$("#barangPhoto");
@@ -142,7 +143,9 @@ function renderSuspectList(arr){
   if(!bagasiList) return; bagasiList.innerHTML="";
   arr.forEach(it=>{
     const li=document.createElement("li");
-    li.textContent=`${it.bagNo||"-"} — ${it.flight||"-"} — ${it.dest||"-"}`;
+    const fl=(it.flight||"").toUpperCase().replace(/\s+/g,"");
+    const dep=flightTimes[fl]||"-";
+    li.textContent=`${it.bagNo||"-"} — ${it.flight||"-"} — ${it.dest||"-"} — ${dep}`;
     li.dataset.suspect=it.fotoSuspect||"";
     li.dataset.barang=it.fotoBarang||"";
     li.addEventListener("contextmenu",e=>{e.preventDefault();showPhotoModal(li.dataset.suspect,li.dataset.barang);});
@@ -153,8 +156,16 @@ function renderSuspectList(arr){
   });
 }
 
+async function loadFlightTimes(){
+  try{
+    const r=await fetchJSON(LOOKUP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"flight_update",token:SHARED_TOKEN})});
+    if(r?.items){ flightTimes={}; r.items.forEach(it=>{ const f=(it.flight||"").toUpperCase().replace(/\s+/g,""); const d=it.departure||it.depart||it.departureTime||it.dep||""; if(f) flightTimes[f]=d; }); }
+  }catch(err){ console.error(err); }
+}
+
 async function loadSuspectList(){
   try{
+    await loadFlightTimes();
     const j=await fetchJSON(LOOKUP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"list_suspect",token:SHARED_TOKEN})});
     if(j?.items) renderSuspectList(j.items);
   }catch(err){ console.error(err); }
