@@ -61,8 +61,25 @@ function setSupervisor(){ if (supervisorInp) supervisorInp.value = supervisors[m
 function val(e){ return (e?.value||"").trim(); }
 function txt(e){ return (e?.textContent||"").trim(); }
 
-/* ===== FOTO (Preview + DataURL untuk upload ke Drive) ===== */
-let fotoDataUrl = ""; // disiapkan untuk dikirimkan ke GAS
+/* ===== FOTO (Preview + DataURL) ===== */
+let fotoDataUrl = ""; // disiapkan untuk dikirimkan ke GAS (sudah dikompresi)
+
+async function compressImage(file, max=480, quality=0.7){
+  const img = await new Promise((resolve, reject)=>{
+    const i = new Image();
+    i.onload = ()=>resolve(i);
+    i.onerror = reject;
+    i.src = URL.createObjectURL(file);
+  });
+  const scale = Math.min(1, max / Math.max(img.width, img.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width * scale;
+  canvas.height = img.height * scale;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
 function resetFoto(){
   if(!fotoInput||!fotoPreview) return;
   fotoInput.value = "";
@@ -71,16 +88,24 @@ function resetFoto(){
   fotoDataUrl = "";
 }
 fotoBtn?.addEventListener("click", ()=>fotoInput?.click());
-fotoInput?.addEventListener("change", ()=>{
+fotoInput?.addEventListener("change", async ()=>{
   const file = fotoInput.files?.[0];
   if(!file){ resetFoto(); return; }
   // Preview
   fotoPreview.src = URL.createObjectURL(file);
   fotoPreview.classList.remove("hidden");
-  // Simpan DataURL untuk dikirim
-  const reader = new FileReader();
-  reader.onload = (e)=>{ fotoDataUrl = String(e.target.result || ""); };
-  reader.readAsDataURL(file); // menghasilkan "data:image/jpeg;base64,..."
+  try{
+    const dataUrl = await compressImage(file, 480, 0.7);
+    if(dataUrl.length > 49000){
+      alert("Foto terlalu besar, gunakan resolusi lebih rendah.");
+      resetFoto();
+    }else{
+      fotoDataUrl = dataUrl;
+    }
+  }catch(err){
+    console.error(err);
+    resetFoto();
+  }
 });
 
 /* ===== UI Rules ===== */
