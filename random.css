@@ -1,5 +1,15 @@
 @import url('./ACP.css');
 
+/* Noncopyable text */
+body{
+  -webkit-user-select:none;
+  user-select:none;
+}
+input,textarea,select{
+  -webkit-user-select:text;
+  user-select:text;
+}
+
 #overlay{z-index:10000;}
 
 .field select{
@@ -104,7 +114,7 @@
 .log-table tbody tr{cursor:pointer;}
 
 #bagasiResult{margin-top:12px;}
-#bagasiResult .bag-owner{text-align:center;margin-bottom:8px;}
+#bagasiResult .bag-owner{text-align:left;margin-bottom:8px;}
 #bagasiResult .bag-owner label{margin-right:4px;}
 #bagasiResult .bag-pair{display:flex;gap:8px;margin-bottom:6px;}
 #bagasiResult .bag-pair>div{flex:1 1 50%;display:flex;align-items:center;}
@@ -139,9 +149,8 @@
 #bagasiCard .bagasi-nav{
   width:100%;
   display:flex;
-  align-items:center;
-  justify-content:center;
-  position:relative;
+  justify-content:space-between;
+  align-items:flex-start;
   background:none;
   border:none;
   color:var(--text);
@@ -151,9 +160,22 @@
   cursor:pointer;
   padding:8px 0;
   text-transform:uppercase;
+  text-align:left;
+}
+#bagasiCard .bagasi-nav .nav-text{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+  max-width:calc(100% - 32px);
+}
+#bagasiCard .bagasi-nav .nav-desc{
+  text-transform:none;
+  font-size:12px;
+  font-weight:400;
+  color:#555;
 }
 #bagasiCard .bagasi-nav .chevron{
-  position:absolute;
-  right:8px;
+  margin-left:8px;
 }
 #bagasiCard.collapsed #bagasiContent{display:none;}

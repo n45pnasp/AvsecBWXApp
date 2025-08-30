@@ -45,6 +45,8 @@ bagasiToggle?.addEventListener("click",()=>{
   if(chev) chev.textContent=exp?"▲":"▼";
 });
 
+document.addEventListener("copy",e=>e.preventDefault());
+
 // modal foto suspect/barang
 const imgOverlay=$("#photoOverlay"),imgClose=$("#photoClose"),suspectImg=$("#suspectPhoto"),barangImg=$("#barangPhoto"),indikasiEl=$("#indikasiText");
 const delOverlay=$("#deleteOverlay"),delClose=$("#deleteClose"),delConfirm=$("#deleteConfirm");
@@ -319,9 +321,10 @@ function setMode(m){
 
   bagasiCard?.classList.toggle("hidden", m!=="HBSCP");
   bagasiListCard?.classList.toggle("hidden", m!=="HBSCP");
-  if(m==="HBSCP"){ loadSuspectList(); bagasiCard?.classList.remove("collapsed");
+  if(m==="HBSCP"){ loadSuspectList(); bagasiCard?.classList.add("collapsed");
+    bagasiToggle?.setAttribute("aria-expanded","false");
     const chev=bagasiToggle?.querySelector(".chevron");
-    if(chev) chev.textContent="▲"; }
+    if(chev) chev.textContent="▼"; }
 
   if(m==="PSCP"){
     scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");
