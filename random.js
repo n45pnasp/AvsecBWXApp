@@ -1,4 +1,4 @@
-// random.js — kirim via Cloudflare Worker (tanpa fallback)
+// random.js — FINAL (via Cloudflare Worker proxy + upload foto ke Drive)
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
@@ -6,8 +6,8 @@ import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
 /* ===== KONFIG ===== */
-const PROXY_URL    = "https://rdcheck.avsecbwx2018.workers.dev/"; // Worker kamu
-const SHARED_TOKEN = "N45p"; // tidak wajib dikirim (Worker injeksi), tapi boleh
+const PROXY_URL    = "https://rdcheck.avsecbwx2018.workers.dev/"; // Worker
+const SHARED_TOKEN = "N45p"; // Worker juga akan menambahkan bila kosong
 
 /* ===== DOM ===== */
 const $ = (s)=>document.querySelector(s);
@@ -34,10 +34,11 @@ onAuthStateChanged(auth, (u)=>{
   if (petugasInp) petugasInp.value = name;
 });
 
+/* ===== OVERLAY ===== */
 ovClose?.addEventListener("click", ()=>overlay?.classList.add("hidden"));
 function showOverlay(state, title, desc=""){
   overlay?.classList.remove("hidden");
-  if(ovIcon) ovIcon.className = "icon "+state;
+  if(ovIcon) ovIcon.className = "icon "+state; // state: spinner | ok | err | stop
   if(ovTitle) ovTitle.textContent = title;
   if(ovDesc) ovDesc.textContent = desc;
   ovClose?.classList.toggle("hidden", state === "spinner");
@@ -60,13 +61,26 @@ function setSupervisor(){ if (supervisorInp) supervisorInp.value = supervisors[m
 function val(e){ return (e?.value||"").trim(); }
 function txt(e){ return (e?.textContent||"").trim(); }
 
-/* ===== Foto (opsional, saat ini tidak upload) ===== */
-function resetFoto(){ if(!fotoInput||!fotoPreview) return; fotoInput.value=""; fotoPreview.src=""; fotoPreview.classList.add("hidden"); }
+/* ===== FOTO (Preview + DataURL untuk upload ke Drive) ===== */
+let fotoDataUrl = ""; // disiapkan untuk dikirimkan ke GAS
+function resetFoto(){
+  if(!fotoInput||!fotoPreview) return;
+  fotoInput.value = "";
+  fotoPreview.src = "";
+  fotoPreview.classList.add("hidden");
+  fotoDataUrl = "";
+}
 fotoBtn?.addEventListener("click", ()=>fotoInput?.click());
 fotoInput?.addEventListener("change", ()=>{
   const file = fotoInput.files?.[0];
-  if(file){ fotoPreview.src = URL.createObjectURL(file); fotoPreview.classList.remove("hidden"); }
-  else { resetFoto(); }
+  if(!file){ resetFoto(); return; }
+  // Preview
+  fotoPreview.src = URL.createObjectURL(file);
+  fotoPreview.classList.remove("hidden");
+  // Simpan DataURL untuk dikirim
+  const reader = new FileReader();
+  reader.onload = (e)=>{ fotoDataUrl = String(e.target.result || ""); };
+  reader.readAsDataURL(file); // menghasilkan "data:image/jpeg;base64,..."
 });
 
 /* ===== UI Rules ===== */
@@ -87,7 +101,7 @@ function updateBarangCard(){
     barangCard.classList.remove("hidden");
     tindakanField?.classList.remove("hidden");
     updateTipePiVisibility();
-  } else {
+  } else { // CARGO
     barangCard.classList.remove("hidden");
     tindakanField?.classList.add("hidden");
     tipePiField?.classList.add("hidden");
@@ -98,6 +112,7 @@ tindakanSel?.addEventListener("change", updateTipePiVisibility);
 
 function setMode(m){
   mode = m;
+  stopScan?.();
   if(namaEl) namaEl.textContent="-";
   if(flightEl) flightEl.textContent="-";
   if(manualNama) manualNama.value="";
@@ -117,7 +132,7 @@ function setMode(m){
     scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");
     manualForm?.classList.add("hidden"); if (manualNamaLabel) manualNamaLabel.textContent="Nama Penumpang";
     objekField?.classList.add("hidden"); updateBarangCard();
-  } else {
+  } else { // CARGO
     scanBtn?.classList.add("hidden"); scanResult?.classList.add("hidden");
     manualForm?.classList.remove("hidden"); if (manualNamaLabel) manualNamaLabel.textContent="Nama Pengirim";
     objekField?.classList.add("hidden"); updateBarangCard();
@@ -128,14 +143,12 @@ btnHBSCP?.addEventListener("click", ()=>setMode("HBSCP"));
 btnCARGO?.addEventListener("click", ()=>setMode("CARGO"));
 setMode("PSCP");
 
-/* ===== Scanner (gunakan blok scanner yang ada) ===== */
-
+/* ===== SCANNER ===== */
 let scanState = {
   stream: null, video: null, canvas: null, ctx: null,
   running: false, usingDetector: false, detector: null, jsQRReady: false,
   overlay: null, closeBtn: null,
 };
-
 function splitFromBack(str, maxSplits){
   const parts = []; let remaining = str;
   for (let i=0; i<maxSplits; i++){
@@ -180,7 +193,6 @@ function setWaitingUI(on){
   scanBtn.disabled = !!on;
   scanBtn.setAttribute('aria-busy', on ? 'true' : 'false');
 }
-
 injectScanStyles();
 scanBtn?.addEventListener('click', async () => {
   if (scanState.running){ await stopScan(); return; }
@@ -243,15 +255,15 @@ function ensureVideo(){
 }
 function ensureOverlay(){
   if (scanState.overlay) return;
-  const overlay = document.createElement('div');
-  overlay.id = 'scan-overlay';
-  overlay.innerHTML = `
+  const overlayEl = document.createElement('div');
+  overlayEl.id = 'scan-overlay';
+  overlayEl.innerHTML = `
     <div class="scan-topbar"><button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button></div>
     <div class="scan-reticle" aria-hidden="true"></div>
     <div class="scan-hint">Arahkan ke barcode / QR</div>`;
-  document.body.appendChild(overlay);
-  scanState.overlay = overlay;
-  scanState.closeBtn = overlay.querySelector('#scan-close');
+  document.body.appendChild(overlayEl);
+  scanState.overlay = overlayEl;
+  scanState.closeBtn = overlayEl.querySelector('#scan-close');
   scanState.closeBtn.addEventListener('click', async (e) => {
     e.preventDefault(); e.stopPropagation();
     await stopScan();
@@ -323,22 +335,11 @@ function injectScanStyles(){
     body.scan-active #scan-canvas{display:none}
     #scan-overlay{position:fixed;inset:0;display:none;z-index:10000;pointer-events:none}
     body.scan-active #scan-overlay{display:block}
-    .scan-topbar{position:absolute;top:0;left:0;right:0;height:max(56px,calc(44px + env(safe-area-inset-top,0)));
-      display:flex;align-items:flex-start;justify-content:flex-end;padding:calc(env(safe-area-inset-top,0)+6px) 10px 8px;
-      background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0));pointer-events:none}
-    .scan-close{pointer-events:auto;width:42px;height:42px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;
-      border:1px solid rgba(255,255,255,.25);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;
-      box-shadow:0 4px 12px rgba(0,0,0,.35);transition:transform .08s ease, filter .15s ease}
+    .scan-topbar{position:absolute;top:0;left:0;right:0;height:max(56px,calc(44px + env(safe-area-inset-top,0)));\n      display:flex;align-items:flex-start;justify-content:flex-end;padding:calc(env(safe-area-inset-top,0)+6px) 10px 8px;\n      background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0));pointer-events:none}
+    .scan-close{pointer-events:auto;width:42px;height:42px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;\n      border:1px solid rgba(255,255,255,.25);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;\n      box-shadow:0 4px 12px rgba(0,0,0,.35);transition:transform .08s ease, filter .15s ease}
     .scan-close:active{transform:scale(.96)} .scan-close:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:2px}
-    .scan-reticle{position:absolute;top:50%;left:50%;width:min(68vw,520px);aspect-ratio:1/1;transform:translate(-50%,-50%);
-      border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset;pointer-events:none;
-      background:linear-gradient(#fff,#fff) left top/28px 2px no-repeat,linear-gradient(#fff,#fff) left top/2px 28px no-repeat,
-      linear-gradient(#fff,#fff) right top/28px 2px no-repeat,linear-gradient(#fff,#fff) right top/2px 28px no-repeat,
-      linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat,
-      linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat}
-    .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);
-      background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px;letter-spacing:.2px;pointer-events:none;
-      box-shadow:0 4px 12px rgba(0,0,0,.35)}
+    .scan-reticle{position:absolute;top:50%;left:50%;width:min(68vw,520px);aspect-ratio:1/1;transform:translate(-50%,-50%);\n      border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset;pointer-events:none;\n      background:linear-gradient(#fff,#fff) left top/28px 2px no-repeat,linear-gradient(#fff,#fff) left top/2px 28px no-repeat,\n      linear-gradient(#fff,#fff) right top/28px 2px no-repeat,linear-gradient(#fff,#fff) right top/2px 28px no-repeat,\n      linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat,\n      linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat}
+    .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);\n      background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px;letter-spacing:.2px;pointer-events:none;\n      box-shadow:0 4px 12px rgba(0,0,0,.35)}
   `;
   const style = document.createElement('style');
   style.id = 'scan-style'; style.textContent = css; document.head.appendChild(style);
@@ -347,7 +348,6 @@ function injectScanStyles(){
 /* =========================================================
    SUBMISSION LOGIC
    ========================================================= */
-
 function getNameAndFlight(){
   if (mode==="CARGO") return { nama: val(manualNama), flight: val(manualFlight) };
   const usingManual = !scanResult || scanResult.classList.contains("hidden");
@@ -356,7 +356,6 @@ function getNameAndFlight(){
     flight: usingManual ? val(manualFlight) : txt(flightEl)
   };
 }
-
 async function fetchJSON(url, opts = {}, timeoutMs = 15000){
   const controller = new AbortController();
   const t = setTimeout(()=>controller.abort(), timeoutMs);
@@ -395,18 +394,21 @@ async function submitRandom(){
       data: {
         nama, flight,
         ...(mode==="PSCP" ? { objekPemeriksaan: val(objekSel) || "" } : {}),
-        jenisBarang, petugas, metode, supervisor,
-        fotoUrl: ""
+        jenisBarang, petugas, metode, supervisor
       }
     };
+
+    if (fotoDataUrl) {
+      payload.data.fotoDataUrl = fotoDataUrl;  // untuk kolom URL Foto Barang
+    }
 
     if ((mode==="PSCP" || mode==="HBSCP") && tindakan==="ditinggal"){
       payload.data.tindakanBarang = "ditinggal";
       payload.data.namaBarang = jenisBarang;
       payload.data.jenisDGDA  = tipePi;
-      payload.data.fotoPiUrl  = "";
+      if (fotoDataUrl) payload.data.fotoPiDataUrl = fotoDataUrl;
     } else if (mode !== "CARGO") {
-      payload.data.tindakanBarang = tindakan;
+      payload.data.tindakanBarang = tindakan; // "dibawa" / ""
     }
 
     const j = await fetchJSON(PROXY_URL, {
