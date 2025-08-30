@@ -167,8 +167,8 @@ async function openPhoto(suspect, barang, indikasi=""){
   if(!imgOverlay) return;
 
   const entries=[];
-  if(suspect) entries.push({img:suspectImg,val:suspect});
-  if(barang)  entries.push({img:barangImg,val:barang});
+  if(suspect) entries.push({img:suspectImg,val:suspect,label:"suspect"});
+  if(barang)  entries.push({img:barangImg,val:barang,label:"barang"});
   if(!entries.length) return;
 
   showOverlay("loading");
@@ -183,7 +183,7 @@ async function openPhoto(suspect, barang, indikasi=""){
   let pending=entries.length;
   const done=()=>{ pending--; if(pending<=0) overlay?.classList.add("hidden"); };
 
-  entries.forEach(({img,val})=>{
+  entries.forEach(({img,val,label})=>{
     if(!img){ done(); return; }
     let final="";
     if(isDirectUrl(val)){
@@ -193,6 +193,7 @@ async function openPhoto(suspect, barang, indikasi=""){
     }else{
       final=`${LOOKUP_URL}?action=get_photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
     }
+    console.log(`URL foto ${label}:`, final);
     img.onload=()=>{ done(); img.onload=img.onerror=null; };
     img.onerror=()=>{ done(); img.onload=img.onerror=null; showOverlay("err","Gagal memuat foto","Coba lagi"); };
     img.src=final+(final.includes("?")?"&":"?")+"t="+Date.now();
