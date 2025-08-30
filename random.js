@@ -374,12 +374,11 @@ function parseBagTagBSM(str){
   const tagNo=(p[0]||"").trim().replace(/\D/g,"");
   const paxName=normalizeSlashName(p[1]||"").toUpperCase();
   const seg=(p[3]||"").split(";").map(x=>x.trim());
-  const origin=(seg[0]||"").toUpperCase();
+  const dest=(seg[0]||"").toUpperCase();
   const flightRaw=(seg[1]||"").toUpperCase();
   const flight=flightRaw.replace(/\s+/g,"");
   const date=(seg[2]||"").toUpperCase();
-  const dest=((p[5]||"").trim().toUpperCase()) || "";
-  return { tagNo, paxName, origin, flight, date, dest };
+  return { tagNo, paxName, flight, dest, date };
 }
 
 function receiveBarcode(payload){
