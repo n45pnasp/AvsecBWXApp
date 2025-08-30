@@ -296,7 +296,14 @@ function updateBarangCard(){
     if(val(objekSel)==="barang"){ barangCard.classList.remove("hidden"); tindakanField?.classList.remove("hidden"); updateTipePiVisibility(); }
     else { barangCard.classList.add("hidden"); resetFoto(); }
   }else if(mode==="HBSCP"){
-    barangCard.classList.remove("hidden"); tindakanField?.classList.remove("hidden"); updateTipePiVisibility();
+    if(hbsCardsVisible){
+      barangCard.classList.remove("hidden");
+      tindakanField?.classList.remove("hidden");
+      updateTipePiVisibility();
+    }else{
+      barangCard.classList.add("hidden");
+      resetFoto();
+    }
   }else{
     barangCard.classList.remove("hidden"); tindakanField?.classList.add("hidden"); tipePiField?.classList.add("hidden");
   }
