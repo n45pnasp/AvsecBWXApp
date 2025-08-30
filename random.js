@@ -54,7 +54,7 @@ onAuthStateChanged(auth,(u)=>{
 
 /* ===== OVERLAY ===== */
 ovClose?.addEventListener("click",()=>overlay?.classList.add("hidden"));
-function showOverlay(state,title,desc=""){
+function showOverlay(state,title="",desc=""){
   const isSpin = (state === "spinner" || state === "loading");
   overlay?.classList.remove("hidden");
   if(ovIcon) ovIcon.className = "icon " + (isSpin ? "spinner" : state);
@@ -163,15 +163,15 @@ async function loadFlightTimes(){
 function isDirectUrl(s){ return /^(?:https?:|data:|blob:)/i.test(String(s||"")); }
 function looksLikeFileId(s){ return /^[A-Za-z0-9_-]{20,}$/.test(String(s||"")); }
 
-async function showPhotoModal(suspect, barang, indikasi=""){
+async function openPhoto(suspect, barang, indikasi=""){
   if(!imgOverlay) return;
 
-  const entries = [];
-  if(suspect) entries.push({img:suspectImg, val:suspect});
-  if(barang)  entries.push({img:barangImg,  val:barang});
+  const entries=[];
+  if(suspect) entries.push({img:suspectImg,val:suspect});
+  if(barang)  entries.push({img:barangImg,val:barang});
   if(!entries.length) return;
 
-  showOverlay("loading","Memuat foto…","");
+  showOverlay("loading");
   imgOverlay.classList.remove("hidden");
   if(indikasiEl){
     indikasiEl.textContent=indikasi||"";
@@ -181,12 +181,10 @@ async function showPhotoModal(suspect, barang, indikasi=""){
   if(barangImg)  barangImg.removeAttribute("src");
 
   let pending=entries.length;
-  const hide=()=>{
-    pending--; if(pending<=0) overlay?.classList.add("hidden");
-  };
+  const done=()=>{ pending--; if(pending<=0) overlay?.classList.add("hidden"); };
 
   entries.forEach(({img,val})=>{
-    if(!img){ hide(); return; }
+    if(!img){ done(); return; }
     let final="";
     if(isDirectUrl(val)){
       final=val;
@@ -195,8 +193,8 @@ async function showPhotoModal(suspect, barang, indikasi=""){
     }else{
       final=`${LOOKUP_URL}?action=get_photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
     }
-    img.onload=()=>{ hide(); img.onload=img.onerror=null; };
-    img.onerror=()=>{ hide(); img.onload=img.onerror=null; showOverlay("err","Gagal memuat foto","Coba lagi"); };
+    img.onload=()=>{ done(); img.onload=img.onerror=null; };
+    img.onerror=()=>{ done(); img.onload=img.onerror=null; showOverlay("err","Gagal memuat foto","Coba lagi"); };
     img.src=final+(final.includes("?")?"&":"?")+"t="+Date.now();
   });
 }
@@ -221,7 +219,7 @@ function renderSuspectList(rows){
     tr.dataset.indikasi=indikasi;
     tr.title = indikasi ? `Indikasi: ${indikasi}` : "";
     tr.innerHTML=`<td>${bagNo}</td><td>${flight}</td><td>${dest}</td><td>${dep}</td>`;
-    const open=()=>showPhotoModal(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi);
+    const open=()=>openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi);
     tr.addEventListener("click",open);
     tr.addEventListener("contextmenu",e=>{e.preventDefault();open();});
     let timer;
