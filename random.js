@@ -387,26 +387,29 @@ async function submitRandom(){
     if((mode==="PSCP" && val(objekSel)==="barang") || mode!=="PSCP"){ if(!jenisBarang) throw new Error("Isi/Jenis barang belum diisi."); }
     if(!metode) throw new Error("Metode pemeriksaan belum dipilih.");
 
+    const fotoUrl = fotoDataUrl ? `=IMAGE("${fotoDataUrl}")` : "";
+
     const payload = {
       action: "submit",
       token: SHARED_TOKEN,
       target: mode,
       data: {
-        nama, flight,
-        ...(mode==="PSCP" ? { objekPemeriksaan: val(objekSel) || "" } : {}),
-        jenisBarang, petugas, metode, supervisor
+        nama,
+        flight,
+        ...(mode === "PSCP" ? { objekPemeriksaan: val(objekSel) || "" } : {}),
+        jenisBarang,
+        petugas,
+        metode,
+        supervisor,
+        fotoUrl
       }
     };
 
-    if (fotoDataUrl) {
-      payload.data.fotoDataUrl = fotoDataUrl;  // untuk kolom URL Foto Barang
-    }
-
-    if ((mode==="PSCP" || mode==="HBSCP") && tindakan==="ditinggal"){
+    if ((mode === "PSCP" || mode === "HBSCP") && tindakan === "ditinggal") {
       payload.data.tindakanBarang = "ditinggal";
       payload.data.namaBarang = jenisBarang;
-      payload.data.jenisDGDA  = tipePi;
-      if (fotoDataUrl) payload.data.fotoPiDataUrl = fotoDataUrl;
+      payload.data.jenisDGDA = tipePi;
+      if (fotoUrl) payload.data.fotoPiUrl = fotoUrl;
     } else if (mode !== "CARGO") {
       payload.data.tindakanBarang = tindakan; // "dibawa" / ""
     }
