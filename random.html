@@ -26,6 +26,34 @@
       </div>
     </section>
 
+    <!-- Card khusus HBSCP: Scan barcode bagasi -->
+    <section id="bagasiCard" class="card hidden">
+      <button id="scanBagBtn" type="button" class="qr-btn" aria-busy="false">
+        <img src="icons/qrcode.png" alt="QR">
+        <span>Scan Barcode Bagasi<br><small>Label Bagasi</small></span>
+      </button>
+
+      <div id="bagasiResult">
+        <div class="field"><label>No Bagasi</label><div id="bagNo">-</div></div>
+        <div class="field"><label>Nama Pemilik</label><div id="bagNama">-</div></div>
+        <div class="field"><label>No Flight</label><div id="bagFlight">-</div></div>
+        <div class="field"><label>Tujuan Bandara</label><div id="bagDest">-</div></div>
+        <div class="field"><label>Tanggal</label><div id="bagDate">-</div></div>
+      </div>
+
+      <div class="field">
+        <button id="bagFotoBtn" type="button" class="btn full">Upload Foto</button>
+        <input id="bagFotoInput" type="file" accept="image/*" capture="environment" class="hidden" />
+        <img id="bagFotoPreview" class="photo-preview hidden" alt="Foto bagasi" />
+      </div>
+
+      <button id="bagSubmitBtn" type="button" class="btn primary full">Kirim Data Bagasi</button>
+    </section>
+
+    <section id="bagasiListCard" class="card hidden">
+      <ul id="bagasiList" class="bagasi-list"></ul>
+    </section>
+
     <section class="card">
       <button id="scanBtn" type="button" class="qr-btn" aria-busy="false">
         <img src="icons/qrcode.png" alt="QR">

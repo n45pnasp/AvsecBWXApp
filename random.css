@@ -58,11 +58,23 @@
 .qr-btn.is-waiting{ opacity:.7; pointer-events:none; }
 
 /* Preview foto barang */
-#barangCard .photo-preview{
+#barangCard .photo-preview,
+#bagasiCard .photo-preview{
   width:100%;
   display:block;
   border:1px solid var(--border);
   border-radius:12px;
   object-fit:cover;
   max-height:240px;
+}
+
+.bagasi-list{
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.bagasi-list li{
+  padding:8px 0;
+  border-bottom:1px solid var(--border);
+  font-size:14px;
 }

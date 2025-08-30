@@ -23,6 +23,11 @@ const tindakanSel = $("#tindakanBarang"), tipePiSel = $("#tipePi");
 const tindakanField = tindakanSel?.parentElement, tipePiField = tipePiSel?.parentElement;
 const isiBarangInp = $("#isiBarang");
 const fotoBtn = $("#fotoBtn"), fotoInput = $("#fotoInput"), fotoPreview = $("#fotoPreview");
+const bagasiCard = $("#bagasiCard"), bagasiListCard = $("#bagasiListCard");
+const scanBagBtn = $("#scanBagBtn");
+const bagNoEl = $("#bagNo"), bagNamaEl = $("#bagNama"), bagFlightBagEl = $("#bagFlight"), bagDestEl = $("#bagDest"), bagDateEl = $("#bagDate");
+const bagFotoBtn = $("#bagFotoBtn"), bagFotoInput = $("#bagFotoInput"), bagFotoPreview = $("#bagFotoPreview");
+const bagSubmitBtn = $("#bagSubmitBtn"), bagasiListEl = $("#bagasiList");
 const petugasInp = $("#petugas"), supervisorInp = $("#supervisor"), submitBtn = $("#submitBtn");
 const overlay = $("#overlay"), ovIcon = $("#ovIcon"), ovTitle = $("#ovTitle"), ovDesc = $("#ovDesc"), ovClose = $("#ovClose");
 
@@ -105,6 +110,66 @@ fotoInput?.addEventListener("change", async ()=>{
   }
 });
 
+let bagFotoDataUrl = "";
+function resetBagFoto(){
+  if(!bagFotoInput||!bagFotoPreview) return;
+  bagFotoInput.value="";
+  bagFotoPreview.src="";
+  bagFotoPreview.classList.add("hidden");
+  bagFotoDataUrl="";
+}
+bagFotoBtn?.addEventListener("click", ()=>bagFotoInput?.click());
+bagFotoInput?.addEventListener("change", async()=>{
+  const file = bagFotoInput.files?.[0];
+  if(!file){ resetBagFoto(); return; }
+  bagFotoPreview.src = URL.createObjectURL(file);
+  bagFotoPreview.classList.remove("hidden");
+  try{
+    const dataUrl = await compressImage(file,480,0.7);
+    if(dataUrl.length > 200_000){
+      alert("Foto terlalu besar, gunakan resolusi lebih rendah.");
+      resetBagFoto();
+    }else{
+      bagFotoDataUrl = dataUrl;
+    }
+  }catch(err){
+    console.error(err);
+    resetBagFoto();
+  }
+});
+
+function resetBagasiCard(){
+  if(bagNoEl) bagNoEl.textContent="-";
+  if(bagNamaEl) bagNamaEl.textContent="-";
+  if(bagFlightBagEl) bagFlightBagEl.textContent="-";
+  if(bagDestEl) bagDestEl.textContent="-";
+  if(bagDateEl) bagDateEl.textContent="-";
+  resetBagFoto();
+}
+
+const bagasiEntries = [];
+function renderBagasiList(){
+  if(!bagasiListEl) return;
+  bagasiListEl.innerHTML = "";
+  bagasiEntries.forEach(b=>{
+    const li=document.createElement('li');
+    li.textContent = `${b.no} - ${b.owner} - ${b.flight} - ${b.dest} - ${b.date}`;
+    bagasiListEl.appendChild(li);
+  });
+}
+bagSubmitBtn?.addEventListener('click', ()=>{
+  const entry={
+    no: bagNoEl?.textContent.trim()||"",
+    owner: bagNamaEl?.textContent.trim()||"",
+    flight: bagFlightBagEl?.textContent.trim()||"",
+    dest: bagDestEl?.textContent.trim()||"",
+    date: bagDateEl?.textContent.trim()||""
+  };
+  bagasiEntries.push(entry);
+  renderBagasiList();
+  resetBagasiCard();
+});
+
 /* ===== UI Rules ===== */
 function updateTipePiVisibility(){
   const t = val(tindakanSel).toLowerCase();
@@ -147,7 +212,11 @@ function setMode(m){
   if(tindakanSel) tindakanSel.value="";
   if(tipePiSel) tipePiSel.value="";
   resetFoto();
+  resetBagasiCard();
   setSupervisor();
+
+  bagasiCard?.classList.toggle("hidden", m !== "HBSCP");
+  bagasiListCard?.classList.toggle("hidden", m !== "HBSCP");
 
   if (m==="PSCP"){
     scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");
@@ -169,6 +238,8 @@ btnCARGO?.addEventListener("click", ()=>setMode("CARGO"));
 setMode("PSCP");
 
 /* ===== SCANNER ===== */
+let activeScanBtn = scanBtn;
+let scanTarget = "boarding";
 let scanState = {
   stream: null, video: null, canvas: null, ctx: null,
   running: false, usingDetector: false, detector: null, jsQRReady: false,
@@ -211,24 +282,39 @@ function receiveBarcode(payload){
     }
   }catch(e){ console.error(e); }
 }
+function receiveBagBarcode(data){
+  try{
+    const code = typeof data === 'string' ? data : String(data);
+    if(bagNoEl) bagNoEl.textContent = code;
+    if(bagDateEl) bagDateEl.textContent = new Date().toLocaleDateString('id-ID');
+  }catch(e){ console.error(e); }
+}
 window.receiveBarcode = receiveBarcode;
 
 function setWaitingUI(on){
-  if (!scanBtn) return;
-  scanBtn.classList.toggle('is-waiting', !!on);
-  scanBtn.disabled = !!on;
-  scanBtn.setAttribute('aria-busy', on ? 'true' : 'false');
+  if (!activeScanBtn) return;
+  activeScanBtn.classList.toggle('is-waiting', !!on);
+  activeScanBtn.disabled = !!on;
+  activeScanBtn.setAttribute('aria-busy', on ? 'true' : 'false');
 }
 injectScanStyles();
 scanBtn?.addEventListener('click', async () => {
+  activeScanBtn = scanBtn; scanTarget = 'boarding';
+  if (scanState.running){ await stopScan(); return; }
+  await startScan();
+});
+scanBagBtn?.addEventListener('click', async () => {
+  activeScanBtn = scanBagBtn; scanTarget = 'bagasi';
   if (scanState.running){ await stopScan(); return; }
   await startScan();
 });
 
 async function startScan(){
   try{
-    manualForm?.classList.add('hidden');
-    scanResult?.classList.remove('hidden');
+    if (scanTarget === 'boarding'){
+      manualForm?.classList.add('hidden');
+      scanResult?.classList.remove('hidden');
+    }
     setWaitingUI(true);
     ensureVideo(); ensureOverlay();
     if (!scanState.video) throw new Error('Video element tidak tersedia');
@@ -293,9 +379,11 @@ function ensureOverlay(){
   scanState.closeBtn.addEventListener('click', async (e) => {
     e.preventDefault(); e.stopPropagation();
     await stopScan();
-    manualForm?.classList.remove('hidden');
-    scanResult?.classList.add('hidden');
-    manualNama?.focus();
+    if (scanTarget === 'boarding'){
+      manualForm?.classList.remove('hidden');
+      scanResult?.classList.add('hidden');
+      manualNama?.focus();
+    }
   });
 }
 function prepareCanvas(){
@@ -348,7 +436,11 @@ function detectLoop_jsQR(){
   requestAnimationFrame(loop);
 }
 async function handleScanSuccess(raw){
-  try{ await stopScan(); receiveBarcode(raw); }catch(e){ console.error(e); }
+  try{
+    await stopScan();
+    if (scanTarget === 'bagasi') receiveBagBarcode(raw);
+    else receiveBarcode(raw);
+  }catch(e){ console.error(e); }
 }
 function injectScanStyles(){
   if (document.getElementById('scan-style')) return;
