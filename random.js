@@ -26,7 +26,7 @@ const isiBarangInp=$("#isiBarang");
 const fotoBtn=$("#fotoBtn"),fotoInput=$("#fotoInput"),fotoPreview=$("#fotoPreview");
 
 // SUSPECT HBSCP
-const bagasiCard=$("#bagasiCard"),bagasiListCard=$("#bagasiListCard");
+const bagasiCard=$("#bagasiCard"),bagasiListCard=$("#bagasiListCard"),bagasiToggle=$("#bagasiToggle"),bagasiContent=$("#bagasiContent");
 const scanBagBtn=$("#scanBagBtn");
 const bagNoEl=$("#bagNo"),bagNamaEl=$("#bagNama"),bagFlightBagEl=$("#bagFlight"),
       bagDestEl=$("#bagDest"),bagDateEl=$("#bagDate");
@@ -37,6 +37,11 @@ const bagFotoBarangBtn=$("#bagFotoBarangBtn"),bagFotoBarangInput=$("#bagFotoBara
 const bagSubmitBtn=$("#bagSubmitBtn");
 const bagasiList=$("#bagasiList");
 const bagIndikasiInp=$("#bagIndikasi");
+bagasiToggle?.addEventListener("click",()=>{
+  bagasiCard?.classList.toggle("collapsed");
+  const exp=!bagasiCard.classList.contains("collapsed");
+  bagasiToggle.setAttribute("aria-expanded",exp);
+});
 
 // modal foto suspect/barang
 const imgOverlay=$("#photoOverlay"),imgClose=$("#photoClose"),suspectImg=$("#suspectPhoto"),barangImg=$("#barangPhoto"),indikasiEl=$("#indikasiText");
@@ -312,7 +317,7 @@ function setMode(m){
 
   bagasiCard?.classList.toggle("hidden", m!=="HBSCP");
   bagasiListCard?.classList.toggle("hidden", m!=="HBSCP");
-  if(m==="HBSCP") loadSuspectList();
+  if(m==="HBSCP"){ loadSuspectList(); bagasiCard?.classList.remove("collapsed"); }
 
   if(m==="PSCP"){
     scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");

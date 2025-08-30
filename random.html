@@ -28,41 +28,47 @@
 
     <!-- Card khusus HBSCP: Scan barcode bagasi -->
     <section id="bagasiCard" class="card hidden">
-      <button id="scanBagBtn" type="button" class="qr-btn" aria-busy="false">
-        <img src="icons/qrcode.png" alt="QR">
-        <span>Scan Barcode Bagasi<br><small>Label Bagasi</small></span>
+      <button id="bagasiToggle" class="bagasi-nav" type="button" aria-expanded="true">
+        Scan Barcode Bagasi
+        <span class="chevron">▼</span>
       </button>
+      <div id="bagasiContent">
+        <button id="scanBagBtn" type="button" class="qr-btn" aria-busy="false">
+          <img src="icons/qrcode.png" alt="QR">
+          <span>Scan Barcode Bagasi<br><small>Label Bagasi</small></span>
+        </button>
 
-      <div id="bagasiResult">
-        <div class="bag-no"><label>No Bagasi :</label><span id="bagNo">-</span></div>
-        <div class="bag-pair">
-          <div><label>Nama Pemilik :</label><span id="bagNama">-</span></div>
-          <div><label>No Flight :</label><span id="bagFlight">-</span></div>
+        <div id="bagasiResult">
+          <div class="bag-no"><label>No Bagasi :</label><span id="bagNo">-</span></div>
+          <div class="bag-pair">
+            <div><label>Nama Pemilik :</label><span id="bagNama">-</span></div>
+            <div><label>No Flight :</label><span id="bagFlight">-</span></div>
+          </div>
+          <div class="bag-pair">
+            <div><label>Tujuan :</label><span id="bagDest">-</span></div>
+            <div><label>Tanggal :</label><span id="bagDate">-</span></div>
+          </div>
         </div>
-        <div class="bag-pair">
-          <div><label>Tujuan :</label><span id="bagDest">-</span></div>
-          <div><label>Tanggal :</label><span id="bagDate">-</span></div>
+
+        <div class="field">
+          <button id="bagFotoLayarBtn" type="button" class="btn full">Foto Layar</button>
+          <input id="bagFotoLayarInput" type="file" accept="image/*" capture="environment" class="hidden" />
+          <img id="bagFotoLayarPreview" class="photo-preview hidden" alt="Foto layar" />
         </div>
-      </div>
 
-      <div class="field">
-        <button id="bagFotoLayarBtn" type="button" class="btn full">Foto Layar</button>
-        <input id="bagFotoLayarInput" type="file" accept="image/*" capture="environment" class="hidden" />
-        <img id="bagFotoLayarPreview" class="photo-preview hidden" alt="Foto layar" />
-      </div>
+        <div class="field">
+          <button id="bagFotoBarangBtn" type="button" class="btn full">Foto Barang</button>
+          <input id="bagFotoBarangInput" type="file" accept="image/*" capture="environment" class="hidden" />
+          <img id="bagFotoBarangPreview" class="photo-preview hidden" alt="Foto barang" />
+        </div>
 
-      <div class="field">
-        <button id="bagFotoBarangBtn" type="button" class="btn full">Foto Barang</button>
-        <input id="bagFotoBarangInput" type="file" accept="image/*" capture="environment" class="hidden" />
-        <img id="bagFotoBarangPreview" class="photo-preview hidden" alt="Foto barang" />
-      </div>
+        <div class="field">
+          <label for="bagIndikasi">Indikasi Suspect</label>
+          <input id="bagIndikasi" type="text" />
+        </div>
 
-      <div class="field">
-        <label for="bagIndikasi">Indikasi Suspect</label>
-        <input id="bagIndikasi" type="text" />
+        <button id="bagSubmitBtn" type="button" class="btn primary full">Kirim Data Bagasi</button>
       </div>
-
-      <button id="bagSubmitBtn" type="button" class="btn primary full">Kirim Data Bagasi</button>
     </section>
 
     <section id="bagasiListCard" class="card hidden">

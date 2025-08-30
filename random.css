@@ -132,3 +132,22 @@
   border-radius:12px;
   object-fit:cover;
 }
+
+/* Toggle bagasi card */
+#bagasiCard .bagasi-nav{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:none;
+  border:none;
+  color:var(--text);
+  font-weight:600;
+  font-size:16px;
+  margin-bottom:12px;
+  cursor:pointer;
+  padding:0;
+}
+#bagasiCard .bagasi-nav .chevron{transition:transform .2s;}
+#bagasiCard.collapsed #bagasiContent{display:none;}
+#bagasiCard.collapsed .bagasi-nav .chevron{transform:rotate(-90deg);}
