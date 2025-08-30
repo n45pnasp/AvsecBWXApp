@@ -162,27 +162,29 @@ async function showPhotoModal(suspect, barang){
   if(barang)  entries.push({img:barangImg,  val:barang});
   if(!entries.length) return;
 
-  showOverlay("spinner","Memuat foto…","");
+  showOverlay("loading","Memuat foto…","");
   imgOverlay.classList.remove("hidden");
   if(suspectImg) suspectImg.removeAttribute("src");
   if(barangImg)  barangImg.removeAttribute("src");
 
   let pending=entries.length;
-  const done=()=>{ pending--; if(pending<=0) overlay?.classList.add("hidden"); };
+  const hide=()=>{
+    pending--; if(pending<=0) overlay?.classList.add("hidden");
+  };
 
   entries.forEach(({img,val})=>{
-    if(!img){ done(); return; }
-    let final = "";
-    if (isDirectUrl(val)) {
-      final = val;
-    } else if (looksLikeFileId(val)) {
-      final = `${LOOKUP_URL}?action=photoraw&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
-    } else {
-      final = `${LOOKUP_URL}?action=get_photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
+    if(!img){ hide(); return; }
+    let final="";
+    if(isDirectUrl(val)){
+      final=val;
+    }else if(looksLikeFileId(val)){
+      final=`${LOOKUP_URL}?action=photoraw&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
+    }else{
+      final=`${LOOKUP_URL}?action=get_photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
     }
-    img.onload=done;
-    img.onerror=()=>{ done(); showOverlay("err","Gagal memuat foto","Coba lagi"); };
-    img.src = final + (final.includes("?")?"&":"?") + "t=" + Date.now();
+    img.onload=()=>{ hide(); img.onload=img.onerror=null; };
+    img.onerror=()=>{ hide(); img.onload=img.onerror=null; showOverlay("err","Gagal memuat foto","Coba lagi"); };
+    img.src=final+(final.includes("?")?"&":"?")+"t="+Date.now();
   });
 }
 imgClose?.addEventListener("click",()=>imgOverlay?.classList.add("hidden"));
