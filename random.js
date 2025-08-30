@@ -362,10 +362,16 @@ async function fetchJSON(url, opts = {}, timeoutMs = 15000){
   try{
     const res = await fetch(url, { ...opts, signal: controller.signal, mode: "cors" });
     const text = await res.text();
-    let data={}; try{ data = text ? JSON.parse(text) : {}; }catch{ data = { raw:text }; }
+    let data={};
+    try{ data = text ? JSON.parse(text) : {}; }catch{ data = { raw:text }; }
     if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
     return data;
-  }finally{ clearTimeout(t); }
+  }catch(e){
+    if(e.name === "AbortError") throw new Error("Timeout: server lambat merespons.");
+    throw e;
+  }finally{
+    clearTimeout(t);
+  }
 }
 
 async function submitRandom(){
@@ -434,7 +440,9 @@ async function submitRandom(){
 
   }catch(err){
     console.error(err);
-    showOverlay('err','Gagal', err?.message || String(err));
+    const raw = err?.message || String(err);
+    const friendly = raw.includes('Timeout') ? 'Koneksi lambat atau server tidak merespons.' : raw;
+    showOverlay('err','Gagal', friendly);
   }finally{
     submitBtn.disabled = false; submitBtn.setAttribute("aria-busy","false");
   }
