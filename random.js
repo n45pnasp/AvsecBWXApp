@@ -1,48 +1,51 @@
+// random.js (FINAL, cocok dgn code.gs + Worker proxy)
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
 /* =========================
-   KONFIG KIRIMAN KE GOOGLE APPS SCRIPT
+   KONFIG KIRIMAN
    ========================= */
-// Endpoint Web App (lihat code.gs)
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwAPnJy8zZlae5B6pc6L8rQzTzqHw5veDrBwlTaYuSf39-gOQsArJXSWA9w0Oh227J4/exec";
-const SHARED_TOKEN = "N45p"; // samakan dengan code.gs
+// Pakai Worker proxy (punya CORS) → injeksi token & forward ke GAS
+const PROXY_URL   = "https://rdcheck.avsecbwx2018.workers.dev/";
+const GAS_URL     = "https://script.google.com/macros/s/AKfycbwAPnJy8zZlae5B6pc6L8rQzTzqHw5veDrBwlTaYuSf39-gOQsArJXSWA9w0Oh227J4/exec"; // fallback uji
+const SHARED_TOKEN = "N45p";
 
 /* =========================
    DOM
    ========================= */
-const btnPSCP = document.getElementById("btnPSCP");
-const btnHBSCP = document.getElementById("btnHBSCP");
-const btnCARGO = document.getElementById("btnCARGO");
+const btnPSCP = $("#btnPSCP");
+const btnHBSCP = $("#btnHBSCP");
+const btnCARGO = $("#btnCARGO");
 
-const scanBtn = document.getElementById("scanBtn");
-const scanResult = document.getElementById("scanResult");
-const namaEl = document.getElementById("namaPenumpang");
-const flightEl = document.getElementById("noFlight");
-const manualForm = document.getElementById("manualForm");
-const manualNama = document.getElementById("manualNama");
-const manualFlight = document.getElementById("manualFlight");
-const manualNamaLabel = manualForm.querySelector('label[for="manualNama"]');
-const metodeSel = document.getElementById("jenisPemeriksaan");
+const scanBtn = $("#scanBtn");
+const scanResult = $("#scanResult");
+const namaEl = $("#namaPenumpang");
+const flightEl = $("#noFlight");
+const manualForm = $("#manualForm");
+const manualNama = $("#manualNama");
+const manualFlight = $("#manualFlight");
+const manualNamaLabel = manualForm?.querySelector('label[for="manualNama"]');
+const metodeSel = $("#jenisPemeriksaan");
 
-const objekSel = document.getElementById("objek");
-const objekField = objekSel.parentElement;
-const barangCard = document.getElementById("barangCard");
-const tindakanSel = document.getElementById("tindakanBarang");
-const tipePiSel = document.getElementById("tipePi");
-const tindakanField = tindakanSel.parentElement;
-const tipePiField = tipePiSel.parentElement;
-const isiBarangInp = document.getElementById("isiBarang");
+const objekSel = $("#objek");
+const objekField = objekSel?.parentElement;
+const barangCard = $("#barangCard");
+const tindakanSel = $("#tindakanBarang");
+const tipePiSel = $("#tipePi");
+const tindakanField = tindakanSel?.parentElement;
+const tipePiField = tipePiSel?.parentElement;
+const isiBarangInp = $("#isiBarang");
 
-const fotoBtn = document.getElementById("fotoBtn");
-const fotoInput = document.getElementById("fotoInput");
-const fotoPreview = document.getElementById("fotoPreview");
+const fotoBtn = $("#fotoBtn");
+const fotoInput = $("#fotoInput");
+const fotoPreview = $("#fotoPreview");
 
-const petugasInp = document.getElementById("petugas");
-const supervisorInp = document.getElementById("supervisor");
-const submitBtn = document.getElementById("submitBtn");
+const petugasInp = $("#petugas");
+const supervisorInp = $("#supervisor");
+const submitBtn = $("#submitBtn");
 
 /* =========================
    AUTH STATE
@@ -60,133 +63,124 @@ onAuthStateChanged(auth, (u) => {
 let mode = "PSCP";
 const supervisors = { PSCP: "", HBSCP: "", CARGO: "" };
 
-// state untuk pemindaian barcode
 let scanState = {
-  stream: null,
-  video: null,
-  canvas: null,
-  ctx: null,
-  running: false,
-  usingDetector: false,
-  detector: null,
-  jsQRReady: false,
-  overlay: null,
-  closeBtn: null,
+  stream: null, video: null, canvas: null, ctx: null,
+  running: false, usingDetector: false, detector: null, jsQRReady: false,
+  overlay: null, closeBtn: null,
 };
 
+function $(sel){ return document.querySelector(sel); }
+function val(el){ return (el?.value || "").trim(); }
+function txt(el){ return (el?.textContent || "").trim(); }
+
 function resetFoto(){
+  if (!fotoInput || !fotoPreview) return;
   fotoInput.value = "";
   fotoPreview.src = "";
   fotoPreview.classList.add("hidden");
 }
 
-fotoBtn.addEventListener("click", () => fotoInput.click());
-fotoInput.addEventListener("change", () => {
-  const file = fotoInput.files[0];
+fotoBtn?.addEventListener("click", () => fotoInput?.click());
+fotoInput?.addEventListener("change", () => {
+  const file = fotoInput.files?.[0];
   if (file){
     fotoPreview.src = URL.createObjectURL(file);
     fotoPreview.classList.remove("hidden");
-  }else{
+  } else {
     resetFoto();
   }
 });
 
 function setSupervisor(){
-  const val = supervisors[mode] || "";
-  supervisorInp.value = val;
+  if (!supervisorInp) return;
+  supervisorInp.value = supervisors[mode] || "";
 }
 
-onValue(ref(db, "roster/spvCabin"), (snap) => {
-  supervisors.PSCP = snap.val() || "";
-  if (mode === "PSCP") setSupervisor();
-});
-onValue(ref(db, "roster/spvHbs"), (snap) => {
-  supervisors.HBSCP = snap.val() || "";
-  if (mode === "HBSCP") setSupervisor();
-});
-onValue(ref(db, "roster/spvCargo"), (snap) => {
-  supervisors.CARGO = snap.val() || "";
-  if (mode === "CARGO") setSupervisor();
-});
+// Ambil supervisor dari RTDB
+onValue(ref(db, "roster/spvCabin"), (s) => { supervisors.PSCP = s.val() || ""; if (mode==="PSCP") setSupervisor(); });
+onValue(ref(db, "roster/spvHbs"),   (s) => { supervisors.HBSCP= s.val() || ""; if (mode==="HBSCP") setSupervisor(); });
+onValue(ref(db, "roster/spvCargo"), (s) => { supervisors.CARGO= s.val() || ""; if (mode==="CARGO") setSupervisor(); });
 
+// tampilkan/hidden field PI sesuai aturan + samakan casing
 function updateTipePiVisibility(){
+  const t = (val(tindakanSel) || "").toLowerCase();
   const needTipePi =
-    (mode === "PSCP" && objekSel.value === "barang" && tindakanSel.value === "Ditinggal") ||
-    (mode === "HBSCP" && tindakanSel.value === "Ditinggal");
-  tipePiField.classList.toggle("hidden", !needTipePi);
+    (mode === "PSCP"  && val(objekSel) === "barang" && t === "ditinggal") ||
+    (mode === "HBSCP" && t === "ditinggal");
+  tipePiField?.classList.toggle("hidden", !needTipePi);
 }
 
 function updateBarangCard(){
+  if (!barangCard) return;
   if (mode === "PSCP"){
-    if (objekSel.value === "barang"){
+    if (val(objekSel) === "barang"){
       barangCard.classList.remove("hidden");
-      tindakanField.classList.remove("hidden");
+      tindakanField?.classList.remove("hidden");
       updateTipePiVisibility();
-    }else{
+    } else {
       barangCard.classList.add("hidden");
       resetFoto();
     }
-  }else if (mode === "HBSCP"){
+  } else if (mode === "HBSCP"){
     barangCard.classList.remove("hidden");
-    tindakanField.classList.remove("hidden");
+    tindakanField?.classList.remove("hidden");
     updateTipePiVisibility();
-  }else{ // CARGO
+  } else { // CARGO
     barangCard.classList.remove("hidden");
-    tindakanField.classList.add("hidden");
-    tipePiField.classList.add("hidden");
+    tindakanField?.classList.add("hidden");
+    tipePiField?.classList.add("hidden");
   }
 }
 
-objekSel.addEventListener("change", updateBarangCard);
-tindakanSel.addEventListener("change", updateTipePiVisibility);
+objekSel?.addEventListener("change", updateBarangCard);
+tindakanSel?.addEventListener("change", updateTipePiVisibility);
 
 function setMode(m){
   mode = m;
   stopScan?.();
-  namaEl.textContent = "-";
-  flightEl.textContent = "-";
-  manualNama.value = "";
-  manualFlight.value = "";
-  metodeSel.value = "";
-  isiBarangInp.value = "";
-  tindakanSel.value = "";
-  tipePiSel.value = "";
+  if (namaEl)   namaEl.textContent = "-";
+  if (flightEl) flightEl.textContent = "-";
+  if (manualNama)   manualNama.value = "";
+  if (manualFlight) manualFlight.value = "";
+  if (metodeSel)    metodeSel.value = "";
+  if (isiBarangInp) isiBarangInp.value = "";
+  if (tindakanSel)  tindakanSel.value = "";
+  if (tipePiSel)    tipePiSel.value = "";
   resetFoto();
-
   setSupervisor();
 
   if (m === "PSCP"){
-    scanBtn.classList.remove("hidden");
-    scanResult.classList.remove("hidden");
-    manualForm.classList.add("hidden");
-    manualNamaLabel.textContent = "Nama Penumpang";
-    objekField.classList.remove("hidden");
-    objekSel.value = "";
+    scanBtn?.classList.remove("hidden");
+    scanResult?.classList.remove("hidden");
+    manualForm?.classList.add("hidden");
+    if (manualNamaLabel) manualNamaLabel.textContent = "Nama Penumpang";
+    objekField?.classList.remove("hidden");
+    if (objekSel) objekSel.value = "";
     updateBarangCard();
-  }else if (m === "HBSCP"){
-    scanBtn.classList.remove("hidden");
-    scanResult.classList.remove("hidden");
-    manualForm.classList.add("hidden");
-    manualNamaLabel.textContent = "Nama Penumpang";
-    objekField.classList.add("hidden");
+  } else if (m === "HBSCP"){
+    scanBtn?.classList.remove("hidden");
+    scanResult?.classList.remove("hidden");
+    manualForm?.classList.add("hidden");
+    if (manualNamaLabel) manualNamaLabel.textContent = "Nama Penumpang";
+    objekField?.classList.add("hidden");
     updateBarangCard();
-  }else if (m === "CARGO"){
-    scanBtn.classList.add("hidden");
-    scanResult.classList.add("hidden");
-    manualForm.classList.remove("hidden");
-    manualNamaLabel.textContent = "Nama Pengirim";
-    objekField.classList.add("hidden");
+  } else { // CARGO
+    scanBtn?.classList.add("hidden");
+    scanResult?.classList.add("hidden");
+    manualForm?.classList.remove("hidden");
+    if (manualNamaLabel) manualNamaLabel.textContent = "Nama Pengirim";
+    objekField?.classList.add("hidden");
     updateBarangCard();
   }
 }
 
-btnPSCP.addEventListener("click", () => setMode("PSCP"));
-btnHBSCP.addEventListener("click", () => setMode("HBSCP"));
-btnCARGO.addEventListener("click", () => setMode("CARGO"));
+btnPSCP?.addEventListener("click", () => setMode("PSCP"));
+btnHBSCP?.addEventListener("click", () => setMode("HBSCP"));
+btnCARGO?.addEventListener("click", () => setMode("CARGO"));
 setMode("PSCP");
 
 /* =========================
-   SCAN BOARDING PASS (unchanged)
+   SCAN BOARDING PASS
    ========================= */
 function splitFromBack(str, maxSplits){
   const parts = []; let remaining = str;
@@ -196,7 +190,6 @@ function splitFromBack(str, maxSplits){
   }
   parts.unshift(remaining); return parts;
 }
-
 function parseBoardingPass(data){
   if (!data || typeof data!=="string" || !data.startsWith("M1")) return null;
   const parts = splitFromBack(data, 5);
@@ -210,23 +203,18 @@ function parseBoardingPass(data){
   const flightNumber = parts[3];
   return { fullName, flight: `${airlineCode} ${flightNumber}` };
 }
-
 function receiveBarcode(payload){
   try{
     let data = payload;
     if (typeof payload === "string"){
-      try{
-        const j = JSON.parse(payload);
-        if (j && j.data) data = j.data;
-      }catch(_){ }
-    }
+      try{ const j = JSON.parse(payload); if (j && j.data) data = j.data; }catch(_){}}
     if (!data || typeof data !== "string") return;
     const parsed = parseBoardingPass(data);
     if (parsed){
-      namaEl.textContent = parsed.fullName;
-      flightEl.textContent = parsed.flight;
-      scanResult.classList.remove('hidden');
-      manualForm.classList.add('hidden');
+      if (namaEl)   namaEl.textContent = parsed.fullName;
+      if (flightEl) flightEl.textContent = parsed.flight;
+      scanResult?.classList.remove('hidden');
+      manualForm?.classList.add('hidden');
     }
   }catch(e){ console.error(e); }
 }
@@ -240,47 +228,29 @@ function setWaitingUI(on){
 }
 
 injectScanStyles();
-
-if (scanBtn){
-  scanBtn.addEventListener('click', async () => {
-    if (scanState.running){
-      await stopScan();
-      return;
-    }
-    await startScan();
-  });
-}
+scanBtn?.addEventListener('click', async () => {
+  if (scanState.running){ await stopScan(); return; }
+  await startScan();
+});
 
 async function startScan(){
   try{
-    manualForm.classList.add('hidden');
-    scanResult.classList.remove('hidden');
+    manualForm?.classList.add('hidden');
+    scanResult?.classList.remove('hidden');
     setWaitingUI(true);
-    ensureVideo();
-    ensureOverlay();
+    ensureVideo(); ensureOverlay();
     if (!scanState.video) throw new Error('Video element tidak tersedia');
     document.body.classList.add('scan-active');
 
     const constraints = {
-      video: {
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        advanced: [{ focusMode: "continuous" }]
-      },
+      video: { facingMode: { ideal: "environment" }, width:{ideal:1280}, height:{ideal:720}, advanced:[{focusMode:"continuous"}] },
       audio: false
     };
-
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error('Kamera tidak didukung');
-    }
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Kamera tidak didukung');
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     scanState.stream = stream;
-    const vid = scanState.video;
-    if (!vid) throw new Error('Video element hilang');
-    vid.srcObject = stream;
-
-    await vid.play();
+    const vid = scanState.video; if (!vid) throw new Error('Video element hilang');
+    vid.srcObject = stream; await vid.play();
 
     scanState.usingDetector = false;
     scanState.detector = null;
@@ -289,274 +259,155 @@ async function startScan(){
         const supported = await window.BarcodeDetector.getSupportedFormats();
         const wanted = ['pdf417','aztec','qr_code','data_matrix'];
         const formats = wanted.filter(f => supported.includes(f));
-        if (formats.length){
-          scanState.detector = new window.BarcodeDetector({ formats });
-          scanState.usingDetector = true;
-        }
+        if (formats.length){ scanState.detector = new window.BarcodeDetector({ formats }); scanState.usingDetector = true; }
       }catch(_){ }
     }
-
     scanState.running = true;
-
-    if (scanState.usingDetector){
-      detectLoop_BarcodeDetector();
-    }else{
-      await ensureJsQR();
-      prepareCanvas();
-      detectLoop_jsQR();
-    }
+    if (scanState.usingDetector) detectLoop_BarcodeDetector();
+    else { await ensureJsQR(); prepareCanvas(); detectLoop_jsQR(); }
   }catch(err){
     console.error(err);
     setWaitingUI(false);
     await stopScan();
   }
 }
-
 async function stopScan(){
   scanState.running = false;
-
-  if (scanState.stream){
-    for (const t of scanState.stream.getTracks()){
-      try { t.stop(); } catch(_) {}
-    }
-  }
+  if (scanState.stream){ for (const t of scanState.stream.getTracks()){ try{ t.stop(); }catch(_){} } }
   scanState.stream = null;
-
-  if (scanState.video){
-    scanState.video.srcObject = null;
-    scanState.video.remove();
-    scanState.video = null;
-  }
-  if (scanState.canvas){
-    scanState.canvas.remove();
-    scanState.canvas = null;
-    scanState.ctx = null;
-  }
-
+  if (scanState.video){ scanState.video.srcObject = null; scanState.video.remove(); scanState.video = null; }
+  if (scanState.canvas){ scanState.canvas.remove(); scanState.canvas = null; scanState.ctx = null; }
   document.body.classList.remove('scan-active');
   setWaitingUI(false);
 }
-
 function ensureVideo(){
   if (scanState.video) return;
   const v = document.createElement('video');
-  v.setAttribute('playsinline','');
-  v.muted = true;
-  v.autoplay = true;
-  v.id = 'scan-video';
-  document.body.appendChild(v);
-  scanState.video = v;
+  v.setAttribute('playsinline',''); v.muted = true; v.autoplay = true; v.id = 'scan-video';
+  document.body.appendChild(v); scanState.video = v;
 }
-
 function ensureOverlay(){
   if (scanState.overlay) return;
   const overlay = document.createElement('div');
   overlay.id = 'scan-overlay';
   overlay.innerHTML = `
-    <div class="scan-topbar">
-      <button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button>
-    </div>
+    <div class="scan-topbar"><button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button></div>
     <div class="scan-reticle" aria-hidden="true"></div>
-    <div class="scan-hint">Arahkan ke barcode / QR</div>
-  `;
+    <div class="scan-hint">Arahkan ke barcode / QR</div>`;
   document.body.appendChild(overlay);
   scanState.overlay = overlay;
   scanState.closeBtn = overlay.querySelector('#scan-close');
   scanState.closeBtn.addEventListener('click', async (e) => {
     e.preventDefault(); e.stopPropagation();
     await stopScan();
-    manualForm.classList.remove('hidden');
-    scanResult.classList.add('hidden');
-    manualNama.focus();
+    manualForm?.classList.remove('hidden');
+    scanResult?.classList.add('hidden');
+    manualNama?.focus();
   });
 }
-
 function prepareCanvas(){
   if (scanState.canvas) return;
-  const c = document.createElement('canvas');
-  c.id = 'scan-canvas';
-  c.width  = 640;
-  c.height = 480;
-  document.body.appendChild(c);
-  scanState.canvas = c;
+  const c = document.createElement('canvas'); c.id = 'scan-canvas'; c.width = 640; c.height = 480;
+  document.body.appendChild(c); scanState.canvas = c;
   scanState.ctx = c.getContext('2d', { willReadFrequently: true });
 }
-
 async function ensureJsQR(){
   if (scanState.jsQRReady) return;
   await new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('Gagal memuat jsQR'));
+    s.onload = resolve; s.onerror = () => reject(new Error('Gagal memuat jsQR'));
     document.head.appendChild(s);
   });
   scanState.jsQRReady = true;
 }
-
 function detectLoop_BarcodeDetector(){
   const loop = async () => {
     if (!scanState.running || !scanState.video) return;
     try{
       const barcodes = await scanState.detector.detect(scanState.video);
-      if (barcodes && barcodes.length){
+      if (barcodes?.length){
         const value = (barcodes[0].rawValue || '').trim();
-        if (value){
-          await handleScanSuccess(value);
-          return;
-        }
+        if (value){ await handleScanSuccess(value); return; }
       }
     }catch(e){
       console.warn('Detector error:', e);
       if (!scanState.canvas){
-        try{
-          await ensureJsQR();
-          prepareCanvas();
-          scanState.usingDetector = false;
-          detectLoop_jsQR();
-          return;
-        }catch(_){ }
+        try{ await ensureJsQR(); prepareCanvas(); scanState.usingDetector = false; detectLoop_jsQR(); return; }catch(_){ }
       }
     }
     if (scanState.running) requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
 }
-
 function detectLoop_jsQR(){
   const loop = () => {
     if (!scanState.running || !scanState.video) return;
     const vid = scanState.video;
-    const cw = scanState.canvas.width  = vid.videoWidth  || 640;
-    const ch = scanState.canvas.height = vid.videoHeight || 480;
+    const cw = (scanState.canvas.width  = vid.videoWidth  || 640);
+    const ch = (scanState.canvas.height = vid.videoHeight || 480);
     scanState.ctx.drawImage(vid, 0, 0, cw, ch);
     const img = scanState.ctx.getImageData(0, 0, cw, ch);
     const result = window.jsQR ? window.jsQR(img.data, cw, ch, { inversionAttempts: 'dontInvert' }) : null;
-    if (result && result.data){
-      handleScanSuccess(result.data);
-      return;
-    }
+    if (result?.data){ handleScanSuccess(result.data); return; }
     if (scanState.running) requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
 }
-
 async function handleScanSuccess(raw){
-  try{
-    await stopScan();
-    receiveBarcode(raw);
-  }catch(e){
-    console.error(e);
-  }
+  try{ await stopScan(); receiveBarcode(raw); }catch(e){ console.error(e); }
 }
-
 function injectScanStyles(){
   if (document.getElementById('scan-style')) return;
   const css = `
-    .is-waiting { opacity:.7; pointer-events:none }
-
-    body.scan-active{ background:#000; overscroll-behavior:contain; }
-    body.scan-active .app-bar,
-    body.scan-active .container { display:none !important; }
-
-    #scan-video, #scan-canvas{
-      position:fixed; inset:0;
-      width:100vw; height:100vh;
-      display:none; background:#000; z-index:9998;
-    }
-    body.scan-active #scan-video{
-      display:block;
-      object-fit:cover;
-      transform:none;
-      touch-action:none;
-    }
-    body.scan-active #scan-canvas{ display:none; }
-
-    #scan-overlay{
-      position:fixed; inset:0; display:none; z-index:10000; pointer-events:none;
-    }
-    body.scan-active #scan-overlay{ display:block; }
-
-    .scan-topbar{
-      position:absolute; top:0; left:0; right:0; height:max(56px, calc(44px + env(safe-area-inset-top,0)));
-      display:flex; align-items:flex-start; justify-content:flex-end;
-      padding: calc(env(safe-area-inset-top,0) + 6px) 10px 8px;
-      background:linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,0));
-      pointer-events:none;
-    }
-    .scan-close{
-      pointer-events:auto;
-      width:42px; height:42px; border-radius:999px;
-      background:rgba(0,0,0,.55); color:#fff;
-      border:1px solid rgba(255,255,255,.25);
-      font-size:22px; line-height:1; display:flex; align-items:center; justify-content:center;
-      box-shadow:0 4px 12px rgba(0,0,0,.35);
-      transition: transform .08s ease, filter .15s ease;
-    }
-    .scan-close:active{ transform:scale(.96); }
-    .scan-close:focus-visible{ outline:2px solid rgba(255,255,255,.6); outline-offset:2px; }
-
-    .scan-reticle{
-      position:absolute; top:50%; left:50%;
-      width:min(68vw, 520px); aspect-ratio:1/1;
-      transform:translate(-50%, -50%);
-      border-radius:16px;
-      box-shadow: 0 0 0 9999px rgba(0,0,0,.28) inset;
-      pointer-events:none;
-      background:
-        linear-gradient(#fff,#fff) left top / 28px 2px no-repeat,
-        linear-gradient(#fff,#fff) left top / 2px 28px no-repeat,
-        linear-gradient(#fff,#fff) right top / 28px 2px no-repeat,
-        linear-gradient(#fff,#fff) right top / 2px 28px no-repeat,
-        linear-gradient(#fff,#fff) left bottom / 28px 2px no-repeat,
-        linear-gradient(#fff,#fff) left bottom / 2px 28px no-repeat,
-        linear-gradient(#fff,#fff) right bottom / 28px 2px no-repeat,
-        linear-gradient(#fff,#fff) right bottom / 2px 28px no-repeat;
-      outline: 2px dashed rgba(255,255,255,.0);
-    }
-
-    .scan-hint{
-      position:absolute; left:50%; bottom:max(18px, calc(16px + env(safe-area-inset-bottom,0)));
-      transform:translateX(-50%);
-      background:rgba(0,0,0,.55); color:#fff; font-weight:600;
-      padding:8px 12px; border-radius:999px;
-      letter-spacing:.2px; pointer-events:none;
-      box-shadow:0 4px 12px rgba(0,0,0,.35);
-    }
+    .is-waiting{opacity:.7;pointer-events:none}
+    body.scan-active{background:#000;overscroll-behavior:contain}
+    body.scan-active .app-bar, body.scan-active .container{display:none!important}
+    #scan-video,#scan-canvas{position:fixed;inset:0;width:100vw;height:100vh;display:none;background:#000;z-index:9998}
+    body.scan-active #scan-video{display:block;object-fit:cover;transform:none;touch-action:none}
+    body.scan-active #scan-canvas{display:none}
+    #scan-overlay{position:fixed;inset:0;display:none;z-index:10000;pointer-events:none}
+    body.scan-active #scan-overlay{display:block}
+    .scan-topbar{position:absolute;top:0;left:0;right:0;height:max(56px,calc(44px + env(safe-area-inset-top,0)));
+      display:flex;align-items:flex-start;justify-content:flex-end;padding:calc(env(safe-area-inset-top,0)+6px) 10px 8px;
+      background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0));pointer-events:none}
+    .scan-close{pointer-events:auto;width:42px;height:42px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;
+      border:1px solid rgba(255,255,255,.25);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;
+      box-shadow:0 4px 12px rgba(0,0,0,.35);transition:transform .08s ease, filter .15s ease}
+    .scan-close:active{transform:scale(.96)} .scan-close:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:2px}
+    .scan-reticle{position:absolute;top:50%;left:50%;width:min(68vw,520px);aspect-ratio:1/1;transform:translate(-50%,-50%);
+      border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset;pointer-events:none;
+      background:linear-gradient(#fff,#fff) left top/28px 2px no-repeat,linear-gradient(#fff,#fff) left top/2px 28px no-repeat,
+      linear-gradient(#fff,#fff) right top/28px 2px no-repeat,linear-gradient(#fff,#fff) right top/2px 28px no-repeat,
+      linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat,
+      linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat}
+    .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);
+      background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px;letter-spacing:.2px;pointer-events:none;
+      box-shadow:0 4px 12px rgba(0,0,0,.35)}
   `;
   const style = document.createElement('style');
-  style.id = 'scan-style';
-  style.textContent = css;
-  document.head.appendChild(style);
+  style.id = 'scan-style'; style.textContent = css; document.head.appendChild(style);
 }
 
 /* =========================================================
-   SUBMISSION LOGIC — via Cloudflare Worker proxy
+   SUBMISSION LOGIC
    ========================================================= */
 
-// util: ambil nama & flight tergantung mode
 function getNameAndFlight() {
   if (mode === "CARGO") {
-    return {
-      nama: (manualNama.value || "").trim(),
-      flight: (manualFlight.value || "").trim()
-    };
+    return { nama: val(manualNama), flight: val(manualFlight) };
   }
-  // PSCP / HBSCP dari hasil scan (fallback ke manualForm jika terlihat)
   const usingManual = !scanResult || scanResult.classList.contains("hidden");
   return {
-    nama: usingManual ? (manualNama.value || "").trim() : (namaEl.textContent || "").trim(),
-    flight: usingManual ? (manualFlight.value || "").trim() : (flightEl.textContent || "").trim()
+    nama: usingManual ? val(manualNama) : txt(namaEl),
+    flight: usingManual ? val(manualFlight) : txt(flightEl)
   };
 }
 
-// upload foto (DISABLED): selalu skip, tidak ada endpoint upload
-async function uploadPhotoIfAny() {
-  return "";
-}
+async function uploadPhotoIfAny() { return ""; }
 
-// fetch helper: timeout + retry
-async function fetchJSON(url, opts = {}, timeoutMs = 12000, retries = 1) {
+// fetch helper: timeout + retry + fallback ke GAS jika Worker down
+async function fetchJSON(url, opts = {}, timeoutMs = 15000, retries = 1) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -574,98 +425,105 @@ async function fetchJSON(url, opts = {}, timeoutMs = 12000, retries = 1) {
   }
 }
 
+async function postToEndpoint(payload){
+  // 1) coba via Worker
+  try {
+    return await fetchJSON(PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Shared-Token": SHARED_TOKEN },
+      body: JSON.stringify(payload),
+      credentials: "omit",
+    });
+  } catch (e) {
+    // 2) fallback: langsung ke GAS (untuk debugging)
+    console.warn("Proxy gagal, fallback langsung ke GAS:", e?.message);
+    return await fetchJSON(GAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      credentials: "omit",
+    });
+  }
+}
+
 async function submitRandom() {
   try {
     submitBtn.disabled = true;
     submitBtn.setAttribute("aria-busy", "true");
 
     const { nama, flight } = getNameAndFlight();
-    const jenisBarang = (isiBarangInp.value || "").trim();
-    const tindakan = (tindakanSel.value || "").trim();
-    const tipePi    = (tipePiSel.value || "").trim();
-    const petugas   = (petugasInp.value || "").trim();
-    const supervisor= (supervisorInp.value || "").trim();
-    const metode    = (metodeSel.value || "").trim();
+    const jenisBarang = val(isiBarangInp);
+    const tindakan    = val(tindakanSel).toLowerCase(); // normalisasi
+    const tipePi      = val(tipePiSel);
+    const petugas     = val(petugasInp);
+    const supervisor  = val(supervisorInp);
+    const metode      = val(metodeSel);
 
     // Validasi ringan
-    if (!nama) throw new Error("Nama tidak boleh kosong.");
+    if (!nama)   throw new Error("Nama tidak boleh kosong.");
     if (!flight) throw new Error("Flight tidak boleh kosong.");
-    if (mode === "PSCP" && objekSel.value === "") throw new Error("Pilih objek pemeriksaan.");
-    if ((mode === "PSCP" && objekSel.value === "barang") || mode !== "PSCP") {
+    if (mode === "PSCP" && val(objekSel) === "") throw new Error("Pilih objek pemeriksaan.");
+    if ((mode === "PSCP" && val(objekSel) === "barang") || mode !== "PSCP") {
       if (!jenisBarang) throw new Error("Isi/Jenis barang belum diisi.");
     }
     if (!metode) throw new Error("Metode pemeriksaan belum dipilih.");
 
-    // Foto selalu kosong (upload dinonaktifkan)
     const fotoUrl = await uploadPhotoIfAny();
 
-    // Payload kompatibel GAS
+    // Payload untuk code.gs terbaru
     const payload = {
       action: "submit",
       token: SHARED_TOKEN,
       target: mode, // "PSCP"|"HBSCP"|"CARGO"
       data: {
-        nama,
-        flight,
-        ...(mode === "PSCP" ? { objekPemeriksaan: objekSel.value || "" } : {}),
-        jenisBarang,
-        petugas,
-        metode,
-        supervisor,
-        fotoUrl
+        nama, flight,
+        ...(mode === "PSCP" ? { objekPemeriksaan: val(objekSel) || "" } : {}),
+        jenisBarang, petugas, metode, supervisor, fotoUrl
       }
     };
 
-    // PI_LIST bila Ditinggal
-    if ((mode === "PSCP" || mode === "HBSCP") && tindakan.toLowerCase() === "ditinggal") {
+    if ((mode === "PSCP" || mode === "HBSCP") && tindakan === "ditinggal") {
       payload.data.tindakanBarang = "ditinggal";
       payload.data.namaBarang = jenisBarang;
-      payload.data.jenisDGDA = tipePi;
-      payload.data.fotoPiUrl = fotoUrl;
+      payload.data.jenisDGDA  = tipePi;
+      payload.data.fotoPiUrl  = fotoUrl;
     } else if (mode !== "CARGO") {
-      payload.data.tindakanBarang = tindakan.toLowerCase(); // "dibawa" / ""
+      payload.data.tindakanBarang = tindakan; // "dibawa" | ""
     }
 
-    // Kirim ke Worker proxy
-    const j = await fetchJSON(SCRIPT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shared-Token": SHARED_TOKEN,
-      },
-      body: JSON.stringify(payload),
-      credentials: "omit",
-    });
+    const j = await postToEndpoint(payload);
 
     if (!j?.ok) throw new Error(j?.error || "Gagal menyimpan");
 
-    alert(`Tersimpan ke ${j.targetSheet} (row ${j.targetRow})${j.piListWritten ? ` + PI_LIST (row ${j.piListRow})` : ""}`);
+    alert(`Tersimpan ke ${j.targetSheet} (row ${j.targetRow})` + (j.piListWritten ? ` + PI_LIST (row ${j.piListRow})` : ""));
 
-    // Reset minimal UI
-    if (mode === "CARGO") {
-      manualNama.value = "";
-      manualFlight.value = "";
-    } else {
-      namaEl.textContent = "-";
-      flightEl.textContent = "-";
-    }
-    isiBarangInp.value = "";
-    tindakanSel.value = "";
-    tipePiSel.value = "";
-    if (mode === "PSCP") objekSel.value = "";
-    resetFoto();
-    updateBarangCard();
+    // Reset UI
+    if (mode === "CARGO") { manualNama.value = ""; manualFlight.value = ""; }
+    else { if (namaEl) namaEl.textContent = "-"; if (flightEl) flightEl.textContent = "-"; }
+    if (isiBarangInp) isiBarangInp.value = "";
+    if (tindakanSel)  tindakanSel.value = "";
+    if (tipePiSel)    tipePiSel.value = "";
+    if (mode === "PSCP" && objekSel) objekSel.value = "";
+    resetFoto(); updateBarangCard();
 
   } catch (err) {
     console.error(err);
-    const msg = err?.name === "AbortError"
-      ? "Timeout: server lambat merespons."
-      : (err?.message || "Terjadi kesalahan");
-    alert(msg);
+    const raw = String(err?.message || err);
+    const friendly =
+      raw.includes("openById") ? "Server belum diberi izin Spreadsheet. Set deployment: Execute as ME, share Spreadsheet ke akun script."
+      : raw.includes("UNAUTHORIZED") ? "Token tidak valid (cek SHARED_TOKEN di front-end/Worker/code.gs)."
+      : raw.includes("Timeout") ? "Timeout: server lambat merespons."
+      : raw;
+    alert(friendly);
   } finally {
     submitBtn.disabled = false;
     submitBtn.setAttribute("aria-busy", "false");
   }
 }
 
-submitBtn.addEventListener("click", () => { submitRandom(); });
+submitBtn?.addEventListener("click", (e) => {
+  e.preventDefault();
+  if (submitBtn.disabled) return;
+  submitRandom();
+});
+
