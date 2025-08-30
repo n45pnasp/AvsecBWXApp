@@ -1,4 +1,4 @@
-// random.js — FINAL (Worker proxy + foto dataURL + BSM parser + list suspect via GET; sinkron code.gs terbaru)
+// random.js — logic for Random Check (Cloudflare Worker proxy, photo upload & suspect list)
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
