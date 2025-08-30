@@ -49,7 +49,7 @@ document.addEventListener("copy",e=>e.preventDefault());
 
 // modal foto suspect/barang
 const imgOverlay=$("#photoOverlay"),imgClose=$("#photoClose"),suspectImg=$("#suspectPhoto"),barangImg=$("#barangPhoto"),indikasiEl=$("#indikasiText");
-const delOverlay=$("#deleteOverlay"),delClose=$("#deleteClose"),delConfirm=$("#deleteConfirm"),delAction=$("#deleteAction");
+const delOverlay=$("#deleteOverlay"),delClose=$("#deleteClose"),delConfirm=$("#deleteConfirm"),delAction=$("#deleteAction"),delMsg=$("#deleteMsg");
 let deleteTarget=null;
 
 const petugasInp=$("#petugas"),supervisorInp=$("#supervisor"),submitBtn=$("#submitBtn");
@@ -254,6 +254,8 @@ function renderSuspectList(rows){
 
 function showDeleteModal(row){
   deleteTarget=row;
+  const bagNo=row?.dataset?.bagno||"";
+  if(delMsg) delMsg.textContent=`Anda yakin akan menghapus data suspect dengan no. bagasi ${bagNo}?`;
   delOverlay?.classList.remove("hidden");
 }
 delClose?.addEventListener("click",()=>delOverlay?.classList.add("hidden"));
