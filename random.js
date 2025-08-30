@@ -164,17 +164,16 @@ function renderSuspectList(rows){
     const sUrl    = it.fotoSuspectUrl || "";
     const bUrl    = it.fotoBarangUrl  || "";
 
-    const li=document.createElement("li");
-    li.className="bagasi-item";
-    li.textContent=`${bagNo} — ${flight} — ${dest} — ${dep}`;
-    li.dataset.suspect=sUrl;
-    li.dataset.barang=bUrl;
-    li.addEventListener("click",()=>showPhotoModal(li.dataset.suspect,li.dataset.barang));
-    li.addEventListener("contextmenu",e=>{e.preventDefault();showPhotoModal(li.dataset.suspect,li.dataset.barang);});
+    const tr=document.createElement("tr");
+    tr.dataset.suspect=sUrl;
+    tr.dataset.barang=bUrl;
+    tr.innerHTML=`<td>${bagNo}</td><td>${flight}</td><td>${dest}</td><td>${dep}</td>`;
+    tr.addEventListener("click",()=>showPhotoModal(tr.dataset.suspect,tr.dataset.barang));
+    tr.addEventListener("contextmenu",e=>{e.preventDefault();showPhotoModal(tr.dataset.suspect,tr.dataset.barang);});
     let timer;
-    li.addEventListener("touchstart",()=>{timer=setTimeout(()=>showPhotoModal(li.dataset.suspect,li.dataset.barang),600);});
-    ["touchend","touchcancel"].forEach(ev=>li.addEventListener(ev,()=>clearTimeout(timer)));
-    bagasiList.appendChild(li);
+    tr.addEventListener("pointerdown",()=>{timer=setTimeout(()=>showPhotoModal(tr.dataset.suspect,tr.dataset.barang),600);});
+    ["pointerup","pointerleave","pointercancel"].forEach(ev=>tr.addEventListener(ev,()=>clearTimeout(timer)));
+    bagasiList.appendChild(tr);
   });
 }
 

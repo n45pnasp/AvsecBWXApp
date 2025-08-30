@@ -68,22 +68,24 @@
   max-height:240px;
 }
 
-.bagasi-list{
-  list-style:none;
-  margin:0;
-  padding:0;
-}
-.bagasi-list li{list-style:none;margin:0;padding:0;}
-.bagasi-item{
-  padding:8px 12px;
+.table-wrap{overflow-x:auto;}
+.log-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
   border:1px solid var(--border);
-  border-radius:8px;
-  background:#fff;
-  font-size:14px;
-  cursor:pointer;
-  box-shadow:0 1px 2px rgba(0,0,0,.1);
-  margin-bottom:8px;
+  border-radius:12px;
+  overflow:hidden;
 }
+.log-table th,.log-table td{
+  padding:8px 10px;
+  text-align:left;
+  border-bottom:1px solid var(--border);
+  font-size:14px;
+}
+.log-table thead{background:#111827;}
+.log-table tbody tr:nth-child(odd){background:rgba(255,255,255,.02);} 
+.log-table tbody tr{cursor:pointer;}
 
 #bagasiResult{margin-top:12px;}
 #bagasiResult .bag-no{text-align:center;margin-bottom:8px;}
