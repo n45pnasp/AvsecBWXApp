@@ -162,6 +162,14 @@ async function loadFlightTimes(){
 
 function isDirectUrl(s){ return /^(?:https?:|data:|blob:)/i.test(String(s||"")); }
 function looksLikeFileId(s){ return /^[A-Za-z0-9_-]{20,}$/.test(String(s||"")); }
+function stripImageFormula(s){
+  const m=String(s||"").match(/^=?IMAGE\(["'](.+?)["']\)$/i);
+  return m?m[1]:s;
+}
+function normalizeDriveUrl(u){
+  const m=String(u||"").match(/(?:id=|\/d\/)([A-Za-z0-9_-]{20,})/);
+  return m?`https://lh3.googleusercontent.com/d/${m[1]}`:u;
+}
 
 async function openPhoto(suspect, barang, indikasi=""){
   if(!imgOverlay) return;
@@ -185,6 +193,7 @@ async function openPhoto(suspect, barang, indikasi=""){
 
   entries.forEach(({img,val,label})=>{
     if(!img){ done(); return; }
+    val=normalizeDriveUrl(stripImageFormula(val));
     let final="";
     if(isDirectUrl(val)){
       final=val;
