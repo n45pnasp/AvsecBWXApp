@@ -386,11 +386,11 @@ function injectScanStyles(){
    SUBMISSION LOGIC
    ========================================================= */
 function getNameAndFlight(){
-  if (mode==="CARGO") return { nama: val(manualNama), flight: val(manualFlight) };
+  if (mode==="CARGO") return { nama: val(manualNama).toUpperCase(), flight: val(manualFlight).toUpperCase() };
   const usingManual = !scanResult || scanResult.classList.contains("hidden");
   return {
-    nama: usingManual ? val(manualNama) : txt(namaEl),
-    flight: usingManual ? val(manualFlight) : txt(flightEl)
+    nama: (usingManual ? val(manualNama) : txt(namaEl)).toUpperCase(),
+    flight: (usingManual ? val(manualFlight) : txt(flightEl)).toUpperCase()
   };
 }
 async function fetchJSON(url, opts = {}, timeoutMs = 15000){
@@ -414,12 +414,18 @@ async function submitRandom(){
     showOverlay('spinner','Mengirim data…','');
 
     const { nama, flight } = getNameAndFlight();
-    const jenisBarang = val(isiBarangInp);
-    const tindakan    = val(tindakanSel).toLowerCase();
-    const tipePi      = val(tipePiSel);
-    const petugas     = val(petugasInp);
-    const supervisor  = val(supervisorInp);
-    const metode      = val(metodeSel);
+    const jenisBarangRaw = val(isiBarangInp);
+    const tindakanRaw    = val(tindakanSel);
+    const tipePiRaw      = val(tipePiSel);
+    const petugas       = val(petugasInp).toUpperCase();
+    const supervisor    = val(supervisorInp).toUpperCase();
+    const metode        = val(metodeSel).toUpperCase();
+
+    const jenisBarang = jenisBarangRaw.toUpperCase();
+    const tindakan    = tindakanRaw.toLowerCase();
+    const tindakanUC  = tindakanRaw.toUpperCase();
+    const tipePi      = tipePiRaw.toUpperCase();
+    const objek       = val(objekSel).toUpperCase();
 
     if(!nama) throw new Error("Nama tidak boleh kosong.");
     if(!flight) throw new Error("Flight tidak boleh kosong.");
@@ -435,7 +441,7 @@ async function submitRandom(){
       data: {
         nama,
         flight,
-        ...(mode === "PSCP" ? { objekPemeriksaan: val(objekSel) || "" } : {}),
+        ...(mode === "PSCP" ? { objekPemeriksaan: objek || "" } : {}),
         jenisBarang,
         petugas,
         metode,
@@ -445,12 +451,12 @@ async function submitRandom(){
     };
 
     if ((mode === "PSCP" || mode === "HBSCP") && tindakan === "ditinggal") {
-      payload.data.tindakanBarang = "ditinggal";
+      payload.data.tindakanBarang = "DITINGGAL";
       payload.data.namaBarang = jenisBarang;
       payload.data.jenisDGDA  = tipePi;
       if (fotoDataUrl) payload.data.fotoPiDataUrl = fotoDataUrl;
     } else if (mode !== "CARGO") {
-      payload.data.tindakanBarang = tindakan; // "dibawa" / ""
+      payload.data.tindakanBarang = tindakanUC; // "DIBAWA" / ""
     }
 
     const j = await fetchJSON(PROXY_URL, {
