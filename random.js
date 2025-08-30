@@ -287,6 +287,10 @@ async function markAksi(){
     const j=await fetchJSON(PROXY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),credentials:"omit"});
     if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan");
     showOverlay("ok","Aksi tersimpan","");
+    hbsCardsVisible=true;
+    scanCard?.classList.remove("hidden");
+    barangCard?.classList.remove("hidden");
+    updateBarangCard();
     loadSuspectList();
   }catch(err){
     console.error(err);
@@ -312,9 +316,12 @@ function setAksiOptions(opts){
 }
 function updateAksiVisibility(){
   if(mode==="PSCP"){
-    const show = val(objekSel)==="barang" && val(tipePiSel)!=="";
-    tindakanField?.classList.toggle("hidden",!show);
-    if(!show) tindakanSel.value="";
+    const showTindakan = val(objekSel)==="barang";
+    tindakanField?.classList.toggle("hidden",!showTindakan);
+    if(!showTindakan) tindakanSel.value="";
+    const showPi = showTindakan && val(tindakanSel).toLowerCase()==="ditinggal";
+    tipePiField?.classList.toggle("hidden",!showPi);
+    if(!showPi) tipePiSel.value="";
   }else if(mode==="HBSCP"){
     const showPi = val(tindakanSel).toLowerCase()==="ditinggal";
     tipePiField?.classList.toggle("hidden",!showPi);
@@ -324,10 +331,13 @@ function updateAksiVisibility(){
 function updateBarangCard(){
   if(!barangCard) return;
   if(mode==="PSCP"){
-    if(val(objekSel)==="barang"){ barangCard.classList.remove("hidden"); tipePiField?.classList.remove("hidden"); tindakanField?.classList.add("hidden"); }
+    if(val(objekSel)==="barang"){ barangCard.classList.remove("hidden"); tindakanField?.classList.remove("hidden"); tipePiField?.classList.add("hidden"); }
     else { barangCard.classList.add("hidden"); resetFoto(); }
   }else if(mode==="HBSCP"){
-    barangCard.classList.remove("hidden"); tindakanField?.classList.remove("hidden"); tipePiField?.classList.add("hidden");
+    if(hbsCardsVisible){ barangCard.classList.remove("hidden"); }
+    else { barangCard.classList.add("hidden"); }
+    tindakanField?.classList.remove("hidden");
+    tipePiField?.classList.add("hidden");
   }else{
     barangCard.classList.remove("hidden"); tindakanField?.classList.add("hidden"); tipePiField?.classList.add("hidden");
   }
