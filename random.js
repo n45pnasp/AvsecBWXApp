@@ -24,6 +24,7 @@ const tindakanField = tindakanSel?.parentElement, tipePiField = tipePiSel?.paren
 const isiBarangInp = $("#isiBarang");
 const fotoBtn = $("#fotoBtn"), fotoInput = $("#fotoInput"), fotoPreview = $("#fotoPreview");
 const petugasInp = $("#petugas"), supervisorInp = $("#supervisor"), submitBtn = $("#submitBtn");
+const overlay = $("#overlay"), ovIcon = $("#ovIcon"), ovTitle = $("#ovTitle"), ovDesc = $("#ovDesc"), ovClose = $("#ovClose");
 
 /* ===== AUTH ===== */
 const { app, auth } = getFirebase();
@@ -32,6 +33,20 @@ onAuthStateChanged(auth, (u)=>{
   const name = (u?.displayName || u?.email || "").toUpperCase();
   if (petugasInp) petugasInp.value = name;
 });
+
+ovClose?.addEventListener("click", ()=>overlay?.classList.add("hidden"));
+function showOverlay(state, title, desc=""){
+  overlay?.classList.remove("hidden");
+  if(ovIcon) ovIcon.className = "icon "+state;
+  if(ovTitle) ovTitle.textContent = title;
+  if(ovDesc) ovDesc.textContent = desc;
+  ovClose?.classList.toggle("hidden", state === "spinner");
+  if(state !== "spinner"){
+    const delay = state === "stop" ? 3500 : 1500;
+    setTimeout(()=>overlay?.classList.add("hidden"), delay);
+  }
+}
+function hideOverlay(){ overlay?.classList.add("hidden"); }
 
 /* ===== STATE & SUPERVISOR ===== */
 let mode = "PSCP";
@@ -207,6 +222,7 @@ async function startScan(){
   }catch(err){
     console.error(err);
     setWaitingUI(false);
+    showOverlay('err','Tidak bisa mengakses kamera', err?.message || String(err));
     await stopScan();
   }
 }
@@ -356,6 +372,7 @@ async function fetchJSON(url, opts = {}, timeoutMs = 15000){
 async function submitRandom(){
   try{
     submitBtn.disabled = true; submitBtn.setAttribute("aria-busy","true");
+    showOverlay('spinner','Mengirim data…','');
 
     const { nama, flight } = getNameAndFlight();
     const jenisBarang = val(isiBarangInp);
@@ -400,7 +417,7 @@ async function submitRandom(){
     });
 
     if(!j?.ok) throw new Error(j?.error || "Gagal menyimpan");
-    alert(`Tersimpan ke ${j.targetSheet} (row ${j.targetRow})` + (j.piListWritten ? ` + PI_LIST (row ${j.piListRow})` : ""));
+    showOverlay('ok','Data tersimpan', `Sheet ${j.targetSheet} (row ${j.targetRow})${j.piListWritten ? ` + PI_LIST (row ${j.piListRow})` : ''}`);
 
     if (mode==="CARGO"){ manualNama.value=""; manualFlight.value=""; }
     else { if(namaEl) namaEl.textContent="-"; if(flightEl) flightEl.textContent="-"; }
@@ -412,7 +429,7 @@ async function submitRandom(){
 
   }catch(err){
     console.error(err);
-    alert(err?.message || String(err));
+    showOverlay('err','Gagal', err?.message || String(err));
   }finally{
     submitBtn.disabled = false; submitBtn.setAttribute("aria-busy","false");
   }
