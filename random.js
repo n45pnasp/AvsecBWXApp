@@ -182,7 +182,7 @@ async function openPhoto(suspect, barang, indikasi=""){
   showOverlay("loading","Memuat foto…");
   imgOverlay.classList.remove("hidden");
   if(indikasiEl){
-    indikasiEl.textContent=indikasi||"";
+    indikasiEl.textContent = indikasi ? `Indikasi Suspect: ${indikasi}` : "";
     indikasiEl.classList.toggle("hidden",!indikasi);
   }
   if(suspectImg) suspectImg.removeAttribute("src");
@@ -202,7 +202,6 @@ async function openPhoto(suspect, barang, indikasi=""){
     }else{
       final=`${LOOKUP_URL}?action=get_photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
     }
-    console.log(`URL foto ${label}:`, final);
     img.onload=()=>{ done(); img.onload=img.onerror=null; };
     img.onerror=()=>{ done(); img.onload=img.onerror=null; showOverlay("err","Gagal memuat foto","Coba lagi"); };
     img.src=final+(final.includes("?")?"&":"?")+"t="+Date.now();
