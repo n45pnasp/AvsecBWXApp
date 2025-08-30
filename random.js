@@ -13,7 +13,7 @@ const LOOKUP_URL   = "https://rdcheck.avsecbwx2018.workers.dev/"; // GET: list_s
 /* ===== DOM (dipersingkat) ===== */
 const $ = (s)=>document.querySelector(s);
 const btnPSCP=$("#btnPSCP"),btnHBSCP=$("#btnHBSCP"),btnCARGO=$("#btnCARGO");
-const scanBtn=$("#scanBtn"),scanResult=$("#scanResult");
+const scanCard=$("#scanCard"),scanBtn=$("#scanBtn"),scanResult=$("#scanResult");
 const namaEl=$("#namaPenumpang"),flightEl=$("#noFlight");
 const manualForm=$("#manualForm"),manualNama=$("#manualNama"),manualFlight=$("#manualFlight");
 const manualNamaLabel=manualForm?.querySelector('label[for="manualNama"]');
@@ -49,7 +49,7 @@ document.addEventListener("copy",e=>e.preventDefault());
 
 // modal foto suspect/barang
 const imgOverlay=$("#photoOverlay"),imgClose=$("#photoClose"),suspectImg=$("#suspectPhoto"),barangImg=$("#barangPhoto"),indikasiEl=$("#indikasiText");
-const delOverlay=$("#deleteOverlay"),delClose=$("#deleteClose"),delConfirm=$("#deleteConfirm");
+const delOverlay=$("#deleteOverlay"),delClose=$("#deleteClose"),delConfirm=$("#deleteConfirm"),delAction=$("#deleteAction");
 let deleteTarget=null;
 
 const petugasInp=$("#petugas"),supervisorInp=$("#supervisor"),submitBtn=$("#submitBtn");
@@ -79,6 +79,7 @@ function showOverlay(state,title="",desc=""){
 
 /* ===== STATE & SUPERVISOR ===== */
 let mode="PSCP";
+let hbsCardsVisible=false;
 const supervisors={PSCP:"",HBSCP:"",CARGO:""};
 onValue(ref(db,"roster/spvCabin"),s=>{supervisors.PSCP=s.val()||"";if(mode==="PSCP")setSupervisor();});
 onValue(ref(db,"roster/spvHbs"),  s=>{supervisors.HBSCP=s.val()||"";if(mode==="HBSCP")setSupervisor();});
@@ -271,6 +272,7 @@ async function deleteSuspect(){
   }
 }
 delConfirm?.addEventListener("click",deleteSuspect);
+delAction?.addEventListener("click",()=>{ delOverlay?.classList.add("hidden"); if(mode==="HBSCP"){ hbsCardsVisible=true; scanCard?.classList.remove("hidden"); barangCard?.classList.remove("hidden"); }});
 
 async function loadSuspectList(){
   try{
@@ -321,20 +323,24 @@ function setMode(m){
 
   bagasiCard?.classList.toggle("hidden", m!=="HBSCP");
   bagasiListCard?.classList.toggle("hidden", m!=="HBSCP");
-  if(m==="HBSCP"){ loadSuspectList(); bagasiCard?.classList.add("collapsed");
+  if(m==="HBSCP"){ loadSuspectList(); bagasiCard?.classList.add("collapsed"); hbsCardsVisible=false;
     bagasiToggle?.setAttribute("aria-expanded","false");
     const chev=bagasiToggle?.querySelector(".chevron");
     if(chev) chev.textContent="▼"; }
 
   if(m==="PSCP"){
+    scanCard?.classList.remove("hidden"); barangCard?.classList.remove("hidden");
     scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");
     manualForm?.classList.add("hidden"); if(manualNamaLabel) manualNamaLabel.textContent="Nama Penumpang";
     objekField?.classList.remove("hidden"); if(objekSel) objekSel.value=""; updateBarangCard();
   }else if(m==="HBSCP"){
+    if(!hbsCardsVisible){ scanCard?.classList.add("hidden"); barangCard?.classList.add("hidden"); }
+    else { scanCard?.classList.remove("hidden"); barangCard?.classList.remove("hidden"); }
     scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");
     manualForm?.classList.add("hidden"); if(manualNamaLabel) manualNamaLabel.textContent="Nama Penumpang";
     objekField?.classList.add("hidden"); updateBarangCard();
   }else{
+    scanCard?.classList.remove("hidden"); barangCard?.classList.remove("hidden");
     scanBtn?.classList.add("hidden"); scanResult?.classList.add("hidden");
     manualForm?.classList.remove("hidden"); if(manualNamaLabel) manualNamaLabel.textContent="Nama Pengirim";
     objekField?.classList.add("hidden"); updateBarangCard();

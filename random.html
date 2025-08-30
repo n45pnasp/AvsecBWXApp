@@ -18,8 +18,8 @@
   </div>
 
   <main class="container">
-    <section class="card">
-      <div class="btn-group">
+      <section class="card">
+        <div class="btn-group">
         <button type="button" class="btn" id="btnPSCP">PSCP</button>
         <button type="button" class="btn" id="btnHBSCP">HBSCP</button>
         <button type="button" class="btn" id="btnCARGO">CARGO</button>
@@ -85,7 +85,7 @@
       </div>
     </section>
 
-    <section class="card">
+      <section id="scanCard" class="card">
       <button id="scanBtn" type="button" class="qr-btn" aria-busy="false">
         <img src="icons/qrcode.png" alt="QR">
         <span>Scan Boarding Pass<br><small>Boarding Pass &amp; QR Code</small></span>
@@ -149,14 +149,6 @@
         <input id="isiBarang" type="text" />
       </div>
       <div class="field">
-        <label for="tindakanBarang">Tindakan Barang</label>
-        <select id="tindakanBarang">
-          <option value="">Pilih</option>
-          <option>Dibawa</option>
-          <option>Ditinggal</option>
-        </select>
-      </div>
-      <div class="field">
         <label for="tipePi">Tipe Prohibited Item</label>
         <select id="tipePi">
           <option value="">Pilih</option>
@@ -164,10 +156,19 @@
           <option>Dangerous Article</option>
         </select>
       </div>
+      <div class="field">
+        <label for="tindakanBarang">Aksi</label>
+        <select id="tindakanBarang">
+          <option value="">Pilih</option>
+          <option>Dibawa</option>
+          <option>Ditinggal</option>
+          <option>Pemilik Tidak Ada</option>
+        </select>
+      </div>
+      <button id="submitBtn" class="btn primary full" type="button">Kirim</button>
     </section>
     <input id="petugas" type="hidden" />
     <input id="supervisor" type="hidden" />
-    <button id="submitBtn" class="btn primary full" type="button">Kirim</button>
   </main>
 
   <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
@@ -208,7 +209,10 @@
         </svg>
       </button>
       <div class="texts">Anda yakin akan menghapus data suspect?</div>
-      <button id="deleteConfirm" type="button" class="btn danger full">Hapus</button>
+      <div class="btn-row">
+        <button id="deleteAction" type="button" class="btn">Aksi</button>
+        <button id="deleteConfirm" type="button" class="btn danger">Hapus</button>
+      </div>
     </div>
   </div>
 

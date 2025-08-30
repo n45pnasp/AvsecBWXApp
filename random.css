@@ -56,6 +56,8 @@ input,textarea,select{
 #deleteOverlay .texts{
   margin:0 0 12px;
 }
+#deleteOverlay .btn-row{display:flex;gap:8px;}
+#deleteOverlay .btn-row .btn{flex:1;}
 
 /* Tombol scan bergaya sama dengan boardingpass */
 .qr-btn{
