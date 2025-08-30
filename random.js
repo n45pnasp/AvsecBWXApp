@@ -1,67 +1,119 @@
-// random.js (FINAL, cocok dgn code.gs + Worker proxy)
+// random.js — kirim via Cloudflare Worker (tanpa fallback)
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
-/* =========================
-   KONFIG KIRIMAN
-   ========================= */
-// Pakai Worker proxy (punya CORS) → injeksi token & forward ke GAS
-const PROXY_URL   = "https://rdcheck.avsecbwx2018.workers.dev/";
-const GAS_URL     = "https://script.google.com/macros/s/AKfycbwAPnJy8zZlae5B6pc6L8rQzTzqHw5veDrBwlTaYuSf39-gOQsArJXSWA9w0Oh227J4/exec"; // fallback uji
-const SHARED_TOKEN = "N45p";
+/* ===== KONFIG ===== */
+const PROXY_URL    = "https://rdcheck.avsecbwx2018.workers.dev/"; // Worker kamu
+const SHARED_TOKEN = "N45p"; // tidak wajib dikirim (Worker injeksi), tapi boleh
 
-/* =========================
-   DOM
-   ========================= */
-const btnPSCP = $("#btnPSCP");
-const btnHBSCP = $("#btnHBSCP");
-const btnCARGO = $("#btnCARGO");
-
-const scanBtn = $("#scanBtn");
-const scanResult = $("#scanResult");
-const namaEl = $("#namaPenumpang");
-const flightEl = $("#noFlight");
-const manualForm = $("#manualForm");
-const manualNama = $("#manualNama");
-const manualFlight = $("#manualFlight");
+/* ===== DOM ===== */
+const $ = (s)=>document.querySelector(s);
+const btnPSCP = $("#btnPSCP"), btnHBSCP = $("#btnHBSCP"), btnCARGO = $("#btnCARGO");
+const scanBtn = $("#scanBtn"), scanResult = $("#scanResult");
+const namaEl = $("#namaPenumpang"), flightEl = $("#noFlight");
+const manualForm = $("#manualForm"), manualNama = $("#manualNama"), manualFlight = $("#manualFlight");
 const manualNamaLabel = manualForm?.querySelector('label[for="manualNama"]');
 const metodeSel = $("#jenisPemeriksaan");
-
-const objekSel = $("#objek");
-const objekField = objekSel?.parentElement;
+const objekSel = $("#objek"), objekField = objekSel?.parentElement;
 const barangCard = $("#barangCard");
-const tindakanSel = $("#tindakanBarang");
-const tipePiSel = $("#tipePi");
-const tindakanField = tindakanSel?.parentElement;
-const tipePiField = tipePiSel?.parentElement;
+const tindakanSel = $("#tindakanBarang"), tipePiSel = $("#tipePi");
+const tindakanField = tindakanSel?.parentElement, tipePiField = tipePiSel?.parentElement;
 const isiBarangInp = $("#isiBarang");
+const fotoBtn = $("#fotoBtn"), fotoInput = $("#fotoInput"), fotoPreview = $("#fotoPreview");
+const petugasInp = $("#petugas"), supervisorInp = $("#supervisor"), submitBtn = $("#submitBtn");
 
-const fotoBtn = $("#fotoBtn");
-const fotoInput = $("#fotoInput");
-const fotoPreview = $("#fotoPreview");
-
-const petugasInp = $("#petugas");
-const supervisorInp = $("#supervisor");
-const submitBtn = $("#submitBtn");
-
-/* =========================
-   AUTH STATE
-   ========================= */
+/* ===== AUTH ===== */
 const { app, auth } = getFirebase();
 const db = getDatabase(app);
-onAuthStateChanged(auth, (u) => {
-  const authName = (u?.displayName || u?.email || "").toUpperCase();
-  if (petugasInp) petugasInp.value = authName;
+onAuthStateChanged(auth, (u)=>{
+  const name = (u?.displayName || u?.email || "").toUpperCase();
+  if (petugasInp) petugasInp.value = name;
 });
 
-/* =========================
-   STATE & HELPERS UI
-   ========================= */
+/* ===== STATE & SUPERVISOR ===== */
 let mode = "PSCP";
-const supervisors = { PSCP: "", HBSCP: "", CARGO: "" };
+const supervisors = { PSCP:"", HBSCP:"", CARGO:"" };
+
+onValue(ref(db, "roster/spvCabin"), (s)=>{ supervisors.PSCP=s.val()||""; if(mode==="PSCP") setSupervisor(); });
+onValue(ref(db, "roster/spvHbs"),   (s)=>{ supervisors.HBSCP=s.val()||""; if(mode==="HBSCP") setSupervisor(); });
+onValue(ref(db, "roster/spvCargo"), (s)=>{ supervisors.CARGO=s.val()||""; if(mode==="CARGO") setSupervisor(); });
+
+function setSupervisor(){ if (supervisorInp) supervisorInp.value = supervisors[mode] || ""; }
+function val(e){ return (e?.value||"").trim(); }
+function txt(e){ return (e?.textContent||"").trim(); }
+
+/* ===== Foto (opsional, saat ini tidak upload) ===== */
+function resetFoto(){ if(!fotoInput||!fotoPreview) return; fotoInput.value=""; fotoPreview.src=""; fotoPreview.classList.add("hidden"); }
+fotoBtn?.addEventListener("click", ()=>fotoInput?.click());
+fotoInput?.addEventListener("change", ()=>{
+  const file = fotoInput.files?.[0];
+  if(file){ fotoPreview.src = URL.createObjectURL(file); fotoPreview.classList.remove("hidden"); }
+  else { resetFoto(); }
+});
+
+/* ===== UI Rules ===== */
+function updateTipePiVisibility(){
+  const t = val(tindakanSel).toLowerCase();
+  const need = (mode==="PSCP" && val(objekSel)==="barang" && t==="ditinggal") || (mode==="HBSCP" && t==="ditinggal");
+  tipePiField?.classList.toggle("hidden", !need);
+}
+function updateBarangCard(){
+  if(!barangCard) return;
+  if (mode==="PSCP"){
+    if(val(objekSel)==="barang"){
+      barangCard.classList.remove("hidden");
+      tindakanField?.classList.remove("hidden");
+      updateTipePiVisibility();
+    } else { barangCard.classList.add("hidden"); resetFoto(); }
+  } else if (mode==="HBSCP"){
+    barangCard.classList.remove("hidden");
+    tindakanField?.classList.remove("hidden");
+    updateTipePiVisibility();
+  } else {
+    barangCard.classList.remove("hidden");
+    tindakanField?.classList.add("hidden");
+    tipePiField?.classList.add("hidden");
+  }
+}
+objekSel?.addEventListener("change", updateBarangCard);
+tindakanSel?.addEventListener("change", updateTipePiVisibility);
+
+function setMode(m){
+  mode = m;
+  if(namaEl) namaEl.textContent="-";
+  if(flightEl) flightEl.textContent="-";
+  if(manualNama) manualNama.value="";
+  if(manualFlight) manualFlight.value="";
+  if(metodeSel) metodeSel.value="";
+  if(isiBarangInp) isiBarangInp.value="";
+  if(tindakanSel) tindakanSel.value="";
+  if(tipePiSel) tipePiSel.value="";
+  resetFoto();
+  setSupervisor();
+
+  if (m==="PSCP"){
+    scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");
+    manualForm?.classList.add("hidden"); if (manualNamaLabel) manualNamaLabel.textContent="Nama Penumpang";
+    objekField?.classList.remove("hidden"); if (objekSel) objekSel.value=""; updateBarangCard();
+  } else if (m==="HBSCP"){
+    scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");
+    manualForm?.classList.add("hidden"); if (manualNamaLabel) manualNamaLabel.textContent="Nama Penumpang";
+    objekField?.classList.add("hidden"); updateBarangCard();
+  } else {
+    scanBtn?.classList.add("hidden"); scanResult?.classList.add("hidden");
+    manualForm?.classList.remove("hidden"); if (manualNamaLabel) manualNamaLabel.textContent="Nama Pengirim";
+    objekField?.classList.add("hidden"); updateBarangCard();
+  }
+}
+btnPSCP?.addEventListener("click", ()=>setMode("PSCP"));
+btnHBSCP?.addEventListener("click", ()=>setMode("HBSCP"));
+btnCARGO?.addEventListener("click", ()=>setMode("CARGO"));
+setMode("PSCP");
+
+/* ===== Scanner (gunakan blok scanner yang ada) ===== */
 
 let scanState = {
   stream: null, video: null, canvas: null, ctx: null,
@@ -69,119 +121,6 @@ let scanState = {
   overlay: null, closeBtn: null,
 };
 
-function $(sel){ return document.querySelector(sel); }
-function val(el){ return (el?.value || "").trim(); }
-function txt(el){ return (el?.textContent || "").trim(); }
-
-function resetFoto(){
-  if (!fotoInput || !fotoPreview) return;
-  fotoInput.value = "";
-  fotoPreview.src = "";
-  fotoPreview.classList.add("hidden");
-}
-
-fotoBtn?.addEventListener("click", () => fotoInput?.click());
-fotoInput?.addEventListener("change", () => {
-  const file = fotoInput.files?.[0];
-  if (file){
-    fotoPreview.src = URL.createObjectURL(file);
-    fotoPreview.classList.remove("hidden");
-  } else {
-    resetFoto();
-  }
-});
-
-function setSupervisor(){
-  if (!supervisorInp) return;
-  supervisorInp.value = supervisors[mode] || "";
-}
-
-// Ambil supervisor dari RTDB
-onValue(ref(db, "roster/spvCabin"), (s) => { supervisors.PSCP = s.val() || ""; if (mode==="PSCP") setSupervisor(); });
-onValue(ref(db, "roster/spvHbs"),   (s) => { supervisors.HBSCP= s.val() || ""; if (mode==="HBSCP") setSupervisor(); });
-onValue(ref(db, "roster/spvCargo"), (s) => { supervisors.CARGO= s.val() || ""; if (mode==="CARGO") setSupervisor(); });
-
-// tampilkan/hidden field PI sesuai aturan + samakan casing
-function updateTipePiVisibility(){
-  const t = (val(tindakanSel) || "").toLowerCase();
-  const needTipePi =
-    (mode === "PSCP"  && val(objekSel) === "barang" && t === "ditinggal") ||
-    (mode === "HBSCP" && t === "ditinggal");
-  tipePiField?.classList.toggle("hidden", !needTipePi);
-}
-
-function updateBarangCard(){
-  if (!barangCard) return;
-  if (mode === "PSCP"){
-    if (val(objekSel) === "barang"){
-      barangCard.classList.remove("hidden");
-      tindakanField?.classList.remove("hidden");
-      updateTipePiVisibility();
-    } else {
-      barangCard.classList.add("hidden");
-      resetFoto();
-    }
-  } else if (mode === "HBSCP"){
-    barangCard.classList.remove("hidden");
-    tindakanField?.classList.remove("hidden");
-    updateTipePiVisibility();
-  } else { // CARGO
-    barangCard.classList.remove("hidden");
-    tindakanField?.classList.add("hidden");
-    tipePiField?.classList.add("hidden");
-  }
-}
-
-objekSel?.addEventListener("change", updateBarangCard);
-tindakanSel?.addEventListener("change", updateTipePiVisibility);
-
-function setMode(m){
-  mode = m;
-  stopScan?.();
-  if (namaEl)   namaEl.textContent = "-";
-  if (flightEl) flightEl.textContent = "-";
-  if (manualNama)   manualNama.value = "";
-  if (manualFlight) manualFlight.value = "";
-  if (metodeSel)    metodeSel.value = "";
-  if (isiBarangInp) isiBarangInp.value = "";
-  if (tindakanSel)  tindakanSel.value = "";
-  if (tipePiSel)    tipePiSel.value = "";
-  resetFoto();
-  setSupervisor();
-
-  if (m === "PSCP"){
-    scanBtn?.classList.remove("hidden");
-    scanResult?.classList.remove("hidden");
-    manualForm?.classList.add("hidden");
-    if (manualNamaLabel) manualNamaLabel.textContent = "Nama Penumpang";
-    objekField?.classList.remove("hidden");
-    if (objekSel) objekSel.value = "";
-    updateBarangCard();
-  } else if (m === "HBSCP"){
-    scanBtn?.classList.remove("hidden");
-    scanResult?.classList.remove("hidden");
-    manualForm?.classList.add("hidden");
-    if (manualNamaLabel) manualNamaLabel.textContent = "Nama Penumpang";
-    objekField?.classList.add("hidden");
-    updateBarangCard();
-  } else { // CARGO
-    scanBtn?.classList.add("hidden");
-    scanResult?.classList.add("hidden");
-    manualForm?.classList.remove("hidden");
-    if (manualNamaLabel) manualNamaLabel.textContent = "Nama Pengirim";
-    objekField?.classList.add("hidden");
-    updateBarangCard();
-  }
-}
-
-btnPSCP?.addEventListener("click", () => setMode("PSCP"));
-btnHBSCP?.addEventListener("click", () => setMode("HBSCP"));
-btnCARGO?.addEventListener("click", () => setMode("CARGO"));
-setMode("PSCP");
-
-/* =========================
-   SCAN BOARDING PASS
-   ========================= */
 function splitFromBack(str, maxSplits){
   const parts = []; let remaining = str;
   for (let i=0; i<maxSplits; i++){
@@ -393,10 +332,8 @@ function injectScanStyles(){
    SUBMISSION LOGIC
    ========================================================= */
 
-function getNameAndFlight() {
-  if (mode === "CARGO") {
-    return { nama: val(manualNama), flight: val(manualFlight) };
-  }
+function getNameAndFlight(){
+  if (mode==="CARGO") return { nama: val(manualNama), flight: val(manualFlight) };
   const usingManual = !scanResult || scanResult.classList.contains("hidden");
   return {
     nama: usingManual ? val(manualNama) : txt(namaEl),
@@ -404,126 +341,81 @@ function getNameAndFlight() {
   };
 }
 
-async function uploadPhotoIfAny() { return ""; }
-
-// fetch helper: timeout + retry + fallback ke GAS jika Worker down
-async function fetchJSON(url, opts = {}, timeoutMs = 15000, retries = 1) {
+async function fetchJSON(url, opts = {}, timeoutMs = 15000){
   const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), timeoutMs);
-  try {
+  const t = setTimeout(()=>controller.abort(), timeoutMs);
+  try{
     const res = await fetch(url, { ...opts, signal: controller.signal, mode: "cors" });
     const text = await res.text();
-    let data = {};
-    try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-    if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+    let data={}; try{ data = text ? JSON.parse(text) : {}; }catch{ data = { raw:text }; }
+    if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
     return data;
-  } catch (e) {
-    if (retries > 0) return fetchJSON(url, opts, timeoutMs, retries - 1);
-    throw e;
-  } finally {
-    clearTimeout(t);
-  }
+  }finally{ clearTimeout(t); }
 }
 
-async function postToEndpoint(payload){
-  // 1) coba via Worker
-  try {
-    return await fetchJSON(PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Shared-Token": SHARED_TOKEN },
-      body: JSON.stringify(payload),
-      credentials: "omit",
-    });
-  } catch (e) {
-    // 2) fallback: langsung ke GAS (untuk debugging)
-    console.warn("Proxy gagal, fallback langsung ke GAS:", e?.message);
-    return await fetchJSON(GAS_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      credentials: "omit",
-    });
-  }
-}
-
-async function submitRandom() {
-  try {
-    submitBtn.disabled = true;
-    submitBtn.setAttribute("aria-busy", "true");
+async function submitRandom(){
+  try{
+    submitBtn.disabled = true; submitBtn.setAttribute("aria-busy","true");
 
     const { nama, flight } = getNameAndFlight();
     const jenisBarang = val(isiBarangInp);
-    const tindakan    = val(tindakanSel).toLowerCase(); // normalisasi
+    const tindakan    = val(tindakanSel).toLowerCase();
     const tipePi      = val(tipePiSel);
     const petugas     = val(petugasInp);
     const supervisor  = val(supervisorInp);
     const metode      = val(metodeSel);
 
-    // Validasi ringan
-    if (!nama)   throw new Error("Nama tidak boleh kosong.");
-    if (!flight) throw new Error("Flight tidak boleh kosong.");
-    if (mode === "PSCP" && val(objekSel) === "") throw new Error("Pilih objek pemeriksaan.");
-    if ((mode === "PSCP" && val(objekSel) === "barang") || mode !== "PSCP") {
-      if (!jenisBarang) throw new Error("Isi/Jenis barang belum diisi.");
-    }
-    if (!metode) throw new Error("Metode pemeriksaan belum dipilih.");
+    if(!nama) throw new Error("Nama tidak boleh kosong.");
+    if(!flight) throw new Error("Flight tidak boleh kosong.");
+    if(mode==="PSCP" && val(objekSel)==="") throw new Error("Pilih objek pemeriksaan.");
+    if((mode==="PSCP" && val(objekSel)==="barang") || mode!=="PSCP"){ if(!jenisBarang) throw new Error("Isi/Jenis barang belum diisi."); }
+    if(!metode) throw new Error("Metode pemeriksaan belum dipilih.");
 
-    const fotoUrl = await uploadPhotoIfAny();
-
-    // Payload untuk code.gs terbaru
     const payload = {
       action: "submit",
       token: SHARED_TOKEN,
-      target: mode, // "PSCP"|"HBSCP"|"CARGO"
+      target: mode,
       data: {
         nama, flight,
-        ...(mode === "PSCP" ? { objekPemeriksaan: val(objekSel) || "" } : {}),
-        jenisBarang, petugas, metode, supervisor, fotoUrl
+        ...(mode==="PSCP" ? { objekPemeriksaan: val(objekSel) || "" } : {}),
+        jenisBarang, petugas, metode, supervisor,
+        fotoUrl: ""
       }
     };
 
-    if ((mode === "PSCP" || mode === "HBSCP") && tindakan === "ditinggal") {
+    if ((mode==="PSCP" || mode==="HBSCP") && tindakan==="ditinggal"){
       payload.data.tindakanBarang = "ditinggal";
       payload.data.namaBarang = jenisBarang;
       payload.data.jenisDGDA  = tipePi;
-      payload.data.fotoPiUrl  = fotoUrl;
+      payload.data.fotoPiUrl  = "";
     } else if (mode !== "CARGO") {
-      payload.data.tindakanBarang = tindakan; // "dibawa" | ""
+      payload.data.tindakanBarang = tindakan;
     }
 
-    const j = await postToEndpoint(payload);
+    const j = await fetchJSON(PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify(payload),
+      credentials: "omit",
+    });
 
-    if (!j?.ok) throw new Error(j?.error || "Gagal menyimpan");
-
+    if(!j?.ok) throw new Error(j?.error || "Gagal menyimpan");
     alert(`Tersimpan ke ${j.targetSheet} (row ${j.targetRow})` + (j.piListWritten ? ` + PI_LIST (row ${j.piListRow})` : ""));
 
-    // Reset UI
-    if (mode === "CARGO") { manualNama.value = ""; manualFlight.value = ""; }
-    else { if (namaEl) namaEl.textContent = "-"; if (flightEl) flightEl.textContent = "-"; }
+    if (mode==="CARGO"){ manualNama.value=""; manualFlight.value=""; }
+    else { if(namaEl) namaEl.textContent="-"; if(flightEl) flightEl.textContent="-"; }
     if (isiBarangInp) isiBarangInp.value = "";
-    if (tindakanSel)  tindakanSel.value = "";
-    if (tipePiSel)    tipePiSel.value = "";
-    if (mode === "PSCP" && objekSel) objekSel.value = "";
+    if (tindakanSel)  tindakanSel.value  = "";
+    if (tipePiSel)    tipePiSel.value    = "";
+    if (mode==="PSCP" && objekSel) objekSel.value = "";
     resetFoto(); updateBarangCard();
 
-  } catch (err) {
+  }catch(err){
     console.error(err);
-    const raw = String(err?.message || err);
-    const friendly =
-      raw.includes("openById") ? "Server belum diberi izin Spreadsheet. Set deployment: Execute as ME, share Spreadsheet ke akun script."
-      : raw.includes("UNAUTHORIZED") ? "Token tidak valid (cek SHARED_TOKEN di front-end/Worker/code.gs)."
-      : raw.includes("Timeout") ? "Timeout: server lambat merespons."
-      : raw;
-    alert(friendly);
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.setAttribute("aria-busy", "false");
+    alert(err?.message || String(err));
+  }finally{
+    submitBtn.disabled = false; submitBtn.setAttribute("aria-busy","false");
   }
 }
-
-submitBtn?.addEventListener("click", (e) => {
-  e.preventDefault();
-  if (submitBtn.disabled) return;
-  submitRandom();
-});
+submitBtn?.addEventListener("click", (e)=>{ e.preventDefault(); if(!submitBtn.disabled) submitRandom(); });
 
