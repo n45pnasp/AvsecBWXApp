@@ -41,6 +41,8 @@ bagasiToggle?.addEventListener("click",()=>{
   bagasiCard?.classList.toggle("collapsed");
   const exp=!bagasiCard.classList.contains("collapsed");
   bagasiToggle.setAttribute("aria-expanded",exp);
+  const chev=bagasiToggle.querySelector(".chevron");
+  if(chev) chev.textContent=exp?"▲":"▼";
 });
 
 // modal foto suspect/barang
@@ -317,7 +319,9 @@ function setMode(m){
 
   bagasiCard?.classList.toggle("hidden", m!=="HBSCP");
   bagasiListCard?.classList.toggle("hidden", m!=="HBSCP");
-  if(m==="HBSCP"){ loadSuspectList(); bagasiCard?.classList.remove("collapsed"); }
+  if(m==="HBSCP"){ loadSuspectList(); bagasiCard?.classList.remove("collapsed");
+    const chev=bagasiToggle?.querySelector(".chevron");
+    if(chev) chev.textContent="▲"; }
 
   if(m==="PSCP"){
     scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");

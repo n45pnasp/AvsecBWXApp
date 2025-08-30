@@ -138,7 +138,8 @@
   width:100%;
   display:flex;
   align-items:center;
-  justify-content:space-between;
+  justify-content:center;
+  position:relative;
   background:none;
   border:none;
   color:var(--text);
@@ -146,8 +147,11 @@
   font-size:16px;
   margin-bottom:12px;
   cursor:pointer;
-  padding:0;
+  padding:8px 0;
+  text-transform:uppercase;
 }
-#bagasiCard .bagasi-nav .chevron{transition:transform .2s;}
+#bagasiCard .bagasi-nav .chevron{
+  position:absolute;
+  right:8px;
+}
 #bagasiCard.collapsed #bagasiContent{display:none;}
-#bagasiCard.collapsed .bagasi-nav .chevron{transform:rotate(-90deg);}
