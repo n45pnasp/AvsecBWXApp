@@ -8,6 +8,7 @@ requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 /* ===== KONFIG ===== */
 const PROXY_URL    = "https://rdcheck.avsecbwx2018.workers.dev/";
 const SHARED_TOKEN = "N45p";
+const LOOKUP_URL   = "https://rdcheck.avsecbwx2018.workers.dev/"; // endpoint untuk read-only (SUSPECT_ITEMS)
 
 /* ===== DOM (dipersingkat) ===== */
 const $ = (s)=>document.querySelector(s);
@@ -34,6 +35,10 @@ const bagFotoLayarBtn=$("#bagFotoLayarBtn"),bagFotoLayarInput=$("#bagFotoLayarIn
 const bagFotoBarangBtn=$("#bagFotoBarangBtn"),bagFotoBarangInput=$("#bagFotoBarangInput"),
       bagFotoBarangPreview=$("#bagFotoBarangPreview");
 const bagSubmitBtn=$("#bagSubmitBtn");
+const bagasiList=$("#bagasiList");
+
+// modal foto suspect/barang
+const imgOverlay=$("#photoOverlay"),imgClose=$("#photoClose"),suspectImg=$("#suspectPhoto"),barangImg=$("#barangPhoto");
 
 const petugasInp=$("#petugas"),supervisorInp=$("#supervisor"),submitBtn=$("#submitBtn");
 const overlay=$("#overlay"),ovIcon=$("#ovIcon"),ovTitle=$("#ovTitle"),ovDesc=$("#ovDesc"),ovClose=$("#ovClose");
@@ -125,6 +130,36 @@ function resetBagasiCard(){
   resetBagFotoLayar(); resetBagFotoBarang();
 }
 
+// ===== SUSPECT LIST =====
+function showPhotoModal(suspect,barang){
+  if(suspectImg) suspectImg.src=suspect||"";
+  if(barangImg) barangImg.src=barang||"";
+  imgOverlay?.classList.remove("hidden");
+}
+imgClose?.addEventListener("click",()=>imgOverlay?.classList.add("hidden"));
+
+function renderSuspectList(arr){
+  if(!bagasiList) return; bagasiList.innerHTML="";
+  arr.forEach(it=>{
+    const li=document.createElement("li");
+    li.textContent=`${it.bagNo||"-"} — ${it.flight||"-"} — ${it.dest||"-"}`;
+    li.dataset.suspect=it.fotoSuspect||"";
+    li.dataset.barang=it.fotoBarang||"";
+    li.addEventListener("contextmenu",e=>{e.preventDefault();showPhotoModal(li.dataset.suspect,li.dataset.barang);});
+    let timer;
+    li.addEventListener("touchstart",()=>{timer=setTimeout(()=>showPhotoModal(li.dataset.suspect,li.dataset.barang),600);});
+    ["touchend","touchcancel"].forEach(ev=>li.addEventListener(ev,()=>clearTimeout(timer)));
+    bagasiList.appendChild(li);
+  });
+}
+
+async function loadSuspectList(){
+  try{
+    const j=await fetchJSON(LOOKUP_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"list_suspect",token:SHARED_TOKEN})});
+    if(j?.items) renderSuspectList(j.items);
+  }catch(err){ console.error(err); }
+}
+
 /* ===== UI ===== */
 function updateTipePiVisibility(){
   const t=val(tindakanSel).toLowerCase();
@@ -164,6 +199,7 @@ function setMode(m){
 
   bagasiCard?.classList.toggle("hidden", m!=="HBSCP");
   bagasiListCard?.classList.toggle("hidden", m!=="HBSCP");
+  if(m==="HBSCP") loadSuspectList();
 
   if(m==="PSCP"){
     scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");
@@ -436,7 +472,8 @@ async function submitSuspectHBSCP(){
     }};
     const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
     if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan suspect");
-    showOverlay("ok","Suspect tersimpan", `Row ${j.targetRow||"-"}`); resetBagasiCard();
+    showOverlay("ok","Suspect tersimpan", `Row ${j.targetRow||"-"}`);
+    resetBagasiCard(); loadSuspectList();
   }catch(err){
     console.error(err); showOverlay("err","Gagal simpan suspect", err?.message||String(err));
   }

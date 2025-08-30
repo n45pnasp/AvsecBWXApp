@@ -160,6 +160,20 @@
     </div>
   </div>
 
+  <div id="photoOverlay" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="sheet" role="document">
+      <button id="photoClose" class="icon-x" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="photo-wrap">
+        <img id="suspectPhoto" alt="Foto suspect" />
+        <img id="barangPhoto" alt="Foto barang" />
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="random.js"></script>
 </body>
 </html>

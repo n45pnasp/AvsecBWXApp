@@ -78,3 +78,15 @@
   border-bottom:1px solid var(--border);
   font-size:14px;
 }
+
+#photoOverlay .photo-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+#photoOverlay img{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:12px;
+  object-fit:cover;
+}
