@@ -131,6 +131,22 @@ function resetBagasiCard(){
 }
 
 /* ===== SUSPECT LIST (read via GET) ===== */
+const flightTimes={};
+async function loadFlightTimes(){
+  if(Object.keys(flightTimes).length) return;
+  try{
+    const url=`${LOOKUP_URL}?action=flight_update&token=${encodeURIComponent(SHARED_TOKEN)}`;
+    const r=await fetch(url,{method:"GET",mode:"cors"});
+    const j=await r.json().catch(()=>({}));
+    if(j?.ok && Array.isArray(j.rows)){
+      j.rows.forEach(it=>{
+        const fl=(it.flight||it.flight_no||it.flightNo||"").toUpperCase();
+        const tm=it.departure||it.dep||it.time||it.jam||"";
+        if(fl) flightTimes[fl]=tm;
+      });
+    }
+  }catch(err){ console.error(err); }
+}
 function showPhotoModal(suspect,barang){
   if(suspectImg) suspectImg.src=suspect||"";
   if(barangImg)  barangImg.src =barang ||"";
@@ -144,11 +160,12 @@ function renderSuspectList(rows){
     const bagNo   = it.nomorBagasi || "-";
     const flight  = it.flight      || "-";
     const dest    = it.tujuan      || "-";
+    const dep     = flightTimes[flight.toUpperCase()] || "-";
     const sUrl    = it.fotoSuspectUrl || "";
     const bUrl    = it.fotoBarangUrl  || "";
 
     const li=document.createElement("li");
-    li.textContent=`${bagNo} — ${flight} — ${dest}`;
+    li.textContent=`${bagNo} — ${flight} — ${dest} — ${dep}`;
     li.dataset.suspect=sUrl;
     li.dataset.barang=bUrl;
     li.addEventListener("contextmenu",e=>{e.preventDefault();showPhotoModal(li.dataset.suspect,li.dataset.barang);});
@@ -161,6 +178,7 @@ function renderSuspectList(rows){
 
 async function loadSuspectList(){
   try{
+    await loadFlightTimes();
     const url = `${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&limit=200`;
     const r = await fetch(url, { method:"GET", mode:"cors" });
     const j = await r.json().catch(()=>({}));
@@ -226,7 +244,6 @@ function setMode(m){
 btnPSCP?.addEventListener("click",()=>setMode("PSCP"));
 btnHBSCP?.addEventListener("click",()=>setMode("HBSCP"));
 btnCARGO?.addEventListener("click",()=>setMode("CARGO"));
-setMode("PSCP");
 
 /* ===== SCANNER ===== */
 let activeScanBtn=scanBtn;
@@ -487,3 +504,5 @@ async function submitSuspectHBSCP(){
   }
 }
 bagSubmitBtn?.addEventListener("click",(e)=>{ e.preventDefault(); submitSuspectHBSCP(); });
+
+setMode("PSCP");

@@ -79,6 +79,23 @@
   font-size:14px;
 }
 
+#bagasiResult{
+  margin-top:12px;
+}
+#bagasiResult .bag-row-center{
+  text-align:center;
+  margin-bottom:8px;
+}
+#bagasiResult .bag-row-center label{margin-right:4px;}
+#bagasiResult .bag-row-pair{
+  display:grid;
+  grid-template-columns:auto 1fr auto 1fr;
+  column-gap:4px;
+  row-gap:4px;
+  margin-bottom:6px;
+}
+#bagasiResult label{font-size:14px;}
+
 #photoOverlay .photo-wrap{
   display:flex;
   flex-direction:column;
