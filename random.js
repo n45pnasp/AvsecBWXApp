@@ -226,6 +226,8 @@ document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") imgOverlay?.clas
 function renderSuspectList(rows){
   if(!bagasiList) return; bagasiList.innerHTML="";
   rows.forEach(it=>{
+    const aksi    = (it.aksi || it.action || "").trim();
+    if(aksi) return;
     const bagNo   = it.nomorBagasi || "-";
     const flight  = it.flight      || "-";
     const dest    = it.tujuan      || "-";
@@ -272,7 +274,24 @@ async function deleteSuspect(){
   }
 }
 delConfirm?.addEventListener("click",deleteSuspect);
-delAction?.addEventListener("click",()=>{ delOverlay?.classList.add("hidden"); if(mode==="HBSCP"){ hbsCardsVisible=true; scanCard?.classList.remove("hidden"); barangCard?.classList.remove("hidden"); }});
+
+async function markAksi(){
+  if(!deleteTarget) return;
+  try{
+    const bagNo=deleteTarget.dataset.bagno||"";
+    delOverlay?.classList.add("hidden");
+    showOverlay("spinner","Memproses…","" );
+    const payload={action:"mark_aksi",token:SHARED_TOKEN,bagNo};
+    const j=await fetchJSON(PROXY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),credentials:"omit"});
+    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan");
+    showOverlay("ok","Aksi tersimpan","");
+    loadSuspectList();
+  }catch(err){
+    console.error(err);
+    showOverlay("err","Gagal",err?.message||"Gagal");
+  }
+}
+delAction?.addEventListener("click",markAksi);
 
 async function loadSuspectList(){
   try{
