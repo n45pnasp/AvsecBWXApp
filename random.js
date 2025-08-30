@@ -62,6 +62,20 @@ onAuthStateChanged(auth, (u) => {
 let mode = "PSCP";
 const supervisors = { PSCP: "", HBSCP: "", CARGO: "" };
 
+// state untuk pemindaian barcode
+let scanState = {
+  stream: null,
+  video: null,
+  canvas: null,
+  ctx: null,
+  running: false,
+  usingDetector: false,
+  detector: null,
+  jsQRReady: false,
+  overlay: null,
+  closeBtn: null,
+};
+
 function resetFoto(){
   fotoInput.value = "";
   fotoPreview.src = "";
@@ -226,19 +240,6 @@ function setWaitingUI(on){
   scanBtn.disabled = !!on;
   scanBtn.setAttribute('aria-busy', on ? 'true' : 'false');
 }
-
-let scanState = {
-  stream: null,
-  video: null,
-  canvas: null,
-  ctx: null,
-  running: false,
-  usingDetector: false,
-  detector: null,
-  jsQRReady: false,
-  overlay: null,
-  closeBtn: null,
-};
 
 injectScanStyles();
 
