@@ -165,9 +165,11 @@ function renderSuspectList(rows){
     const bUrl    = it.fotoBarangUrl  || "";
 
     const li=document.createElement("li");
+    li.className="bagasi-item";
     li.textContent=`${bagNo} — ${flight} — ${dest} — ${dep}`;
     li.dataset.suspect=sUrl;
     li.dataset.barang=bUrl;
+    li.addEventListener("click",()=>showPhotoModal(li.dataset.suspect,li.dataset.barang));
     li.addEventListener("contextmenu",e=>{e.preventDefault();showPhotoModal(li.dataset.suspect,li.dataset.barang);});
     let timer;
     li.addEventListener("touchstart",()=>{timer=setTimeout(()=>showPhotoModal(li.dataset.suspect,li.dataset.barang),600);});
