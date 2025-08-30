@@ -39,7 +39,7 @@ const bagasiList=$("#bagasiList");
 const bagIndikasiInp=$("#bagIndikasi");
 
 // modal foto suspect/barang
-const imgOverlay=$("#photoOverlay"),imgClose=$("#photoClose"),suspectImg=$("#suspectPhoto"),barangImg=$("#barangPhoto");
+const imgOverlay=$("#photoOverlay"),imgClose=$("#photoClose"),suspectImg=$("#suspectPhoto"),barangImg=$("#barangPhoto"),indikasiEl=$("#indikasiText");
 
 const petugasInp=$("#petugas"),supervisorInp=$("#supervisor"),submitBtn=$("#submitBtn");
 const overlay=$("#overlay"),ovIcon=$("#ovIcon"),ovTitle=$("#ovTitle"),ovDesc=$("#ovDesc"),ovClose=$("#ovClose");
@@ -163,7 +163,7 @@ async function loadFlightTimes(){
 function isDirectUrl(s){ return /^(?:https?:|data:|blob:)/i.test(String(s||"")); }
 function looksLikeFileId(s){ return /^[A-Za-z0-9_-]{20,}$/.test(String(s||"")); }
 
-async function showPhotoModal(suspect, barang){
+async function showPhotoModal(suspect, barang, indikasi=""){
   if(!imgOverlay) return;
 
   const entries = [];
@@ -173,6 +173,10 @@ async function showPhotoModal(suspect, barang){
 
   showOverlay("loading","Memuat foto…","");
   imgOverlay.classList.remove("hidden");
+  if(indikasiEl){
+    indikasiEl.textContent=indikasi||"";
+    indikasiEl.classList.toggle("hidden",!indikasi);
+  }
   if(suspectImg) suspectImg.removeAttribute("src");
   if(barangImg)  barangImg.removeAttribute("src");
 
@@ -209,17 +213,19 @@ function renderSuspectList(rows){
     const dep     = flightTimes[flight.toUpperCase()] || "-";
     const sUrl    = it.fotoSuspectUrl || it.fotoSuspectId || "";
     const bUrl    = it.fotoBarangUrl  || it.fotoBarangId  || "";
-    const indikasi= it.indikasi || "";
+    const indikasi= it.indikasi || it.indikasiSuspect || "";
 
     const tr=document.createElement("tr");
     tr.dataset.suspect=sUrl;
     tr.dataset.barang=bUrl;
+    tr.dataset.indikasi=indikasi;
     tr.title = indikasi ? `Indikasi: ${indikasi}` : "";
     tr.innerHTML=`<td>${bagNo}</td><td>${flight}</td><td>${dest}</td><td>${dep}</td>`;
-    tr.addEventListener("click",()=>showPhotoModal(tr.dataset.suspect,tr.dataset.barang));
-    tr.addEventListener("contextmenu",e=>{e.preventDefault();showPhotoModal(tr.dataset.suspect,tr.dataset.barang);});
+    const open=()=>showPhotoModal(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi);
+    tr.addEventListener("click",open);
+    tr.addEventListener("contextmenu",e=>{e.preventDefault();open();});
     let timer;
-    tr.addEventListener("pointerdown",()=>{timer=setTimeout(()=>showPhotoModal(tr.dataset.suspect,tr.dataset.barang),600);});
+    tr.addEventListener("pointerdown",()=>{timer=setTimeout(open,600);});
     ["pointerup","pointerleave","pointercancel"].forEach(ev=>tr.addEventListener(ev,()=>clearTimeout(timer)));
     bagasiList.appendChild(tr);
   });

@@ -99,6 +99,11 @@
   flex-direction:column;
   gap:12px;
 }
+#photoOverlay .indikasi{
+  margin-bottom:12px;
+  text-align:center;
+  font-weight:600;
+}
 #photoOverlay img{
   width:100%;
   border:1px solid var(--border);
