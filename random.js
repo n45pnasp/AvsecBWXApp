@@ -36,6 +36,7 @@ const bagFotoBarangBtn=$("#bagFotoBarangBtn"),bagFotoBarangInput=$("#bagFotoBara
       bagFotoBarangPreview=$("#bagFotoBarangPreview");
 const bagSubmitBtn=$("#bagSubmitBtn");
 const bagasiList=$("#bagasiList");
+const bagIndikasiInp=$("#bagIndikasi");
 
 // modal foto suspect/barang
 const imgOverlay=$("#photoOverlay"),imgClose=$("#photoClose"),suspectImg=$("#suspectPhoto"),barangImg=$("#barangPhoto");
@@ -127,6 +128,7 @@ function resetBagasiCard(){
   if(bagFlightBagEl) bagFlightBagEl.textContent="-";
   if(bagDestEl) bagDestEl.textContent="-";
   if(bagDateEl) bagDateEl.textContent="-";
+  if(bagIndikasiInp) bagIndikasiInp.value="";
   resetBagFotoLayar(); resetBagFotoBarang();
 }
 
@@ -488,11 +490,12 @@ async function submitSuspectHBSCP(){
     const namaPemilik=(bagNamaEl?.textContent||"").trim().toUpperCase();
     const flight=(bagFlightBagEl?.textContent||"").trim().toUpperCase();
     const tujuan=(bagDestEl?.textContent||"").trim().toUpperCase();
+    const indikasi=(bagIndikasiInp?.value||"").trim().toUpperCase();
     const petugas=val(petugasInp).toUpperCase();
     if(!nomorBagasi||!namaPemilik||!flight||!tujuan) throw new Error("Data suspect belum lengkap.");
     showOverlay("spinner","Menyimpan suspect…","");
     const payload={ action:"submit", token:SHARED_TOKEN, target:"SUSPECT_HBSCP", data:{
-      flight, petugas, nomorBagasi, namaPemilik, tujuan,
+      flight, petugas, nomorBagasi, namaPemilik, tujuan, indikasi,
       ...(bagFotoSuspectDataUrl?{fotoSuspectDataUrl:bagFotoSuspectDataUrl}:{ }),
       ...(bagFotoBarangDataUrl ?{fotoBarangDataUrl :bagFotoBarangDataUrl }:{ })
     }};
