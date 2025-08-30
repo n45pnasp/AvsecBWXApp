@@ -149,10 +149,26 @@ async function loadFlightTimes(){
     }
   }catch(err){ console.error(err); }
 }
-function showPhotoModal(suspect,barang){
-  if(suspectImg) suspectImg.src=suspect||"";
-  if(barangImg)  barangImg.src =barang ||"";
-  imgOverlay?.classList.remove("hidden");
+async function showPhotoModal(suspect, barang){
+  if(!imgOverlay) return;
+  const urls = [];
+  if(suspect) urls.push({img:suspectImg, url:suspect});
+  if(barang)  urls.push({img:barangImg,  url:barang});
+  if(!urls.length) return;
+
+  showOverlay("loading","Memuat foto…","");
+  imgOverlay.classList.remove("hidden");
+
+  let pending = urls.length;
+  const done=()=>{ pending--; if(pending<=0) document.getElementById("overlay")?.classList.add("hidden"); };
+
+  urls.forEach(({img,url})=>{
+    if(!img){ done(); return; }
+    const direct=/^(?:https?:|data:|blob:)/i.test(url);
+    const final= direct? url : `${LOOKUP_URL}?action=get_photo&token=${encodeURIComponent(SHARED_TOKEN)}&file=${encodeURIComponent(url)}`;
+    img.onload=img.onerror=done;
+    img.src = final + (final.includes("?")?"&":"?") + "t=" + Date.now();
+  });
 }
 imgClose?.addEventListener("click",()=>imgOverlay?.classList.add("hidden"));
 
