@@ -25,6 +25,12 @@
   color:#fff;
 }
 
+.btn.danger{
+  background:#dc2626;
+  border-color:#dc2626;
+  color:#fff;
+}
+
 #scanResult{
   margin:12px 0;
   grid-template-columns:7fr 3fr;

@@ -40,6 +40,8 @@ const bagIndikasiInp=$("#bagIndikasi");
 
 // modal foto suspect/barang
 const imgOverlay=$("#photoOverlay"),imgClose=$("#photoClose"),suspectImg=$("#suspectPhoto"),barangImg=$("#barangPhoto"),indikasiEl=$("#indikasiText");
+const delOverlay=$("#deleteOverlay"),delClose=$("#deleteClose"),delConfirm=$("#deleteConfirm");
+let deleteTarget=null;
 
 const petugasInp=$("#petugas"),supervisorInp=$("#supervisor"),submitBtn=$("#submitBtn");
 const overlay=$("#overlay"),ovIcon=$("#ovIcon"),ovTitle=$("#ovTitle"),ovDesc=$("#ovDesc"),ovClose=$("#ovClose");
@@ -226,17 +228,40 @@ function renderSuspectList(rows){
     tr.dataset.suspect=sUrl;
     tr.dataset.barang=bUrl;
     tr.dataset.indikasi=indikasi;
+    tr.dataset.bagno=bagNo;
     tr.title = indikasi ? `Indikasi: ${indikasi}` : "";
     tr.innerHTML=`<td>${bagNo}</td><td>${flight}</td><td>${dest}</td><td>${dep}</td>`;
-    const open=()=>openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi);
-    tr.addEventListener("click",open);
-    tr.addEventListener("contextmenu",e=>{e.preventDefault();open();});
-    let timer;
-    tr.addEventListener("pointerdown",()=>{timer=setTimeout(open,600);});
+    let longPress=false,timer;
+    tr.addEventListener("pointerdown",()=>{longPress=false;timer=setTimeout(()=>{longPress=true;showDeleteModal(tr);},600);});
     ["pointerup","pointerleave","pointercancel"].forEach(ev=>tr.addEventListener(ev,()=>clearTimeout(timer)));
+    tr.addEventListener("click",()=>{ if(longPress) return; openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi); });
+    tr.addEventListener("contextmenu",e=>{e.preventDefault();openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi);});
     bagasiList.appendChild(tr);
   });
 }
+
+function showDeleteModal(row){
+  deleteTarget=row;
+  delOverlay?.classList.remove("hidden");
+}
+delClose?.addEventListener("click",()=>delOverlay?.classList.add("hidden"));
+async function deleteSuspect(){
+  if(!deleteTarget) return;
+  try{
+    const bagNo=deleteTarget.dataset.bagno||"";
+    delOverlay?.classList.add("hidden");
+    showOverlay("spinner","Menghapus suspect…","" );
+    const payload={action:"delete_suspect",token:SHARED_TOKEN,bagNo};
+    const j=await fetchJSON(PROXY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),credentials:"omit"});
+    if(!j?.ok) throw new Error(j?.error||"Gagal menghapus");
+    showOverlay("ok","Data terhapus","");
+    loadSuspectList();
+  }catch(err){
+    console.error(err);
+    showOverlay("err","Gagal hapus",err?.message||"Gagal");
+  }
+}
+delConfirm?.addEventListener("click",deleteSuspect);
 
 async function loadSuspectList(){
   try{
@@ -432,7 +457,7 @@ function ensureOverlay(){
   });
 }
 function prepareCanvas(){ if(scanState.canvas) return; const c=document.createElement("canvas"); c.id="scan-canvas"; c.width=640; c.height=480; document.body.appendChild(c); scanState.canvas=c; scanState.ctx=c.getContext("2d",{willReadFrequently:true}); }
-async function ensureJsQR(){ if(scanState.jsQRReady) return; await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; s.onload=res; s.onerror(()=>rej(new Error("Gagal memuat jsQR"))); document.head.appendChild(s); }); scanState.jsQRReady=true; }
+async function ensureJsQR(){ if(scanState.jsQRReady) return; await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; s.onload=res; s.onerror=()=>rej(new Error("Gagal memuat jsQR")); document.head.appendChild(s); }); scanState.jsQRReady=true; }
 function detectLoop_BarcodeDetector(){
   const loop=async()=>{ if(!scanState.running||!scanState.video) return;
     try{

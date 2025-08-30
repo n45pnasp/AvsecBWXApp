@@ -191,6 +191,18 @@
     </div>
   </div>
 
+  <div id="deleteOverlay" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="sheet" role="document">
+      <button id="deleteClose" class="icon-x" type="button" aria-label="Batal">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="texts">Anda yakin akan menghapus data suspect?</div>
+      <button id="deleteConfirm" type="button" class="btn danger full">Hapus</button>
+    </div>
+  </div>
+
   <script type="module" src="random.js"></script>
 </body>
 </html>
