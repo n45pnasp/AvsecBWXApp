@@ -1,4 +1,4 @@
-// random.js — FINAL (Cloudflare Worker proxy + foto dataURL + BAG TAG BSM parser + list suspect via GET)
+// random.js — FINAL (Worker proxy + foto dataURL + BSM parser + list suspect via GET; sinkron code.gs terbaru)
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
@@ -8,7 +8,7 @@ requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 /* ===== KONFIG ===== */
 const PROXY_URL    = "https://rdcheck.avsecbwx2018.workers.dev/";
 const SHARED_TOKEN = "N45p";
-const LOOKUP_URL   = "https://rdcheck.avsecbwx2018.workers.dev/"; // GET ?action=list_suspect&token=...
+const LOOKUP_URL   = "https://rdcheck.avsecbwx2018.workers.dev/"; // GET: list_suspect, photoraw, get_photo, flight_update
 
 /* ===== DOM (dipersingkat) ===== */
 const $ = (s)=>document.querySelector(s);
@@ -55,7 +55,6 @@ onAuthStateChanged(auth,(u)=>{
 /* ===== OVERLAY ===== */
 ovClose?.addEventListener("click",()=>overlay?.classList.add("hidden"));
 function showOverlay(state,title,desc=""){
-  // Kompatibel: "spinner" atau "loading" dianggap sama
   const isSpin = (state === "spinner" || state === "loading");
   overlay?.classList.remove("hidden");
   if(ovIcon) ovIcon.className = "icon " + (isSpin ? "spinner" : state);
@@ -144,43 +143,50 @@ async function loadFlightTimes(){
     const j=await r.json().catch(()=>({}));
     if(j?.ok && Array.isArray(j.rows)){
       j.rows.forEach(it=>{
-        const fl=(it.flight||it.flight_no||it.flightNo||"").toUpperCase();
-        const tm=it.departure||it.dep||it.time||it.jam||"";
+        const fl=(it.flight||"").toUpperCase();
+        const tm=it.departure||"";
         if(fl) flightTimes[fl]=tm;
       });
     }
   }catch(err){ console.error(err); }
 }
+
+function isDirectUrl(s){ return /^(?:https?:|data:|blob:)/i.test(String(s||"")); }
+function looksLikeFileId(s){ return /^[A-Za-z0-9_-]{20,}$/.test(String(s||"")); }
+
 async function showPhotoModal(suspect, barang){
   if(!imgOverlay) return;
-  const urls = [];
-  if(suspect) urls.push({img:suspectImg, url:suspect});
-  if(barang)  urls.push({img:barangImg,  url:barang});
-  if(!urls.length) return;
+
+  const entries = [];
+  if(suspect) entries.push({img:suspectImg, val:suspect});
+  if(barang)  entries.push({img:barangImg,  val:barang});
+  if(!entries.length) return;
 
   showOverlay("spinner","Memuat foto…","");
   imgOverlay.classList.remove("hidden");
-
-  // Reset src dulu agar refresh gambar
   if(suspectImg) suspectImg.removeAttribute("src");
   if(barangImg)  barangImg.removeAttribute("src");
 
-  let pending = urls.length;
-  const done=()=>{ pending--; if(pending<=0) document.getElementById("overlay")?.classList.add("hidden"); };
+  let pending=entries.length;
+  const done=()=>{ pending--; if(pending<=0) overlay?.classList.add("hidden"); };
 
-  urls.forEach(({img,url})=>{
+  entries.forEach(({img,val})=>{
     if(!img){ done(); return; }
-    const direct=/^(?:https?:|data:|blob:)/i.test(url);
-    const final= direct? url : `${LOOKUP_URL}?action=get_photo&token=${encodeURIComponent(SHARED_TOKEN)}&file=${encodeURIComponent(url)}`;
+    let final = "";
+    if (isDirectUrl(val)) {
+      final = val;
+    } else if (looksLikeFileId(val)) {
+      final = `${LOOKUP_URL}?action=photoraw&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
+    } else {
+      final = `${LOOKUP_URL}?action=get_photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
+    }
     img.onload=done;
     img.onerror=()=>{ done(); showOverlay("err","Gagal memuat foto","Coba lagi"); };
     img.src = final + (final.includes("?")?"&":"?") + "t=" + Date.now();
   });
 }
 imgClose?.addEventListener("click",()=>imgOverlay?.classList.add("hidden"));
-// tutup overlay jika klik backdrop
 imgOverlay?.addEventListener("click",(e)=>{ if(e.target===imgOverlay) imgOverlay.classList.add("hidden"); });
-// tutup dengan ESC
 document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") imgOverlay?.classList.add("hidden"); });
 
 function renderSuspectList(rows){
@@ -190,12 +196,14 @@ function renderSuspectList(rows){
     const flight  = it.flight      || "-";
     const dest    = it.tujuan      || "-";
     const dep     = flightTimes[flight.toUpperCase()] || "-";
-    const sUrl    = it.fotoSuspectUrl || "";
-    const bUrl    = it.fotoBarangUrl  || "";
+    const sUrl    = it.fotoSuspectUrl || it.fotoSuspectId || "";
+    const bUrl    = it.fotoBarangUrl  || it.fotoBarangId  || "";
+    const indikasi= it.indikasi || "";
 
     const tr=document.createElement("tr");
     tr.dataset.suspect=sUrl;
     tr.dataset.barang=bUrl;
+    tr.title = indikasi ? `Indikasi: ${indikasi}` : "";
     tr.innerHTML=`<td>${bagNo}</td><td>${flight}</td><td>${dest}</td><td>${dep}</td>`;
     tr.addEventListener("click",()=>showPhotoModal(tr.dataset.suspect,tr.dataset.barang));
     tr.addEventListener("contextmenu",e=>{e.preventDefault();showPhotoModal(tr.dataset.suspect,tr.dataset.barang);});
@@ -342,6 +350,7 @@ function receiveBagBarcode(data){
   }catch(e){ console.error(e); }
 }
 window.receiveBarcode=receiveBarcode;
+window.receiveBagBarcode=receiveBagBarcode;
 
 function setWaitingUI(on){ if(!activeScanBtn) return; activeScanBtn.classList.toggle("is-waiting",!!on); activeScanBtn.disabled=!!on; activeScanBtn.setAttribute("aria-busy",on?"true":"false"); }
 injectScanStyles();
@@ -399,7 +408,7 @@ function ensureOverlay(){
   });
 }
 function prepareCanvas(){ if(scanState.canvas) return; const c=document.createElement("canvas"); c.id="scan-canvas"; c.width=640; c.height=480; document.body.appendChild(c); scanState.canvas=c; scanState.ctx=c.getContext("2d",{willReadFrequently:true}); }
-async function ensureJsQR(){ if(scanState.jsQRReady) return; await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; s.onload=res; s.onerror=()=>rej(new Error("Gagal memuat jsQR")); document.head.appendChild(s); }); scanState.jsQRReady=true; }
+async function ensureJsQR(){ if(scanState.jsQRReady) return; await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; s.onload=res; s.onerror(()=>rej(new Error("Gagal memuat jsQR"))); document.head.appendChild(s); }); scanState.jsQRReady=true; }
 function detectLoop_BarcodeDetector(){
   const loop=async()=>{ if(!scanState.running||!scanState.video) return;
     try{
