@@ -467,7 +467,7 @@ async function submitRandom(){
     });
 
     if(!j?.ok) throw new Error(j?.error || "Gagal menyimpan");
-    showOverlay('ok','Data tersimpan', `Sheet ${j.targetSheet} (row ${j.targetRow})${j.piListWritten ? ` + PI_LIST (row ${j.piListRow})` : ''}`);
+    showOverlay('ok','Data terkirim','');
 
     if (mode==="CARGO"){ manualNama.value=""; manualFlight.value=""; }
     else { if(namaEl) namaEl.textContent="-"; if(flightEl) flightEl.textContent="-"; }
