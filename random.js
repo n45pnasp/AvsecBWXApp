@@ -26,7 +26,8 @@ const fotoBtn = $("#fotoBtn"), fotoInput = $("#fotoInput"), fotoPreview = $("#fo
 const bagasiCard = $("#bagasiCard"), bagasiListCard = $("#bagasiListCard");
 const scanBagBtn = $("#scanBagBtn");
 const bagNoEl = $("#bagNo"), bagNamaEl = $("#bagNama"), bagFlightBagEl = $("#bagFlight"), bagDestEl = $("#bagDest"), bagDateEl = $("#bagDate");
-const bagFotoBtn = $("#bagFotoBtn"), bagFotoInput = $("#bagFotoInput"), bagFotoPreview = $("#bagFotoPreview");
+const bagFotoLayarBtn = $("#bagFotoLayarBtn"), bagFotoLayarInput = $("#bagFotoLayarInput"), bagFotoLayarPreview = $("#bagFotoLayarPreview");
+const bagFotoBarangBtn = $("#bagFotoBarangBtn"), bagFotoBarangInput = $("#bagFotoBarangInput"), bagFotoBarangPreview = $("#bagFotoBarangPreview");
 const bagSubmitBtn = $("#bagSubmitBtn"), bagasiListEl = $("#bagasiList");
 const petugasInp = $("#petugas"), supervisorInp = $("#supervisor"), submitBtn = $("#submitBtn");
 const overlay = $("#overlay"), ovIcon = $("#ovIcon"), ovTitle = $("#ovTitle"), ovDesc = $("#ovDesc"), ovClose = $("#ovClose");
@@ -110,31 +111,59 @@ fotoInput?.addEventListener("change", async ()=>{
   }
 });
 
-let bagFotoDataUrl = "";
-function resetBagFoto(){
-  if(!bagFotoInput||!bagFotoPreview) return;
-  bagFotoInput.value="";
-  bagFotoPreview.src="";
-  bagFotoPreview.classList.add("hidden");
-  bagFotoDataUrl="";
+let bagFotoLayarDataUrl = "", bagFotoBarangDataUrl = "";
+
+function resetBagFotoLayar(){
+  if(!bagFotoLayarInput||!bagFotoLayarPreview) return;
+  bagFotoLayarInput.value="";
+  bagFotoLayarPreview.src="";
+  bagFotoLayarPreview.classList.add("hidden");
+  bagFotoLayarDataUrl="";
 }
-bagFotoBtn?.addEventListener("click", ()=>bagFotoInput?.click());
-bagFotoInput?.addEventListener("change", async()=>{
-  const file = bagFotoInput.files?.[0];
-  if(!file){ resetBagFoto(); return; }
-  bagFotoPreview.src = URL.createObjectURL(file);
-  bagFotoPreview.classList.remove("hidden");
+bagFotoLayarBtn?.addEventListener("click", ()=>bagFotoLayarInput?.click());
+bagFotoLayarInput?.addEventListener("change", async()=>{
+  const file = bagFotoLayarInput.files?.[0];
+  if(!file){ resetBagFotoLayar(); return; }
+  bagFotoLayarPreview.src = URL.createObjectURL(file);
+  bagFotoLayarPreview.classList.remove("hidden");
   try{
     const dataUrl = await compressImage(file,480,0.7);
     if(dataUrl.length > 200_000){
       alert("Foto terlalu besar, gunakan resolusi lebih rendah.");
-      resetBagFoto();
+      resetBagFotoLayar();
     }else{
-      bagFotoDataUrl = dataUrl;
+      bagFotoLayarDataUrl = dataUrl;
     }
   }catch(err){
     console.error(err);
-    resetBagFoto();
+    resetBagFotoLayar();
+  }
+});
+
+function resetBagFotoBarang(){
+  if(!bagFotoBarangInput||!bagFotoBarangPreview) return;
+  bagFotoBarangInput.value="";
+  bagFotoBarangPreview.src="";
+  bagFotoBarangPreview.classList.add("hidden");
+  bagFotoBarangDataUrl="";
+}
+bagFotoBarangBtn?.addEventListener("click", ()=>bagFotoBarangInput?.click());
+bagFotoBarangInput?.addEventListener("change", async()=>{
+  const file = bagFotoBarangInput.files?.[0];
+  if(!file){ resetBagFotoBarang(); return; }
+  bagFotoBarangPreview.src = URL.createObjectURL(file);
+  bagFotoBarangPreview.classList.remove("hidden");
+  try{
+    const dataUrl = await compressImage(file,480,0.7);
+    if(dataUrl.length > 200_000){
+      alert("Foto terlalu besar, gunakan resolusi lebih rendah.");
+      resetBagFotoBarang();
+    }else{
+      bagFotoBarangDataUrl = dataUrl;
+    }
+  }catch(err){
+    console.error(err);
+    resetBagFotoBarang();
   }
 });
 
@@ -144,7 +173,8 @@ function resetBagasiCard(){
   if(bagFlightBagEl) bagFlightBagEl.textContent="-";
   if(bagDestEl) bagDestEl.textContent="-";
   if(bagDateEl) bagDateEl.textContent="-";
-  resetBagFoto();
+  resetBagFotoLayar();
+  resetBagFotoBarang();
 }
 
 const bagasiEntries = [];
