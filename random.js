@@ -1,4 +1,4 @@
-// random.js — FINAL (via Cloudflare Worker proxy + upload foto ke Drive)
+// random.js — FINAL (Cloudflare Worker proxy + kirim foto via fotoDataUrl)
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
@@ -7,7 +7,7 @@ requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
 /* ===== KONFIG ===== */
 const PROXY_URL    = "https://rdcheck.avsecbwx2018.workers.dev/"; // Worker
-const SHARED_TOKEN = "N45p"; // Worker juga akan menambahkan bila kosong
+const SHARED_TOKEN = "N45p"; // optional (Worker juga bisa injeksi)
 
 /* ===== DOM ===== */
 const $ = (s)=>document.querySelector(s);
@@ -38,7 +38,7 @@ onAuthStateChanged(auth, (u)=>{
 ovClose?.addEventListener("click", ()=>overlay?.classList.add("hidden"));
 function showOverlay(state, title, desc=""){
   overlay?.classList.remove("hidden");
-  if(ovIcon) ovIcon.className = "icon "+state; // state: spinner | ok | err | stop
+  if(ovIcon) ovIcon.className = "icon "+state; // spinner | ok | err | stop
   if(ovTitle) ovTitle.textContent = title;
   if(ovDesc) ovDesc.textContent = desc;
   ovClose?.classList.toggle("hidden", state === "spinner");
@@ -47,22 +47,20 @@ function showOverlay(state, title, desc=""){
     setTimeout(()=>overlay?.classList.add("hidden"), delay);
   }
 }
-function hideOverlay(){ overlay?.classList.add("hidden"); }
 
 /* ===== STATE & SUPERVISOR ===== */
 let mode = "PSCP";
 const supervisors = { PSCP:"", HBSCP:"", CARGO:"" };
-
 onValue(ref(db, "roster/spvCabin"), (s)=>{ supervisors.PSCP=s.val()||""; if(mode==="PSCP") setSupervisor(); });
 onValue(ref(db, "roster/spvHbs"),   (s)=>{ supervisors.HBSCP=s.val()||""; if(mode==="HBSCP") setSupervisor(); });
 onValue(ref(db, "roster/spvCargo"), (s)=>{ supervisors.CARGO=s.val()||""; if(mode==="CARGO") setSupervisor(); });
-
 function setSupervisor(){ if (supervisorInp) supervisorInp.value = supervisors[mode] || ""; }
+
 function val(e){ return (e?.value||"").trim(); }
 function txt(e){ return (e?.textContent||"").trim(); }
 
-/* ===== FOTO (Preview + DataURL) ===== */
-let fotoDataUrl = ""; // disiapkan untuk dikirimkan ke GAS (sudah dikompresi)
+/* ===== FOTO (Preview + DataURL untuk dikirim) ===== */
+let fotoDataUrl = ""; // dikirim sebagai dataURL (akan di-upload oleh Apps Script)
 
 async function compressImage(file, max=480, quality=0.7){
   const img = await new Promise((resolve, reject)=>{
@@ -73,8 +71,8 @@ async function compressImage(file, max=480, quality=0.7){
   });
   const scale = Math.min(1, max / Math.max(img.width, img.height));
   const canvas = document.createElement("canvas");
-  canvas.width = img.width * scale;
-  canvas.height = img.height * scale;
+  canvas.width = Math.max(1, Math.round(img.width * scale));
+  canvas.height = Math.max(1, Math.round(img.height * scale));
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL("image/jpeg", quality);
@@ -91,16 +89,15 @@ fotoBtn?.addEventListener("click", ()=>fotoInput?.click());
 fotoInput?.addEventListener("change", async ()=>{
   const file = fotoInput.files?.[0];
   if(!file){ resetFoto(); return; }
-  // Preview
   fotoPreview.src = URL.createObjectURL(file);
   fotoPreview.classList.remove("hidden");
   try{
     const dataUrl = await compressImage(file, 480, 0.7);
-    if(dataUrl.length > 49000){
+    if(dataUrl.length > 200_000){
       alert("Foto terlalu besar, gunakan resolusi lebih rendah.");
       resetFoto();
     }else{
-      fotoDataUrl = dataUrl;
+      fotoDataUrl = dataUrl; // <-- inilah yang dikirim ke GAS
     }
   }catch(err){
     console.error(err);
@@ -137,10 +134,6 @@ tindakanSel?.addEventListener("change", updateTipePiVisibility);
 
 function setMode(m){
   mode = m;
-  [btnPSCP, btnHBSCP, btnCARGO].forEach(b=>b?.classList.remove("active"));
-  if(m==="PSCP") btnPSCP?.classList.add("active");
-  else if(m==="HBSCP") btnHBSCP?.classList.add("active");
-  else btnCARGO?.classList.add("active");
   stopScan?.();
   if(namaEl) namaEl.textContent="-";
   if(flightEl) flightEl.textContent="-";
@@ -203,7 +196,8 @@ function receiveBarcode(payload){
   try{
     let data = payload;
     if (typeof payload === "string"){
-      try{ const j = JSON.parse(payload); if (j && j.data) data = j.data; }catch(_){}}
+      try{ const j = JSON.parse(payload); if (j && j.data) data = j.data; }catch(_){ }
+    }
     if (!data || typeof data !== "string") return;
     const parsed = parseBoardingPass(data);
     if (parsed){
@@ -364,11 +358,22 @@ function injectScanStyles(){
     body.scan-active #scan-canvas{display:none}
     #scan-overlay{position:fixed;inset:0;display:none;z-index:10000;pointer-events:none}
     body.scan-active #scan-overlay{display:block}
-    .scan-topbar{position:absolute;top:0;left:0;right:0;height:max(56px,calc(44px + env(safe-area-inset-top,0)));\n      display:flex;align-items:flex-start;justify-content:flex-end;padding:calc(env(safe-area-inset-top,0)+6px) 10px 8px;\n      background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0));pointer-events:none}
-    .scan-close{pointer-events:auto;width:42px;height:42px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;\n      border:1px solid rgba(255,255,255,.25);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;\n      box-shadow:0 4px 12px rgba(0,0,0,.35);transition:transform .08s ease, filter .15s ease}
+    .scan-topbar{position:absolute;top:0;left:0;right:0;height:max(56px,calc(44px + env(safe-area-inset-top,0)));
+      display:flex;align-items:flex-start;justify-content:flex-end;padding:calc(env(safe-area-inset-top,0)+6px) 10px 8px;
+      background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0));pointer-events:none}
+    .scan-close{pointer-events:auto;width:42px;height:42px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;
+      border:1px solid rgba(255,255,255,.25);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;
+      box-shadow:0 4px 12px rgba(0,0,0,.35);transition:transform .08s ease, filter .15s ease}
     .scan-close:active{transform:scale(.96)} .scan-close:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:2px}
-    .scan-reticle{position:absolute;top:50%;left:50%;width:min(68vw,520px);aspect-ratio:1/1;transform:translate(-50%,-50%);\n      border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset;pointer-events:none;\n      background:linear-gradient(#fff,#fff) left top/28px 2px no-repeat,linear-gradient(#fff,#fff) left top/2px 28px no-repeat,\n      linear-gradient(#fff,#fff) right top/28px 2px no-repeat,linear-gradient(#fff,#fff) right top/2px 28px no-repeat,\n      linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat,\n      linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat}
-    .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);\n      background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px;letter-spacing:.2px;pointer-events:none;\n      box-shadow:0 4px 12px rgba(0,0,0,.35)}
+    .scan-reticle{position:absolute;top:50%;left:50%;width:min(68vw,520px);aspect-ratio:1/1;transform:translate(-50%,-50%);
+      border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset;pointer-events:none;
+      background:linear-gradient(#fff,#fff) left top/28px 2px no-repeat,linear-gradient(#fff,#fff) left top/2px 28px no-repeat,
+      linear-gradient(#fff,#fff) right top/28px 2px no-repeat,linear-gradient(#fff,#fff) right top/2px 28px no-repeat,
+      linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat,
+      linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat}
+    .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);
+      background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px;letter-spacing:.2px;pointer-events:none;
+      box-shadow:0 4px 12px rgba(0,0,0,.35)}
   `;
   const style = document.createElement('style');
   style.id = 'scan-style'; style.textContent = css; document.head.appendChild(style);
@@ -391,16 +396,13 @@ async function fetchJSON(url, opts = {}, timeoutMs = 15000){
   try{
     const res = await fetch(url, { ...opts, signal: controller.signal, mode: "cors" });
     const text = await res.text();
-    let data={};
-    try{ data = text ? JSON.parse(text) : {}; }catch{ data = { raw:text }; }
+    let data={}; try{ data = text ? JSON.parse(text) : {}; }catch{ data = { raw:text }; }
     if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
     return data;
   }catch(e){
     if(e.name === "AbortError") throw new Error("Timeout: server lambat merespons.");
     throw e;
-  }finally{
-    clearTimeout(t);
-  }
+  }finally{ clearTimeout(t); }
 }
 
 async function submitRandom(){
@@ -422,8 +424,7 @@ async function submitRandom(){
     if((mode==="PSCP" && val(objekSel)==="barang") || mode!=="PSCP"){ if(!jenisBarang) throw new Error("Isi/Jenis barang belum diisi."); }
     if(!metode) throw new Error("Metode pemeriksaan belum dipilih.");
 
-    const fotoUrl = fotoDataUrl ? `=IMAGE("${fotoDataUrl}")` : "";
-
+    // NOTE: kirim foto sebagai dataURL -> code.gs akan upload & menulis =IMAGE("...")
     const payload = {
       action: "submit",
       token: SHARED_TOKEN,
@@ -436,15 +437,15 @@ async function submitRandom(){
         petugas,
         metode,
         supervisor,
-        fotoUrl
+        ...(fotoDataUrl ? { fotoDataUrl } : {})
       }
     };
 
     if ((mode === "PSCP" || mode === "HBSCP") && tindakan === "ditinggal") {
       payload.data.tindakanBarang = "ditinggal";
       payload.data.namaBarang = jenisBarang;
-      payload.data.jenisDGDA = tipePi;
-      if (fotoUrl) payload.data.fotoPiUrl = fotoUrl;
+      payload.data.jenisDGDA  = tipePi;
+      if (fotoDataUrl) payload.data.fotoPiDataUrl = fotoDataUrl;
     } else if (mode !== "CARGO") {
       payload.data.tindakanBarang = tindakan; // "dibawa" / ""
     }
