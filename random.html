@@ -148,21 +148,21 @@
         <label for="isiBarang">Isi Barang</label>
         <input id="isiBarang" type="text" />
       </div>
-      <div class="field">
-        <label for="tipePi">Tipe Prohibited Item</label>
-        <select id="tipePi">
-          <option value="">Pilih</option>
-          <option>Dangerous Goods</option>
-          <option>Dangerous Article</option>
-        </select>
-      </div>
-      <div class="field">
+      <div class="field hidden">
         <label for="tindakanBarang">Aksi</label>
         <select id="tindakanBarang">
           <option value="">Pilih</option>
           <option>Dibawa</option>
           <option>Ditinggal</option>
           <option>Pemilik Tidak Ada</option>
+        </select>
+      </div>
+      <div class="field hidden">
+        <label for="tipePi">Tipe Prohibited Item</label>
+        <select id="tipePi">
+          <option value="">Pilih</option>
+          <option>Dangerous Goods</option>
+          <option>Dangerous Article</option>
         </select>
       </div>
       <button id="submitBtn" class="btn primary full" type="button">Kirim</button>

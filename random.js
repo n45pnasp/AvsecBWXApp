@@ -306,31 +306,36 @@ async function loadSuspectList(){
 }
 
 /* ===== UI ===== */
-function updateTipePiVisibility(){
-  const t=val(tindakanSel).toLowerCase();
-  const need=(mode==="PSCP"&&val(objekSel)==="barang"&&t==="ditinggal")||(mode==="HBSCP"&&t==="ditinggal");
-  tipePiField?.classList.toggle("hidden",!need);
+function setAksiOptions(opts){
+  if(!tindakanSel) return;
+  tindakanSel.innerHTML = '<option value="">Pilih</option>' + opts.map(o=>`<option>${o}</option>`).join('');
+}
+function updateAksiVisibility(){
+  if(mode==="PSCP"){
+    const show = val(objekSel)==="barang" && val(tipePiSel)!=="";
+    tindakanField?.classList.toggle("hidden",!show);
+    if(!show) tindakanSel.value="";
+  }else if(mode==="HBSCP"){
+    const showPi = val(tindakanSel).toLowerCase()==="ditinggal";
+    tipePiField?.classList.toggle("hidden",!showPi);
+    if(!showPi) tipePiSel.value="";
+  }
 }
 function updateBarangCard(){
   if(!barangCard) return;
   if(mode==="PSCP"){
-    if(val(objekSel)==="barang"){ barangCard.classList.remove("hidden"); tindakanField?.classList.remove("hidden"); updateTipePiVisibility(); }
+    if(val(objekSel)==="barang"){ barangCard.classList.remove("hidden"); tipePiField?.classList.remove("hidden"); tindakanField?.classList.add("hidden"); }
     else { barangCard.classList.add("hidden"); resetFoto(); }
   }else if(mode==="HBSCP"){
-    if(hbsCardsVisible){
-      barangCard.classList.remove("hidden");
-      tindakanField?.classList.remove("hidden");
-      updateTipePiVisibility();
-    }else{
-      barangCard.classList.add("hidden");
-      resetFoto();
-    }
+    barangCard.classList.remove("hidden"); tindakanField?.classList.remove("hidden"); tipePiField?.classList.add("hidden");
   }else{
     barangCard.classList.remove("hidden"); tindakanField?.classList.add("hidden"); tipePiField?.classList.add("hidden");
   }
+  updateAksiVisibility();
 }
 objekSel?.addEventListener("change",updateBarangCard);
-tindakanSel?.addEventListener("change",updateTipePiVisibility);
+tipePiSel?.addEventListener("change",updateAksiVisibility);
+tindakanSel?.addEventListener("change",updateAksiVisibility);
 
 function setMode(m){
   mode=m;
@@ -357,17 +362,20 @@ function setMode(m){
     if(chev) chev.textContent="▼"; }
 
   if(m==="PSCP"){
+    setAksiOptions(["Dibawa","Ditinggal"]);
     scanCard?.classList.remove("hidden"); barangCard?.classList.remove("hidden");
     scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");
     manualForm?.classList.add("hidden"); if(manualNamaLabel) manualNamaLabel.textContent="Nama Penumpang";
     objekField?.classList.remove("hidden"); if(objekSel) objekSel.value=""; updateBarangCard();
   }else if(m==="HBSCP"){
+    setAksiOptions(["Dibawa","Ditinggal","Pemilik Tidak Ada"]);
     if(!hbsCardsVisible){ scanCard?.classList.add("hidden"); barangCard?.classList.add("hidden"); }
     else { scanCard?.classList.remove("hidden"); barangCard?.classList.remove("hidden"); }
     scanBtn?.classList.remove("hidden"); scanResult?.classList.remove("hidden");
     manualForm?.classList.add("hidden"); if(manualNamaLabel) manualNamaLabel.textContent="Nama Penumpang";
     objekField?.classList.add("hidden"); updateBarangCard();
   }else{
+    setAksiOptions([]);
     scanCard?.classList.remove("hidden"); barangCard?.classList.remove("hidden");
     scanBtn?.classList.add("hidden"); scanResult?.classList.add("hidden");
     manualForm?.classList.remove("hidden"); if(manualNamaLabel) manualNamaLabel.textContent="Nama Pengirim";
