@@ -239,7 +239,8 @@ function renderSuspectList(rows){
     const dep    = flightTimes[flight.toUpperCase()] || "-";
     const sUrl   = norm.fotosuspecturl || norm.fotosuspectid || "";
     const bUrl   = norm.fotobarangurl  || norm.fotobarangid  || "";
-    const indikasi = (norm.indikasisuspect || norm.indikasi || "").trim();
+    const keyInd = Object.keys(norm).find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")||k==="indikasi"));
+    const indikasi = (keyInd?norm[keyInd]:"").trim();
 
     const tr=document.createElement("tr");
     tr.dataset.suspect=sUrl;
