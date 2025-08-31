@@ -683,6 +683,7 @@ async function submitRandom(){
     }
 
     console.log("submitRandom payload", payload);
+    console.log("submitRandom data", payload.data);
     const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
     console.log("submitRandom response", j);
     if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan");
@@ -725,6 +726,7 @@ async function submitSuspectHBSCP(){
       ...(bagFotoBarangDataUrl ?{fotoBarangDataUrl :bagFotoBarangDataUrl }:{ })
     }};
     console.log("submitSuspectHBSCP payload", payload);
+    console.log("submitSuspectHBSCP data", payload.data);
     const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
     console.log("submitSuspectHBSCP response", j);
     if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan suspect");
