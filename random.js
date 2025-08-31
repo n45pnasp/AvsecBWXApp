@@ -1,4 +1,4 @@
-// random.js — logic for Random Check (Cloudflare Worker proxy, photo upload & suspect list)
+// random.js — FINAL (lookup Indikasi Suspect fix)
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
@@ -189,6 +189,7 @@ async function openPhoto(suspect, barang, indikasi="", bagNo=""){
   showOverlay("loading","Memuat foto…");
   imgOverlay.classList.remove("hidden");
 
+  // ---- Ambil indikasi suspect dari sheet kalau belum ada ----
   if(!indikasi && bagNo){
     try{
       const url=`${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&bag_no=${encodeURIComponent(bagNo)}`;
@@ -206,16 +207,16 @@ async function openPhoto(suspect, barang, indikasi="", bagNo=""){
           const bagMatch=String(norm.bagno||norm.nomorbagasi||norm.nobagasi||"").trim().toUpperCase();
           if(bagMatch===bUpper){ found=norm; break; }
         }
-        const norm=found || (()=>{
-          const first={};
-          for(const k in j.rows[0]){
-            const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();
-            first[nk]=j.rows[0][k];
-          }
-          return first;
-        })();
-        const keyInd=Object.keys(norm).find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")||k==="indikasi"));
-        indikasi=String(keyInd?norm[keyInd]:"").trim();
+        const norm=found || (()=>{const first={};for(const k in j.rows[0]){const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();first[nk]=j.rows[0][k];}return first;})();
+
+        // === FIX ambil kolom Indikasi secara eksplisit ===
+        indikasi = String(
+          norm.indikasisuspect ??
+          norm.indikasisuspek ??
+          norm.indikasi ??
+          norm.keterangan ??
+          ""
+        ).trim();
       }
     }catch(err){ console.error(err); }
   }
@@ -265,14 +266,21 @@ function renderSuspectList(rows){
     }
     const aksi=(norm.aksi||norm.action||"").trim();
     if(aksi) return;
+
     const bagNo  = norm.bagno || norm.nomorbagasi || norm.nobagasi || "-";
     const flight = norm.flight || "-";
     const dest   = norm.tujuan || "-";
     const dep    = flightTimes[flight.toUpperCase()] || "-";
     const sUrl   = norm.fotosuspecturl || norm.fotosuspectid || "";
     const bUrl   = norm.fotobarangurl  || norm.fotobarangid  || "";
-    const keyInd = Object.keys(norm).find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")||k==="indikasi"));
-    const indikasi = String(keyInd?norm[keyInd]:"").trim();
+
+    // === FIX ambil Indikasi secara eksplisit ===
+    const indikasi = String(
+      norm.indikasisuspect ??
+      norm.indikasisuspek ??
+      norm.indikasi ??
+      ""
+    ).trim();
 
     const tr=document.createElement("tr");
     tr.dataset.suspect=sUrl;
