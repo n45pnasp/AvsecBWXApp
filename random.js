@@ -278,11 +278,12 @@ function renderSuspectList(rows){
       const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();
       norm[nk]=it[k];
     }
+    // tampilkan hanya baris yang sudah memiliki aksi
     const aksi=(norm.aksi||norm.action||"").trim();
-    if(aksi) return;
+    if(!aksi) return;
 
     const bagNo  = norm.bagno || norm.nomorbagasi || norm.nobagasi || "-";
-    const rowItems = Number(it.rowItems || it.rowitems || 0);
+    const rowItems = Number(norm.rowitems || 0);
     const flight = norm.flight || "-";
     const dest   = norm.tujuan || "-";
     const dep    = flightTimes[flight.toUpperCase()] || "-";
