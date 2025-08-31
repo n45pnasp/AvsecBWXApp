@@ -183,16 +183,35 @@ function normalizeDriveUrl(u){
   return m?`https://lh3.googleusercontent.com/d/${m[1]}`:u;
 }
 
-async function openPhoto(suspect, barang, indikasi=""){
+async function openPhoto(suspect, barang, indikasi="", bagNo=""){
   if(!imgOverlay) return;
+
+  showOverlay("loading","Memuat foto…");
+  imgOverlay.classList.remove("hidden");
+
+  if(!indikasi && bagNo){
+    try{
+      const url=`${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&bag_no=${encodeURIComponent(bagNo)}`;
+      const r=await fetch(url,{method:"GET",mode:"cors"});
+      const j=await r.json().catch(()=>({}));
+      if(j?.ok && Array.isArray(j.rows) && j.rows[0]){
+        const row=j.rows[0];
+        const norm={};
+        for(const k in row){
+          const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();
+          norm[nk]=row[k];
+        }
+        const keyInd=Object.keys(norm).find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")||k==="indikasi"));
+        indikasi=String(keyInd?norm[keyInd]:"").trim();
+      }
+    }catch(err){ console.error(err); }
+  }
 
   const entries=[];
   if(suspect) entries.push({img:suspectImg,val:suspect,label:"suspect"});
   if(barang)  entries.push({img:barangImg,val:barang,label:"barang"});
   if(!entries.length) return;
 
-  showOverlay("loading","Memuat foto…");
-  imgOverlay.classList.remove("hidden");
   if(indikasiEl){
     indikasiEl.textContent = `INDIKASI SUSPECT: ${indikasi || '-'}`;
     indikasiEl.classList.remove("hidden");
@@ -240,7 +259,7 @@ function renderSuspectList(rows){
     const sUrl   = norm.fotosuspecturl || norm.fotosuspectid || "";
     const bUrl   = norm.fotobarangurl  || norm.fotobarangid  || "";
     const keyInd = Object.keys(norm).find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")||k==="indikasi"));
-    const indikasi = (keyInd?norm[keyInd]:"").trim();
+    const indikasi = String(keyInd?norm[keyInd]:"").trim();
 
     const tr=document.createElement("tr");
     tr.dataset.suspect=sUrl;
@@ -252,8 +271,8 @@ function renderSuspectList(rows){
     let longPress=false,timer;
     tr.addEventListener("pointerdown",()=>{longPress=false;timer=setTimeout(()=>{longPress=true;showDeleteModal(tr);},600);});
     ["pointerup","pointerleave","pointercancel"].forEach(ev=>tr.addEventListener(ev,()=>clearTimeout(timer)));
-    tr.addEventListener("click",()=>{ if(longPress) return; openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi); });
-    tr.addEventListener("contextmenu",e=>{e.preventDefault();openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi);});
+    tr.addEventListener("click",()=>{ if(longPress) return; openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi,tr.dataset.bagno); });
+    tr.addEventListener("contextmenu",e=>{e.preventDefault();openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi,tr.dataset.bagno);});
     bagasiList.appendChild(tr);
   });
 }
