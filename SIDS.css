@@ -14,14 +14,41 @@ header{
   background:#800000;
   border-bottom:4px solid #FFD700;
 }
-header img{ height:80px; }
+.header-left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.suitcase-icon{
+  width:3vw;
+  height:3vw;
+  min-width:24px;
+  min-height:24px;
+  fill:#FFD700;
+}
 header h1{
-  flex:1;
-  text-align:center;
   color:#FFD700;
   font-size:3vw;
   margin:0;
 }
+.logo-top-right{ height:80px; }
+
+.logo-bottom-left{
+  position:fixed;
+  bottom:40px;
+  left:20px;
+  height:60px;
+}
+
+.clock{
+  position:fixed;
+  bottom:40px;
+  right:20px;
+  text-align:right;
+  color:#FFD700;
+}
+#clockTime{ font-size:2vw; }
+#clockDate{ font-size:1.5vw; }
 
 #sidsTable{
   width:100%;
