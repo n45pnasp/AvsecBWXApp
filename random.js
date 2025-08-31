@@ -290,9 +290,12 @@ function renderSuspectList(rows){
     tr.dataset.rowitems=String(rowItems);
     tr.title = indikasi ? `Indikasi: ${indikasi}` : "";
     tr.innerHTML=`<td>${bagNo}</td><td>${flight}</td><td>${dest}</td><td>${dep}</td>`;
-    let longPress=false,timer;
-    tr.addEventListener("pointerdown",()=>{longPress=false;timer=setTimeout(()=>{longPress=true;showDeleteModal(tr);},600);});
-    ["pointerup","pointerleave","pointercancel"].forEach(ev=>tr.addEventListener(ev,()=>clearTimeout(timer)));
+    let timer; let longPress=false;
+    tr.addEventListener("pointerdown",()=>{
+      longPress=false;
+      timer=setTimeout(()=>{ longPress=true; showDeleteModal(tr); },600);
+    });
+    ["pointerup","pointerleave","pointercancel"].forEach(ev=>tr.addEventListener(ev,()=>{ if(timer) clearTimeout(timer); }));
 
     const selectRow = () => {
       selectedSuspect = { rowItems, bagNo };
@@ -300,7 +303,7 @@ function renderSuspectList(rows){
       hbsCardsVisible=true; updateBarangCard();
     };
     tr.addEventListener("click",()=>{ if(longPress) return; selectRow(); });
-    tr.addEventListener("contextmenu",e=>{e.preventDefault(); selectRow();});
+    tr.addEventListener("contextmenu",e=>{ e.preventDefault(); if(timer) clearTimeout(timer); longPress=true; showDeleteModal(tr); });
 
     bagasiList.appendChild(tr);
   });
