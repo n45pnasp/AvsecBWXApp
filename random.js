@@ -299,8 +299,13 @@ function renderSuspectList(rows){
 
     const selectRow = () => {
       selectedSuspect = { rowItems, bagNo };
-      openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi,tr.dataset.bagno,tr.dataset.rowitems);
-      hbsCardsVisible=true; updateBarangCard();
+      openPhoto(
+        tr.dataset.suspect,
+        tr.dataset.barang,
+        tr.dataset.indikasi,
+        tr.dataset.bagno,
+        tr.dataset.rowitems
+      );
     };
     tr.addEventListener("click",()=>{ if(longPress) return; selectRow(); });
     tr.addEventListener("contextmenu",e=>{ e.preventDefault(); if(timer) clearTimeout(timer); longPress=true; showDeleteModal(tr); });
