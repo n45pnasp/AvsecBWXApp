@@ -194,8 +194,9 @@ async function openPhoto(suspect, barang, indikasi="", bagNo=""){
       const url=`${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&bag_no=${encodeURIComponent(bagNo)}`;
       const r=await fetch(url,{method:"GET",mode:"cors"});
       const j=await r.json().catch(()=>({}));
-      if(j?.ok && Array.isArray(j.rows)){
+      if(j?.ok && Array.isArray(j.rows) && j.rows.length){
         const bUpper=bagNo.toUpperCase();
+        let found=null;
         for(const raw of j.rows){
           const norm={};
           for(const k in raw){
@@ -203,12 +204,18 @@ async function openPhoto(suspect, barang, indikasi="", bagNo=""){
             norm[nk]=raw[k];
           }
           const bagMatch=String(norm.bagno||norm.nomorbagasi||norm.nobagasi||"").trim().toUpperCase();
-          if(bagMatch===bUpper){
-            const keyInd=Object.keys(norm).find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")||k==="indikasi"));
-            indikasi=String(keyInd?norm[keyInd]:"").trim();
-            break;
-          }
+          if(bagMatch===bUpper){ found=norm; break; }
         }
+        const norm=found || (()=>{
+          const first={};
+          for(const k in j.rows[0]){
+            const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();
+            first[nk]=j.rows[0][k];
+          }
+          return first;
+        })();
+        const keyInd=Object.keys(norm).find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")||k==="indikasi"));
+        indikasi=String(keyInd?norm[keyInd]:"").trim();
       }
     }catch(err){ console.error(err); }
   }
@@ -258,7 +265,7 @@ function renderSuspectList(rows){
     }
     const aksi=(norm.aksi||norm.action||"").trim();
     if(aksi) return;
-    const bagNo  = norm.nomorbagasi || "-";
+    const bagNo  = norm.bagno || norm.nomorbagasi || norm.nobagasi || "-";
     const flight = norm.flight || "-";
     const dest   = norm.tujuan || "-";
     const dep    = flightTimes[flight.toUpperCase()] || "-";
