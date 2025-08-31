@@ -61,10 +61,26 @@ function renderList(rows){
 
     const passenger = (norm.namapemilik||norm.nama||'-').toUpperCase();
     const flight = (norm.flight||'-').toUpperCase();
-    const time = flightTimes[flight] || '-';
+    const timeRaw = flightTimes[flight] || '-';
+
+    // --- hanya ubah tampilan: pecah "WIB" agar bisa diperkecil di CSS ---
+    let timeHTML = '-';
+    if (timeRaw && timeRaw !== '-') {
+      if (/WIB$/i.test(timeRaw)) {
+        const hhmm = timeRaw.replace(/\s*WIB$/i, '');
+        timeHTML = `<span class="time">${hhmm}</span><span class="wib"> WIB</span>`;
+      } else {
+        timeHTML = `<span class="time">${timeRaw}</span>`;
+      }
+    }
+    // ---------------------------------------------------------------------
 
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${time}</td><td>${passenger}</td><td>${flight}</td><td>${translations[currentLang].status}</td>`;
+    tr.innerHTML = `
+      <td>${timeHTML}</td>
+      <td>${passenger}</td>
+      <td>${flight}</td>
+      <td>${translations[currentLang].status}</td>`;
     body.appendChild(tr);
   });
 }
