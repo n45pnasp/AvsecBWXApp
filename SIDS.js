@@ -21,13 +21,13 @@ let currentRows = [];
 
 const flightTimes = {};
 
-/* ========= UTIL WAKTU ========= */
+/* ========= UTIL WAKTU (GMT+7) ========= */
 
-/** Format HH:MM WIB dari Date, pakai zona Asia/Jakarta */
+/** Format HH:MM dari Date dalam zona Asia/Jakarta (GMT+7) */
 function formatHHMMFromDate(d) {
   if (!(d instanceof Date) || isNaN(d)) return null;
   const parts = new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jakarta", // GMT+7
+    timeZone: "Asia/Jakarta",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -37,13 +37,13 @@ function formatHHMMFromDate(d) {
   return `${hh}:${mm}`;
 }
 
-/** Parse timestamp (string/number/serial Google Sheets) → HH:MM WIB */
+/** Parse timestamp → Date, default-kan string tanpa zona sebagai UTC, lalu format ke HH:MM WIB */
 function toHHMMFromAny(v) {
   if (v == null || v === "") return null;
 
-  // Number: bisa jadi epoch ms / detik / serial Google Sheets
+  // Number: epoch/serial Google Sheets
   if (typeof v === "number") {
-    // Serial Google Sheets (hari sejak 1899-12-30)
+    // Serial Google Sheets (hari sejak 1899-12-30, dianggap UTC)
     if (v > 1000 && v < 60000) {
       const ms = (v - 25569) * 86400 * 1000;
       return formatHHMMFromDate(new Date(ms));
@@ -58,16 +58,40 @@ function toHHMMFromAny(v) {
     }
   }
 
-  // String ISO/locale
   if (typeof v === "string") {
     const s = v.trim().replace(/\./g, ":");
-    // Jika mengandung HH:MM langsung pakai
-    const m = s.match(/(\d{1,2})[:](\d{2})/);
-    if (m) {
-      const h = String(m[1]).padStart(2, "0");
-      const mm = String(m[2]).padStart(2, "0");
+
+    // Jika sudah ada offset / Z, serahkan ke Date parser
+    if (/[zZ]|[+-]\d{2}:\d{2}$/.test(s)) {
+      const d = new Date(s);
+      if (!isNaN(d)) return formatHHMMFromDate(d);
+    }
+
+    // HH:MM saja → anggap sudah “local meaning”, cukup normalisasi
+    const mOnly = s.match(/^(\d{1,2}):(\d{2})$/);
+    if (mOnly) {
+      const h = String(mOnly[1]).padStart(2, "0");
+      const mm = String(mOnly[2]).padStart(2, "0");
       return `${h}:${mm}`;
     }
+
+    // ISO-like tanpa zona: YYYY-MM-DD HH:mm(:ss)?
+    let m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (m) {
+      const [_, Y, M, D, H, Min, S] = m;
+      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S || 0))); // treat as UTC
+      return formatHHMMFromDate(d);
+    }
+
+    // D/M/Y H:m(:s) tanpa zona → treat as UTC juga
+    m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (m) {
+      const [_, D, M, Y, H, Min, S] = m;
+      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S || 0)));
+      return formatHHMMFromDate(d);
+    }
+
+    // Fallback: biarkan Date coba parse; jika valid, konversi ke Asia/Jakarta
     const d = new Date(s);
     if (!isNaN(d)) return formatHHMMFromDate(d);
   }
@@ -75,7 +99,7 @@ function toHHMMFromAny(v) {
   return null;
 }
 
-/* ========= OPSIONAL: map waktu terjadwal per flight (fallback) ========= */
+/* ========= Jadwal per flight (fallback) ========= */
 async function loadFlightTimes(){
   if(Object.keys(flightTimes).length) return;
   try{
@@ -93,7 +117,7 @@ async function loadFlightTimes(){
   }catch(err){ console.error(err); }
 }
 
-/* ========= RENDER ========= */
+/* ========= Render ========= */
 function renderList(rows){
   const body = document.getElementById('sidsBody');
   if(!body) return;
@@ -106,12 +130,12 @@ function renderList(rows){
     }
 
     const aksi=(norm.aksi||norm.action||'').trim();
-    if(aksi) return; // abaikan yg punya aksi
+    if(aksi) return;
 
     const passenger = (norm.namapemilik||norm.nama||'-').toUpperCase();
     const flight = (norm.flight||'-').toUpperCase();
 
-    // Ambil timestamp dari kolom A (atau field serupa)
+    // Ambil timestamp (kolom A / field setara)
     const tsCandidate =
       norm.timestamp ?? norm.waktu ?? norm.jam ?? norm.createdat ??
       norm.created ?? norm.tanggal ?? norm.tanggalfull ?? norm.a ?? null;
@@ -119,14 +143,9 @@ function renderList(rows){
     let timeRaw = toHHMMFromAny(tsCandidate);
     if(!timeRaw) timeRaw = flightTimes[flight] || "-";
 
-    let timeHTML = "-";
-    if (timeRaw && timeRaw !== "-") {
-      timeHTML = `<span class="time">${timeRaw}</span>`;
-    }
-
     const tr=document.createElement('tr');
     tr.innerHTML = `
-      <td>${timeHTML}</td>
+      <td>${timeRaw ? `<span class="time">${timeRaw}</span>` : '-'}</td>
       <td>${passenger}</td>
       <td>${flight}</td>
       <td>${translations[currentLang].status}</td>`;
@@ -134,7 +153,7 @@ function renderList(rows){
   });
 }
 
-/* ========= FETCH ========= */
+/* ========= Fetch ========= */
 async function loadSuspectList(){
   try{
     await loadFlightTimes(); // fallback
@@ -148,7 +167,7 @@ async function loadSuspectList(){
   }catch(err){ console.error(err); }
 }
 
-/* ========= UI TEXT ========= */
+/* ========= UI Text ========= */
 function applyTranslations(){
   const t = translations[currentLang];
   document.title = t.title;
@@ -175,7 +194,7 @@ function toggleLanguage(){
   renderList(currentRows);
 }
 
-/* ========= CLOCK HEADER ========= */
+/* ========= Clock header (WIB) ========= */
 function updateClock(){
   const now = new Date();
   const optsTime = { hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Jakarta' };
@@ -188,7 +207,7 @@ function updateClock(){
   if(dateEl) dateEl.textContent = date;
 }
 
-/* ========= BOOT ========= */
+/* ========= Boot ========= */
 document.addEventListener('DOMContentLoaded',()=>{
   applyTranslations();
   loadSuspectList();
