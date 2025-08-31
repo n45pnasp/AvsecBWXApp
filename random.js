@@ -720,12 +720,14 @@ async function submitSuspectHBSCP(){
       ...(bagFotoSuspectDataUrl?{fotoSuspectDataUrl:bagFotoSuspectDataUrl}:{ }),
       ...(bagFotoBarangDataUrl ?{fotoBarangDataUrl :bagFotoBarangDataUrl }:{ })
     }};
-      const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
-      if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan suspect");
-      showOverlay("ok","Suspect tersimpan", `Row ${j.targetRow||"-"}`);
-      hbsCardsVisible=false;
-      scanCard?.classList.add("hidden");
-      barangCard?.classList.add("hidden");
+    console.log("submitSuspectHBSCP payload", payload);
+    const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
+    console.log("submitSuspectHBSCP response", j);
+    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan suspect");
+    showOverlay("ok","Suspect tersimpan", `Row ${j.targetRow||"-"}`);
+    hbsCardsVisible=false;
+    scanCard?.classList.add("hidden");
+    barangCard?.classList.add("hidden");
       resetBagasiCard(); loadSuspectList();
   }catch(err){
     console.error(err); showOverlay("err","Gagal simpan suspect", err?.message||String(err));
@@ -749,12 +751,14 @@ async function submitAksiSuspect(){
       rowItems:Number(selectedSuspect.rowItems||0),
       aksi
     };
+    console.log("submitAksiSuspect payload", payload);
     const j = await fetchJSON(PROXY_URL,{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify(payload),
       credentials:"omit"
     });
+    console.log("submitAksiSuspect response", j);
     if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan aksi");
 
     showOverlay("ok","Aksi tersimpan","");
