@@ -194,15 +194,21 @@ async function openPhoto(suspect, barang, indikasi="", bagNo=""){
       const url=`${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&bag_no=${encodeURIComponent(bagNo)}`;
       const r=await fetch(url,{method:"GET",mode:"cors"});
       const j=await r.json().catch(()=>({}));
-      if(j?.ok && Array.isArray(j.rows) && j.rows[0]){
-        const row=j.rows[0];
-        const norm={};
-        for(const k in row){
-          const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();
-          norm[nk]=row[k];
+      if(j?.ok && Array.isArray(j.rows)){
+        const bUpper=bagNo.toUpperCase();
+        for(const raw of j.rows){
+          const norm={};
+          for(const k in raw){
+            const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();
+            norm[nk]=raw[k];
+          }
+          const bagMatch=String(norm.bagno||norm.nomorbagasi||norm.nobagasi||"").trim().toUpperCase();
+          if(bagMatch===bUpper){
+            const keyInd=Object.keys(norm).find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")||k==="indikasi"));
+            indikasi=String(keyInd?norm[keyInd]:"").trim();
+            break;
+          }
         }
-        const keyInd=Object.keys(norm).find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")||k==="indikasi"));
-        indikasi=String(keyInd?norm[keyInd]:"").trim();
       }
     }catch(err){ console.error(err); }
   }
