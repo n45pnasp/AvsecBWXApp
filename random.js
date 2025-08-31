@@ -226,16 +226,20 @@ document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") imgOverlay?.clas
 function renderSuspectList(rows){
   if(!bagasiList) return; bagasiList.innerHTML="";
   rows.forEach(it=>{
-    const aksi    = (it.aksi || it.action || "").trim();
+    const norm={};
+    for(const k in it){
+      const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();
+      norm[nk]=it[k];
+    }
+    const aksi=(norm.aksi||norm.action||"").trim();
     if(aksi) return;
-    const bagNo   = it.nomorBagasi || "-";
-    const flight  = it.flight      || "-";
-    const dest    = it.tujuan      || "-";
-    const dep     = flightTimes[flight.toUpperCase()] || "-";
-    const sUrl    = it.fotoSuspectUrl || it.fotoSuspectId || "";
-    const bUrl    = it.fotoBarangUrl  || it.fotoBarangId  || "";
-    const indikasiKey = Object.keys(it).find(k => k.replace(/\s+/g, "").toLowerCase() === "indikasisuspect");
-    const indikasi= (it.indikasi || it.indikasiSuspect || (indikasiKey ? it[indikasiKey] : "") || "").trim();
+    const bagNo  = norm.nomorbagasi || "-";
+    const flight = norm.flight || "-";
+    const dest   = norm.tujuan || "-";
+    const dep    = flightTimes[flight.toUpperCase()] || "-";
+    const sUrl   = norm.fotosuspecturl || norm.fotosuspectid || "";
+    const bUrl   = norm.fotobarangurl  || norm.fotobarangid  || "";
+    const indikasi = (norm.indikasisuspect || norm.indikasi || "").trim();
 
     const tr=document.createElement("tr");
     tr.dataset.suspect=sUrl;
