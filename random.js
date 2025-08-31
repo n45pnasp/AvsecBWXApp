@@ -720,12 +720,18 @@ bagSubmitBtn?.addEventListener("click",(e)=>{ e.preventDefault(); submitSuspectH
 async function submitAksiSuspect(){
   try{
     if(mode!=="HBSCP"){ alert("Menu SUSPECT hanya di HBSCP."); return; }
-    if(!selectedSuspect?.rowItems){ alert("Pilih item suspect dari daftar terlebih dahulu."); return; }
+    if(!selectedSuspect?.bagNo){ alert("Pilih item suspect dari daftar terlebih dahulu."); return; }
     const aksi = (val(tindakanSel) || "").trim();
     if(!aksi){ alert("Pilih tindakan/aksi terlebih dahulu."); return; }
 
     showOverlay("spinner","Menyimpan aksi…","");
-    const payload = { action:"set_suspect_action", token:SHARED_TOKEN, rowItems:Number(selectedSuspect.rowItems), aksi };
+    const payload = {
+      action:"set_suspect_action",
+      token:SHARED_TOKEN,
+      bagNo:selectedSuspect.bagNo,
+      rowItems:Number(selectedSuspect.rowItems||0),
+      aksi
+    };
     const j = await fetchJSON(PROXY_URL,{
       method:"POST",
       headers:{ "Content-Type":"application/json" },
