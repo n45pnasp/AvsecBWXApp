@@ -1,0 +1,183 @@
+@import url('./ACP.css');
+
+/* Noncopyable text */
+body{
+  -webkit-user-select:none;
+  user-select:none;
+}
+input,textarea,select{
+  -webkit-user-select:text;
+  user-select:text;
+}
+
+#overlay{z-index:10000;}
+
+.field select{
+  width:100%;
+  background:#0b1324;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  font-size:var(--fs-base);
+}
+
+.btn-group{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+
+.btn-group .btn.active{
+  background:linear-gradient(135deg,#6a5cff,#8a7bff);
+  border-color:#6a5cff;
+  box-shadow:0 6px 16px rgba(106,88,255,.35);
+  color:#fff;
+}
+
+.btn.danger{
+  background:#dc2626;
+  border-color:#dc2626;
+  color:#fff;
+}
+
+#scanResult{
+  margin:12px 0;
+  grid-template-columns:7fr 3fr;
+}
+#scanResult .field{
+  margin:0;
+}
+
+#deleteOverlay .sheet{
+  grid-template-columns:1fr;
+  text-align:center;
+}
+#deleteOverlay .texts{
+  margin:0 0 12px;
+}
+#deleteOverlay .btn-row{display:flex;gap:8px;}
+#deleteOverlay .btn-row .btn{flex:1;}
+
+/* Tombol scan bergaya sama dengan boardingpass */
+.qr-btn{
+  width:100%;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  background:linear-gradient(135deg, var(--accent,#6a5cff), var(--accent-2,#8a7bff));
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;
+  padding:14px 16px;
+  font-weight:600;
+  font-size:16px;
+  cursor:pointer;
+  color:#fff;
+  box-shadow:0 6px 16px rgba(106,88,255,.35);
+  transition:filter .15s ease, transform .1s ease;
+  text-align:left;
+}
+.qr-btn:hover{ filter:brightness(1.08); }
+.qr-btn:active{ transform:translateY(1px); }
+.qr-btn img{ width:28px; height:28px; display:block; filter:invert(1); }
+.qr-btn small{ color:rgba(255,255,255,.85); font-weight:400; display:block; }
+.qr-btn.is-waiting{ opacity:.7; pointer-events:none; }
+
+/* Preview foto barang */
+#barangCard .photo-preview,
+#bagasiCard .photo-preview{
+  width:100%;
+  display:block;
+  border:1px solid var(--border);
+  border-radius:12px;
+  object-fit:cover;
+  max-height:240px;
+}
+
+.table-wrap{overflow-x:auto;}
+.log-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+}
+.log-table th,.log-table td{
+  padding:8px 10px;
+  text-align:left;
+  border-bottom:1px solid var(--border);
+  font-size:14px;
+}
+.log-table thead{background:#111827;}
+.log-table tbody tr:nth-child(odd){background:rgba(255,255,255,.02);} 
+.log-table tbody tr{cursor:pointer;}
+
+#bagasiResult{margin-top:12px;}
+#bagasiResult .bag-owner{text-align:left;margin-bottom:8px;}
+#bagasiResult .bag-owner label{margin-right:4px;}
+#bagasiResult .bag-pair{display:flex;gap:8px;margin-bottom:6px;}
+#bagasiResult .bag-pair>div{flex:1 1 50%;display:flex;align-items:center;}
+#bagasiResult label{font-size:14px;margin-right:4px;}
+
+#bagasiCard .photo-card{margin:12px 0;display:flex;flex-direction:column;gap:8px;}
+
+#photoOverlay .sheet{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+}
+#photoOverlay .indikasi{
+  text-align:center;
+  font-weight:600;
+}
+#photoOverlay .photo-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  width:100%;
+}
+#photoOverlay img{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:12px;
+  object-fit:cover;
+}
+
+/* Toggle bagasi card */
+#bagasiCard .bagasi-nav{
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  background:none;
+  border:none;
+  color:var(--text);
+  font-weight:600;
+  font-size:16px;
+  margin-bottom:12px;
+  cursor:pointer;
+  padding:8px 0;
+  text-transform:uppercase;
+  text-align:left;
+}
+#bagasiCard .bagasi-nav .nav-text{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+  max-width:calc(100% - 32px);
+}
+#bagasiCard .bagasi-nav .nav-desc{
+  text-transform:none;
+  font-size:12px;
+  font-weight:400;
+  color:#555;
+}
+#bagasiCard .bagasi-nav .chevron{
+  margin-left:8px;
+}
+#bagasiCard.collapsed #bagasiContent{display:none;}
