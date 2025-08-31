@@ -1,6 +1,24 @@
 const SHARED_TOKEN = "N45p";
 const LOOKUP_URL = "https://rdcheck.avsecbwx2018.workers.dev/";
 
+const translations = {
+  id: {
+    title: "PEMERIKSAAN BAGASI TERCATAT",
+    headers: ["WAKTU", "PENUMPANG", "PENERBANGAN", "STATUS"],
+    status: "DIPERIKSA HARAP MENGHUBUNGI PETUGAS",
+    ticker: "INFORMASI KEAMANAN BANDARA",
+  },
+  en: {
+    title: "CHECKED BAGGAGE INSPECTION",
+    headers: ["TIME", "PASSENGER", "FLIGHT", "STATUS"],
+    status: "INSPECTED — PLEASE CONTACT OFFICER",
+    ticker: "AIRPORT SECURITY INFORMATION",
+  },
+};
+
+let currentLang = "id";
+let currentRows = [];
+
 const flightTimes = {};
 
 function formatWib(timeStr){
@@ -46,7 +64,7 @@ function renderList(rows){
     const time = flightTimes[flight] || '-';
 
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${time}</td><td>${passenger}</td><td>${flight}</td><td>DIPERIKSA HARAP MENGHUBUNGI PETUGAS</td>`;
+    tr.innerHTML=`<td>${time}</td><td>${passenger}</td><td>${flight}</td><td>${translations[currentLang].status}</td>`;
     body.appendChild(tr);
   });
 }
@@ -57,11 +75,37 @@ async function loadSuspectList(){
     const url = `${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&limit=200`;
     const r = await fetch(url,{method:"GET",mode:"cors"});
     const j = await r.json().catch(()=>({}));
-    if(j?.ok && Array.isArray(j.rows)) renderList(j.rows);
+    if(j?.ok && Array.isArray(j.rows)){
+      currentRows = j.rows;
+      renderList(currentRows);
+    }
   }catch(err){ console.error(err); }
 }
 
+function applyTranslations(){
+  const t = translations[currentLang];
+  document.title = t.title;
+  document.documentElement.lang = currentLang;
+  const headCells = [
+    document.getElementById('thTime'),
+    document.getElementById('thPassenger'),
+    document.getElementById('thFlight'),
+    document.getElementById('thStatus')
+  ];
+  headCells.forEach((el,idx)=>{ if(el) el.textContent = t.headers[idx]; });
+  const tick=document.getElementById('tickerText');
+  if(tick) tick.textContent = t.ticker;
+}
+
+function toggleLanguage(){
+  currentLang = currentLang === 'id' ? 'en' : 'id';
+  applyTranslations();
+  renderList(currentRows);
+}
+
 document.addEventListener('DOMContentLoaded',()=>{
+  applyTranslations();
   loadSuspectList();
   setInterval(loadSuspectList,30000);
+  setInterval(toggleLanguage,10000);
 });
