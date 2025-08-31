@@ -234,7 +234,7 @@ function renderSuspectList(rows){
     const dep     = flightTimes[flight.toUpperCase()] || "-";
     const sUrl    = it.fotoSuspectUrl || it.fotoSuspectId || "";
     const bUrl    = it.fotoBarangUrl  || it.fotoBarangId  || "";
-    const indikasi= (it.indikasi || it.indikasiSuspect || "").toUpperCase();
+    const indikasi= (it.indikasi || it.indikasiSuspect || "").trim();
 
     const tr=document.createElement("tr");
     tr.dataset.suspect=sUrl;
@@ -288,6 +288,7 @@ async function markAksi(){
 delAction?.addEventListener("click",markAksi);
 
 async function loadSuspectList(){
+  showOverlay("spinner","Memuat daftar suspect…"," ");
   try{
     await loadFlightTimes();
     const url = `${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&limit=200`;
@@ -295,6 +296,9 @@ async function loadSuspectList(){
     const j = await r.json().catch(()=>({}));
     if (j?.ok && Array.isArray(j.rows)) renderSuspectList(j.rows);
   }catch(err){ console.error(err); }
+  finally{
+    overlay?.classList.add("hidden");
+  }
 }
 
 /* ===== UI ===== */
