@@ -1,4 +1,4 @@
-// random.js — logic for Random Check (Cloudflare Worker proxy, photo upload & suspect list)
+// random.js — FINAL (lookup Indikasi Suspect fix)
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
@@ -35,15 +35,21 @@ const bagFotoLayarBtn=$("#bagFotoLayarBtn"),bagFotoLayarInput=$("#bagFotoLayarIn
 const bagFotoBarangBtn=$("#bagFotoBarangBtn"),bagFotoBarangInput=$("#bagFotoBarangInput"),
       bagFotoBarangPreview=$("#bagFotoBarangPreview");
 const bagSubmitBtn=$("#bagSubmitBtn");
+const bagSubmitAksiBtn=$("#bagSubmitAksiBtn"); // tombol submit Aksi (tambahkan di HTML)
 const bagasiList=$("#bagasiList");
 const bagIndikasiInp=$("#bagIndikasi");
 bagasiToggle?.addEventListener("click",()=>{
-  bagasiCard?.classList.toggle("collapsed");
-  const exp=!bagasiCard.classList.contains("collapsed");
-  bagasiToggle.setAttribute("aria-expanded",exp);
-  const chev=bagasiToggle.querySelector(".chevron");
-  if(chev) chev.textContent=exp?"▲":"▼";
-});
+    bagasiCard?.classList.toggle("collapsed");
+    const exp=!bagasiCard.classList.contains("collapsed");
+    bagasiToggle.setAttribute("aria-expanded",exp);
+    const chev=bagasiToggle.querySelector(".chevron");
+    if(chev) chev.textContent=exp?"▲":"▼";
+    if(exp){
+      hbsCardsVisible=false;
+      scanCard?.classList.add("hidden");
+      barangCard?.classList.add("hidden");
+    }
+  });
 
 document.addEventListener("copy",e=>e.preventDefault());
 
@@ -77,9 +83,15 @@ function showOverlay(state,title="",desc=""){
   }
 }
 
+// Modal sederhana pengganti alert() bawaan browser
+function showAlert(msg, title="Perhatian"){
+  showOverlay("stop", title, msg);
+}
+
 /* ===== STATE & SUPERVISOR ===== */
 let mode="PSCP";
 let hbsCardsVisible=false;
+let selectedSuspect=null; // { rowItems, bagNo }
 const supervisors={PSCP:"",HBSCP:"",CARGO:""};
 onValue(ref(db,"roster/spvCabin"),s=>{supervisors.PSCP=s.val()||"";if(mode==="PSCP")setSupervisor();});
 onValue(ref(db,"roster/spvHbs"),  s=>{supervisors.HBSCP=s.val()||"";if(mode==="HBSCP")setSupervisor();});
@@ -105,7 +117,7 @@ fotoInput?.addEventListener("change",async()=>{
   fotoPreview.src=URL.createObjectURL(f); fotoPreview.classList.remove("hidden");
   try{
     const d=await compressImage(f,480,0.7);
-    if(d.length>200_000){ alert("Foto terlalu besar, turunkan resolusi."); resetFoto(); }
+    if(d.length>200_000){ showAlert("Foto terlalu besar, turunkan resolusi."); resetFoto(); }
     else fotoDataUrl=d;
   }catch{ resetFoto(); }
 });
@@ -119,7 +131,7 @@ bagFotoLayarInput?.addEventListener("change",async()=>{
   bagFotoLayarPreview.src=URL.createObjectURL(f); bagFotoLayarPreview.classList.remove("hidden");
   try{
     const d=await compressImage(f,480,0.7);
-    if(d.length>200_000){ alert("Foto terlalu besar."); resetBagFotoLayar(); }
+    if(d.length>200_000){ showAlert("Foto terlalu besar."); resetBagFotoLayar(); }
     else bagFotoSuspectDataUrl=d;
   }catch{ resetBagFotoLayar(); }
 });
@@ -130,7 +142,7 @@ bagFotoBarangInput?.addEventListener("change",async()=>{
   bagFotoBarangPreview.src=URL.createObjectURL(f); bagFotoBarangPreview.classList.remove("hidden");
   try{
     const d=await compressImage(f,480,0.7);
-    if(d.length>200_000){ alert("Foto terlalu besar."); resetBagFotoBarang(); }
+    if(d.length>200_000){ showAlert("Foto terlalu besar."); resetBagFotoBarang(); }
     else bagFotoBarangDataUrl=d;
   }catch{ resetBagFotoBarang(); }
 });
@@ -183,16 +195,51 @@ function normalizeDriveUrl(u){
   return m?`https://lh3.googleusercontent.com/d/${m[1]}`:u;
 }
 
-async function openPhoto(suspect, barang, indikasi=""){
+function extractIndikasi(norm){
+  const keys=Object.keys(norm||{});
+  let key=keys.find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")));
+  if(!key) key="indikasi";
+  return String(norm[key]||"").trim();
+}
+
+async function openPhoto(suspect, barang, indikasi="", bagNo="", rowItems=""){
   if(!imgOverlay) return;
+
+  showOverlay("loading","Memuat foto…");
+  imgOverlay.classList.remove("hidden");
+
+  // ---- Ambil indikasi suspect dari sheet kalau belum ada ----
+  if(!indikasi && (bagNo || rowItems)){
+    try{
+      const url=`${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&limit=200`;
+      const r=await fetch(url,{method:"GET",mode:"cors"});
+      const j=await r.json().catch(()=>({}));
+      if(j?.ok && Array.isArray(j.rows) && j.rows.length){
+        const bUpper=bagNo.toUpperCase();
+        const ri=Number(rowItems||0);
+        let found=null;
+        for(const raw of j.rows){
+          const norm={};
+          for(const k in raw){ const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase(); norm[nk]=raw[k]; }
+          const bagMatch=String(norm.bagno||norm.nomorbagasi||norm.nobagasi||"").trim().toUpperCase();
+          const rowMatch=Number(raw.rowItems||raw.rowitems||norm.rowitems||0);
+          if((ri && rowMatch===ri) || (bUpper && bagMatch===bUpper)){ found=norm; break; }
+        }
+        if(!found){
+          const first={};
+          for(const k in j.rows[0]){const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();first[nk]=j.rows[0][k];}
+          found=first;
+        }
+        indikasi = extractIndikasi(found);
+      }
+    }catch(err){ console.error(err); }
+  }
 
   const entries=[];
   if(suspect) entries.push({img:suspectImg,val:suspect,label:"suspect"});
   if(barang)  entries.push({img:barangImg,val:barang,label:"barang"});
   if(!entries.length) return;
 
-  showOverlay("loading","Memuat foto…");
-  imgOverlay.classList.remove("hidden");
   if(indikasiEl){
     indikasiEl.textContent = `INDIKASI SUSPECT: ${indikasi || '-'}`;
     indikasiEl.classList.remove("hidden");
@@ -203,7 +250,7 @@ async function openPhoto(suspect, barang, indikasi=""){
   let pending=entries.length;
   const done=()=>{ pending--; if(pending<=0) overlay?.classList.add("hidden"); };
 
-  entries.forEach(({img,val,label})=>{
+  entries.forEach(({img,val})=>{
     if(!img){ done(); return; }
     val=normalizeDriveUrl(stripImageFormula(val));
     let final="";
@@ -226,28 +273,56 @@ document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") imgOverlay?.clas
 function renderSuspectList(rows){
   if(!bagasiList) return; bagasiList.innerHTML="";
   rows.forEach(it=>{
-    const aksi    = (it.aksi || it.action || "").trim();
+    const norm={};
+    for(const k in it){
+      const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();
+      norm[nk]=it[k];
+    }
+    const aksi=(norm.aksi||norm.action||"").trim();
     if(aksi) return;
-    const bagNo   = it.nomorBagasi || "-";
-    const flight  = it.flight      || "-";
-    const dest    = it.tujuan      || "-";
-    const dep     = flightTimes[flight.toUpperCase()] || "-";
-    const sUrl    = it.fotoSuspectUrl || it.fotoSuspectId || "";
-    const bUrl    = it.fotoBarangUrl  || it.fotoBarangId  || "";
-    const indikasi= (it.indikasi || it.indikasiSuspect || "").trim();
+
+    const bagNo  = norm.bagno || norm.nomorbagasi || norm.nobagasi || "-";
+    const rowItems = Number(it.rowItems || it.rowitems || 0);
+    const flight = norm.flight || "-";
+    const dest   = norm.tujuan || "-";
+    const dep    = flightTimes[flight.toUpperCase()] || "-";
+    const sUrl   = norm.fotosuspecturl || norm.fotosuspectid || "";
+    const bUrl   = norm.fotobarangurl  || norm.fotobarangid  || "";
+
+    const owner = norm.namapemilik || norm.nama || "";
+
+    // ambil indikasi suspect dari berbagai nama kolom
+    const indikasi = extractIndikasi(norm);
 
     const tr=document.createElement("tr");
     tr.dataset.suspect=sUrl;
     tr.dataset.barang=bUrl;
     tr.dataset.indikasi=indikasi;
     tr.dataset.bagno=bagNo;
+    tr.dataset.rowitems=String(rowItems);
+    tr.dataset.flight=flight;
+    tr.dataset.nama=owner;
     tr.title = indikasi ? `Indikasi: ${indikasi}` : "";
     tr.innerHTML=`<td>${bagNo}</td><td>${flight}</td><td>${dest}</td><td>${dep}</td>`;
-    let longPress=false,timer;
-    tr.addEventListener("pointerdown",()=>{longPress=false;timer=setTimeout(()=>{longPress=true;showDeleteModal(tr);},600);});
-    ["pointerup","pointerleave","pointercancel"].forEach(ev=>tr.addEventListener(ev,()=>clearTimeout(timer)));
-    tr.addEventListener("click",()=>{ if(longPress) return; openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi); });
-    tr.addEventListener("contextmenu",e=>{e.preventDefault();openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi);});
+    let timer; let longPress=false;
+    tr.addEventListener("pointerdown",()=>{
+      longPress=false;
+      timer=setTimeout(()=>{ longPress=true; showDeleteModal(tr); },600);
+    });
+    ["pointerup","pointerleave","pointercancel"].forEach(ev=>tr.addEventListener(ev,()=>{ if(timer) clearTimeout(timer); }));
+
+    const selectRow = () => {
+      openPhoto(
+        tr.dataset.suspect,
+        tr.dataset.barang,
+        tr.dataset.indikasi,
+        tr.dataset.bagno,
+        tr.dataset.rowitems
+      );
+    };
+    tr.addEventListener("click",()=>{ if(longPress) return; selectRow(); });
+    tr.addEventListener("contextmenu",e=>{ e.preventDefault(); if(timer) clearTimeout(timer); longPress=true; showDeleteModal(tr); });
+
     bagasiList.appendChild(tr);
   });
 }
@@ -266,7 +341,9 @@ async function deleteSuspect(){
     delOverlay?.classList.add("hidden");
     showOverlay("spinner","Menghapus suspect…","" );
     const payload={action:"delete_suspect",token:SHARED_TOKEN,bagNo};
+    console.log("deleteSuspect payload", payload);
     const j=await fetchJSON(PROXY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),credentials:"omit"});
+    console.log("deleteSuspect response", j);
     if(!j?.ok) throw new Error(j?.error||"Gagal menghapus");
     showOverlay("ok","Data terhapus","");
     loadSuspectList();
@@ -279,10 +356,25 @@ delConfirm?.addEventListener("click",deleteSuspect);
 
 async function markAksi(){
   if(!deleteTarget) return;
+  // Simpan data dari list untuk dipakai saat submit aksi dan verifikasi boarding pass
+  selectedSuspect = {
+    rowItems: Number(deleteTarget.dataset.rowitems || 0),
+    bagNo: deleteTarget.dataset.bagno || "",
+    flight: deleteTarget.dataset.flight || "",
+    expectedName: (deleteTarget.dataset.nama || "").toUpperCase()
+  };
   delOverlay?.classList.add("hidden");
   hbsCardsVisible=true;
   scanCard?.classList.remove("hidden");
   barangCard?.classList.remove("hidden");
+  scanResult?.classList.remove("hidden");
+  manualForm?.classList.add("hidden");
+  if(flightEl) flightEl.textContent = selectedSuspect.flight || "-";
+  if(namaEl) namaEl.textContent = "-";
+  bagasiCard?.classList.add("collapsed");
+  bagasiToggle?.setAttribute("aria-expanded","false");
+  const chev=bagasiToggle?.querySelector(".chevron");
+  if(chev) chev.textContent="▼";
   updateBarangCard();
 }
 delAction?.addEventListener("click",markAksi);
@@ -340,7 +432,7 @@ tipePiSel?.addEventListener("change",updateAksiVisibility);
 tindakanSel?.addEventListener("change",updateAksiVisibility);
 
 function setMode(m){
-  mode=m;
+  mode=m; selectedSuspect=null;
   btnPSCP?.classList.toggle("active",m==="PSCP");
   btnHBSCP?.classList.toggle("active",m==="HBSCP");
   btnCARGO?.classList.toggle("active",m==="CARGO");
@@ -435,10 +527,22 @@ function receiveBarcode(payload){
     if(!data||typeof data!=="string") return;
     const parsed=parseBoardingPass(data);
     if(parsed){
-      if(namaEl)   namaEl.textContent=parsed.fullName.toUpperCase();
-      if(flightEl) flightEl.textContent=parsed.flight.toUpperCase();
+      const scannedName = parsed.fullName.toUpperCase();
+      if(namaEl) namaEl.textContent = scannedName;
+      if(mode!=="HBSCP" || !selectedSuspect?.expectedName){
+        if(flightEl) flightEl.textContent = parsed.flight.toUpperCase();
+      }
       scanResult?.classList.remove("hidden");
       manualForm?.classList.add("hidden");
+      if(mode==="HBSCP" && selectedSuspect?.expectedName){
+        const expected = selectedSuspect.expectedName;
+        const words = expected.split(/\s+/).filter(Boolean);
+        const match = words.some(w=>scannedName.includes(w));
+        if(!match){
+          showAlert("Boarding pass salah, harap scan ulang");
+          if(namaEl) namaEl.textContent = "-";
+        }
+      }
     }
   }catch(e){ console.error(e); }
 }
@@ -578,7 +682,7 @@ async function submitRandom(){
 
     const { nama, flight } = getNameAndFlight();
     const jenisBarang=val(isiBarangInp).toUpperCase();
-    const tindakan=val(tindakanSel).toLowerCase();
+    const tindakan=val(tindakanSel).toLowerCase();   // dipakai untuk PI + Aksi
     const tipePi=val(tipePiSel).toUpperCase();
     const petugas=val(petugasInp).toUpperCase();
     const supervisor=val(supervisorInp).toUpperCase();
@@ -588,11 +692,16 @@ async function submitRandom(){
     if(!nama) throw new Error("Nama tidak boleh kosong.");
     if(!flight) throw new Error("Flight tidak boleh kosong.");
     if(mode==="PSCP" && val(objekSel)==="") throw new Error("Pilih objek pemeriksaan.");
-    if((mode==="PSCP" && val(objekSel)==="barang") || mode!=="PSCP"){ if(!jenisBarang) throw new Error("Isi/Jenis barang belum diisi."); }
+    if((mode==="PSCP" && val(objekSel)==="barang") || mode!=="PSCP"){
+      if(!jenisBarang) throw new Error("Isi/Jenis barang belum diisi.");
+    }
     if(!metode) throw new Error("Metode pemeriksaan belum dipilih.");
 
     const payload={ action:"submit", token:SHARED_TOKEN, target:mode, data:{
-      nama, flight, ...(mode==="PSCP"?{objekPemeriksaan:objek||""}:{}) , jenisBarang, petugas, metode, supervisor, ...(fotoDataUrl?{fotoDataUrl}:{} )
+      nama, flight,
+      ...(mode==="PSCP"?{objekPemeriksaan:objek||""}:{}),
+      jenisBarang, petugas, metode, supervisor,
+      ...(fotoDataUrl?{fotoDataUrl}:{} )
     }};
 
     if((mode==="PSCP"||mode==="HBSCP") && tindakan==="ditinggal"){
@@ -604,18 +713,61 @@ async function submitRandom(){
       payload.data.tindakanBarang=tindakan;
     }
 
-    const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
+    // 1) SIMPAN DATA UTAMA
+    const j=await fetchJSON(PROXY_URL,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify(payload),
+      credentials:"omit"
+    });
     if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan");
-    showOverlay("ok","Data tersimpan", `Sheet ${j.targetSheet} (row ${j.targetRow})${j.piListWritten?` + PI_LIST (row ${j.piListRow})`:""}`);
+    showOverlay("ok","Data tersimpan",
+      `Sheet ${j.targetSheet} (row ${j.targetRow})${j.piListWritten?` + PI_LIST (row ${j.piListRow})`:""}`);
 
+    // 2) OPSIONAL — SET AKSI UNTUK ITEM SUSPECT TERPILIH
+    //    (hanya ketika di HBSCP, user sudah memilih dari daftar -> selectedSuspect,
+    //     dan dropdown tindakan terisi)
+    if (mode==="HBSCP" && selectedSuspect?.bagNo && val(tindakanSel)) {
+      try{
+        await fetchJSON(PROXY_URL,{
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          credentials:"omit",
+          body: JSON.stringify({
+            action:"set_suspect_action",
+            token: SHARED_TOKEN,
+            bagNo: selectedSuspect.bagNo,
+            rowItems: Number(selectedSuspect.rowItems||0),
+            aksi: val(tindakanSel).toUpperCase()
+          })
+        });
+        // refresh list & reset selection
+        await loadSuspectList();
+        selectedSuspect = null;
+      }catch(e){
+        console.error("Gagal set aksi suspect:", e);
+        // tidak memblokir alur utama; hanya log error
+      }
+    }
+
+    // 3) RESET UI
     if(mode==="CARGO"){ manualNama.value=""; manualFlight.value=""; }
     else { if(namaEl) namaEl.textContent="-"; if(flightEl) flightEl.textContent="-"; }
-    isiBarangInp && (isiBarangInp.value=""); tindakanSel && (tindakanSel.value=""); tipePiSel && (tipePiSel.value="");
+    isiBarangInp && (isiBarangInp.value="");
+    tindakanSel && (tindakanSel.value="");
+    tipePiSel && (tipePiSel.value="");
     if(mode==="PSCP" && objekSel) objekSel.value="";
+    if(mode==="HBSCP"){
+      hbsCardsVisible=false;
+      scanCard?.classList.add("hidden");
+      barangCard?.classList.add("hidden");
+      await loadSuspectList();
+    }
     resetFoto(); updateBarangCard();
 
   }catch(err){
-    console.error(err); showOverlay("err","Gagal", err?.message||String(err));
+    console.error(err);
+    showOverlay("err","Gagal", err?.message||String(err));
   }finally{
     submitBtn.disabled=false; submitBtn.setAttribute("aria-busy","false");
   }
@@ -625,7 +777,7 @@ submitBtn?.addEventListener("click",(e)=>{ e.preventDefault(); if(!submitBtn.dis
 /* ---- Submit SUSPECT HBSCP ---- */
 async function submitSuspectHBSCP(){
   try{
-    if(mode!=="HBSCP"){ alert("Menu SUSPECT hanya di HBSCP."); return; }
+    if(mode!=="HBSCP"){ showAlert("Menu SUSPECT hanya di HBSCP."); return; }
     const nomorBagasi=(bagNoEl?.textContent||"").trim().toUpperCase();
     const namaPemilik=(bagNamaEl?.textContent||"").trim().toUpperCase();
     const flight=(bagFlightBagEl?.textContent||"").trim().toUpperCase();
@@ -639,14 +791,64 @@ async function submitSuspectHBSCP(){
       ...(bagFotoSuspectDataUrl?{fotoSuspectDataUrl:bagFotoSuspectDataUrl}:{ }),
       ...(bagFotoBarangDataUrl ?{fotoBarangDataUrl :bagFotoBarangDataUrl }:{ })
     }};
+    console.log("submitSuspectHBSCP payload", payload);
+    console.log("submitSuspectHBSCP data", payload.data);
     const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
+    console.log("submitSuspectHBSCP response", j);
     if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan suspect");
     showOverlay("ok","Suspect tersimpan", `Row ${j.targetRow||"-"}`);
-    resetBagasiCard(); loadSuspectList();
+    hbsCardsVisible=false;
+    scanCard?.classList.add("hidden");
+    barangCard?.classList.add("hidden");
+      resetBagasiCard(); loadSuspectList();
   }catch(err){
     console.error(err); showOverlay("err","Gagal simpan suspect", err?.message||String(err));
   }
 }
 bagSubmitBtn?.addEventListener("click",(e)=>{ e.preventDefault(); submitSuspectHBSCP(); });
+
+/* ---- Submit Aksi untuk baris SUSPECT terpilih (update kolom Aksi) ---- */
+async function submitAksiSuspect(){
+  try{
+    if(mode!=="HBSCP"){ showAlert("Menu SUSPECT hanya di HBSCP."); return; }
+    if(!selectedSuspect?.bagNo){ showAlert("Pilih item suspect dari daftar terlebih dahulu."); return; }
+    const aksi = (val(tindakanSel) || "").trim();
+    if(!aksi){ showAlert("Pilih tindakan/aksi terlebih dahulu."); return; }
+
+    showOverlay("spinner","Menyimpan aksi…","");
+    const payload = {
+      action:"set_suspect_action",
+      token:SHARED_TOKEN,
+      bagNo:selectedSuspect.bagNo,
+      rowItems:Number(selectedSuspect.rowItems||0),
+      aksi
+    };
+    console.log("submitAksiSuspect payload", payload);
+    const j = await fetchJSON(PROXY_URL,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(payload),
+      credentials:"omit"
+    });
+    console.log("submitAksiSuspect response", j);
+    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan aksi");
+
+    showOverlay("ok","Aksi tersimpan","");
+      // reset
+      selectedSuspect = null;
+      tindakanSel && (tindakanSel.value="");
+      if(namaEl) namaEl.textContent="-";
+      if(flightEl) flightEl.textContent="-";
+      hbsCardsVisible=false;
+      scanCard?.classList.add("hidden");
+      barangCard?.classList.add("hidden");
+      updateBarangCard();
+      await loadSuspectList();
+  }catch(err){
+    console.error(err);
+    showOverlay("err","Gagal simpan aksi", err?.message||"Gagal");
+  }
+}
+bagSubmitAksiBtn?.addEventListener("click",(e)=>{ e.preventDefault(); submitAksiSuspect(); });
 
 setMode("PSCP");
