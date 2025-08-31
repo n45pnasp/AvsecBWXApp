@@ -38,11 +38,11 @@ function formatHHMMFromDate(d) {
 }
 
 /**
- * Parse berbagai bentuk timestamp → "HH:MM" di GMT+7.
+ * Parse berbagai bentuk timestamp → "HH:MM" (ditampilkan di GMT+7).
  * Aturan:
  * - "HH:MM" (tanpa tanggal) → dipakai apa adanya (tidak digeser)
  * - String tanggal TANPA zona (mis. "2025-08-31 12:07:00") → dianggap UTC lalu dirender ke GMT+7
- * - String dengan zona/offset (…Z atau +07:00) → gunakan offsetnya, hasil dirender ke GMT+7
+ * - String dgn zona/offset (…Z / +07:00) → gunakan offsetnya; hasil dirender ke GMT+7
  * - Number epoch detik/ms & serial Google Sheets → dikonversi ke GMT+7
  */
 function toHHMMFromAny(v) {
@@ -54,9 +54,9 @@ function toHHMMFromAny(v) {
       const ms = (v - 25569) * 86400 * 1000;
       return formatHHMMFromDate(new Date(ms));
     }
-    // Epoch detik
+    // Epoch seconds
     if (v > 1e9 && v < 1e12) return formatHHMMFromDate(new Date(v * 1000));
-    // Epoch milidetik
+    // Epoch milliseconds
     if (v >= 1e12) return formatHHMMFromDate(new Date(v));
   }
 
@@ -71,17 +71,17 @@ function toHHMMFromAny(v) {
       return `${h}:${m}`;
     }
 
-    // Jika sudah ada zona (Z / +HH:MM / -HH:MM)
+    // Sudah ada zona/offset (Z / +HH:MM / -HH:MM)
     if (/[zZ]|[+-]\d{2}:\d{2}$/.test(s)) {
       const d = new Date(s);
       if (!isNaN(d)) return formatHHMMFromDate(d);
     }
 
-    // ISO-like tanpa zona: YYYY-MM-DD HH:mm(:ss)?
+    // ISO-like tanpa zona → treat as UTC
     let m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
       const [_, Y, M, D, H, Min, S] = m;
-      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S || 0))); // treat as UTC
+      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S || 0)));
       return formatHHMMFromDate(d);
     }
 
@@ -101,7 +101,7 @@ function toHHMMFromAny(v) {
   return null;
 }
 
-/* ========= Jadwal per flight (fallback sumber waktu) ========= */
+/* ========= OPSIONAL: map waktu terjadwal per flight (fallback) ========= */
 async function loadFlightTimes(){
   if(Object.keys(flightTimes).length) return;
   try{
@@ -132,18 +132,18 @@ function renderList(rows){
     }
 
     const aksi=(norm.aksi||norm.action||'').trim();
-    if(aksi) return; // abaikan yg punya aksi
+    if(aksi) return; // abaikan yang punya aksi
 
     const passenger = (norm.namapemilik||norm.nama||'-').toUpperCase();
     const flight = (norm.flight||'-').toUpperCase();
 
-    // Ambil waktu dari timestamp kolom A/serupa → konversi ke GMT+7.
+    // Ambil dari timestamp kolom A / sejenis → konversi ke GMT+7
     const tsCandidate =
       norm.timestamp ?? norm.waktu ?? norm.jam ?? norm.createdat ??
       norm.created ?? norm.tanggal ?? norm.tanggalfull ?? norm.a ?? null;
 
     let timeRaw = toHHMMFromAny(tsCandidate);
-    // Fallback: waktu jadwal per flight bila timestamp kosong/tidak valid
+    // Fallback ke waktu jadwal per flight bila timestamp kosong
     if(!timeRaw) timeRaw = flightTimes[flight] || "-";
 
     const tr=document.createElement('tr');
@@ -159,7 +159,7 @@ function renderList(rows){
 /* ========= FETCH ========= */
 async function loadSuspectList(){
   try{
-    await loadFlightTimes(); // siapkan fallback map waktu
+    await loadFlightTimes(); // siapkan fallback waktu flight
     const url = `${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&limit=200`;
     const r = await fetch(url,{method:"GET",mode:"cors"});
     const j = await r.json().catch(()=>({}));
@@ -197,7 +197,7 @@ function toggleLanguage(){
   renderList(currentRows);
 }
 
-/* ========= CLOCK (Header) ========= */
+/* ========= CLOCK ========= */
 function updateClock(){
   const now = new Date();
   const optsTime = { hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Jakarta' };
