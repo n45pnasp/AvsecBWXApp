@@ -656,7 +656,7 @@ async function submitRandom(){
 
     const { nama, flight } = getNameAndFlight();
     const jenisBarang=val(isiBarangInp).toUpperCase();
-    const tindakan=val(tindakanSel).toLowerCase();
+    const tindakan=val(tindakanSel).toLowerCase();   // dipakai untuk PI + Aksi
     const tipePi=val(tipePiSel).toUpperCase();
     const petugas=val(petugasInp).toUpperCase();
     const supervisor=val(supervisorInp).toUpperCase();
@@ -666,11 +666,16 @@ async function submitRandom(){
     if(!nama) throw new Error("Nama tidak boleh kosong.");
     if(!flight) throw new Error("Flight tidak boleh kosong.");
     if(mode==="PSCP" && val(objekSel)==="") throw new Error("Pilih objek pemeriksaan.");
-    if((mode==="PSCP" && val(objekSel)==="barang") || mode!=="PSCP"){ if(!jenisBarang) throw new Error("Isi/Jenis barang belum diisi."); }
+    if((mode==="PSCP" && val(objekSel)==="barang") || mode!=="PSCP"){
+      if(!jenisBarang) throw new Error("Isi/Jenis barang belum diisi.");
+    }
     if(!metode) throw new Error("Metode pemeriksaan belum dipilih.");
 
     const payload={ action:"submit", token:SHARED_TOKEN, target:mode, data:{
-      nama, flight, ...(mode==="PSCP"?{objekPemeriksaan:objek||""}:{}) , jenisBarang, petugas, metode, supervisor, ...(fotoDataUrl?{fotoDataUrl}:{} )
+      nama, flight,
+      ...(mode==="PSCP"?{objekPemeriksaan:objek||""}:{}),
+      jenisBarang, petugas, metode, supervisor,
+      ...(fotoDataUrl?{fotoDataUrl}:{} )
     }};
 
     if((mode==="PSCP"||mode==="HBSCP") && tindakan==="ditinggal"){
@@ -682,50 +687,60 @@ async function submitRandom(){
       payload.data.tindakanBarang=tindakan;
     }
 
-    console.log("submitRandom payload", payload);
-    console.log("submitRandom data", payload.data);
-    const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
-    console.log("submitRandom response", j);
+    // 1) SIMPAN DATA UTAMA
+    const j=await fetchJSON(PROXY_URL,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify(payload),
+      credentials:"omit"
+    });
+    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan");
+    showOverlay("ok","Data tersimpan",
+      `Sheet ${j.targetSheet} (row ${j.targetRow})${j.piListWritten?` + PI_LIST (row ${j.piListRow})`:""}`);
 
-    /* Kirim Aksi SUSPECT (opsional, kalau user memilih dari daftar suspect) */
-    if (mode === "HBSCP" && selectedSuspect?.bagNo && val(tindakanSel)) {
-      try {
-        const aksiPayload = {
-          action: "set_suspect_action",
-          token: SHARED_TOKEN,
-          bagNo: selectedSuspect.bagNo,
-          rowItems: Number(selectedSuspect.rowItems || 0),
-          aksi: val(tindakanSel).toUpperCase()
-        };
-        console.log("submitRandom set_suspect_action payload", aksiPayload);
-        const aksiRes = await fetchJSON(PROXY_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "omit",
-          body: JSON.stringify(aksiPayload)
+    // 2) OPSIONAL — SET AKSI UNTUK ITEM SUSPECT TERPILIH
+    //    (hanya ketika di HBSCP, user sudah memilih dari daftar -> selectedSuspect,
+    //     dan dropdown tindakan terisi)
+    if (mode==="HBSCP" && selectedSuspect?.bagNo && val(tindakanSel)) {
+      try{
+        await fetchJSON(PROXY_URL,{
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          credentials:"omit",
+          body: JSON.stringify({
+            action:"set_suspect_action",
+            token: SHARED_TOKEN,
+            bagNo: selectedSuspect.bagNo,
+            rowItems: Number(selectedSuspect.rowItems||0),
+            aksi: val(tindakanSel).toUpperCase()
+          })
         });
-        console.log("submitRandom set_suspect_action response", aksiRes);
-      } catch (e) {
+        // refresh list & reset selection
+        await loadSuspectList();
+        selectedSuspect = null;
+      }catch(e){
         console.error("Gagal set aksi suspect:", e);
+        // tidak memblokir alur utama; hanya log error
       }
     }
-    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan");
-    showOverlay("ok","Data tersimpan", `Sheet ${j.targetSheet} (row ${j.targetRow})${j.piListWritten?` + PI_LIST (row ${j.piListRow})`:""}`);
 
+    // 3) RESET UI
     if(mode==="CARGO"){ manualNama.value=""; manualFlight.value=""; }
     else { if(namaEl) namaEl.textContent="-"; if(flightEl) flightEl.textContent="-"; }
-      isiBarangInp && (isiBarangInp.value=""); tindakanSel && (tindakanSel.value=""); tipePiSel && (tipePiSel.value="");
-      if(mode==="PSCP" && objekSel) objekSel.value="";
-      if(mode==="HBSCP"){
-        hbsCardsVisible=false;
-        scanCard?.classList.add("hidden");
-        barangCard?.classList.add("hidden");
-        selectedSuspect = null;
-      }
-      resetFoto(); updateBarangCard();
+    isiBarangInp && (isiBarangInp.value="");
+    tindakanSel && (tindakanSel.value="");
+    tipePiSel && (tipePiSel.value="");
+    if(mode==="PSCP" && objekSel) objekSel.value="";
+    if(mode==="HBSCP"){
+      hbsCardsVisible=false;
+      scanCard?.classList.add("hidden");
+      barangCard?.classList.add("hidden");
+    }
+    resetFoto(); updateBarangCard();
 
   }catch(err){
-    console.error(err); showOverlay("err","Gagal", err?.message||String(err));
+    console.error(err);
+    showOverlay("err","Gagal", err?.message||String(err));
   }finally{
     submitBtn.disabled=false; submitBtn.setAttribute("aria-busy","false");
   }
