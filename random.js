@@ -686,6 +686,29 @@ async function submitRandom(){
     console.log("submitRandom data", payload.data);
     const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
     console.log("submitRandom response", j);
+
+    /* Kirim Aksi SUSPECT (opsional, kalau user memilih dari daftar suspect) */
+    if (mode === "HBSCP" && selectedSuspect?.bagNo && val(tindakanSel)) {
+      try {
+        const aksiPayload = {
+          action: "set_suspect_action",
+          token: SHARED_TOKEN,
+          bagNo: selectedSuspect.bagNo,
+          rowItems: Number(selectedSuspect.rowItems || 0),
+          aksi: val(tindakanSel).toUpperCase()
+        };
+        console.log("submitRandom set_suspect_action payload", aksiPayload);
+        const aksiRes = await fetchJSON(PROXY_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "omit",
+          body: JSON.stringify(aksiPayload)
+        });
+        console.log("submitRandom set_suspect_action response", aksiRes);
+      } catch (e) {
+        console.error("Gagal set aksi suspect:", e);
+      }
+    }
     if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan");
     showOverlay("ok","Data tersimpan", `Sheet ${j.targetSheet} (row ${j.targetRow})${j.piListWritten?` + PI_LIST (row ${j.piListRow})`:""}`);
 
@@ -697,6 +720,7 @@ async function submitRandom(){
         hbsCardsVisible=false;
         scanCard?.classList.add("hidden");
         barangCard?.classList.add("hidden");
+        selectedSuspect = null;
       }
       resetFoto(); updateBarangCard();
 
