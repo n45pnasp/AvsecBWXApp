@@ -86,6 +86,8 @@ function applyTranslations(){
   const t = translations[currentLang];
   document.title = t.title;
   document.documentElement.lang = currentLang;
+  const pageTitleEl = document.getElementById('pageTitle');
+  if(pageTitleEl) pageTitleEl.textContent = t.title;
   const headCells = [
     document.getElementById('thTime'),
     document.getElementById('thPassenger'),
