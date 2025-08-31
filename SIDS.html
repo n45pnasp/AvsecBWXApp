@@ -8,9 +8,13 @@
 </head>
   <body>
     <header>
-      <img src="logobwx.png" alt="BWX" />
-      <h1 id="pageTitle">PEMERIKSAAN BAGASI TERCATAT</h1>
-      <img src="logoapindo.png" alt="APINDO" />
+      <div class="header-left">
+        <svg class="suitcase-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 6V4c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v2h3a1 1 0 011 1v13a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1h3zm2-2v2h6V4H9zm11 4H4v13h16V8z"/>
+        </svg>
+        <h1 id="pageTitle">PEMERIKSAAN BAGASI TERCATAT</h1>
+      </div>
+      <img src="icons/logoapindo.png" alt="APINDO" class="logo-top-right" />
     </header>
 
     <table id="sidsTable">
@@ -25,7 +29,13 @@
     <tbody id="sidsBody"></tbody>
   </table>
 
-  <div class="ticker"><div id="tickerText">INFORMASI KEAMANAN BANDARA</div></div>
+  <img src="icons/logobwx.png" alt="BWX" class="logo-bottom-left" />
+  <div class="clock">
+    <div id="clockTime"></div>
+    <div id="clockDate"></div>
+  </div>
+
+  <div class="ticker"><div id="tickerText">HAVE A NICE FLIGHT - SEE YOU SOON!</div></div>
 
   <script type="module" src="SIDS.js"></script>
 </body>

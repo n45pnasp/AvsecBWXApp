@@ -6,13 +6,13 @@ const translations = {
     title: "PEMERIKSAAN BAGASI TERCATAT",
     headers: ["WAKTU", "PENUMPANG", "PENERBANGAN", "STATUS"],
     status: "DIPERIKSA HARAP MENGHUBUNGI PETUGAS",
-    ticker: "INFORMASI KEAMANAN BANDARA",
+    ticker: "HAVE A NICE FLIGHT - SEE YOU SOON!",
   },
   en: {
     title: "CHECKED BAGGAGE INSPECTION",
     headers: ["TIME", "PASSENGER", "FLIGHT", "STATUS"],
     status: "INSPECTED — PLEASE CONTACT OFFICER",
-    ticker: "AIRPORT SECURITY INFORMATION",
+    ticker: "HAVE A NICE FLIGHT - SEE YOU SOON!",
   },
 };
 
@@ -57,7 +57,7 @@ function renderList(rows){
       norm[k.replace(/[^a-z0-9]/gi,'').toLowerCase()] = it[k];
     }
     const aksi=(norm.aksi||norm.action||'').trim();
-    if(!aksi) return; // remove if aksi empty
+    if(aksi) return; // remove if aksi empty
 
     const passenger = (norm.namapemilik||norm.nama||'-').toUpperCase();
     const flight = (norm.flight||'-').toUpperCase();
@@ -110,4 +110,18 @@ document.addEventListener('DOMContentLoaded',()=>{
   loadSuspectList();
   setInterval(loadSuspectList,30000);
   setInterval(toggleLanguage,10000);
+  updateClock();
+  setInterval(updateClock,1000);
 });
+
+function updateClock(){
+  const now = new Date();
+  const optsTime = { hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Jakarta' };
+  const optsDate = { day:'2-digit', month:'long', year:'numeric', timeZone:'Asia/Jakarta' };
+  const time = new Intl.DateTimeFormat('id-ID', optsTime).format(now).replace('.', ':');
+  const date = new Intl.DateTimeFormat('id-ID', optsDate).format(now);
+  const timeEl = document.getElementById('clockTime');
+  const dateEl = document.getElementById('clockDate');
+  if(timeEl) timeEl.textContent = `${time} WIB`;
+  if(dateEl) dateEl.textContent = date;
+}
