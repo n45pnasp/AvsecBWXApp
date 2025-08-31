@@ -25,6 +25,22 @@ const tindakanField=tindakanSel?.parentElement,tipePiField=tipePiSel?.parentElem
 const isiBarangInp=$("#isiBarang");
 const fotoBtn=$("#fotoBtn"),fotoInput=$("#fotoInput"),fotoPreview=$("#fotoPreview");
 
+const captureBtn = document.querySelector("#fotoBtn"); // sesuaikan ID bila berbeda
+
+function checkOrientation() {
+  const isLandscape =
+    (screen.orientation && screen.orientation.type.startsWith("landscape")) ||
+    Math.abs(window.orientation || 0) === 90;
+  captureBtn.disabled = !isLandscape;
+  if (!isLandscape) {
+    showAlert("Handphone harus posisi horizontal");
+  }
+}
+
+window.addEventListener("orientationchange", checkOrientation);
+document.addEventListener("DOMContentLoaded", checkOrientation);
+
+
 // SUSPECT HBSCP
 const bagasiCard=$("#bagasiCard"),bagasiListCard=$("#bagasiListCard"),bagasiToggle=$("#bagasiToggle"),bagasiContent=$("#bagasiContent");
 const scanBagBtn=$("#scanBagBtn");
