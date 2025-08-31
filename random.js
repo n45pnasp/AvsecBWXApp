@@ -25,20 +25,12 @@ const tindakanField=tindakanSel?.parentElement,tipePiField=tipePiSel?.parentElem
 const isiBarangInp=$("#isiBarang");
 const fotoBtn=$("#fotoBtn"),fotoInput=$("#fotoInput"),fotoPreview=$("#fotoPreview");
 
-const captureBtn = document.querySelector("#fotoBtn"); // sesuaikan ID bila berbeda
-
-function checkOrientation() {
-  const isLandscape =
+function isLandscape(){
+  return (
     (screen.orientation && screen.orientation.type.startsWith("landscape")) ||
-    Math.abs(window.orientation || 0) === 90;
-  captureBtn.disabled = !isLandscape;
-  if (!isLandscape) {
-    showAlert("Handphone harus posisi horizontal");
-  }
+    Math.abs(window.orientation || 0) === 90
+  );
 }
-
-window.addEventListener("orientationchange", checkOrientation);
-document.addEventListener("DOMContentLoaded", checkOrientation);
 
 
 // SUSPECT HBSCP
@@ -129,6 +121,7 @@ async function compressImage(file,max=480,quality=0.7){
 function resetFoto(){ if(!fotoInput||!fotoPreview)return; fotoInput.value=""; fotoPreview.src=""; fotoPreview.classList.add("hidden"); fotoDataUrl=""; }
 fotoBtn?.addEventListener("click",()=>fotoInput?.click());
 fotoInput?.addEventListener("change",async()=>{
+  if(!isLandscape()){ showAlert("Handphone harus posisi horizontal"); resetFoto(); return; }
   const f=fotoInput.files?.[0]; if(!f){resetFoto();return;}
   fotoPreview.src=URL.createObjectURL(f); fotoPreview.classList.remove("hidden");
   try{
@@ -143,6 +136,7 @@ let bagFotoSuspectDataUrl="",bagFotoBarangDataUrl="";
 function resetBagFotoLayar(){ if(!bagFotoLayarInput||!bagFotoLayarPreview)return; bagFotoLayarInput.value=""; bagFotoLayarPreview.src=""; bagFotoLayarPreview.classList.add("hidden"); bagFotoSuspectDataUrl=""; }
 bagFotoLayarBtn?.addEventListener("click",()=>bagFotoLayarInput?.click());
 bagFotoLayarInput?.addEventListener("change",async()=>{
+  if(!isLandscape()){ showAlert("Handphone harus posisi horizontal"); resetBagFotoLayar(); return; }
   const f=bagFotoLayarInput.files?.[0]; if(!f){resetBagFotoLayar();return;}
   bagFotoLayarPreview.src=URL.createObjectURL(f); bagFotoLayarPreview.classList.remove("hidden");
   try{
@@ -154,6 +148,7 @@ bagFotoLayarInput?.addEventListener("change",async()=>{
 function resetBagFotoBarang(){ if(!bagFotoBarangInput||!bagFotoBarangPreview)return; bagFotoBarangInput.value=""; bagFotoBarangPreview.src=""; bagFotoBarangPreview.classList.add("hidden"); bagFotoBarangDataUrl=""; }
 bagFotoBarangBtn?.addEventListener("click",()=>bagFotoBarangInput?.click());
 bagFotoBarangInput?.addEventListener("change",async()=>{
+  if(!isLandscape()){ showAlert("Handphone harus posisi horizontal"); resetBagFotoBarang(); return; }
   const f=bagFotoBarangInput.files?.[0]; if(!f){resetBagFotoBarang();return;}
   bagFotoBarangPreview.src=URL.createObjectURL(f); bagFotoBarangPreview.classList.remove("hidden");
   try{
