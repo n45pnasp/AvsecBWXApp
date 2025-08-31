@@ -32,6 +32,17 @@ function isLandscape(){
   );
 }
 
+// pastikan tombol foto hanya aktif di posisi landscape
+const captureBtn=fotoBtn;
+function checkOrientation(){
+  const landscape=isLandscape();
+  if(captureBtn) captureBtn.disabled=!landscape;
+  if(!landscape) showAlert("Handphone harus posisi horizontal");
+}
+window.addEventListener("orientationchange",checkOrientation);
+document.addEventListener("DOMContentLoaded",checkOrientation);
+checkOrientation();
+
 
 // SUSPECT HBSCP
 const bagasiCard=$("#bagasiCard"),bagasiListCard=$("#bagasiListCard"),bagasiToggle=$("#bagasiToggle"),bagasiContent=$("#bagasiContent");
