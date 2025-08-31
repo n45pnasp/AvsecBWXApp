@@ -1,0 +1,48 @@
+body{
+  margin:0;
+  background:#000;
+  color:#fff;
+  font-family:Arial, sans-serif;
+  font-weight:bold;
+}
+
+.logo{
+  position:absolute;
+  top:10px;
+  height:80px;
+}
+.logo-left{ left:20px; }
+.logo-right{ right:20px; }
+
+#sidsTable{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:110px;
+}
+#sidsTable thead{ background:#800000; }
+#sidsTable th, #sidsTable td{
+  padding:20px 10px;
+  font-size:2vw;
+  text-align:center;
+  border-bottom:2px solid #FFD700;
+}
+#sidsTable tbody tr:nth-child(even){ background:#111; }
+
+.ticker{
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:#800000;
+  color:#fff;
+  overflow:hidden;
+  border-top:2px solid #FFD700;
+}
+.ticker div{
+  display:inline-block;
+  padding-left:100%;
+  animation:scroll 20s linear infinite;
+  white-space:nowrap;
+}
+@keyframes scroll{
+  from{transform:translateX(0);}to{transform:translateX(-100%);}
+}
