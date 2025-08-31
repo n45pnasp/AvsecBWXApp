@@ -284,6 +284,8 @@ function renderSuspectList(rows){
     const sUrl   = norm.fotosuspecturl || norm.fotosuspectid || "";
     const bUrl   = norm.fotobarangurl  || norm.fotobarangid  || "";
 
+    const owner = norm.namapemilik || norm.nama || "";
+
     // ambil indikasi suspect dari berbagai nama kolom
     const indikasi = extractIndikasi(norm);
 
@@ -293,6 +295,8 @@ function renderSuspectList(rows){
     tr.dataset.indikasi=indikasi;
     tr.dataset.bagno=bagNo;
     tr.dataset.rowitems=String(rowItems);
+    tr.dataset.flight=flight;
+    tr.dataset.nama=owner;
     tr.title = indikasi ? `Indikasi: ${indikasi}` : "";
     tr.innerHTML=`<td>${bagNo}</td><td>${flight}</td><td>${dest}</td><td>${dep}</td>`;
     let timer; let longPress=false;
@@ -303,7 +307,6 @@ function renderSuspectList(rows){
     ["pointerup","pointerleave","pointercancel"].forEach(ev=>tr.addEventListener(ev,()=>{ if(timer) clearTimeout(timer); }));
 
     const selectRow = () => {
-      selectedSuspect = { rowItems, bagNo };
       openPhoto(
         tr.dataset.suspect,
         tr.dataset.barang,
@@ -348,15 +351,21 @@ delConfirm?.addEventListener("click",deleteSuspect);
 
 async function markAksi(){
   if(!deleteTarget) return;
-  // Simpan rowItems dan nomor bagasi untuk dipakai saat submit aksi
+  // Simpan data dari list untuk dipakai saat submit aksi dan verifikasi boarding pass
   selectedSuspect = {
     rowItems: Number(deleteTarget.dataset.rowitems || 0),
-    bagNo: deleteTarget.dataset.bagno || ""
+    bagNo: deleteTarget.dataset.bagno || "",
+    flight: deleteTarget.dataset.flight || "",
+    expectedName: (deleteTarget.dataset.nama || "").toUpperCase()
   };
   delOverlay?.classList.add("hidden");
   hbsCardsVisible=true;
   scanCard?.classList.remove("hidden");
   barangCard?.classList.remove("hidden");
+  scanResult?.classList.remove("hidden");
+  manualForm?.classList.add("hidden");
+  if(flightEl) flightEl.textContent = selectedSuspect.flight || "-";
+  if(namaEl) namaEl.textContent = "-";
   bagasiCard?.classList.add("collapsed");
   bagasiToggle?.setAttribute("aria-expanded","false");
   const chev=bagasiToggle?.querySelector(".chevron");
@@ -513,10 +522,22 @@ function receiveBarcode(payload){
     if(!data||typeof data!=="string") return;
     const parsed=parseBoardingPass(data);
     if(parsed){
-      if(namaEl)   namaEl.textContent=parsed.fullName.toUpperCase();
-      if(flightEl) flightEl.textContent=parsed.flight.toUpperCase();
+      const scannedName = parsed.fullName.toUpperCase();
+      if(namaEl) namaEl.textContent = scannedName;
+      if(mode!=="HBSCP" || !selectedSuspect?.expectedName){
+        if(flightEl) flightEl.textContent = parsed.flight.toUpperCase();
+      }
       scanResult?.classList.remove("hidden");
       manualForm?.classList.add("hidden");
+      if(mode==="HBSCP" && selectedSuspect?.expectedName){
+        const expected = selectedSuspect.expectedName;
+        const words = expected.split(/\s+/).filter(Boolean);
+        const match = words.some(w=>scannedName.includes(w));
+        if(!match){
+          alert("Boarding pass salah, harap scan ulang");
+          if(namaEl) namaEl.textContent = "-";
+        }
+      }
     }
   }catch(e){ console.error(e); }
 }
@@ -735,6 +756,7 @@ async function submitRandom(){
       hbsCardsVisible=false;
       scanCard?.classList.add("hidden");
       barangCard?.classList.add("hidden");
+      await loadSuspectList();
     }
     resetFoto(); updateBarangCard();
 
@@ -810,6 +832,8 @@ async function submitAksiSuspect(){
       // reset
       selectedSuspect = null;
       tindakanSel && (tindakanSel.value="");
+      if(namaEl) namaEl.textContent="-";
+      if(flightEl) flightEl.textContent="-";
       hbsCardsVisible=false;
       scanCard?.classList.add("hidden");
       barangCard?.classList.add("hidden");
