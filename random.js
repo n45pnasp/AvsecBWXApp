@@ -39,12 +39,17 @@ const bagSubmitAksiBtn=$("#bagSubmitAksiBtn"); // tombol submit Aksi (tambahkan 
 const bagasiList=$("#bagasiList");
 const bagIndikasiInp=$("#bagIndikasi");
 bagasiToggle?.addEventListener("click",()=>{
-  bagasiCard?.classList.toggle("collapsed");
-  const exp=!bagasiCard.classList.contains("collapsed");
-  bagasiToggle.setAttribute("aria-expanded",exp);
-  const chev=bagasiToggle.querySelector(".chevron");
-  if(chev) chev.textContent=exp?"▲":"▼";
-});
+    bagasiCard?.classList.toggle("collapsed");
+    const exp=!bagasiCard.classList.contains("collapsed");
+    bagasiToggle.setAttribute("aria-expanded",exp);
+    const chev=bagasiToggle.querySelector(".chevron");
+    if(chev) chev.textContent=exp?"▲":"▼";
+    if(exp){
+      hbsCardsVisible=false;
+      scanCard?.classList.add("hidden");
+      barangCard?.classList.add("hidden");
+    }
+  });
 
 document.addEventListener("copy",e=>e.preventDefault());
 
@@ -350,6 +355,10 @@ async function markAksi(){
   hbsCardsVisible=true;
   scanCard?.classList.remove("hidden");
   barangCard?.classList.remove("hidden");
+  bagasiCard?.classList.add("collapsed");
+  bagasiToggle?.setAttribute("aria-expanded","false");
+  const chev=bagasiToggle?.querySelector(".chevron");
+  if(chev) chev.textContent="▼";
   updateBarangCard();
 }
 delAction?.addEventListener("click",markAksi);
@@ -677,9 +686,14 @@ async function submitRandom(){
 
     if(mode==="CARGO"){ manualNama.value=""; manualFlight.value=""; }
     else { if(namaEl) namaEl.textContent="-"; if(flightEl) flightEl.textContent="-"; }
-    isiBarangInp && (isiBarangInp.value=""); tindakanSel && (tindakanSel.value=""); tipePiSel && (tipePiSel.value="");
-    if(mode==="PSCP" && objekSel) objekSel.value="";
-    resetFoto(); updateBarangCard();
+      isiBarangInp && (isiBarangInp.value=""); tindakanSel && (tindakanSel.value=""); tipePiSel && (tipePiSel.value="");
+      if(mode==="PSCP" && objekSel) objekSel.value="";
+      if(mode==="HBSCP"){
+        hbsCardsVisible=false;
+        scanCard?.classList.add("hidden");
+        barangCard?.classList.add("hidden");
+      }
+      resetFoto(); updateBarangCard();
 
   }catch(err){
     console.error(err); showOverlay("err","Gagal", err?.message||String(err));
@@ -706,10 +720,13 @@ async function submitSuspectHBSCP(){
       ...(bagFotoSuspectDataUrl?{fotoSuspectDataUrl:bagFotoSuspectDataUrl}:{ }),
       ...(bagFotoBarangDataUrl ?{fotoBarangDataUrl :bagFotoBarangDataUrl }:{ })
     }};
-    const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
-    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan suspect");
-    showOverlay("ok","Suspect tersimpan", `Row ${j.targetRow||"-"}`);
-    resetBagasiCard(); loadSuspectList();
+      const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
+      if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan suspect");
+      showOverlay("ok","Suspect tersimpan", `Row ${j.targetRow||"-"}`);
+      hbsCardsVisible=false;
+      scanCard?.classList.add("hidden");
+      barangCard?.classList.add("hidden");
+      resetBagasiCard(); loadSuspectList();
   }catch(err){
     console.error(err); showOverlay("err","Gagal simpan suspect", err?.message||String(err));
   }
@@ -741,11 +758,14 @@ async function submitAksiSuspect(){
     if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan aksi");
 
     showOverlay("ok","Aksi tersimpan","");
-    // reset
-    selectedSuspect = null;
-    tindakanSel && (tindakanSel.value="");
-    hbsCardsVisible=false; updateBarangCard();
-    await loadSuspectList();
+      // reset
+      selectedSuspect = null;
+      tindakanSel && (tindakanSel.value="");
+      hbsCardsVisible=false;
+      scanCard?.classList.add("hidden");
+      barangCard?.classList.add("hidden");
+      updateBarangCard();
+      await loadSuspectList();
   }catch(err){
     console.error(err);
     showOverlay("err","Gagal simpan aksi", err?.message||"Gagal");
