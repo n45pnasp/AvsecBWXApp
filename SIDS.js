@@ -23,11 +23,11 @@ const flightTimes = {};
 
 /* ========= UTIL WAKTU ========= */
 
-/** Format HH:MM dari Date (WIB) */
+/** Format HH:MM WIB dari Date, pakai zona Asia/Jakarta */
 function formatHHMMFromDate(d) {
   if (!(d instanceof Date) || isNaN(d)) return null;
   const parts = new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jakarta",
+    timeZone: "Asia/Jakarta", // GMT+7
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -37,7 +37,7 @@ function formatHHMMFromDate(d) {
   return `${hh}:${mm}`;
 }
 
-/** Coba parse berbagai bentuk timestamp (string/number/serial Google Sheets) → HH:MM */
+/** Parse timestamp (string/number/serial Google Sheets) → HH:MM WIB */
 function toHHMMFromAny(v) {
   if (v == null || v === "") return null;
 
@@ -75,7 +75,7 @@ function toHHMMFromAny(v) {
   return null;
 }
 
-/* ========= OPSIONAL: map waktu terjadwal per flight (tetap ada sbg fallback) ========= */
+/* ========= OPSIONAL: map waktu terjadwal per flight (fallback) ========= */
 async function loadFlightTimes(){
   if(Object.keys(flightTimes).length) return;
   try{
@@ -106,21 +106,19 @@ function renderList(rows){
     }
 
     const aksi=(norm.aksi||norm.action||'').trim();
-    if(aksi) return; // abaikan yg punya aksi (sesuai logic awal)
+    if(aksi) return; // abaikan yg punya aksi
 
     const passenger = (norm.namapemilik||norm.nama||'-').toUpperCase();
     const flight = (norm.flight||'-').toUpperCase();
 
-    // === AMBIL WAKTU DARI TIMESTAMP KOLOM A / SEJENIS ===
+    // Ambil timestamp dari kolom A (atau field serupa)
     const tsCandidate =
       norm.timestamp ?? norm.waktu ?? norm.jam ?? norm.createdat ??
       norm.created ?? norm.tanggal ?? norm.tanggalfull ?? norm.a ?? null;
 
     let timeRaw = toHHMMFromAny(tsCandidate);
-    // Fallback ke waktu jadwal flight bila timestamp kosong
     if(!timeRaw) timeRaw = flightTimes[flight] || "-";
 
-    // Render: tanpa WIB (hanya HH:MM)
     let timeHTML = "-";
     if (timeRaw && timeRaw !== "-") {
       timeHTML = `<span class="time">${timeRaw}</span>`;
@@ -139,7 +137,7 @@ function renderList(rows){
 /* ========= FETCH ========= */
 async function loadSuspectList(){
   try{
-    await loadFlightTimes(); // tetap ada, hanya sebagai fallback
+    await loadFlightTimes(); // fallback
     const url = `${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&limit=200`;
     const r = await fetch(url,{method:"GET",mode:"cors"});
     const j = await r.json().catch(()=>({}));
@@ -177,7 +175,7 @@ function toggleLanguage(){
   renderList(currentRows);
 }
 
-/* ========= CLOCK ========= */
+/* ========= CLOCK HEADER ========= */
 function updateClock(){
   const now = new Date();
   const optsTime = { hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Jakarta' };
