@@ -30,34 +30,38 @@ body{
 }
 
 /* Noise overlay */
-.grain{ position:fixed; inset:-120px; pointer-events:none; opacity:.06; mix-blend-mode:overlay; filter:contrast(120%);
+.grain{
+  position:fixed; inset:-120px; pointer-events:none; opacity:.06;
+  mix-blend-mode:overlay; filter:contrast(120%);
   background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="120" height="120" filter="url(%23n)" opacity=".9"/></svg>') center/120px repeat;
 }
 
 /* Layout */
-.wrap{ max-width:1400px; margin:0 auto; padding:20px; height:100dvh;
+.wrap{
+  max-width:1400px; margin:0 auto; padding:20px; height:100dvh;
   display:grid; grid-template-rows:auto 1fr auto; gap:var(--gap);
 }
 
 /* Topbar */
-.topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px;
+.topbar{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
   background:var(--panel); backdrop-filter: blur(10px); border-radius:var(--radius);
   padding:14px 16px; box-shadow:var(--shadow);
 }
 .brand{ display:flex; align-items:center; gap:12px; }
 
-/* Badge → gambar logo */
+/* Badge logo putih */
 .badge{
-  display:inline-grid; place-items:center; width:44px; height:44px; border-radius:12px;
-  background:linear-gradient(135deg, var(--accent), var(--accent-2));
+  display:inline-grid; place-items:center;
+  width:44px; height:44px; border-radius:12px;
+  background:#ffffff;                   /* putih solid */
   box-shadow:inset 0 0 0 2px #ffffff20;
   overflow:hidden;
 }
 .badge-img{
-  width:100%; height:100%;
+  width:80%; height:80%;
   object-fit:contain; object-position:center;
-  filter: drop-shadow(0 1px 0 rgba(0,0,0,.2));
-  background: transparent;
+  background:transparent;
 }
 
 .title{ display:flex; flex-direction:column; }
@@ -67,9 +71,15 @@ body{
 }
 .subtitle{ font-size: clamp(10px, 1.6vw, 12px); color:var(--muted); }
 
-.clock{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; text-align:right; }
-.clock .time{ font-weight:800; font-size: clamp(16px, 3.6vw, 26px); white-space:nowrap; }
-.clock .date{ font-size: clamp(10px, 1.8vw, 12px); color:var(--muted); }
+.clock{
+  display:flex; flex-direction:column; align-items:flex-end; gap:6px; text-align:right;
+}
+.clock .time{
+  font-weight:800; font-size: clamp(16px, 3.6vw, 26px); white-space:nowrap;
+}
+.clock .date{
+  font-size: clamp(10px, 1.8vw, 12px); color:var(--muted);
+}
 /* WIB kecil di header clock */
 .clock .time .wib{ font-size:.7em; opacity:.85; margin-left:4px; }
 
@@ -80,7 +90,9 @@ body{
 }
 .table-wrap{ overflow:auto; height:100%; }
 
-.table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:auto; }
+.table{
+  width:100%; border-collapse:separate; border-spacing:0; table-layout:auto;
+}
 .table thead th{
   position:sticky; top:0; z-index:1;
   background:linear-gradient(180deg, #ffffff08, transparent);
@@ -112,8 +124,8 @@ body{
 }
 
 /* WIB kecil di kolom waktu tabel */
-.table td .time { font-variant-numeric: tabular-nums; }
-.table td .wib { font-size: 0.7em; opacity: 0.85; margin-left: 2px; }
+.table td .time{ font-variant-numeric: tabular-nums; }
+.table td .wib{ font-size:0.7em; opacity:0.85; margin-left:2px; }
 
 /* Ticker */
 .ticker{
