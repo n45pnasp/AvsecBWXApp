@@ -194,8 +194,8 @@ async function openPhoto(suspect, barang, indikasi=""){
   showOverlay("loading","Memuat foto…");
   imgOverlay.classList.remove("hidden");
   if(indikasiEl){
-    indikasiEl.textContent = indikasi ? `INDIKASI SUSPECT: ${indikasi}` : "";
-    indikasiEl.classList.toggle("hidden",!indikasi);
+    indikasiEl.textContent = `INDIKASI SUSPECT: ${indikasi || '-'}`;
+    indikasiEl.classList.remove("hidden");
   }
   if(suspectImg) suspectImg.removeAttribute("src");
   if(barangImg)  barangImg.removeAttribute("src");
