@@ -336,6 +336,11 @@ delConfirm?.addEventListener("click",deleteSuspect);
 
 async function markAksi(){
   if(!deleteTarget) return;
+  // Simpan rowItems dan nomor bagasi untuk dipakai saat submit aksi
+  selectedSuspect = {
+    rowItems: Number(deleteTarget.dataset.rowitems || 0),
+    bagNo: deleteTarget.dataset.bagno || ""
+  };
   delOverlay?.classList.add("hidden");
   hbsCardsVisible=true;
   scanCard?.classList.remove("hidden");
