@@ -8,11 +8,10 @@
   <link rel="stylesheet" href="SIDS.css" />
 </head>
 <body>
-  <!-- Background grain -->
   <div class="grain" aria-hidden="true"></div>
 
   <div class="wrap" role="application" aria-label="SIDS – Baggage Inspection Board">
-    <!-- Header / Topbar -->
+    <!-- Topbar -->
     <header class="topbar">
       <div class="brand">
         <div class="badge" aria-hidden="true">SIDS</div>
@@ -28,15 +27,8 @@
       </div>
     </header>
 
-    <!-- Table -->
+    <!-- Panel Tabel -->
     <section class="panel">
-      <div class="thead" aria-hidden="true">
-        <div>Waktu</div>
-        <div>Penumpang</div>
-        <div>Penerbangan</div>
-        <div>Status</div>
-      </div>
-
       <div class="table-wrap" role="region" aria-label="Daftar Bagasi Diperiksa">
         <table class="table" role="grid" aria-colcount="4">
           <thead>
@@ -48,7 +40,7 @@
             </tr>
           </thead>
           <tbody id="sidsBody">
-            <!-- Baris akan di-render oleh JS -->
+            <!-- Baris diisi otomatis oleh sids.js -->
           </tbody>
         </table>
       </div>
@@ -61,7 +53,7 @@
     </footer>
   </div>
 
-  <!-- JS kamu -->
+  <!-- Panggil JS asli kamu -->
   <script src="SIDS.js"></script>
 </body>
 </html>
