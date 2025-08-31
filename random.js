@@ -185,40 +185,42 @@ function normalizeDriveUrl(u){
   return m?`https://lh3.googleusercontent.com/d/${m[1]}`:u;
 }
 
-async function openPhoto(suspect, barang, indikasi="", bagNo=""){
+function extractIndikasi(norm){
+  const keys=Object.keys(norm||{});
+  let key=keys.find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")));
+  if(!key) key="indikasi";
+  return String(norm[key]||"").trim();
+}
+
+async function openPhoto(suspect, barang, indikasi="", bagNo="", rowItems=""){
   if(!imgOverlay) return;
 
   showOverlay("loading","Memuat foto…");
   imgOverlay.classList.remove("hidden");
 
   // ---- Ambil indikasi suspect dari sheet kalau belum ada ----
-  if(!indikasi && bagNo){
+  if(!indikasi && (bagNo || rowItems)){
     try{
-      const url=`${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&bag_no=${encodeURIComponent(bagNo)}`;
+      const url=`${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&limit=200`;
       const r=await fetch(url,{method:"GET",mode:"cors"});
       const j=await r.json().catch(()=>({}));
       if(j?.ok && Array.isArray(j.rows) && j.rows.length){
         const bUpper=bagNo.toUpperCase();
+        const ri=Number(rowItems||0);
         let found=null;
         for(const raw of j.rows){
           const norm={};
-          for(const k in raw){
-            const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();
-            norm[nk]=raw[k];
-          }
+          for(const k in raw){ const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase(); norm[nk]=raw[k]; }
           const bagMatch=String(norm.bagno||norm.nomorbagasi||norm.nobagasi||"").trim().toUpperCase();
-          if(bagMatch===bUpper){ found=norm; break; }
+          const rowMatch=Number(raw.rowItems||raw.rowitems||norm.rowitems||0);
+          if((ri && rowMatch===ri) || (bUpper && bagMatch===bUpper)){ found=norm; break; }
         }
-        const norm=found || (()=>{const first={};for(const k in j.rows[0]){const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();first[nk]=j.rows[0][k];}return first;})();
-
-        // === FIX ambil kolom Indikasi secara eksplisit ===
-        indikasi = String(
-          norm.indikasisuspect ??
-          norm.indikasisuspek ??
-          norm.indikasi ??
-          norm.keterangan ??
-          ""
-        ).trim();
+        if(!found){
+          const first={};
+          for(const k in j.rows[0]){const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();first[nk]=j.rows[0][k];}
+          found=first;
+        }
+        indikasi = extractIndikasi(found);
       }
     }catch(err){ console.error(err); }
   }
@@ -277,13 +279,8 @@ function renderSuspectList(rows){
     const sUrl   = norm.fotosuspecturl || norm.fotosuspectid || "";
     const bUrl   = norm.fotobarangurl  || norm.fotobarangid  || "";
 
-    // === FIX ambil Indikasi secara eksplisit ===
-    const indikasi = String(
-      norm.indikasisuspect ??
-      norm.indikasisuspek ??
-      norm.indikasi ??
-      ""
-    ).trim();
+    // ambil indikasi suspect dari berbagai nama kolom
+    const indikasi = extractIndikasi(norm);
 
     const tr=document.createElement("tr");
     tr.dataset.suspect=sUrl;
@@ -299,7 +296,7 @@ function renderSuspectList(rows){
 
     const selectRow = () => {
       selectedSuspect = { rowItems, bagNo };
-      openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi,tr.dataset.bagno);
+      openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi,tr.dataset.bagno,tr.dataset.rowitems);
       hbsCardsVisible=true; updateBarangCard();
     };
     tr.addEventListener("click",()=>{ if(longPress) return; selectRow(); });
@@ -716,7 +713,7 @@ async function submitAksiSuspect(){
   try{
     if(mode!=="HBSCP"){ alert("Menu SUSPECT hanya di HBSCP."); return; }
     if(!selectedSuspect?.rowItems){ alert("Pilih item suspect dari daftar terlebih dahulu."); return; }
-    const aksi = (val(tindakanSel) || "").trim().toUpperCase();
+    const aksi = (val(tindakanSel) || "").trim();
     if(!aksi){ alert("Pilih tindakan/aksi terlebih dahulu."); return; }
 
     showOverlay("spinner","Menyimpan aksi…","");
