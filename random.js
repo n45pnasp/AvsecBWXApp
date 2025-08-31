@@ -333,7 +333,9 @@ async function deleteSuspect(){
     delOverlay?.classList.add("hidden");
     showOverlay("spinner","Menghapus suspect…","" );
     const payload={action:"delete_suspect",token:SHARED_TOKEN,bagNo};
+    console.log("deleteSuspect payload", payload);
     const j=await fetchJSON(PROXY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),credentials:"omit"});
+    console.log("deleteSuspect response", j);
     if(!j?.ok) throw new Error(j?.error||"Gagal menghapus");
     showOverlay("ok","Data terhapus","");
     loadSuspectList();
@@ -680,7 +682,9 @@ async function submitRandom(){
       payload.data.tindakanBarang=tindakan;
     }
 
+    console.log("submitRandom payload", payload);
     const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
+    console.log("submitRandom response", j);
     if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan");
     showOverlay("ok","Data tersimpan", `Sheet ${j.targetSheet} (row ${j.targetRow})${j.piListWritten?` + PI_LIST (row ${j.piListRow})`:""}`);
 
