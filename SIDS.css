@@ -92,10 +92,11 @@ body{
   backdrop-filter: blur(2px);
   text-align: left;
   padding: 10px 12px;
-  font-size: clamp(12px, 2.4vw, 20px); /* sama dengan isi tabel */
-  color: var(--muted);
+  font-size: clamp(12px, 2.4vw, 20px);
+  font-weight: 700;
+  color: var(--text);
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: normal;
   border-bottom: 1px solid #ffffff1a;
   white-space: nowrap;
 }
