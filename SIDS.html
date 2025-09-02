@@ -14,13 +14,11 @@
     <!-- Topbar -->
     <header class="topbar">
       <div class="brand">
-        <!-- Badge logo putih -->
         <div class="badge" aria-hidden="true">
           <img src="icons/logoapindo.png" alt="Logo" class="badge-img" />
         </div>
         <div class="title">
           <h1 id="pageTitle" class="page-title">PEMERIKSAAN BAGASI TERCATAT</h1>
-          <!-- Ubah subtitle -->
           <div class="subtitle">Airport Security Bandar Udara Internasional Banyuwangi</div>
         </div>
       </div>
@@ -32,9 +30,20 @@
     </header>
 
     <!-- Panel Tabel -->
-    <section class="panel">
+    <section class="panel has-corner-logo">
+      <!-- Logo pojok kanan atas di dalam card/panel -->
+      <img src="icons/logoapindo.png" alt="AP I Logo" class="panel-logo" />
+
       <div class="table-wrap" role="region" aria-label="Daftar Bagasi Diperiksa">
         <table class="table" role="grid" aria-colcount="4">
+          <!-- Lebar kolom responsif -->
+          <colgroup>
+            <col style="width:14%">   <!-- TIME -->
+            <col style="width:auto">  <!-- NAME -->
+            <col style="width:16%">   <!-- FLIGHT -->
+            <col style="width:28%">   <!-- STATUS -->
+          </colgroup>
+
           <thead>
             <tr>
               <th id="thTime" scope="col">WAKTU</th>
@@ -44,7 +53,7 @@
             </tr>
           </thead>
           <tbody id="sidsBody">
-            <!-- Baris diisi otomatis oleh sids.js -->
+            <!-- Baris diisi otomatis oleh SIDS.js -->
           </tbody>
         </table>
       </div>
@@ -57,7 +66,6 @@
     </footer>
   </div>
 
-  <!-- JS utama kamu -->
   <script src="SIDS.js"></script>
 </body>
 </html>

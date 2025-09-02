@@ -50,59 +50,66 @@ body{
 }
 .brand{ display:flex; align-items:center; gap:12px; }
 
-/* Badge logo putih */
+/* Badge kiri */
 .badge{
   display:inline-grid; place-items:center;
   width:44px; height:44px; border-radius:12px;
-  background:#ffffff;                   /* putih solid */
+  background:#ffffff;
   box-shadow:inset 0 0 0 2px #ffffff20;
   overflow:hidden;
 }
-.badge-img{
-  width:80%; height:80%;
-  object-fit:contain; object-position:center;
-  background:transparent;
-}
+.badge-img{ width:80%; height:80%; object-fit:contain; object-position:center; }
 
 .title{ display:flex; flex-direction:column; }
-.page-title{
-  margin:0; font-weight:800; letter-spacing:1.2px;
-  font-size: clamp(14px, 2.4vw, 20px);
-}
+.page-title{ margin:0; font-weight:800; letter-spacing:1.2px; font-size: clamp(14px, 2.4vw, 20px); }
 .subtitle{ font-size: clamp(10px, 1.6vw, 12px); color:var(--muted); }
 
-.clock{
-  display:flex; flex-direction:column; align-items:flex-end; gap:6px; text-align:right;
-}
-.clock .time{
-  font-weight:800; font-size: clamp(16px, 3.6vw, 26px); white-space:nowrap;
-}
-.clock .date{
-  font-size: clamp(10px, 1.8vw, 12px); color:var(--muted);
-}
-/* WIB kecil di header clock */
+.clock{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; text-align:right; }
+.clock .time{ font-weight:800; font-size: clamp(16px, 3.6vw, 26px); white-space:nowrap; }
+.clock .date{ font-size: clamp(10px, 1.8vw, 12px); color:var(--muted); }
 .clock .time .wib{ font-size:.7em; opacity:.85; margin-left:4px; }
 
 /* Panel + Table */
 .panel{
+  position:relative;
   background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow);
   display:grid; grid-template-rows:1fr; overflow:hidden;
 }
+
+/* Logo besar di pojok kanan-atas card */
+.panel-logo{
+  position:absolute; top:10px; right:14px;
+  height: clamp(36px, 10vw, 110px);
+  max-width: 34vw;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
+  opacity: .95;
+  pointer-events:none;
+}
+
+/* beri ruang ekstra thead agar logo tidak menutupi */
+.panel.has-corner-logo .table thead th{ padding-top: 20px; }
+
 .table-wrap{ overflow:auto; height:100%; }
 
+/* Table responsif penuh layar */
 .table{
-  width:100%; border-collapse:separate; border-spacing:0; table-layout:auto;
+  width:100%;
+  border-collapse:separate; border-spacing:0;
+  table-layout: fixed;
 }
 .table thead th{
   position:sticky; top:0; z-index:1;
   background:linear-gradient(180deg, #ffffff08, transparent);
   backdrop-filter: blur(2px);
   text-align:left; padding:10px 12px;
-  font-size: clamp(10px, 1.6vw, 12px);
-  color:var(--muted);
-  text-transform:uppercase; letter-spacing:.12em;
+  font-size: clamp(12px, 2.6vw, 18px); /* lebih besar & jelas */
+  font-weight:700;                     /* tebal seperti body */
+  color:var(--text);                   /* kontras */
+  text-transform:uppercase; letter-spacing:.08em;
   border-bottom:1px solid #ffffff1a;
-  white-space:nowrap;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .table tbody tr{ height:var(--row-h); border-bottom:1px solid #ffffff10; }
 .table tbody tr:nth-child(odd){ background:#ffffff05; }
@@ -115,7 +122,6 @@ body{
 
 /* Kolom spesifik */
 .table td:first-child, .table th:first-child{
-  width:120px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 .table td:nth-child(3), .table th:nth-child(3){
@@ -123,17 +129,13 @@ body{
   letter-spacing:.6px;
 }
 
-/* WIB kecil di kolom waktu tabel */
-.table td .time{ font-variant-numeric: tabular-nums; }
-.table td .wib{ font-size:0.7em; opacity:0.85; margin-left:2px; }
-
-/* Ticker */
+/* Ticker — diperbesar */
 .ticker{
-  display:flex; align-items:center; gap:12px; height:44px; padding:0 12px;
+  display:flex; align-items:center; gap:12px; height:56px; padding:0 16px;
   background:var(--panel); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow);
-  font-size: clamp(11px, 2vw, 14px);
+  font-size: clamp(14px, 2.6vw, 18px);
 }
-.ticker .dot{ width:10px; height:10px; border-radius:50%; background:var(--accent); box-shadow:0 0 18px var(--accent); }
+.ticker .dot{ width:12px; height:12px; border-radius:50%; background:var(--accent); box-shadow:0 0 18px var(--accent); }
 .ticker .msg{ white-space:nowrap; animation:marquee 28s linear infinite; }
 @keyframes marquee{ from{ transform:translateX(15%);} to{ transform:translateX(-100%);} }
 
@@ -144,4 +146,5 @@ body{
 }
 @media (max-width: 720px){
   .table th, .table td{ padding:0 8px; }
+  .panel-logo{ height: clamp(32px, 12vw, 90px); max-width: 42vw; }
 }
