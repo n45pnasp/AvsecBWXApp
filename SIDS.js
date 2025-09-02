@@ -38,39 +38,29 @@ function toHHMMFromAny(v) {
 
   if (typeof v === "string") {
     const s = v.replace(/\u00A0/g, " ").trim().replace(/\./g, ":");
-
-    // 1) dd/MM/yyyy HH:mm(:ss)
+    // dd/MM/yyyy HH:mm(:ss)
     let m = s.match(/^\d{1,2}\/\d{1,2}\/\d{4}\s+(\d{1,2}):(\d{2})(?::\d{2})?$/);
     if (m) return `${m[1].padStart(2,"0")}:${m[2].padStart(2,"0")}`;
-
-    // 2) token waktu normal
+    // token waktu biasa (hindari nyangkut ke MM:SS)
     m = s.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
     if (m) return `${m[1].padStart(2,"0")}:${m[2].padStart(2,"0")}`;
-
-    // 3) ada offset/Z
+    // ada offset/Z
     if (/[zZ]|[+-]\d{2}:\d{2}(?:\s*\(.+\))?$/.test(s)) {
-      const d = new Date(s);
-      if (!isNaN(d)) return formatHHMMFromDate(d);
+      const d = new Date(s); if (!isNaN(d)) return formatHHMMFromDate(d);
     }
-
-    // 4) ISO tanpa zona → UTC
+    // ISO tanpa zona → UTC
     m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
-      const [_, Y, M, D, H, Min, S] = m;
-      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S || 0)));
-      return formatHHMMFromDate(d);
+      const [_, Y,M,D,H,Min,S] = m;
+      return formatHHMMFromDate(new Date(Date.UTC(+Y, +M-1, +D, +H, +Min, +(S||0))));
     }
   }
 
   if (typeof v === "number") {
-    if (v > 1000 && v < 60000) {
-      const ms = (v - 25569) * 86400 * 1000; // serial Sheets
-      return formatHHMMFromDate(new Date(ms));
-    }
-    if (v > 1e9 && v < 1e12) return formatHHMMFromDate(new Date(v * 1000));
-    if (v >= 1e12)          return formatHHMMFromDate(new Date(v));
+    if (v > 1000 && v < 60000) return formatHHMMFromDate(new Date((v - 25569) * 86400 * 1000)); // serial Sheets
+    if (v > 1e9 && v < 1e12)  return formatHHMMFromDate(new Date(v * 1000));                      // epoch sec
+    if (v >= 1e12)            return formatHHMMFromDate(new Date(v));                             // epoch ms
   }
-
   return null;
 }
 
@@ -81,14 +71,18 @@ function renderList(rows) {
   body.innerHTML = "";
 
   rows.forEach(it => {
-    const aksi = (it.aksi || "").trim();
-    if (aksi) return; // skip yang sudah ada aksi
+    const aksi = (String(it.aksi || "")).trim();
+    if (aksi) return;
 
-    const passenger = (it.namaPemilik || "-").toString().toUpperCase();
+    const passenger = (it.namaPemilik || it.nama || "-").toString().toUpperCase();
     const flight    = (it.flight || "-").toString().toUpperCase();
-    const tsRaw     = it.timestamp || null;
 
-    const timeRaw = toHHMMFromAny(tsRaw);
+    const tsCandidate = [
+      it.timestamp, it.waktu, it.jam, it.createdAt, it.created,
+      it.tanggal, it.tanggalFull, it.A, it.a, it["0"]
+    ].find(v => v != null && v !== "");
+
+    const timeRaw = toHHMMFromAny(tsCandidate);
 
     const tr = document.createElement("tr");
     tr.innerHTML = `

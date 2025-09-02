@@ -84,25 +84,31 @@ body{
   border-collapse:separate; border-spacing:0;
   table-layout:auto;
 }
-.table thead th{
-  position:sticky; top:0; z-index:1;
-  background:linear-gradient(180deg, #ffffff08, transparent);
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, #ffffff08, transparent);
   backdrop-filter: blur(2px);
-  text-align:left; padding:12px 14px;
-  font-size: clamp(13px, 2.6vw, 18px);
-  font-weight:700;
-  color:var(--text);
-  text-transform:uppercase; letter-spacing:.08em;
-  border-bottom:1px solid #ffffff1a;
-  white-space:nowrap;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: clamp(12px, 2.4vw, 20px); /* sama dengan isi tabel */
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  border-bottom: 1px solid #ffffff1a;
+  white-space: nowrap;
 }
 .table tbody tr{ height:var(--row-h); border-bottom:1px solid #ffffff10; }
 .table tbody tr:nth-child(odd){ background:#ffffff05; }
-.table td{
-  padding:0 14px;
-  font-size: clamp(12px, 2.8vw, 20px);
-  font-weight:700; vertical-align:middle;
-  white-space:nowrap;
+.table td {
+  padding: 0 12px;
+  font-size: clamp(12px, 2.4vw, 20px); /* disamakan */
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Kolom spesifik */
