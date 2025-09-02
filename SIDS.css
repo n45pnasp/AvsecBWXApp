@@ -76,7 +76,11 @@ body{
   display:grid; grid-template-rows:1fr; overflow:hidden;
 }
 
-.table-wrap{ overflow:auto; height:100%; }
+.table-wrap{
+  overflow:auto;
+  height:100%;
+  padding:var(--gap);
+}
 
 /* Table responsif dan dinamis berdasarkan konten */
 .table{
