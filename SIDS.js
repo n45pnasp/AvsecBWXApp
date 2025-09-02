@@ -30,37 +30,56 @@ function formatHHMMFromDate(d) {
   return `${hh}:${mm}`;
 }
 
-/* robust parser → "HH:MM" */
+/** Parse berbagai bentuk timestamp → "HH:MM" (GMT+7). */
 function toHHMMFromAny(v) {
   if (v == null || v === "") return null;
 
-  if (v instanceof Date && !isNaN(v)) return formatHHMMFromDate(v);
+  // Date -> HH:MM (WIB)
+  if (v instanceof Date && !isNaN(v)) {
+    return formatHHMMFromDate(v);
+  }
 
+  // String (umumnya "dd/MM/yyyy HH:mm:ss" dari Sheet)
   if (typeof v === "string") {
+    // normalisasi NBSP & titik (kadang "11.35")
     const s = v.replace(/\u00A0/g, " ").trim().replace(/\./g, ":");
-    // dd/MM/yyyy HH:mm(:ss)
+
+    // 1) dd/MM/yyyy HH:mm(:ss) -> ambil HH:MM
     let m = s.match(/^\d{1,2}\/\d{1,2}\/\d{4}\s+(\d{1,2}):(\d{2})(?::\d{2})?$/);
-    if (m) return `${m[1].padStart(2,"0")}:${m[2].padStart(2,"0")}`;
-    // token waktu biasa (hindari nyangkut ke MM:SS)
+    if (m) return `${m[1].padStart(2, "0")}:${m[2].padStart(2, "0")}`;
+
+    // 2) Token waktu umum (hindari salah baca MM:SS)
     m = s.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
-    if (m) return `${m[1].padStart(2,"0")}:${m[2].padStart(2,"0")}`;
-    // ada offset/Z
+    if (m) return `${m[1].padStart(2, "0")}:${m[2].padStart(2, "0")}`;
+
+    // 3) Ada offset/Z -> pakai Date
     if (/[zZ]|[+-]\d{2}:\d{2}(?:\s*\(.+\))?$/.test(s)) {
-      const d = new Date(s); if (!isNaN(d)) return formatHHMMFromDate(d);
+      const d = new Date(s);
+      if (!isNaN(d)) return formatHHMMFromDate(d);
     }
-    // ISO tanpa zona → UTC
+
+    // 4) ISO tanpa zona -> treat as UTC
     m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
-      const [_, Y,M,D,H,Min,S] = m;
-      return formatHHMMFromDate(new Date(Date.UTC(+Y, +M-1, +D, +H, +Min, +(S||0))));
+      const [_, Y, M, D, H, Min, S] = m;
+      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S || 0)));
+      return formatHHMMFromDate(d);
     }
   }
 
+  // Number: serial Sheets / epoch
   if (typeof v === "number") {
-    if (v > 1000 && v < 60000) return formatHHMMFromDate(new Date((v - 25569) * 86400 * 1000)); // serial Sheets
-    if (v > 1e9 && v < 1e12)  return formatHHMMFromDate(new Date(v * 1000));                      // epoch sec
-    if (v >= 1e12)            return formatHHMMFromDate(new Date(v));                             // epoch ms
+    // Serial Google Sheets
+    if (v > 1000 && v < 60000) {
+      const ms = (v - 25569) * 86400 * 1000;
+      return formatHHMMFromDate(new Date(ms));
+    }
+    // Epoch seconds
+    if (v > 1e9 && v < 1e12) return formatHHMMFromDate(new Date(v * 1000));
+    // Epoch ms
+    if (v >= 1e12) return formatHHMMFromDate(new Date(v));
   }
+
   return null;
 }
 
@@ -77,12 +96,19 @@ function renderList(rows) {
     const passenger = (it.namaPemilik || it.nama || "-").toString().toUpperCase();
     const flight    = (it.flight || "-").toString().toUpperCase();
 
-    const tsCandidate = [
-      it.timestamp, it.waktu, it.jam, it.createdAt, it.created,
-      it.tanggal, it.tanggalFull, it.A, it.a, it["0"]
-    ].find(v => v != null && v !== "");
+    // SAMAKAN dengan cara ambil waktu kamu + fallback aman
+    const tsRaw =
+      it.timestamp ??
+      it.waktu ??
+      it.jam ??
+      it.createdAt ??
+      it.created ??
+      it.tanggal ??
+      it.tanggalFull ??
+      it.A ?? it.a ?? it["0"] ??
+      null;
 
-    const timeRaw = toHHMMFromAny(tsCandidate);
+    const timeRaw = toHHMMFromAny(tsRaw);
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
