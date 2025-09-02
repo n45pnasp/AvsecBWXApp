@@ -118,10 +118,12 @@ function renderList(rows){
     const passenger = (norm.namapemilik||norm.nama||'-').toUpperCase();
     const flight = (norm.flight||'-').toUpperCase();
 
-    // Ambil dari kolom A (waktu input) terlebih dahulu lalu kolom lain jika ada
+    // Ambil dari kolom A (waktu input) terlebih dahulu lalu kolom lain jika ada.
+    // Beberapa data mungkin dikirim sebagai array sehingga kolom A menjadi indeks "0".
     const tsCandidate =
-      norm.a ?? norm.timestamp ?? norm.waktu ?? norm.jam ?? norm.createdat ??
-      norm.created ?? norm.tanggal ?? norm.tanggalfull ?? null;
+      norm["0"] ?? norm.a ?? norm.timestamp ?? norm.waktu ?? norm.jam ??
+      norm.createdat ?? norm.created ?? norm.tanggal ?? norm.tanggalfull ??
+      null;
 
     const timeRaw = toHHMMFromAny(tsCandidate);
 
