@@ -19,8 +19,6 @@ const translations = {
 let currentLang = "id";
 let currentRows = [];
 
-const flightTimes = {};
-
 /* ========= UTIL WAKTU ========= */
 
 /** Format HH:MM dari Date dalam zona Asia/Jakarta (GMT+7) */
@@ -101,23 +99,6 @@ function toHHMMFromAny(v) {
   return null;
 }
 
-/* ========= OPSIONAL: map waktu terjadwal per flight (fallback) ========= */
-async function loadFlightTimes(){
-  if(Object.keys(flightTimes).length) return;
-  try{
-    const url = `${LOOKUP_URL}?action=flight_update&token=${encodeURIComponent(SHARED_TOKEN)}`;
-    const r = await fetch(url,{method:"GET",mode:"cors"});
-    const j = await r.json().catch(()=>({}));
-    if(j?.ok && Array.isArray(j.rows)){
-      j.rows.forEach(it=>{
-        const fl = (it.flight||"").toUpperCase();
-        const raw = it.departure||it.dep||it.time||it.jam||"";
-        const tm = toHHMMFromAny(raw);
-        if(fl && tm) flightTimes[fl]=tm;
-      });
-    }
-  }catch(err){ console.error(err); }
-}
 
 /* ========= RENDER ========= */
 function renderList(rows){
@@ -137,14 +118,12 @@ function renderList(rows){
     const passenger = (norm.namapemilik||norm.nama||'-').toUpperCase();
     const flight = (norm.flight||'-').toUpperCase();
 
-    // Ambil dari timestamp kolom A / sejenis → konversi ke GMT+7
+    // Ambil dari kolom A (waktu input) terlebih dahulu lalu kolom lain jika ada
     const tsCandidate =
-      norm.timestamp ?? norm.waktu ?? norm.jam ?? norm.createdat ??
-      norm.created ?? norm.tanggal ?? norm.tanggalfull ?? norm.a ?? null;
+      norm.a ?? norm.timestamp ?? norm.waktu ?? norm.jam ?? norm.createdat ??
+      norm.created ?? norm.tanggal ?? norm.tanggalfull ?? null;
 
-    let timeRaw = toHHMMFromAny(tsCandidate);
-    // Fallback ke waktu jadwal per flight bila timestamp kosong
-    if(!timeRaw) timeRaw = flightTimes[flight] || "-";
+    const timeRaw = toHHMMFromAny(tsCandidate);
 
     const tr=document.createElement('tr');
     tr.innerHTML = `
@@ -159,7 +138,6 @@ function renderList(rows){
 /* ========= FETCH ========= */
 async function loadSuspectList(){
   try{
-    await loadFlightTimes(); // siapkan fallback waktu flight
     const url = `${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&limit=200`;
     const r = await fetch(url,{method:"GET",mode:"cors"});
     const j = await r.json().catch(()=>({}));
