@@ -52,14 +52,23 @@ body{
 
 /* Badge/logo kiri – diperbesar */
 .badge{
-  display:inline-grid; place-items:center;
-  width:clamp(56px, 7vw, 84px);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   height:clamp(56px, 7vw, 84px);
+  width:auto;
+  padding:0 8px;
   border-radius:14px;
   background:#ffffff;
   overflow:hidden;
 }
-.badge-img{ width:86%; height:86%; object-fit:contain; object-position:center; }
+.badge-img{
+  height:100%;
+  width:auto;
+  max-width:100%;
+  object-fit:contain;
+  object-position:center;
+}
 
 .title{ display:flex; flex-direction:column; }
 .page-title{ margin:0; font-weight:800; letter-spacing:1.2px; font-size: clamp(16px, 2.6vw, 22px); }
