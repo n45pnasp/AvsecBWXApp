@@ -41,15 +41,13 @@ function formatHHMMFromDate(d) {
 function toHHMMFromAny(v) {
   if (v == null || v === "") return null;
 
-  // 0) Sudah Date
-  if (v instanceof Date && !isNaN(v)) {
-    return formatHHMMFromDate(v);
-  }
+  // Date langsung
+  if (v instanceof Date && !isNaN(v)) return formatHHMMFromDate(v);
 
-  // 1) Number: serial Sheets / epoch sec / epoch ms
+  // Number: serial Sheets / epoch sec / epoch ms
   if (typeof v === "number") {
     if (v > 1000 && v < 60000) {
-      const ms = (v - 25569) * 86400 * 1000; // treat as UTC serial
+      const ms = (v - 25569) * 86400 * 1000;
       return formatHHMMFromDate(new Date(ms));
     }
     if (v > 1e9 && v < 1e12)  return formatHHMMFromDate(new Date(v * 1000));
@@ -57,27 +55,35 @@ function toHHMMFromAny(v) {
   }
 
   if (typeof v === "string") {
-    const s = v.trim().replace(/\./g, ":");
+    // Normalisasi: titik -> kolon, spasi ganda/nbsp -> spasi biasa
+    let s = v.trim()
+      .replace(/\u00A0/g, " ")   // nbsp
+      .replace(/\s+/g, " ")
+      .replace(/\./g, ":");
 
-    // 2) Hanya "HH:MM"
-    let m = s.match(/^(\d{1,2}):(\d{2})$/);
-    if (m) return `${String(m[1]).padStart(2,"0")}:${String(m[2]).padStart(2,"0")}`;
-
-    // 3) Format khas sheet kamu: dd/MM/yyyy HH:mm(:ss)  -> gunakan jam apa adanya (TANPA geser zona)
-    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    // 1) Format khas sheet kamu: dd/MM/yyyy HH:mm(:ss)
+    let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
-      const H = String(m[4]).padStart(2,"0");
-      const Min = String(m[5]).padStart(2,"0");
+      const H = String(m[4]).padStart(2, "0");
+      const Min = String(m[5]).padStart(2, "0");
+      return `${H}:${Min}`; // ambil HH:MM, tanpa geser zona
+    }
+
+    // 2) Token waktu yang diawali awal baris / spasi → cegah match ke MM:SS
+    m = s.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
+    if (m) {
+      const H = String(m[1]).padStart(2, "0");
+      const Min = String(m[2]).padStart(2, "0");
       return `${H}:${Min}`;
     }
 
-    // 4) Ada offset/Z → biarkan Date yang urus
+    // 3) Ada offset/Z → biarkan Date yang urus
     if (/[zZ]|[+-]\d{2}:\d{2}(?:\s*\(.+\))?$/.test(s)) {
       const d = new Date(s);
       if (!isNaN(d)) return formatHHMMFromDate(d);
     }
 
-    // 5) ISO tanpa zona → treat as UTC
+    // 4) ISO tanpa zona: 2025-08-31 12:07(:ss) → treat as UTC
     m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
       const [_, Y, M, D, H, Min, S] = m;
@@ -85,23 +91,13 @@ function toHHMMFromAny(v) {
       return formatHHMMFromDate(d);
     }
 
-    // 6) D/M/Y H:m(:s) lain → treat as UTC
+    // 5) D/M/Y H:m(:s) lain → treat as UTC
     m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
       const [_, D, M, Y, H, Min, S] = m;
       const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S || 0)));
       return formatHHMMFromDate(d);
     }
-
-    // 7) Fallback: ambil HH:MM pertama yang terlihat di string
-    m = s.match(/\b(\d{1,2})[:.](\d{2})(?::\d{2})?\b/);
-    if (m) {
-      return `${String(m[1]).padStart(2,"0")}:${String(m[2]).padStart(2,"0")}`;
-    }
-
-    // 8) Fallback terakhir
-    const d = new Date(s);
-    if (!isNaN(d)) return formatHHMMFromDate(d);
   }
 
   return null;
