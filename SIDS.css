@@ -103,7 +103,7 @@ body{
 .table thead th,
 .table td {
   font-family: inherit;
-  font-size: clamp(15.75px, 2.475vw, 20.25px);
+  font-size: clamp(18.6px, 2.92vw, 23.9px);
   font-weight: 700;
   line-height: 1.25;
   letter-spacing: normal;
