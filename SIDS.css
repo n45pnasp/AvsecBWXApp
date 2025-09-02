@@ -91,21 +91,23 @@ body{
   background: linear-gradient(180deg, #ffffff08, transparent);
   backdrop-filter: blur(2px);
   text-align: left;
-  padding: 10px 12px;
+  padding: 0 12px;
   font-size: clamp(12px, 2.4vw, 20px);
   font-weight: 700;
+  font-family: inherit;
   color: var(--text);
-  text-transform: uppercase;
-  letter-spacing: normal;
   border-bottom: 1px solid #ffffff1a;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .table tbody tr{ height:var(--row-h); border-bottom:1px solid #ffffff10; }
 .table tbody tr:nth-child(odd){ background:#ffffff05; }
 .table td {
   padding: 0 12px;
-  font-size: clamp(12px, 2.4vw, 20px); /* disamakan */
+  font-size: clamp(12px, 2.4vw, 20px);
   font-weight: 700;
+  font-family: inherit;
   vertical-align: middle;
   white-space: nowrap;
   overflow: hidden;
