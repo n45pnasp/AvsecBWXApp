@@ -41,37 +41,65 @@ function formatHHMMFromDate(d) {
 function toHHMMFromAny(v) {
   if (v == null || v === "") return null;
 
+  // 0) Sudah Date
   if (v instanceof Date && !isNaN(v)) {
     return formatHHMMFromDate(v);
   }
 
+  // 1) Number: serial Sheets / epoch sec / epoch ms
   if (typeof v === "number") {
     if (v > 1000 && v < 60000) {
-      const ms = (v - 25569) * 86400 * 1000;
+      const ms = (v - 25569) * 86400 * 1000; // treat as UTC serial
       return formatHHMMFromDate(new Date(ms));
     }
-    if (v > 1e9 && v < 1e12) return formatHHMMFromDate(new Date(v * 1000));
-    if (v >= 1e12) return formatHHMMFromDate(new Date(v));
+    if (v > 1e9 && v < 1e12)  return formatHHMMFromDate(new Date(v * 1000));
+    if (v >= 1e12)            return formatHHMMFromDate(new Date(v));
   }
 
   if (typeof v === "string") {
     const s = v.trim().replace(/\./g, ":");
 
-    // Hanya "HH:MM"
+    // 2) Hanya "HH:MM"
     let m = s.match(/^(\d{1,2}):(\d{2})$/);
+    if (m) return `${String(m[1]).padStart(2,"0")}:${String(m[2]).padStart(2,"0")}`;
+
+    // 3) Format khas sheet kamu: dd/MM/yyyy HH:mm(:ss)  -> gunakan jam apa adanya (TANPA geser zona)
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
-      return `${m[1].padStart(2,"0")}:${m[2].padStart(2,"0")}`;
+      const H = String(m[4]).padStart(2,"0");
+      const Min = String(m[5]).padStart(2,"0");
+      return `${H}:${Min}`;
     }
 
-    // Format dd/MM/yyyy HH:mm:ss
-    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    // 4) Ada offset/Z → biarkan Date yang urus
+    if (/[zZ]|[+-]\d{2}:\d{2}(?:\s*\(.+\))?$/.test(s)) {
+      const d = new Date(s);
+      if (!isNaN(d)) return formatHHMMFromDate(d);
+    }
+
+    // 5) ISO tanpa zona → treat as UTC
+    m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
-      const [_, D, M, Y, H, Min, S] = m;
-      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S||0)));
+      const [_, Y, M, D, H, Min, S] = m;
+      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S || 0)));
       return formatHHMMFromDate(d);
     }
 
-    // ISO-like atau string lain
+    // 6) D/M/Y H:m(:s) lain → treat as UTC
+    m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (m) {
+      const [_, D, M, Y, H, Min, S] = m;
+      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S || 0)));
+      return formatHHMMFromDate(d);
+    }
+
+    // 7) Fallback: ambil HH:MM pertama yang terlihat di string
+    m = s.match(/\b(\d{1,2})[:.](\d{2})(?::\d{2})?\b/);
+    if (m) {
+      return `${String(m[1]).padStart(2,"0")}:${String(m[2]).padStart(2,"0")}`;
+    }
+
+    // 8) Fallback terakhir
     const d = new Date(s);
     if (!isNaN(d)) return formatHHMMFromDate(d);
   }
@@ -92,7 +120,7 @@ function renderList(rows) {
 
     const passenger = (it.namaPemilik || "-").toString().toUpperCase();
     const flight    = (it.flight || "-").toString().toUpperCase();
-    const tsRaw     = it.timestamp || null;
+    const tsRaw     = it.timestamp ?? (Array.isArray(it) ? it[0] : null);
 
     const timeRaw = toHHMMFromAny(tsRaw);
 
