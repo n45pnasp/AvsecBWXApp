@@ -39,27 +39,25 @@ function toHHMMFromAny(v) {
     return formatHHMMFromDate(v);
   }
 
+  // String dulu (karena timestamp kamu berupa string "dd/MM/yyyy HH:mm:ss")
   if (typeof v === "string") {
-    const s = v.replace(/\u00A0/g, " ").trim().replace(/\./g, ":");
+    const s = v.replace(/\u00A0/g, " ").trim(); // normalisasi NBSP
 
-    // --- ✅ Tangkap "dd/MM/yyyy HH:mm(:ss)" langsung (Sheets format) ---
-    let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-    if (m) {
-      const [_, D, M, Y, H, Min, S] = m;
-      return `${H.padStart(2, "0")}:${Min.padStart(2, "0")}`;
-    }
+    // 1) Format sheet kamu: dd/MM/yyyy HH:mm(:ss)  -> ambil HH:MM apa adanya (tanpa geser zona)
+    let m = s.match(/^\d{1,2}\/\d{1,2}\/\d{4}\s+(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (m) return `${m[1].padStart(2, "0")}:${m[2].padStart(2, "0")}`;
 
-    // Token waktu umum
+    // 2) Token waktu wajar diawal/di sela spasi -> cegah nyangkut ke MM:SS
     m = s.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
     if (m) return `${m[1].padStart(2, "0")}:${m[2].padStart(2, "0")}`;
 
-    // ISO dengan zona/offset
+    // 3) Ada offset/Z -> biarkan Date yang urus
     if (/[zZ]|[+-]\d{2}:\d{2}(?:\s*\(.+\))?$/.test(s)) {
       const d = new Date(s);
       if (!isNaN(d)) return formatHHMMFromDate(d);
     }
 
-    // ISO tanpa zona
+    // 4) ISO tanpa zona -> treat as UTC
     m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
       const [_, Y, M, D, H, Min, S] = m;
@@ -68,14 +66,14 @@ function toHHMMFromAny(v) {
     }
   }
 
-  // Number serial Sheets atau epoch
+  // Number: serial Sheets / epoch
   if (typeof v === "number") {
     if (v > 1000 && v < 60000) {
       const ms = (v - 25569) * 86400 * 1000;
       return formatHHMMFromDate(new Date(ms));
     }
-    if (v > 1e9 && v < 1e12) return formatHHMMFromDate(new Date(v * 1000));
-    if (v >= 1e12) return formatHHMMFromDate(new Date(v));
+    if (v > 1e9 && v < 1e12)  return formatHHMMFromDate(new Date(v * 1000));
+    if (v >= 1e12)            return formatHHMMFromDate(new Date(v));
   }
 
   return null;
