@@ -41,15 +41,16 @@ function formatHHMMFromDate(d) {
 function toHHMMFromAny(v) {
   if (v == null || v === "") return null;
 
+  if (v instanceof Date && !isNaN(v)) {
+    return formatHHMMFromDate(v);
+  }
+
   if (typeof v === "number") {
-    // Serial Google Sheets (hari sejak 1899-12-30) – treat as UTC
     if (v > 1000 && v < 60000) {
       const ms = (v - 25569) * 86400 * 1000;
       return formatHHMMFromDate(new Date(ms));
     }
-    // Epoch seconds
     if (v > 1e9 && v < 1e12) return formatHHMMFromDate(new Date(v * 1000));
-    // Epoch milliseconds
     if (v >= 1e12) return formatHHMMFromDate(new Date(v));
   }
 
@@ -57,36 +58,20 @@ function toHHMMFromAny(v) {
     const s = v.trim().replace(/\./g, ":");
 
     // Hanya "HH:MM"
-    const hm = s.match(/^(\d{1,2}):(\d{2})$/);
-    if (hm) {
-      const h = String(hm[1]).padStart(2, "0");
-      const m = String(hm[2]).padStart(2, "0");
-      return `${h}:${m}`;
-    }
-
-    // Ada zona/offset
-    if (/[zZ]|[+-]\d{2}:\d{2}$/.test(s)) {
-      const d = new Date(s);
-      if (!isNaN(d)) return formatHHMMFromDate(d);
-    }
-
-    // ISO tanpa zona
-    let m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+    let m = s.match(/^(\d{1,2}):(\d{2})$/);
     if (m) {
-      const [_, Y, M, D, H, Min, S] = m;
-      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S || 0)));
-      return formatHHMMFromDate(d);
+      return `${m[1].padStart(2,"0")}:${m[2].padStart(2,"0")}`;
     }
 
-    // D/M/Y tanpa zona
-    m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    // Format dd/MM/yyyy HH:mm:ss
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
       const [_, D, M, Y, H, Min, S] = m;
-      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S || 0)));
+      const d = new Date(Date.UTC(+Y, +M - 1, +D, +H, +Min, +(S||0)));
       return formatHHMMFromDate(d);
     }
 
-    // fallback
+    // ISO-like atau string lain
     const d = new Date(s);
     if (!isNaN(d)) return formatHHMMFromDate(d);
   }
