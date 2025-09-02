@@ -30,30 +30,19 @@
     </header>
 
     <!-- Panel Tabel -->
-    <section class="panel has-corner-logo">
-      <!-- Logo pojok kanan atas di dalam card/panel -->
-      <img src="icons/logoapindo.png" alt="AP I Logo" class="panel-logo" />
-
+    <section class="panel">
       <div class="table-wrap" role="region" aria-label="Daftar Bagasi Diperiksa">
         <table class="table" role="grid" aria-colcount="4">
-          <!-- Lebar kolom responsif -->
-          <colgroup>
-            <col style="width:14%">   <!-- TIME -->
-            <col style="width:auto">  <!-- NAME -->
-            <col style="width:16%">   <!-- FLIGHT -->
-            <col style="width:28%">   <!-- STATUS -->
-          </colgroup>
-
           <thead>
             <tr>
-              <th id="thTime" scope="col">WAKTU</th>
+              <th id="thTime" scope="col">WAKTU PERIKSA</th>
               <th id="thPassenger" scope="col">NAMA PENUMPANG</th>
               <th id="thFlight" scope="col">PENERBANGAN</th>
               <th id="thStatus" scope="col">STATUS</th>
             </tr>
           </thead>
           <tbody id="sidsBody">
-            <!-- Baris diisi otomatis oleh SIDS.js -->
+            <!-- Diisi otomatis oleh SIDS.js -->
           </tbody>
         </table>
       </div>

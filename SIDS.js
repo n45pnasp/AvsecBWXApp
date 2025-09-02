@@ -4,13 +4,13 @@ const LOOKUP_URL   = "https://rdcheck.avsecbwx2018.workers.dev/";
 const translations = {
   id: {
     title: "PEMERIKSAAN BAGASI TERCATAT",
-    headers: ["WAKTU", "NAMA PENUMPANG", "PENERBANGAN", "STATUS"],
+    headers: ["WAKTU PERIKSA", "NAMA PENUMPANG", "PENERBANGAN", "STATUS"],
     status: "DIPERIKSA HARAP MENGHUBUNGI PETUGAS",
     ticker: "HAVE A NICE FLIGHT - SEE YOU SOON!",
   },
   en: {
     title: "CHECKED BAGGAGE INSPECTION",
-    headers: ["TIME", "PASSENGER NAME", "FLIGHT", "STATUS"],
+    headers: ["INSPECTION TIME", "PASSENGER NAME", "FLIGHT", "STATUS"],
     status: "INSPECTED — PLEASE CONTACT OFFICER",
     ticker: "HAVE A NICE FLIGHT - SEE YOU SOON!",
   },
@@ -20,51 +20,40 @@ let currentLang = "id";
 let currentRows = [];
 
 /* ========= UTIL WAKTU ========= */
-
-/** Format HH:MM dari Date dalam zona Asia/Jakarta (GMT+7) */
 function formatHHMMFromDate(d) {
   if (!(d instanceof Date) || isNaN(d)) return null;
   const parts = new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jakarta",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
+    timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hour12: false,
   }).formatToParts(d);
   const hh = parts.find(p => p.type === "hour")?.value ?? "";
   const mm = parts.find(p => p.type === "minute")?.value ?? "";
   return `${hh}:${mm}`;
 }
 
-/**
- * Parse berbagai bentuk timestamp → "HH:MM" (GMT+7).
- */
+/* robust parser → "HH:MM" */
 function toHHMMFromAny(v) {
   if (v == null || v === "") return null;
 
-  // Date -> HH:MM (WIB)
-  if (v instanceof Date && !isNaN(v)) {
-    return formatHHMMFromDate(v);
-  }
+  if (v instanceof Date && !isNaN(v)) return formatHHMMFromDate(v);
 
-  // String dulu (timestamp umumnya berupa "dd/MM/yyyy HH:mm:ss")
   if (typeof v === "string") {
-    const s = v.replace(/\u00A0/g, " ").trim(); // normalisasi NBSP
+    const s = v.replace(/\u00A0/g, " ").trim().replace(/\./g, ":");
 
-    // 1) Format sheet: dd/MM/yyyy HH:mm(:ss) -> ambil HH:MM apa adanya
+    // 1) dd/MM/yyyy HH:mm(:ss)
     let m = s.match(/^\d{1,2}\/\d{1,2}\/\d{4}\s+(\d{1,2}):(\d{2})(?::\d{2})?$/);
-    if (m) return `${m[1].padStart(2, "0")}:${m[2].padStart(2, "0")}`;
+    if (m) return `${m[1].padStart(2,"0")}:${m[2].padStart(2,"0")}`;
 
-    // 2) Token waktu wajar diawal/di sela spasi -> cegah nyangkut ke MM:SS
+    // 2) token waktu normal
     m = s.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
-    if (m) return `${m[1].padStart(2, "0")}:${m[2].padStart(2, "0")}`;
+    if (m) return `${m[1].padStart(2,"0")}:${m[2].padStart(2,"0")}`;
 
-    // 3) Ada offset/Z -> biarkan Date yang urus
+    // 3) ada offset/Z
     if (/[zZ]|[+-]\d{2}:\d{2}(?:\s*\(.+\))?$/.test(s)) {
       const d = new Date(s);
       if (!isNaN(d)) return formatHHMMFromDate(d);
     }
 
-    // 4) ISO tanpa zona -> treat as UTC
+    // 4) ISO tanpa zona → UTC
     m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
       const [_, Y, M, D, H, Min, S] = m;
@@ -73,14 +62,13 @@ function toHHMMFromAny(v) {
     }
   }
 
-  // Number: serial Sheets / epoch
   if (typeof v === "number") {
     if (v > 1000 && v < 60000) {
-      const ms = (v - 25569) * 86400 * 1000;
+      const ms = (v - 25569) * 86400 * 1000; // serial Sheets
       return formatHHMMFromDate(new Date(ms));
     }
     if (v > 1e9 && v < 1e12) return formatHHMMFromDate(new Date(v * 1000));
-    if (v >= 1e12) return formatHHMMFromDate(new Date(v));
+    if (v >= 1e12)          return formatHHMMFromDate(new Date(v));
   }
 
   return null;
@@ -93,13 +81,12 @@ function renderList(rows) {
   body.innerHTML = "";
 
   rows.forEach(it => {
-    // Data hasil dari SUSPECT_ITEMS
     const aksi = (it.aksi || "").trim();
-    if (aksi) return; // skip kalau sudah ada aksi
+    if (aksi) return; // skip yang sudah ada aksi
 
     const passenger = (it.namaPemilik || "-").toString().toUpperCase();
     const flight    = (it.flight || "-").toString().toUpperCase();
-    const tsRaw     = it.timestamp ?? (Array.isArray(it) ? it[0] : null);
+    const tsRaw     = it.timestamp || null;
 
     const timeRaw = toHHMMFromAny(tsRaw);
 
@@ -124,9 +111,7 @@ async function loadSuspectList() {
       currentRows = j.rows;
       renderList(currentRows);
     }
-  } catch (err) {
-    console.error(err);
-  }
+  } catch (err) { console.error(err); }
 }
 
 /* ========= UI TEXT ========= */
@@ -144,9 +129,7 @@ function applyTranslations() {
     document.getElementById("thFlight"),
     document.getElementById("thStatus"),
   ];
-  headCells.forEach((el, idx) => {
-    if (el) el.textContent = t.headers[idx];
-  });
+  headCells.forEach((el, idx) => { if (el) el.textContent = t.headers[idx]; });
 
   const tick = document.getElementById("tickerText");
   if (tick) tick.textContent = t.ticker;
@@ -175,8 +158,8 @@ function updateClock() {
 document.addEventListener("DOMContentLoaded", () => {
   applyTranslations();
   loadSuspectList();
-  setInterval(loadSuspectList, 30000); // refresh 30s
-  setInterval(toggleLanguage, 10000);  // ganti bahasa 10s
+  setInterval(loadSuspectList, 30000);
+  setInterval(toggleLanguage, 10000);
   updateClock();
   setInterval(updateClock, 1000);
 });
