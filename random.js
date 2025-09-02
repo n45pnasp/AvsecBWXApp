@@ -1,4 +1,4 @@
-// random.js — FINAL (lookup Indikasi Suspect fix)
+// random.js — FINAL (Safari/iOS → ZXing; lainnya → BarcodeDetector/jsQR, sinkron code.gs + aksi suspect)
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
@@ -26,7 +26,7 @@ const isiBarangInp=$("#isiBarang");
 const fotoBtn=$("#fotoBtn"),fotoInput=$("#fotoInput"),fotoPreview=$("#fotoPreview");
 
 // SUSPECT HBSCP
-const bagasiCard=$("#bagasiCard"),bagasiListCard=$("#bagasiListCard"),bagasiToggle=$("#bagasiToggle"),bagasiContent=$("#bagasiContent");
+const bagasiCard=$("#bagasiCard"),bagasiListCard=$("#bagasiListCard"),bagasiToggle=$("#bagasiToggle");
 const scanBagBtn=$("#scanBagBtn");
 const bagNoEl=$("#bagNo"),bagNamaEl=$("#bagNama"),bagFlightBagEl=$("#bagFlight"),
       bagDestEl=$("#bagDest"),bagDateEl=$("#bagDate");
@@ -35,21 +35,17 @@ const bagFotoLayarBtn=$("#bagFotoLayarBtn"),bagFotoLayarInput=$("#bagFotoLayarIn
 const bagFotoBarangBtn=$("#bagFotoBarangBtn"),bagFotoBarangInput=$("#bagFotoBarangInput"),
       bagFotoBarangPreview=$("#bagFotoBarangPreview");
 const bagSubmitBtn=$("#bagSubmitBtn");
-const bagSubmitAksiBtn=$("#bagSubmitAksiBtn"); // tombol submit Aksi (tambahkan di HTML)
+const bagSubmitAksiBtn=$("#bagSubmitAksiBtn");
 const bagasiList=$("#bagasiList");
 const bagIndikasiInp=$("#bagIndikasi");
 bagasiToggle?.addEventListener("click",()=>{
-    bagasiCard?.classList.toggle("collapsed");
-    const exp=!bagasiCard.classList.contains("collapsed");
-    bagasiToggle.setAttribute("aria-expanded",exp);
-    const chev=bagasiToggle.querySelector(".chevron");
-    if(chev) chev.textContent=exp?"▲":"▼";
-    if(exp){
-      hbsCardsVisible=false;
-      scanCard?.classList.add("hidden");
-      barangCard?.classList.add("hidden");
-    }
-  });
+  bagasiCard?.classList.toggle("collapsed");
+  const exp=!bagasiCard.classList.contains("collapsed");
+  bagasiToggle.setAttribute("aria-expanded",exp);
+  const chev=bagasiToggle.querySelector(".chevron");
+  if(chev) chev.textContent=exp?"▲":"▼";
+  if(exp){ hbsCardsVisible=false; scanCard?.classList.add("hidden"); barangCard?.classList.add("hidden"); }
+});
 
 document.addEventListener("copy",e=>e.preventDefault());
 
@@ -69,7 +65,7 @@ onAuthStateChanged(auth,(u)=>{
   if(petugasInp) petugasInp.value=name;
 });
 
-/* ===== OVERLAY ===== */
+/* ===== OVERLAY & ALERT ===== */
 ovClose?.addEventListener("click",()=>overlay?.classList.add("hidden"));
 function showOverlay(state,title="",desc=""){
   const isSpin = (state === "spinner" || state === "loading");
@@ -78,20 +74,14 @@ function showOverlay(state,title="",desc=""){
   if(ovTitle) ovTitle.textContent = title;
   if(ovDesc) ovDesc.textContent = desc;
   ovClose?.classList.toggle("hidden", isSpin);
-  if(!isSpin){
-    setTimeout(()=>overlay?.classList.add("hidden"), state==="stop"?3500:1500);
-  }
+  if(!isSpin){ setTimeout(()=>overlay?.classList.add("hidden"), state==="stop"?3500:1500); }
 }
-
-// Modal sederhana pengganti alert() bawaan browser
-function showAlert(msg, title="Perhatian"){
-  showOverlay("stop", title, msg);
-}
+function showAlert(msg, title="Perhatian"){ showOverlay("stop", title, msg); }
 
 /* ===== STATE & SUPERVISOR ===== */
 let mode="PSCP";
 let hbsCardsVisible=false;
-let selectedSuspect=null; // { rowItems, bagNo }
+let selectedSuspect=null; // { rowItems, bagNo, flight, expectedName }
 const supervisors={PSCP:"",HBSCP:"",CARGO:""};
 onValue(ref(db,"roster/spvCabin"),s=>{supervisors.PSCP=s.val()||"";if(mode==="PSCP")setSupervisor();});
 onValue(ref(db,"roster/spvHbs"),  s=>{supervisors.HBSCP=s.val()||"";if(mode==="HBSCP")setSupervisor();});
@@ -146,7 +136,6 @@ bagFotoBarangInput?.addEventListener("change",async()=>{
     else bagFotoBarangDataUrl=d;
   }catch{ resetBagFotoBarang(); }
 });
-
 function resetBagasiCard(){
   if(bagNoEl) bagNoEl.textContent="-";
   if(bagNamaEl) bagNamaEl.textContent="-";
@@ -160,11 +149,7 @@ function resetBagasiCard(){
 /* ===== SUSPECT LIST (read via GET) ===== */
 function formatWib(timeStr){
   const m=String(timeStr||"").match(/(\d{1,2}):(\d{2})/);
-  if(m){
-    const h=m[1].padStart(2,"0");
-    const mm=m[2].padStart(2,"0");
-    return `${h}:${mm} WIB`;
-  }
+  if(m){ return `${m[1].padStart(2,"0")}:${m[2].padStart(2,"0")} WIB`; }
   return String(timeStr||"");
 }
 const flightTimes={};
@@ -183,67 +168,44 @@ async function loadFlightTimes(){
     }
   }catch(err){ console.error(err); }
 }
-
 function isDirectUrl(s){ return /^(?:https?:|data:|blob:)/i.test(String(s||"")); }
 function looksLikeFileId(s){ return /^[A-Za-z0-9_-]{20,}$/.test(String(s||"")); }
-function stripImageFormula(s){
-  const m=String(s||"").match(/^=?IMAGE\(["'](.+?)["']\)$/i);
-  return m?m[1]:s;
-}
-function normalizeDriveUrl(u){
-  const m=String(u||"").match(/(?:id=|\/d\/)([A-Za-z0-9_-]{20,})/);
-  return m?`https://lh3.googleusercontent.com/d/${m[1]}`:u;
-}
-
+function stripImageFormula(s){ const m=String(s||"").match(/^=?IMAGE\(["'](.+?)["']\)$/i); return m?m[1]:s; }
+function normalizeDriveUrl(u){ const m=String(u||"").match(/(?:id=|\/d\/)([A-Za-z0-9_-]{20,})/); return m?`https://lh3.googleusercontent.com/d/${m[1]}`:u; }
 function extractIndikasi(norm){
-  const keys=Object.keys(norm||{});
-  let key=keys.find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")));
-  if(!key) key="indikasi";
-  return String(norm[key]||"").trim();
+  const keys=Object.keys(norm||{}); let key=keys.find(k=>k.includes("indikasi")&&(k.includes("suspect")||k.includes("suspek")));
+  if(!key) key="indikasi"; return String(norm[key]||"").trim();
 }
 
 async function openPhoto(suspect, barang, indikasi="", bagNo="", rowItems=""){
   if(!imgOverlay) return;
-
   showOverlay("loading","Memuat foto…");
   imgOverlay.classList.remove("hidden");
 
-  // ---- Ambil indikasi suspect dari sheet kalau belum ada ----
   if(!indikasi && (bagNo || rowItems)){
     try{
       const url=`${LOOKUP_URL}?action=list_suspect&token=${encodeURIComponent(SHARED_TOKEN)}&limit=200`;
       const r=await fetch(url,{method:"GET",mode:"cors"});
       const j=await r.json().catch(()=>({}));
       if(j?.ok && Array.isArray(j.rows) && j.rows.length){
-        const bUpper=bagNo.toUpperCase();
-        const ri=Number(rowItems||0);
+        const bUpper=bagNo.toUpperCase(), ri=Number(rowItems||0);
         let found=null;
         for(const raw of j.rows){
-          const norm={};
-          for(const k in raw){ const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase(); norm[nk]=raw[k]; }
+          const norm={}; for(const k in raw){ norm[k.replace(/[^a-z0-9]/gi,"").toLowerCase()]=raw[k]; }
           const bagMatch=String(norm.bagno||norm.nomorbagasi||norm.nobagasi||"").trim().toUpperCase();
           const rowMatch=Number(raw.rowItems||raw.rowitems||norm.rowitems||0);
           if((ri && rowMatch===ri) || (bUpper && bagMatch===bUpper)){ found=norm; break; }
         }
-        if(!found){
-          const first={};
-          for(const k in j.rows[0]){const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();first[nk]=j.rows[0][k];}
-          found=first;
-        }
+        if(!found){ const first={}; for(const k in j.rows[0]){first[k.replace(/[^a-z0-9]/gi,"").toLowerCase()]=j.rows[0][k];} found=first; }
         indikasi = extractIndikasi(found);
       }
     }catch(err){ console.error(err); }
   }
 
-  const entries=[];
-  if(suspect) entries.push({img:suspectImg,val:suspect,label:"suspect"});
-  if(barang)  entries.push({img:barangImg,val:barang,label:"barang"});
+  const entries=[]; if(suspect) entries.push({img:suspectImg,val:suspect}); if(barang) entries.push({img:barangImg,val:barang});
   if(!entries.length) return;
 
-  if(indikasiEl){
-    indikasiEl.textContent = `INDIKASI SUSPECT: ${indikasi || '-'}`;
-    indikasiEl.classList.remove("hidden");
-  }
+  if(indikasiEl){ indikasiEl.textContent = `INDIKASI SUSPECT: ${indikasi || '-'}`; indikasiEl.classList.remove("hidden"); }
   if(suspectImg) suspectImg.removeAttribute("src");
   if(barangImg)  barangImg.removeAttribute("src");
 
@@ -254,13 +216,9 @@ async function openPhoto(suspect, barang, indikasi="", bagNo="", rowItems=""){
     if(!img){ done(); return; }
     val=normalizeDriveUrl(stripImageFormula(val));
     let final="";
-    if(isDirectUrl(val)){
-      final=val;
-    }else if(looksLikeFileId(val)){
-      final=`${LOOKUP_URL}?action=photoraw&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
-    }else{
-      final=`${LOOKUP_URL}?action=get_photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
-    }
+    if(isDirectUrl(val)) final=val;
+    else if(looksLikeFileId(val)) final=`${LOOKUP_URL}?action=photoraw&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
+    else final=`${LOOKUP_URL}?action=get_photo&token=${encodeURIComponent(SHARED_TOKEN)}&id=${encodeURIComponent(val)}`;
     img.onload=()=>{ done(); img.onload=img.onerror=null; };
     img.onerror=()=>{ done(); img.onload=img.onerror=null; showOverlay("err","Gagal memuat foto","Coba lagi"); };
     img.src=final+(final.includes("?")?"&":"?")+"t="+Date.now();
@@ -273,56 +231,31 @@ document.addEventListener("keydown",(e)=>{ if(e.key==="Escape") imgOverlay?.clas
 function renderSuspectList(rows){
   if(!bagasiList) return; bagasiList.innerHTML="";
   rows.forEach(it=>{
-    const norm={};
-    for(const k in it){
-      const nk=k.replace(/[^a-z0-9]/gi,"").toLowerCase();
-      norm[nk]=it[k];
-    }
-    const aksi=(norm.aksi||norm.action||"").trim();
-    if(aksi) return;
-
+    const norm={}; for(const k in it){ norm[k.replace(/[^a-z0-9]/gi,"").toLowerCase()] = it[k]; }
+    const aksi=(norm.aksi||norm.action||"").trim(); if(aksi) return;
     const bagNo  = norm.bagno || norm.nomorbagasi || norm.nobagasi || "-";
     const rowItems = Number(it.rowItems || it.rowitems || 0);
     const flight = norm.flight || "-";
     const dest   = norm.tujuan || "-";
-    const dep    = flightTimes[flight.toUpperCase()] || "-";
+    const dep    = flightTimes[String(flight).toUpperCase()] || "-";
     const sUrl   = norm.fotosuspecturl || norm.fotosuspectid || "";
     const bUrl   = norm.fotobarangurl  || norm.fotobarangid  || "";
-
-    const owner = norm.namapemilik || norm.nama || "";
-
-    // ambil indikasi suspect dari berbagai nama kolom
+    const owner  = norm.namapemilik || norm.nama || "";
     const indikasi = extractIndikasi(norm);
 
     const tr=document.createElement("tr");
-    tr.dataset.suspect=sUrl;
-    tr.dataset.barang=bUrl;
-    tr.dataset.indikasi=indikasi;
-    tr.dataset.bagno=bagNo;
-    tr.dataset.rowitems=String(rowItems);
-    tr.dataset.flight=flight;
-    tr.dataset.nama=owner;
+    tr.dataset.suspect=sUrl; tr.dataset.barang=bUrl; tr.dataset.indikasi=indikasi;
+    tr.dataset.bagno=bagNo; tr.dataset.rowitems=String(rowItems); tr.dataset.flight=flight; tr.dataset.nama=owner;
     tr.title = indikasi ? `Indikasi: ${indikasi}` : "";
     tr.innerHTML=`<td>${bagNo}</td><td>${flight}</td><td>${dest}</td><td>${dep}</td>`;
+
     let timer; let longPress=false;
-    tr.addEventListener("pointerdown",()=>{
-      longPress=false;
-      timer=setTimeout(()=>{ longPress=true; showDeleteModal(tr); },600);
-    });
+    tr.addEventListener("pointerdown",()=>{ longPress=false; timer=setTimeout(()=>{ longPress=true; showDeleteModal(tr); },600); });
     ["pointerup","pointerleave","pointercancel"].forEach(ev=>tr.addEventListener(ev,()=>{ if(timer) clearTimeout(timer); }));
-
-    const selectRow = () => {
-      openPhoto(
-        tr.dataset.suspect,
-        tr.dataset.barang,
-        tr.dataset.indikasi,
-        tr.dataset.bagno,
-        tr.dataset.rowitems
-      );
-    };
-    tr.addEventListener("click",()=>{ if(longPress) return; selectRow(); });
+    tr.addEventListener("click",()=>{ if(longPress) return;
+      openPhoto(tr.dataset.suspect,tr.dataset.barang,tr.dataset.indikasi,tr.dataset.bagno,tr.dataset.rowitems);
+    });
     tr.addEventListener("contextmenu",e=>{ e.preventDefault(); if(timer) clearTimeout(timer); longPress=true; showDeleteModal(tr); });
-
     bagasiList.appendChild(tr);
   });
 }
@@ -341,22 +274,16 @@ async function deleteSuspect(){
     delOverlay?.classList.add("hidden");
     showOverlay("spinner","Menghapus suspect…","" );
     const payload={action:"delete_suspect",token:SHARED_TOKEN,bagNo};
-    console.log("deleteSuspect payload", payload);
     const j=await fetchJSON(PROXY_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),credentials:"omit"});
-    console.log("deleteSuspect response", j);
     if(!j?.ok) throw new Error(j?.error||"Gagal menghapus");
     showOverlay("ok","Data terhapus","");
     loadSuspectList();
-  }catch(err){
-    console.error(err);
-    showOverlay("err","Gagal hapus",err?.message||"Gagal");
-  }
+  }catch(err){ console.error(err); showOverlay("err","Gagal hapus",err?.message||"Gagal"); }
 }
 delConfirm?.addEventListener("click",deleteSuspect);
 
 async function markAksi(){
   if(!deleteTarget) return;
-  // Simpan data dari list untuk dipakai saat submit aksi dan verifikasi boarding pass
   selectedSuspect = {
     rowItems: Number(deleteTarget.dataset.rowitems || 0),
     bagNo: deleteTarget.dataset.bagno || "",
@@ -373,8 +300,7 @@ async function markAksi(){
   if(namaEl) namaEl.textContent = "-";
   bagasiCard?.classList.add("collapsed");
   bagasiToggle?.setAttribute("aria-expanded","false");
-  const chev=bagasiToggle?.querySelector(".chevron");
-  if(chev) chev.textContent="▼";
+  const chev=bagasiToggle?.querySelector(".chevron"); if(chev) chev.textContent="▼";
   updateBarangCard();
 }
 delAction?.addEventListener("click",markAksi);
@@ -388,9 +314,7 @@ async function loadSuspectList(){
     const j = await r.json().catch(()=>({}));
     if (j?.ok && Array.isArray(j.rows)) renderSuspectList(j.rows);
   }catch(err){ console.error(err); }
-  finally{
-    overlay?.classList.add("hidden");
-  }
+  finally{ overlay?.classList.add("hidden"); }
 }
 
 /* ===== UI ===== */
@@ -423,7 +347,7 @@ function updateBarangCard(){
     tindakanField?.classList.remove("hidden");
     tipePiField?.classList.add("hidden");
   }else{
-    barangCard.classList.remove("hidden"); tindakanField?.classList.add("hidden"); tipePiField?.classList.add("hidden");
+    barangCard?.classList.remove("hidden"); tindakanField?.classList.add("hidden"); tipePiField?.classList.add("hidden");
   }
   updateAksiVisibility();
 }
@@ -452,8 +376,7 @@ function setMode(m){
   bagasiListCard?.classList.toggle("hidden", m!=="HBSCP");
   if(m==="HBSCP"){ loadSuspectList(); bagasiCard?.classList.add("collapsed"); hbsCardsVisible=false;
     bagasiToggle?.setAttribute("aria-expanded","false");
-    const chev=bagasiToggle?.querySelector(".chevron");
-    if(chev) chev.textContent="▼"; }
+    const chev=bagasiToggle?.querySelector(".chevron"); if(chev) chev.textContent="▼"; }
 
   if(m==="PSCP"){
     setAksiOptions(["Dibawa","Ditinggal"]);
@@ -480,34 +403,17 @@ btnPSCP?.addEventListener("click",()=>setMode("PSCP"));
 btnHBSCP?.addEventListener("click",()=>setMode("HBSCP"));
 btnCARGO?.addEventListener("click",()=>setMode("CARGO"));
 
-/* ===== SCANNER ===== */
-let activeScanBtn=scanBtn;
-let scanTarget="boarding";
-let scanState={stream:null,video:null,canvas:null,ctx:null,running:false,usingDetector:false,detector:null,jsQRReady:false,overlay:null,closeBtn:null};
-
-function splitFromBack(str,maxSplits){
-  const parts=[]; let r=str;
-  for(let i=0;i<maxSplits;i++){ const j=r.lastIndexOf(' '); if(j===-1) break; parts.unshift(r.slice(j+1)); r=r.slice(0,j); }
-  parts.unshift(r); return parts;
-}
+/* ===== PARSER ===== */
+function splitFromBack(str,maxSplits){ const parts=[]; let r=str; for(let i=0;i<maxSplits;i++){ const j=r.lastIndexOf(' '); if(j===-1) break; parts.unshift(r.slice(j+1)); r=r.slice(0,j);} parts.unshift(r); return parts; }
 function parseBoardingPass(data){
   if(!data||typeof data!=="string"||!data.startsWith("M1")) return null;
   const parts=splitFromBack(data,5); if(parts.length<6) return null;
-  const namaRaw=parts[0].substring(2);
-  const slash=namaRaw.indexOf('/');
+  const namaRaw=parts[0].substring(2); const slash=namaRaw.indexOf('/');
   const fullName=(slash===-1)?namaRaw.replace(/_/g,' ').trim():(namaRaw.substring(slash+1)+' '+namaRaw.substring(0,slash)).replace(/_/g,' ').trim();
   const airlineCode=parts[2].slice(-2); const flightNumber=parts[3];
   return { fullName, flight:`${airlineCode}${flightNumber}`.replace(/\s+/g,'') };
 }
-
-/* === BAG TAG BSM PARSER === */
-function normalizeSlashName(s){
-  s=String(s||"").trim().replace(/\s+/g," ");
-  const [last="",first=""]=s.split("/");
-  const f=first.replace(/_/g," ").trim();
-  const l=last.replace(/_/g," ").trim();
-  return (f+" "+l).trim();
-}
+function normalizeSlashName(s){ s=String(s||"").trim().replace(/\s+/g," "); const [last="",first=""]=s.split("/"); return ((first.replace(/_/g," ").trim())+" "+(last.replace(/_/g," ").trim())).trim(); }
 function parseBagTagBSM(str){
   const p=String(str||"").split("|");
   const tagNo=(p[0]||"").trim().replace(/\D/g,"");
@@ -520,6 +426,7 @@ function parseBagTagBSM(str){
   return { tagNo, paxName, flight, dest, date };
 }
 
+/* ===== RECEIVE SCAN ===== */
 function receiveBarcode(payload){
   try{
     let data=payload;
@@ -532,16 +439,12 @@ function receiveBarcode(payload){
       if(mode!=="HBSCP" || !selectedSuspect?.expectedName){
         if(flightEl) flightEl.textContent = parsed.flight.toUpperCase();
       }
-      scanResult?.classList.remove("hidden");
-      manualForm?.classList.add("hidden");
+      scanResult?.classList.remove("hidden"); manualForm?.classList.add("hidden");
       if(mode==="HBSCP" && selectedSuspect?.expectedName){
         const expected = selectedSuspect.expectedName;
         const words = expected.split(/\s+/).filter(Boolean);
         const match = words.some(w=>scannedName.includes(w));
-        if(!match){
-          showAlert("Boarding pass salah, harap scan ulang");
-          if(namaEl) namaEl.textContent = "-";
-        }
+        if(!match){ showAlert("Boarding pass salah, harap scan ulang"); if(namaEl) namaEl.textContent = "-"; }
       }
     }
   }catch(e){ console.error(e); }
@@ -557,51 +460,139 @@ function receiveBagBarcode(data){
     if(bagDateEl)               bagDateEl.textContent = date || new Date().toLocaleDateString("id-ID");
   }catch(e){ console.error(e); }
 }
-window.receiveBarcode=receiveBarcode;
-window.receiveBagBarcode=receiveBagBarcode;
+window.receiveBarcode=receiveBarcode; window.receiveBagBarcode=receiveBagBarcode;
 
-function setWaitingUI(on){ if(!activeScanBtn) return; activeScanBtn.classList.toggle("is-waiting",!!on); activeScanBtn.disabled=!!on; activeScanBtn.setAttribute("aria-busy",on?"true":"false"); }
-injectScanStyles();
-scanBtn?.addEventListener("click",async()=>{ activeScanBtn=scanBtn; scanTarget="boarding"; if(scanState.running){await stopScan();return;} await startScan(); });
-scanBagBtn?.addEventListener("click",async()=>{ activeScanBtn=scanBagBtn; scanTarget="bagasi";  if(scanState.running){await stopScan();return;} await startScan(); });
-
-async function startScan(){
-  try{
-    if(scanTarget==='boarding'){ manualForm?.classList.add("hidden"); scanResult?.classList.remove("hidden"); }
-    setWaitingUI(true); ensureVideo(); ensureOverlay();
-    if(!scanState.video) throw new Error("Video element tidak tersedia");
-    document.body.classList.add("scan-active");
-    const constraints={ video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720},advanced:[{focusMode:"continuous"}]}, audio:false };
-    if(!navigator.mediaDevices?.getUserMedia) throw new Error("Kamera tidak didukung");
-    const stream=await navigator.mediaDevices.getUserMedia(constraints);
-    scanState.stream=stream; const vid=scanState.video; if(!vid) throw new Error("Video element hilang");
-    vid.srcObject=stream; await vid.play();
-
-    scanState.usingDetector=false; scanState.detector=null;
-    if("BarcodeDetector" in window){
-      try{
-        const supported=await window.BarcodeDetector.getSupportedFormats();
-        const wanted=['pdf417','aztec','qr_code','data_matrix'];
-        const formats=wanted.filter(f=>supported.includes(f));
-        if(formats.length){ scanState.detector=new window.BarcodeDetector({formats}); scanState.usingDetector=true; }
-      }catch{}
-    }
-    scanState.running=true;
-    if(scanState.usingDetector) detectLoop_BarcodeDetector();
-    else { await ensureJsQR(); prepareCanvas(); detectLoop_jsQR(); }
-  }catch(err){
-    console.error(err); setWaitingUI(false);
-    showOverlay('err','Tidak bisa mengakses kamera', err?.message||String(err));
-    await stopScan();
-  }
+/* ===== FETCH HELPERS & SUBMIT ===== */
+function setWaitingUI(on){ if(!scanBtn && !scanBagBtn) return; const btn=activeScanBtn||scanBtn; if(!btn) return; btn.classList.toggle("is-waiting",!!on); btn.disabled=!!on; btn.setAttribute("aria-busy",on?"true":"false"); }
+async function fetchJSON(u,opts={},timeoutMs=15000){
+  const c=new AbortController(); const t=setTimeout(()=>c.abort(),timeoutMs);
+  try{ const r=await fetch(u,{...opts,signal:c.signal,mode:"cors"}); const tx=await r.text(); let d={}; try{ d=tx?JSON.parse(tx):{}; }catch{ d={raw:tx}; } if(!r.ok) throw new Error(d?.error||`HTTP ${r.status}`); return d; }
+  finally{ clearTimeout(t); }
 }
-async function stopScan(){
-  scanState.running=false;
-  if(scanState.stream){ for(const t of scanState.stream.getTracks()){ try{t.stop();}catch{} } }
-  scanState.stream=null;
-  if(scanState.video){ scanState.video.srcObject=null; scanState.video.remove(); scanState.video=null; }
-  if(scanState.canvas){ scanState.canvas.remove(); scanState.canvas=null; scanState.ctx=null; }
-  document.body.classList.remove("scan-active"); setWaitingUI(false);
+function getNameAndFlight(){
+  if(mode==="CARGO") return { nama:val(manualNama).toUpperCase(), flight:val(manualFlight).toUpperCase() };
+  const usingManual=!scanResult||scanResult.classList.contains("hidden");
+  return { nama:(usingManual?val(manualNama):txt(namaEl)).toUpperCase(), flight:(usingManual?val(manualFlight):txt(flightEl)).toUpperCase() };
+}
+async function submitRandom(){
+  try{
+    submitBtn.disabled=true; submitBtn.setAttribute("aria-busy","true");
+    showOverlay("spinner","Mengirim data…","");
+    const { nama, flight } = getNameAndFlight();
+    const jenisBarang=val(isiBarangInp).toUpperCase();
+    const tindakan=val(tindakanSel).toLowerCase();
+    const tipePi=val(tipePiSel).toUpperCase();
+    const petugas=val(petugasInp).toUpperCase();
+    const supervisor=val(supervisorInp).toUpperCase();
+    const metode=val(metodeSel).toUpperCase();
+    const objek=val(objekSel).toUpperCase();
+
+    if(!nama) throw new Error("Nama tidak boleh kosong.");
+    if(!flight) throw new Error("Flight tidak boleh kosong.");
+    if(mode==="PSCP" && val(objekSel)==="") throw new Error("Pilih objek pemeriksaan.");
+    if((mode==="PSCP" && val(objekSel)==="barang") || mode!=="PSCP"){ if(!jenisBarang) throw new Error("Isi/Jenis barang belum diisi."); }
+    if(!metode) throw new Error("Metode pemeriksaan belum dipilih.");
+
+    const payload={ action:"submit", token:SHARED_TOKEN, target:mode, data:{
+      nama, flight, ...(mode==="PSCP"?{objekPemeriksaan:objek||""}:{}) , jenisBarang, petugas, metode, supervisor, ...(fotoDataUrl?{fotoDataUrl}:{} )
+    }};
+    if((mode==="PSCP"||mode==="HBSCP") && tindakan==="ditinggal"){
+      payload.data.tindakanBarang="ditinggal"; payload.data.namaBarang=jenisBarang; payload.data.jenisDGDA=tipePi;
+      if(fotoDataUrl) payload.data.fotoPiDataUrl=fotoDataUrl;
+    }else if(mode!=="CARGO"){ payload.data.tindakanBarang=tindakan; }
+
+    const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
+    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan");
+    showOverlay("ok","Data tersimpan", `Sheet ${j.targetSheet} (row ${j.targetRow})${j.piListWritten?` + PI_LIST (row ${j.piListRow})`:""}`);
+
+    // Optional: set aksi pada suspect terpilih (HBSCP)
+    if (mode==="HBSCP" && selectedSuspect?.bagNo && val(tindakanSel)) {
+      try{
+        await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, credentials:"omit",
+          body: JSON.stringify({ action:"set_suspect_action", token:SHARED_TOKEN, bagNo:selectedSuspect.bagNo, rowItems:Number(selectedSuspect.rowItems||0), aksi: val(tindakanSel).toUpperCase() })
+        });
+        await loadSuspectList(); selectedSuspect=null;
+      }catch(e){ console.error("Gagal set aksi suspect:", e); }
+    }
+
+    if(mode==="CARGO"){ manualNama.value=""; manualFlight.value=""; }
+    else { if(namaEl) namaEl.textContent="-"; if(flightEl) flightEl.textContent="-"; }
+    isiBarangInp&&(isiBarangInp.value=""); tindakanSel&&(tindakanSel.value=""); tipePiSel&&(tipePiSel.value="");
+    if(mode==="PSCP" && objekSel) objekSel.value="";
+    if(mode==="HBSCP"){ hbsCardsVisible=false; scanCard?.classList.add("hidden"); barangCard?.classList.add("hidden"); await loadSuspectList(); }
+    resetFoto(); updateBarangCard();
+
+  }catch(err){ console.error(err); showOverlay("err","Gagal", err?.message||String(err)); }
+  finally{ submitBtn.disabled=false; submitBtn.setAttribute("aria-busy","false"); }
+}
+submitBtn?.addEventListener("click",(e)=>{ e.preventDefault(); if(!submitBtn.disabled) submitRandom(); });
+
+async function submitSuspectHBSCP(){
+  try{
+    if(mode!=="HBSCP"){ showAlert("Menu SUSPECT hanya di HBSCP."); return; }
+    const nomorBagasi=(bagNoEl?.textContent||"").trim().toUpperCase();
+    const namaPemilik=(bagNamaEl?.textContent||"").trim().toUpperCase();
+    const flight=(bagFlightBagEl?.textContent||"").trim().toUpperCase();
+    const tujuan=(bagDestEl?.textContent||"").trim().toUpperCase();
+    const indikasi=(bagIndikasiInp?.value||"").trim().toUpperCase();
+    const petugas=val(petugasInp).toUpperCase();
+    if(!nomorBagasi||!namaPemilik||!flight||!tujuan) throw new Error("Data suspect belum lengkap.");
+    showOverlay("spinner","Menyimpan suspect…","");
+    const payload={ action:"submit", token:SHARED_TOKEN, target:"SUSPECT_HBSCP", data:{
+      flight, petugas, nomorBagasi, namaPemilik, tujuan, indikasi,
+      ...(bagFotoSuspectDataUrl?{fotoSuspectDataUrl:bagFotoSuspectDataUrl}:{ }),
+      ...(bagFotoBarangDataUrl ?{fotoBarangDataUrl :bagFotoBarangDataUrl }:{ })
+    }};
+    const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
+    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan suspect");
+    showOverlay("ok","Suspect tersimpan", `Row ${j.targetRow||"-"}`);
+    hbsCardsVisible=false; scanCard?.classList.add("hidden"); barangCard?.classList.add("hidden");
+    resetBagasiCard(); loadSuspectList();
+  }catch(err){ console.error(err); showOverlay("err","Gagal simpan suspect", err?.message||String(err)); }
+}
+bagSubmitBtn?.addEventListener("click",(e)=>{ e.preventDefault(); submitSuspectHBSCP(); });
+
+async function submitAksiSuspect(){
+  try{
+    if(mode!=="HBSCP"){ showAlert("Menu SUSPECT hanya di HBSCP."); return; }
+    if(!selectedSuspect?.bagNo){ showAlert("Pilih item suspect dari daftar terlebih dahulu."); return; }
+    const aksi = (val(tindakanSel) || "").trim(); if(!aksi){ showAlert("Pilih tindakan/aksi terlebih dahulu."); return; }
+    showOverlay("spinner","Menyimpan aksi…","");
+    const payload = { action:"set_suspect_action", token:SHARED_TOKEN, bagNo:selectedSuspect.bagNo, rowItems:Number(selectedSuspect.rowItems||0), aksi };
+    const j = await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload), credentials:"omit" });
+    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan aksi");
+    showOverlay("ok","Aksi tersimpan","");
+    selectedSuspect=null; tindakanSel&&(tindakanSel.value=""); if(namaEl) namaEl.textContent="-"; if(flightEl) flightEl.textContent="-";
+    hbsCardsVisible=false; scanCard?.classList.add("hidden"); barangCard?.classList.add("hidden"); updateBarangCard(); await loadSuspectList();
+  }catch(err){ console.error(err); showOverlay("err","Gagal simpan aksi", err?.message||"Gagal"); }
+}
+bagSubmitAksiBtn?.addEventListener("click",(e)=>{ e.preventDefault(); submitAksiSuspect(); });
+
+/* ===== SCANNER (FINAL: Safari/iOS → ZXing; lainnya → BarcodeDetector/jsQR) ===== */
+let activeScanBtn=scanBtn;
+let scanTarget="boarding";
+let scanState={stream:null,video:null,canvas:null,ctx:null,running:false,usingDetector:false,detector:null,jsQRReady:false,overlay:null,closeBtn:null};
+
+function isSafariLike(){
+  const ua = navigator.userAgent || "";
+  const isIOS = /iP(hone|ad|od)/i.test(ua);
+  const isSafari = /Safari/i.test(ua) && !/(Chrom(e|ium)|Edg|OPR)/i.test(ua);
+  const isWebKit = /AppleWebKit/i.test(ua) && isIOS;
+  return isIOS || isSafari || isWebKit;
+}
+function neededFormatsFor(target){ return (target==="boarding"||target==="bagasi")?["pdf417"]:["qr_code"]; }
+
+let zxingReady=false, zxingReader=null;
+async function ensureZXing(){
+  if (zxingReady) return;
+  await new Promise((res, rej)=>{ const s=document.createElement("script"); s.src="https://unpkg.com/@zxing/library@0.20.0"; s.onload=res; s.onerror=()=>rej(new Error("Gagal load ZXing")); document.head.appendChild(s); });
+  zxingReader = new ZXing.BrowserMultiFormatReader();
+  zxingReady = true;
+}
+async function ensureJsQR(){
+  if (scanState.jsQRReady) return;
+  await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; s.onload=res; s.onerror=()=>rej(new Error("Gagal memuat jsQR")); document.head.appendChild(s); });
+  scanState.jsQRReady=true;
 }
 function ensureVideo(){ if(scanState.video) return; const v=document.createElement("video"); v.setAttribute("playsinline",""); v.muted=true; v.autoplay=true; v.id="scan-video"; document.body.appendChild(v); scanState.video=v; }
 function ensureOverlay(){
@@ -616,14 +607,71 @@ function ensureOverlay(){
   });
 }
 function prepareCanvas(){ if(scanState.canvas) return; const c=document.createElement("canvas"); c.id="scan-canvas"; c.width=640; c.height=480; document.body.appendChild(c); scanState.canvas=c; scanState.ctx=c.getContext("2d",{willReadFrequently:true}); }
-async function ensureJsQR(){ if(scanState.jsQRReady) return; await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; s.onload=res; s.onerror=()=>rej(new Error("Gagal memuat jsQR")); document.head.appendChild(s); }); scanState.jsQRReady=true; }
+
+scanBtn?.addEventListener("click",async()=>{ activeScanBtn=scanBtn; scanTarget="boarding"; if(scanState.running){await stopScan();return;} await startScan(); });
+scanBagBtn?.addEventListener("click",async()=>{ activeScanBtn=scanBagBtn; scanTarget="bagasi";  if(scanState.running){await stopScan();return;} await startScan(); });
+
+async function startScan(){
+  try{
+    if(scanTarget==='boarding'){ manualForm?.classList.add("hidden"); scanResult?.classList.remove("hidden"); }
+    setWaitingUI(true); ensureVideo(); ensureOverlay();
+    if(!scanState.video) throw new Error("Video element tidak tersedia");
+    document.body.classList.add("scan-active");
+    const constraints={ video:{ facingMode:{ideal:"environment"}, width:{ideal:1280}, height:{ideal:720} }, audio:false };
+    if(!navigator.mediaDevices?.getUserMedia) throw new Error("Kamera tidak didukung");
+    const stream=await navigator.mediaDevices.getUserMedia(constraints);
+    scanState.stream=stream; const vid=scanState.video; if(!vid) throw new Error("Video element hilang");
+    vid.srcObject=stream; await vid.play();
+
+    const needed = neededFormatsFor(scanTarget);
+
+    if (isSafariLike()) {           // Safari/iOS → ZXing
+      await ensureZXing(); scanState.running = true; detectLoop_ZXing(); return;
+    }
+
+    // Chromium/Firefox desktop & Android
+    scanState.usingDetector=false; scanState.detector=null;
+    if ("BarcodeDetector" in window) {
+      try{
+        const supported = await window.BarcodeDetector.getSupportedFormats();
+        const ok = needed.every(fmt => supported.includes(fmt));
+        if (ok) { scanState.detector = new window.BarcodeDetector({ formats: needed }); scanState.usingDetector = true; }
+      }catch{}
+    }
+
+    scanState.running = true;
+    if (scanState.usingDetector){ detectLoop_BarcodeDetector(); }
+    else {
+      if (needed.includes("pdf417")){ await ensureZXing(); detectLoop_ZXing(); }
+      else { await ensureJsQR(); prepareCanvas(); detectLoop_jsQR(); }
+    }
+  }catch(err){
+    console.error(err); setWaitingUI(false);
+    showOverlay('err','Tidak bisa mengakses kamera', err?.message||String(err));
+    await stopScan();
+  }
+}
+async function stopScan(){
+  scanState.running=false;
+  if(scanState.stream){ for(const t of scanState.stream.getTracks()){ try{t.stop();}catch{} } }
+  scanState.stream=null;
+  if(scanState.video){ scanState.video.srcObject=null; scanState.video.remove(); scanState.video=null; }
+  if(scanState.canvas){ scanState.canvas.remove(); scanState.canvas=null; scanState.ctx=null; }
+  document.body.classList.remove("scan-active"); setWaitingUI(false);
+}
 function detectLoop_BarcodeDetector(){
   const loop=async()=>{ if(!scanState.running||!scanState.video) return;
     try{
       const codes=await scanState.detector.detect(scanState.video);
       if(codes?.length){ const v=(codes[0].rawValue||'').trim(); if(v){ await stopScan(); (scanTarget==='bagasi'?receiveBagBarcode:receiveBarcode)(v); return; } }
     }catch(e){
-      if(!scanState.canvas){ try{ await ensureJsQR(); prepareCanvas(); scanState.usingDetector=false; detectLoop_jsQR(); return; }catch{} }
+      if(scanState.running){
+        const needed = neededFormatsFor(scanTarget);
+        try{
+          if (needed.includes("pdf417")){ await ensureZXing(); detectLoop_ZXing(); return; }
+          else { await ensureJsQR(); prepareCanvas(); detectLoop_jsQR(); return; }
+        }catch(_){}
+      }
     }
     if(scanState.running) requestAnimationFrame(loop);
   };
@@ -640,6 +688,18 @@ function detectLoop_jsQR(){
   };
   requestAnimationFrame(loop);
 }
+function detectLoop_ZXing(){
+  if(!zxingReader || !scanState.video) return;
+  zxingReader.decodeFromVideoDevice(undefined, scanState.video, (result, err) => {
+    if (!scanState.running) return;
+    if (result && result.getText) {
+      const text = (result.getText() || "").trim();
+      if (text) stopScan().then(()=> (scanTarget==='bagasi' ? receiveBagBarcode(text) : receiveBarcode(text)));
+    }
+  });
+}
+
+/* ===== SCAN STYLES ===== */
 function injectScanStyles(){
   if(document.getElementById("scan-style")) return;
   const css=`.is-waiting{opacity:.7;pointer-events:none}
@@ -657,198 +717,7 @@ function injectScanStyles(){
   .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px}`;
   const st=document.createElement("style"); st.id="scan-style"; st.textContent=css; document.head.appendChild(st);
 }
+injectScanStyles();
 
-/* =========================================================
-   SUBMIT LOGIC (selaras code.gs terbaru)
-   ========================================================= */
-function getNameAndFlight(){
-  if(mode==="CARGO") return { nama:val(manualNama).toUpperCase(), flight:val(manualFlight).toUpperCase() };
-  const usingManual=!scanResult||scanResult.classList.contains("hidden");
-  return { nama:(usingManual?val(manualNama):txt(namaEl)).toUpperCase(), flight:(usingManual?val(manualFlight):txt(flightEl)).toUpperCase() };
-}
-async function fetchJSON(u,opts={},timeoutMs=15000){
-  const c=new AbortController(); const t=setTimeout(()=>c.abort(),timeoutMs);
-  try{
-    const r=await fetch(u,{...opts,signal:c.signal,mode:"cors"}); const tx=await r.text();
-    let d={}; try{ d=tx?JSON.parse(tx):{}; }catch{ d={raw:tx}; }
-    if(!r.ok) throw new Error(d?.error||`HTTP ${r.status}`); return d;
-  }finally{ clearTimeout(t); }
-}
-
-async function submitRandom(){
-  try{
-    submitBtn.disabled=true; submitBtn.setAttribute("aria-busy","true");
-    showOverlay("spinner","Mengirim data…","");
-
-    const { nama, flight } = getNameAndFlight();
-    const jenisBarang=val(isiBarangInp).toUpperCase();
-    const tindakan=val(tindakanSel).toLowerCase();   // dipakai untuk PI + Aksi
-    const tipePi=val(tipePiSel).toUpperCase();
-    const petugas=val(petugasInp).toUpperCase();
-    const supervisor=val(supervisorInp).toUpperCase();
-    const metode=val(metodeSel).toUpperCase();
-    const objek=val(objekSel).toUpperCase();
-
-    if(!nama) throw new Error("Nama tidak boleh kosong.");
-    if(!flight) throw new Error("Flight tidak boleh kosong.");
-    if(mode==="PSCP" && val(objekSel)==="") throw new Error("Pilih objek pemeriksaan.");
-    if((mode==="PSCP" && val(objekSel)==="barang") || mode!=="PSCP"){
-      if(!jenisBarang) throw new Error("Isi/Jenis barang belum diisi.");
-    }
-    if(!metode) throw new Error("Metode pemeriksaan belum dipilih.");
-
-    const payload={ action:"submit", token:SHARED_TOKEN, target:mode, data:{
-      nama, flight,
-      ...(mode==="PSCP"?{objekPemeriksaan:objek||""}:{}),
-      jenisBarang, petugas, metode, supervisor,
-      ...(fotoDataUrl?{fotoDataUrl}:{} )
-    }};
-
-    if((mode==="PSCP"||mode==="HBSCP") && tindakan==="ditinggal"){
-      payload.data.tindakanBarang="ditinggal";
-      payload.data.namaBarang=jenisBarang;
-      payload.data.jenisDGDA=tipePi;
-      if(fotoDataUrl) payload.data.fotoPiDataUrl=fotoDataUrl;
-    }else if(mode!=="CARGO"){
-      payload.data.tindakanBarang=tindakan;
-    }
-
-    // 1) SIMPAN DATA UTAMA
-    const j=await fetchJSON(PROXY_URL,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify(payload),
-      credentials:"omit"
-    });
-    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan");
-    showOverlay("ok","Data tersimpan",
-      `Sheet ${j.targetSheet} (row ${j.targetRow})${j.piListWritten?` + PI_LIST (row ${j.piListRow})`:""}`);
-
-    // 2) OPSIONAL — SET AKSI UNTUK ITEM SUSPECT TERPILIH
-    //    (hanya ketika di HBSCP, user sudah memilih dari daftar -> selectedSuspect,
-    //     dan dropdown tindakan terisi)
-    if (mode==="HBSCP" && selectedSuspect?.bagNo && val(tindakanSel)) {
-      try{
-        await fetchJSON(PROXY_URL,{
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          credentials:"omit",
-          body: JSON.stringify({
-            action:"set_suspect_action",
-            token: SHARED_TOKEN,
-            bagNo: selectedSuspect.bagNo,
-            rowItems: Number(selectedSuspect.rowItems||0),
-            aksi: val(tindakanSel).toUpperCase()
-          })
-        });
-        // refresh list & reset selection
-        await loadSuspectList();
-        selectedSuspect = null;
-      }catch(e){
-        console.error("Gagal set aksi suspect:", e);
-        // tidak memblokir alur utama; hanya log error
-      }
-    }
-
-    // 3) RESET UI
-    if(mode==="CARGO"){ manualNama.value=""; manualFlight.value=""; }
-    else { if(namaEl) namaEl.textContent="-"; if(flightEl) flightEl.textContent="-"; }
-    isiBarangInp && (isiBarangInp.value="");
-    tindakanSel && (tindakanSel.value="");
-    tipePiSel && (tipePiSel.value="");
-    if(mode==="PSCP" && objekSel) objekSel.value="";
-    if(mode==="HBSCP"){
-      hbsCardsVisible=false;
-      scanCard?.classList.add("hidden");
-      barangCard?.classList.add("hidden");
-      await loadSuspectList();
-    }
-    resetFoto(); updateBarangCard();
-
-  }catch(err){
-    console.error(err);
-    showOverlay("err","Gagal", err?.message||String(err));
-  }finally{
-    submitBtn.disabled=false; submitBtn.setAttribute("aria-busy","false");
-  }
-}
-submitBtn?.addEventListener("click",(e)=>{ e.preventDefault(); if(!submitBtn.disabled) submitRandom(); });
-
-/* ---- Submit SUSPECT HBSCP ---- */
-async function submitSuspectHBSCP(){
-  try{
-    if(mode!=="HBSCP"){ showAlert("Menu SUSPECT hanya di HBSCP."); return; }
-    const nomorBagasi=(bagNoEl?.textContent||"").trim().toUpperCase();
-    const namaPemilik=(bagNamaEl?.textContent||"").trim().toUpperCase();
-    const flight=(bagFlightBagEl?.textContent||"").trim().toUpperCase();
-    const tujuan=(bagDestEl?.textContent||"").trim().toUpperCase();
-    const indikasi=(bagIndikasiInp?.value||"").trim().toUpperCase();
-    const petugas=val(petugasInp).toUpperCase();
-    if(!nomorBagasi||!namaPemilik||!flight||!tujuan) throw new Error("Data suspect belum lengkap.");
-    showOverlay("spinner","Menyimpan suspect…","");
-    const payload={ action:"submit", token:SHARED_TOKEN, target:"SUSPECT_HBSCP", data:{
-      flight, petugas, nomorBagasi, namaPemilik, tujuan, indikasi,
-      ...(bagFotoSuspectDataUrl?{fotoSuspectDataUrl:bagFotoSuspectDataUrl}:{ }),
-      ...(bagFotoBarangDataUrl ?{fotoBarangDataUrl :bagFotoBarangDataUrl }:{ })
-    }};
-    console.log("submitSuspectHBSCP payload", payload);
-    console.log("submitSuspectHBSCP data", payload.data);
-    const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
-    console.log("submitSuspectHBSCP response", j);
-    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan suspect");
-    showOverlay("ok","Suspect tersimpan", `Row ${j.targetRow||"-"}`);
-    hbsCardsVisible=false;
-    scanCard?.classList.add("hidden");
-    barangCard?.classList.add("hidden");
-      resetBagasiCard(); loadSuspectList();
-  }catch(err){
-    console.error(err); showOverlay("err","Gagal simpan suspect", err?.message||String(err));
-  }
-}
-bagSubmitBtn?.addEventListener("click",(e)=>{ e.preventDefault(); submitSuspectHBSCP(); });
-
-/* ---- Submit Aksi untuk baris SUSPECT terpilih (update kolom Aksi) ---- */
-async function submitAksiSuspect(){
-  try{
-    if(mode!=="HBSCP"){ showAlert("Menu SUSPECT hanya di HBSCP."); return; }
-    if(!selectedSuspect?.bagNo){ showAlert("Pilih item suspect dari daftar terlebih dahulu."); return; }
-    const aksi = (val(tindakanSel) || "").trim();
-    if(!aksi){ showAlert("Pilih tindakan/aksi terlebih dahulu."); return; }
-
-    showOverlay("spinner","Menyimpan aksi…","");
-    const payload = {
-      action:"set_suspect_action",
-      token:SHARED_TOKEN,
-      bagNo:selectedSuspect.bagNo,
-      rowItems:Number(selectedSuspect.rowItems||0),
-      aksi
-    };
-    console.log("submitAksiSuspect payload", payload);
-    const j = await fetchJSON(PROXY_URL,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify(payload),
-      credentials:"omit"
-    });
-    console.log("submitAksiSuspect response", j);
-    if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan aksi");
-
-    showOverlay("ok","Aksi tersimpan","");
-      // reset
-      selectedSuspect = null;
-      tindakanSel && (tindakanSel.value="");
-      if(namaEl) namaEl.textContent="-";
-      if(flightEl) flightEl.textContent="-";
-      hbsCardsVisible=false;
-      scanCard?.classList.add("hidden");
-      barangCard?.classList.add("hidden");
-      updateBarangCard();
-      await loadSuspectList();
-  }catch(err){
-    console.error(err);
-    showOverlay("err","Gagal simpan aksi", err?.message||"Gagal");
-  }
-}
-bagSubmitAksiBtn?.addEventListener("click",(e)=>{ e.preventDefault(); submitAksiSuspect(); });
-
+/* ===== INIT ===== */
 setMode("PSCP");

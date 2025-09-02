@@ -1,42 +1,63 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <title>PEMERIKSAAN BAGASI TERCATAT</title>
+  <meta name="color-scheme" content="dark light" />
   <link rel="stylesheet" href="SIDS.css" />
 </head>
-  <body>
-    <header>
-      <div class="header-left">
-        <svg class="suitcase-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M7 6V4c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v2h3a1 1 0 011 1v13a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1h3zm2-2v2h6V4H9zm11 4H4v13h16V8z"/>
-        </svg>
-        <h1 id="pageTitle">PEMERIKSAAN BAGASI TERCATAT</h1>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="wrap" role="application" aria-label="SIDS – Baggage Inspection Board">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="brand">
+        <!-- Badge logo putih -->
+        <div class="badge" aria-hidden="true">
+          <img src="icons/logoapindo.png" alt="Logo" class="badge-img" />
+        </div>
+        <div class="title">
+          <h1 id="pageTitle" class="page-title">PEMERIKSAAN BAGASI TERCATAT</h1>
+          <!-- Ubah subtitle -->
+          <div class="subtitle">Airport Security Bandar Udara Internasional Banyuwangi</div>
+        </div>
       </div>
-      <img src="icons/logoapindo.png" alt="APINDO" class="logo-top-right" />
+
+      <div class="clock" aria-live="polite" aria-atomic="true">
+        <div id="clockTime" class="time">00:00 <span class="wib">WIB</span></div>
+        <div id="clockDate" class="date">Senin, 01 Januari 2025</div>
+      </div>
     </header>
 
-    <table id="sidsTable">
-    <thead>
-      <tr>
-        <th id="thTime">WAKTU</th>
-        <th id="thPassenger">PENUMPANG</th>
-        <th id="thFlight">PENERBANGAN</th>
-        <th id="thStatus">STATUS</th>
-      </tr>
-    </thead>
-    <tbody id="sidsBody"></tbody>
-  </table>
+    <!-- Panel Tabel -->
+    <section class="panel">
+      <div class="table-wrap" role="region" aria-label="Daftar Bagasi Diperiksa">
+        <table class="table" role="grid" aria-colcount="4">
+          <thead>
+            <tr>
+              <th id="thTime" scope="col">WAKTU</th>
+              <th id="thPassenger" scope="col">NAMA PENUMPANG</th>
+              <th id="thFlight" scope="col">PENERBANGAN</th>
+              <th id="thStatus" scope="col">STATUS</th>
+            </tr>
+          </thead>
+          <tbody id="sidsBody">
+            <!-- Baris diisi otomatis oleh sids.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-  <img src="icons/logobwx.png" alt="BWX" class="logo-bottom-left" />
-  <div class="clock">
-    <div id="clockTime"></div>
-    <div id="clockDate"></div>
+    <!-- Ticker -->
+    <footer class="ticker" aria-live="polite">
+      <div class="dot" aria-hidden="true"></div>
+      <div id="tickerText" class="msg">HAVE A NICE FLIGHT - SEE YOU SOON!</div>
+    </footer>
   </div>
 
-  <div class="ticker"><div id="tickerText">HAVE A NICE FLIGHT - SEE YOU SOON!</div></div>
-
-  <script type="module" src="SIDS.js"></script>
+  <!-- JS utama kamu -->
+  <script src="SIDS.js"></script>
 </body>
 </html>
