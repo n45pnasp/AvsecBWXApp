@@ -4,13 +4,13 @@ const LOOKUP_URL   = "https://rdcheck.avsecbwx2018.workers.dev/";
 const translations = {
   id: {
     title: "PEMERIKSAAN BAGASI TERCATAT",
-    headers: ["WAKTU PERIKSA", "NAMA PENUMPANG", "PENERBANGAN", "STATUS"],
+    headers: ["WAKTU", "NAMA PENUMPANG", "PENERBANGAN", "STATUS"],
     status: "DIPERIKSA HARAP MENGHUBUNGI PETUGAS",
     ticker: "HAVE A NICE FLIGHT - SEE YOU SOON!",
   },
   en: {
     title: "CHECKED BAGGAGE INSPECTION",
-    headers: ["INSPECTION TIME", "PASSENGER NAME", "FLIGHT", "STATUS"],
+    headers: ["TIME", "PASSENGER NAME", "FLIGHT", "STATUS"],
     status: "INSPECTED — PLEASE CONTACT OFFICER",
     ticker: "HAVE A NICE FLIGHT - SEE YOU SOON!",
   },
@@ -39,26 +39,27 @@ function toHHMMFromAny(v) {
     return formatHHMMFromDate(v);
   }
 
-  // String (umumnya "dd/MM/yyyy HH:mm:ss" dari Sheet)
   if (typeof v === "string") {
-    // normalisasi NBSP & titik (kadang "11.35")
     const s = v.replace(/\u00A0/g, " ").trim().replace(/\./g, ":");
 
-    // 1) dd/MM/yyyy HH:mm(:ss) -> ambil HH:MM
-    let m = s.match(/^\d{1,2}\/\d{1,2}\/\d{4}\s+(\d{1,2}):(\d{2})(?::\d{2})?$/);
-    if (m) return `${m[1].padStart(2, "0")}:${m[2].padStart(2, "0")}`;
+    // --- ✅ Tangkap "dd/MM/yyyy HH:mm(:ss)" langsung (Sheets format) ---
+    let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (m) {
+      const [_, D, M, Y, H, Min, S] = m;
+      return `${H.padStart(2, "0")}:${Min.padStart(2, "0")}`;
+    }
 
-    // 2) Token waktu umum (hindari salah baca MM:SS)
+    // Token waktu umum
     m = s.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?(?:\s|$)/);
     if (m) return `${m[1].padStart(2, "0")}:${m[2].padStart(2, "0")}`;
 
-    // 3) Ada offset/Z -> pakai Date
+    // ISO dengan zona/offset
     if (/[zZ]|[+-]\d{2}:\d{2}(?:\s*\(.+\))?$/.test(s)) {
       const d = new Date(s);
       if (!isNaN(d)) return formatHHMMFromDate(d);
     }
 
-    // 4) ISO tanpa zona -> treat as UTC
+    // ISO tanpa zona
     m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
     if (m) {
       const [_, Y, M, D, H, Min, S] = m;
@@ -67,16 +68,13 @@ function toHHMMFromAny(v) {
     }
   }
 
-  // Number: serial Sheets / epoch
+  // Number serial Sheets atau epoch
   if (typeof v === "number") {
-    // Serial Google Sheets
     if (v > 1000 && v < 60000) {
       const ms = (v - 25569) * 86400 * 1000;
       return formatHHMMFromDate(new Date(ms));
     }
-    // Epoch seconds
     if (v > 1e9 && v < 1e12) return formatHHMMFromDate(new Date(v * 1000));
-    // Epoch ms
     if (v >= 1e12) return formatHHMMFromDate(new Date(v));
   }
 
