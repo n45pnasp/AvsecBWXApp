@@ -1,6 +1,8 @@
 document.documentElement.style.visibility = "visible";
 
+// Ganti dengan URL Cloudflare Worker yang memproxy Apps Script
 const SCRIPT_URL = "https://example.workers.dev/"; // TODO: replace with real endpoint
+const TOKEN = "N45p"; // token minimal guard
 
 const nama         = document.getElementById("nama");
 const jenisCuti    = document.getElementById("jenisCuti");
@@ -11,38 +13,56 @@ const kepentingan  = document.getElementById("kepentingan");
 const jumlahCuti   = document.getElementById("jumlahCuti");
 const submitBtn    = document.getElementById("submitBtn");
 
+const JENIS_CUTI   = ["CUTI TAHUNAN", "CUTI ALASAN PENTING"];
+const JML_CUTI     = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+window.addEventListener("DOMContentLoaded", async () => {
+  // isi dropdown statis
+  JENIS_CUTI.forEach(v => jenisCuti.add(new Option(v, v)));
+  JML_CUTI.forEach(v => jumlahCuti.add(new Option(v, v)));
+
+  // muat daftar nama dari spreadsheet
+  await loadNames();
+});
+
 submitBtn.addEventListener("click", async () => {
   const payload = {
+    token: TOKEN,
     nama: nama.value,
     jenisCuti: jenisCuti.value,
-    tanggalAwal: tanggalAwal.value,
-    tanggalAkhir: tanggalAkhir.value,
+    tglAwal: tanggalAwal.value,
+    tglAkhir: tanggalAkhir.value,
+    jumlahCuti: Number(jumlahCuti.value || 0),
     kotaTujuan: kotaTujuan.value,
-    kepentingan: kepentingan.value,
-    jumlahCuti: jumlahCuti.value
+    alasanCuti: kepentingan.value
   };
 
   await sendCutiData(payload);
 });
 
-async function sendCutiData(data){
-  try{
+async function loadNames() {
+  try {
+    const res = await fetch(`${SCRIPT_URL}?token=${TOKEN}&action=names`);
+    const json = await res.json();
+    if (json.ok && Array.isArray(json.names)) {
+      json.names.forEach(n => nama.add(new Option(n, n)));
+    }
+  } catch (err) {
+    console.error("Gagal mengambil daftar nama", err);
+  }
+}
+
+async function sendCutiData(data) {
+  try {
     const res = await fetch(SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
     });
     return await res.json();
-  }catch(err){
+  } catch (err) {
     console.error("Gagal mengirim data cuti", err);
   }
 }
 
-export async function fetchCutiData(){
-  try{
-    const res = await fetch(SCRIPT_URL);
-    return await res.json();
-  }catch(err){
-    console.error("Gagal mengambil data cuti", err);
-  }
-}
+export { loadNames };
