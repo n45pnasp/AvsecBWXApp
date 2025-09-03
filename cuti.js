@@ -1,4 +1,6 @@
-document.documentElement.style.visibility = "visible";
+import { requireAuth } from "./auth-guard.js";
+
+requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
 // URL Cloudflare Worker yang memproxy Apps Script
 const SCRIPT_URL = "https://formcuti.avsecbwx2018.workers.dev/";
