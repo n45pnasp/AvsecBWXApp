@@ -4,13 +4,13 @@ const LOOKUP_URL   = "https://rdcheck.avsecbwx2018.workers.dev/";
 const translations = {
   id: {
     title: "PEMERIKSAAN BAGASI TERCATAT",
-    headers: ["WAKTU", "NAMA PENUMPANG", "PENERBANGAN", "STATUS"],
+    headers: ["WAKTU PERIKSA", "NAMA PENUMPANG", "PENERBANGAN", "STATUS"],
     status: "DIPERIKSA HARAP MENGHUBUNGI PETUGAS",
     ticker: "HAVE A NICE FLIGHT - SEE YOU SOON!",
   },
   en: {
     title: "CHECKED BAGGAGE INSPECTION",
-    headers: ["TIME", "PASSENGER NAME", "FLIGHT", "STATUS"],
+    headers: ["INSPECTION TIME", "PASSENGER NAME", "FLIGHT", "STATUS"],
     status: "INSPECTED — PLEASE CONTACT OFFICER",
     ticker: "HAVE A NICE FLIGHT - SEE YOU SOON!",
   },
