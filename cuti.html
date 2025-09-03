@@ -22,14 +22,14 @@
 
       <div class="field">
         <label for="nama">Pilih Nama</label>
-        <select id="nama">
+        <select id="nama" required>
           <option value="" selected>Pilih Nama</option>
         </select>
       </div>
 
       <div class="field">
         <label for="jenisCuti">Pilih Jenis Cuti</label>
-        <select id="jenisCuti">
+        <select id="jenisCuti" required>
           <option value="" selected>Pilih Jenis Cuti</option>
         </select>
       </div>
@@ -37,29 +37,29 @@
       <div class="row-2">
         <div class="field">
           <label for="tanggalAwal">Pilih Tanggal Awal Cuti</label>
-          <input id="tanggalAwal" type="date" />
+          <input id="tanggalAwal" type="date" required />
         </div>
         <div class="field">
           <label for="tanggalAkhir">Pilih Tanggal Akhir Cuti</label>
-          <input id="tanggalAkhir" type="date" />
+          <input id="tanggalAkhir" type="date" required />
         </div>
       </div>
 
       <div class="field">
         <label for="kotaTujuan">Kota Tujuan</label>
-        <input id="kotaTujuan" type="text" />
+        <input id="kotaTujuan" type="text" required />
       </div>
 
       <div class="field">
         <label for="kepentingan">Pilih Kepentingan Cuti</label>
-        <select id="kepentingan" disabled>
+        <select id="kepentingan" disabled required>
           <option value="" selected>Pilih Kepentingan Cuti</option>
         </select>
       </div>
 
       <div class="field">
         <label for="jumlahCuti">Pilih Jumlah Cuti</label>
-        <select id="jumlahCuti">
+        <select id="jumlahCuti" required>
           <option value="" selected>Pilih Jumlah Cuti</option>
         </select>
       </div>
@@ -67,6 +67,16 @@
       <button id="submitBtn" type="button" class="btn primary full">Kirim Data</button>
     </section>
   </main>
+
+  <div id="alertBack" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="alertTitle">
+      <h3 id="alertTitle">Notifikasi</h3>
+      <p id="alertMsg"></p>
+      <div class="actions">
+        <button id="alertOk" type="button">OK</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="cuti.js"></script>
 </body>

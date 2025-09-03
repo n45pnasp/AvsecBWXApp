@@ -14,6 +14,24 @@ const kotaTujuan   = document.getElementById("kotaTujuan");
 const kepentingan  = document.getElementById("kepentingan");
 const jumlahCuti   = document.getElementById("jumlahCuti");
 const submitBtn    = document.getElementById("submitBtn");
+const alertBack    = document.getElementById("alertBack");
+const alertOk      = document.getElementById("alertOk");
+
+const Modal = {
+  show(msg, title = "Notifikasi") {
+    if (!alertBack) return;
+    alertBack.querySelector("#alertTitle").textContent = title;
+    alertBack.querySelector("#alertMsg").textContent = msg;
+    alertBack.classList.add("show");
+    alertBack.setAttribute("aria-hidden", "false");
+  },
+  hide() {
+    if (!alertBack) return;
+    alertBack.classList.remove("show");
+    alertBack.setAttribute("aria-hidden", "true");
+  }
+};
+alertOk?.addEventListener("click", () => Modal.hide());
 
 const JENIS_CUTI   = ["CUTI TAHUNAN", "CUTI ALASAN PENTING"];
 const JML_CUTI     = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -51,6 +69,12 @@ jenisCuti.addEventListener("change", handleJenisCutiChange);
 kepentingan.addEventListener("change", handleKepentinganChange);
 
 submitBtn.addEventListener("click", async () => {
+  if (!nama.value || !jenisCuti.value || !tanggalAwal.value || !tanggalAkhir.value ||
+      !kotaTujuan.value || !kepentingan.value || !jumlahCuti.value) {
+    Modal.show("Harap lengkapi semua field wajib", "Validasi");
+    return;
+  }
+
   const payload = {
     token: TOKEN,
     nama: nama.value,
@@ -62,7 +86,16 @@ submitBtn.addEventListener("click", async () => {
     alasanCuti: kepentingan.value
   };
 
-  await sendCutiData(payload);
+  submitBtn.disabled = true;
+  const res = await sendCutiData(payload);
+  submitBtn.disabled = false;
+
+  if (res && res.ok) {
+    Modal.show("Data cuti berhasil dikirim", "Berhasil");
+  } else {
+    const msg = res && res.error ? res.error : "Gagal mengirim data";
+    Modal.show(msg, "Kesalahan");
+  }
 });
 
 function handleJenisCutiChange(){
@@ -112,6 +145,7 @@ async function sendCutiData(data) {
     return await res.json();
   } catch (err) {
     console.error("Gagal mengirim data cuti", err);
+    return { ok: false, error: "Jaringan bermasalah" };
   }
 }
 

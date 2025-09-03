@@ -15,3 +15,14 @@
   opacity:.55;
   cursor:not-allowed;
 }
+
+/* Alert Modal */
+.modal-backdrop{ position:fixed; inset:0; display:none; place-items:center; background:rgba(0,0,0,.6); z-index:50; }
+.modal-backdrop.show{ display:grid; }
+.modal{ width:min(92vw,360px); background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.45); animation:pop .2s ease-out both; }
+.modal h3{ margin:0 0 6px; font-size:16px; }
+.modal p{ margin:0; color:var(--muted); font-size:14px; }
+.modal .actions{ display:flex; justify-content:flex-end; margin-top:14px; }
+.modal .actions button{ background:var(--accent); border:none; color:#fff; padding:8px 14px; border-radius:10px; cursor:pointer; }
+.modal .actions button:hover{ background:var(--accent-2); }
+@keyframes pop{ from{opacity:0; transform:translateY(6px) scale(.98)} to{opacity:1; transform:none} }
