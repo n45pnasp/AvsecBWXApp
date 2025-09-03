@@ -71,7 +71,10 @@
   <div id="alertBack" class="modal-backdrop" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="alertTitle">
       <h3 id="alertTitle">Notifikasi</h3>
-      <div id="alertSpinner" class="spinner" aria-hidden="true"></div>
+      <div id="spinnerRow" class="spinner-row" aria-hidden="true">
+        <span class="icon spinner" aria-hidden="true"></span>
+        <span id="spinnerText"></span>
+      </div>
       <p id="alertMsg"></p>
       <div class="actions">
         <button id="alertOk" type="button">OK</button>

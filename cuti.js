@@ -14,17 +14,26 @@ const kotaTujuan   = document.getElementById("kotaTujuan");
 const kepentingan  = document.getElementById("kepentingan");
 const jumlahCuti   = document.getElementById("jumlahCuti");
 const submitBtn    = document.getElementById("submitBtn");
-const alertBack    = document.getElementById("alertBack");
-const alertOk      = document.getElementById("alertOk");
-const alertSpinner = document.getElementById("alertSpinner");
+const alertBack   = document.getElementById("alertBack");
+const alertOk     = document.getElementById("alertOk");
+const alertMsg    = document.getElementById("alertMsg");
+const spinnerRow  = document.getElementById("spinnerRow");
+const spinnerText = document.getElementById("spinnerText");
 
 const Modal = {
   show(msg, title = "Notifikasi", loading = false) {
     if (!alertBack) return;
     alertBack.querySelector("#alertTitle").textContent = title;
-    alertBack.querySelector("#alertMsg").textContent = msg;
-    if (alertSpinner) alertSpinner.classList.toggle("show", loading);
-    if (alertOk) alertOk.style.display = loading ? "none" : "";
+    if (loading) {
+      if (spinnerRow) spinnerRow.classList.add("show");
+      if (spinnerText) spinnerText.textContent = msg;
+      if (alertMsg) alertMsg.textContent = "";
+      if (alertOk) alertOk.style.display = "none";
+    } else {
+      if (spinnerRow) spinnerRow.classList.remove("show");
+      if (alertMsg) alertMsg.textContent = msg;
+      if (alertOk) alertOk.style.display = "";
+    }
     alertBack.classList.add("show");
     alertBack.setAttribute("aria-hidden", "false");
   },
@@ -32,7 +41,8 @@ const Modal = {
     if (!alertBack) return;
     alertBack.classList.remove("show");
     alertBack.setAttribute("aria-hidden", "true");
-    if (alertSpinner) alertSpinner.classList.remove("show");
+    if (spinnerRow) spinnerRow.classList.remove("show");
+    if (alertMsg) alertMsg.textContent = "";
     if (alertOk) alertOk.style.display = "";
   }
 };
@@ -92,7 +102,7 @@ submitBtn.addEventListener("click", async () => {
   };
 
   submitBtn.disabled = true;
-  Modal.show("Mengirim data...", "Harap tunggu", true);
+  Modal.show("Mengirim data…", "Harap tunggu", true);
   const res = await sendCutiData(payload);
   submitBtn.disabled = false;
 
