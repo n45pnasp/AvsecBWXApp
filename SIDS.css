@@ -104,16 +104,13 @@ body{
 .table thead th,
 .table td {
   font-family: inherit;
-  font-size: clamp(18.6px, 2.92vw, 23.9px);
+  font-size: clamp(12px, 2.4vw, 18px); /* responsif terhadap ukuran layar */
   font-weight: 700;
   line-height: 1.25;
   letter-spacing: normal;
   text-transform: none;
+  color: var(--text); /* warna dan ketebalan seragam */
 }
-
-/* Info tabel dibedakan warnanya agar kontras dengan isi */
-.table thead th { color: var(--muted); }
-.table td { color: var(--text); }
 
 .table thead th {
   position: sticky;
