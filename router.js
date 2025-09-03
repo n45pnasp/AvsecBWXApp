@@ -68,6 +68,9 @@
     "plotting": "plotting.html",
     "rotation": "plotting.html",     // alias opsional
 
+    "kunci": "kunci.html",
+    "keymap": "kunci.html",         // alias opsional
+
     "sop": "sop-view.html",
     "viewer": "sop-view.html",
     "pdf": "sop-view.html",

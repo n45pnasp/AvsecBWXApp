@@ -103,6 +103,10 @@
     </section>
   </div>
   <audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+  <script type="module">
+    import { requireAuth } from "./auth-guard.js";
+    requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+  </script>
   <script src="kunci.js"></script>
 </body>
 </html>
