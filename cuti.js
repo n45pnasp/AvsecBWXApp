@@ -1,7 +1,7 @@
 document.documentElement.style.visibility = "visible";
 
-// Ganti dengan URL Cloudflare Worker yang memproxy Apps Script
-const SCRIPT_URL = "https://example.workers.dev/"; // TODO: replace with real endpoint
+// URL Cloudflare Worker yang memproxy Apps Script
+const SCRIPT_URL = "https://formcuti.avsecbwx2018.workers.dev/";
 const TOKEN = "N45p"; // token minimal guard
 
 const nama         = document.getElementById("nama");
