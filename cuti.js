@@ -97,6 +97,7 @@ submitBtn.addEventListener("click", async () => {
   submitBtn.disabled = false;
 
   if (res && res.ok) {
+    resetForm();
     Modal.show("Data cuti berhasil dikirim", "Berhasil");
   } else {
     const msg = res && res.error ? res.error : "Gagal mengirim data";
@@ -153,6 +154,26 @@ async function sendCutiData(data) {
     console.error("Gagal mengirim data cuti", err);
     return { ok: false, error: "Jaringan bermasalah" };
   }
+}
+
+function resetForm() {
+  nama.value = "";
+  jenisCuti.value = "";
+  tanggalAwal.value = "";
+  tanggalAkhir.value = "";
+  kotaTujuan.value = "";
+
+  kepentingan.innerHTML = "";
+  const kepOpt = new Option("Pilih Kepentingan Cuti", "");
+  kepentingan.add(kepOpt);
+  kepentingan.value = "";
+  kepentingan.disabled = true;
+
+  jumlahCuti.innerHTML = "";
+  const jmlOpt = new Option("Pilih Jumlah Cuti", "");
+  jumlahCuti.add(jmlOpt);
+  JML_CUTI.forEach(v => jumlahCuti.add(new Option(v, v)));
+  jumlahCuti.value = "";
 }
 
 export { loadNames };
