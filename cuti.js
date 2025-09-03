@@ -16,12 +16,15 @@ const jumlahCuti   = document.getElementById("jumlahCuti");
 const submitBtn    = document.getElementById("submitBtn");
 const alertBack    = document.getElementById("alertBack");
 const alertOk      = document.getElementById("alertOk");
+const alertSpinner = document.getElementById("alertSpinner");
 
 const Modal = {
-  show(msg, title = "Notifikasi") {
+  show(msg, title = "Notifikasi", loading = false) {
     if (!alertBack) return;
     alertBack.querySelector("#alertTitle").textContent = title;
     alertBack.querySelector("#alertMsg").textContent = msg;
+    if (alertSpinner) alertSpinner.classList.toggle("show", loading);
+    if (alertOk) alertOk.style.display = loading ? "none" : "";
     alertBack.classList.add("show");
     alertBack.setAttribute("aria-hidden", "false");
   },
@@ -29,6 +32,8 @@ const Modal = {
     if (!alertBack) return;
     alertBack.classList.remove("show");
     alertBack.setAttribute("aria-hidden", "true");
+    if (alertSpinner) alertSpinner.classList.remove("show");
+    if (alertOk) alertOk.style.display = "";
   }
 };
 alertOk?.addEventListener("click", () => Modal.hide());
@@ -87,6 +92,7 @@ submitBtn.addEventListener("click", async () => {
   };
 
   submitBtn.disabled = true;
+  Modal.show("Mengirim data...", "Harap tunggu", true);
   const res = await sendCutiData(payload);
   submitBtn.disabled = false;
 
