@@ -4,13 +4,13 @@ const LOOKUP_URL   = "https://rdcheck.avsecbwx2018.workers.dev/";
 const translations = {
   id: {
     title: "PEMERIKSAAN BAGASI TERCATAT",
-    headers: ["WAKTU PERIKSA", "NAMA PENUMPANG", "PENERBANGAN", "STATUS"],
+    headers: ["WAKTU", "NAMA PENUMPANG", "PENERBANGAN", "STATUS"],
     status: "DIPERIKSA HARAP MENGHUBUNGI PETUGAS",
     ticker: "HAVE A NICE FLIGHT - SEE YOU SOON!",
   },
   en: {
     title: "CHECKED BAGGAGE INSPECTION",
-    headers: ["INSPECTION TIME", "PASSENGER NAME", "FLIGHT", "STATUS"],
+    headers: ["TIME", "PASSENGER NAME", "FLIGHT", "STATUS"],
     status: "INSPECTED — PLEASE CONTACT OFFICER",
     ticker: "HAVE A NICE FLIGHT - SEE YOU SOON!",
   },
@@ -92,17 +92,17 @@ function renderList(rows) {
     const passenger = (it.namaPemilik || it.nama || "-").toString().toUpperCase();
     const flight    = (it.flight || "-").toString().toUpperCase();
 
-    // SAMAKAN dengan cara ambil waktu kamu + fallback aman
-    const tsRaw =
-      it.timestamp ??
-      it.waktu ??
-      it.jam ??
-      it.createdAt ??
-      it.created ??
-      it.tanggal ??
-      it.tanggalFull ??
-      it.A ?? it.a ?? it["0"] ??
-      null;
+    // Ambil waktu input (kolom A) dengan beberapa fallback aman
+    const tsRaw = [
+      it.A, it.a, it["0"],
+      it.timestamp,
+      it.waktu,
+      it.jam,
+      it.createdAt,
+      it.created,
+      it.tanggal,
+      it.tanggalFull,
+    ].find(v => v != null && v !== "");
 
     const timeRaw = toHHMMFromAny(tsRaw);
 
