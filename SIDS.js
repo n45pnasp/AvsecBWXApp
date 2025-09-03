@@ -146,7 +146,7 @@ function applyTranslations() {
     document.getElementById("thStatus"),
   ];
   headCells.forEach((el, idx) => {
-    if (el) el.innerHTML = t.headers[idx].split(/\s+/).join("<br>");
+    if (el) el.textContent = t.headers[idx];
   });
 
   const tick = document.getElementById("tickerText");
