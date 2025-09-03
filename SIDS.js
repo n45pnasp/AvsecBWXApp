@@ -145,7 +145,9 @@ function applyTranslations() {
     document.getElementById("thFlight"),
     document.getElementById("thStatus"),
   ];
-  headCells.forEach((el, idx) => { if (el) el.textContent = t.headers[idx]; });
+  headCells.forEach((el, idx) => {
+    if (el) el.innerHTML = t.headers[idx].split(/\s+/).join("<br>");
+  });
 
   const tick = document.getElementById("tickerText");
   if (tick) tick.textContent = t.ticker;
