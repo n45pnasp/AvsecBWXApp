@@ -10,3 +10,8 @@
   padding:12px;
   font-size:var(--fs-base);
 }
+
+.field select:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}

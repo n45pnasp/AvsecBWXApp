@@ -14,7 +14,27 @@ const jumlahCuti   = document.getElementById("jumlahCuti");
 const submitBtn    = document.getElementById("submitBtn");
 
 const JENIS_CUTI   = ["CUTI TAHUNAN", "CUTI ALASAN PENTING"];
-const JML_CUTI     = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const JML_CUTI     = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+const KEPENTINGAN_TAHUNAN = ["URUSAN KELUARGA"];
+const KEPENTINGAN_ALASAN = [
+  { label: "Orang tua/Mertua Sakit", days: 2 },
+  { label: "Keluarga Sakit Keras", days: 5 },
+  { label: "Keluarga Meninggal", days: 5 },
+  { label: "Mengurus Warisan", days: 3 },
+  { label: "Menikah", days: 5 },
+  { label: "Anak Menikah", days: 5 },
+  { label: "Istri Melahirkan", days: 5 },
+  { label: "Musibah", days: 5 },
+  { label: "Menunaikan Ibadah Haji", days: 45 },
+  { label: "Ibadah Umrah", days: 10 },
+  { label: "Ibadah Tirthayatra", days: 10 },
+  { label: "Ibadah ke Yerussalem", days: 10 },
+  { label: "Ibadah ziarah Buddhis", days: 10 },
+  { label: "Anak Potong gigi", days: 3 },
+  { label: "Khitanan Anak", days: 2 },
+  { label: "Membaptis Anak", days: 2 }
+];
 
 window.addEventListener("DOMContentLoaded", async () => {
   // isi dropdown statis
@@ -24,6 +44,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   // muat daftar nama dari spreadsheet
   await loadNames();
 });
+
+jenisCuti.addEventListener("change", handleJenisCutiChange);
+kepentingan.addEventListener("change", handleKepentinganChange);
 
 submitBtn.addEventListener("click", async () => {
   const payload = {
@@ -39,6 +62,31 @@ submitBtn.addEventListener("click", async () => {
 
   await sendCutiData(payload);
 });
+
+function handleJenisCutiChange(){
+  kepentingan.innerHTML = "";
+  const placeholder = new Option("Pilih Kepentingan Cuti", "");
+  kepentingan.add(placeholder);
+  kepentingan.value = "";
+  kepentingan.disabled = !jenisCuti.value;
+  jumlahCuti.value = "";
+
+  if(jenisCuti.value === "CUTI TAHUNAN"){
+    KEPENTINGAN_TAHUNAN.forEach(v => kepentingan.add(new Option(v, v)));
+  } else if(jenisCuti.value === "CUTI ALASAN PENTING"){
+    KEPENTINGAN_ALASAN.forEach(o => kepentingan.add(new Option(o.label, o.label)));
+  }
+}
+
+function handleKepentinganChange(){
+  if(jenisCuti.value !== "CUTI ALASAN PENTING") return;
+  const opt = KEPENTINGAN_ALASAN.find(o => o.label === kepentingan.value);
+  if(!opt) return;
+  if(![...jumlahCuti.options].some(o => Number(o.value) === opt.days)){
+    jumlahCuti.add(new Option(opt.days, opt.days));
+  }
+  jumlahCuti.value = opt.days;
+}
 
 async function loadNames() {
   try {
