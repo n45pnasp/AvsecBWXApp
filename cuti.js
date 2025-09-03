@@ -34,7 +34,16 @@ fields.forEach(el => {
 const Modal = {
   show(msg, title = "Notifikasi", loading = false) {
     if (!alertBack) return;
-    alertBack.querySelector("#alertTitle").textContent = title;
+    const titleEl = alertBack.querySelector("#alertTitle");
+    if (titleEl) {
+      if (title) {
+        titleEl.textContent = title;
+        titleEl.style.display = "";
+      } else {
+        titleEl.textContent = "";
+        titleEl.style.display = "none";
+      }
+    }
     if (loading) {
       if (spinnerRow) spinnerRow.classList.add("show");
       if (spinnerText) spinnerText.textContent = msg;
@@ -114,7 +123,7 @@ submitBtn.addEventListener("click", async () => {
   };
 
   submitBtn.disabled = true;
-  Modal.show("Mengirim data…", "Harap tunggu", true);
+  Modal.show("Mengirim data…", "", true);
   const res = await sendCutiData(payload);
   submitBtn.disabled = false;
 
