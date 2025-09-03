@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🔑 Peta Kunci</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb;
+      --border:#334; --btn-ok:#14532d; --btn-stop:#7f1d1d; --card:#0b1324;
+      --accent:#6a5cff; --accent-2:#8a7bff;
+    }
+    *{ box-sizing:border-box }
+    html,body{ margin:0; padding:0 }
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .app-bar{
+      position: sticky; top: 0; z-index: 40;
+      display: flex; align-items: center; gap: 10px;
+      height: 56px;
+      background: var(--panel);
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      padding: 0 14px;
+      margin: -20px -20px 16px;
+    }
+    .back-btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:44px; height:44px;
+      background:transparent; border:none; color:var(--text);
+      cursor:pointer; flex:0 0 auto; text-decoration:none;
+      border-radius:8px; transition: background .12s ease, transform .1s ease;
+    }
+    .back-btn svg{ display:block; stroke:currentColor; stroke-width:2.2 }
+    .back-btn:hover{ background:rgba(255,255,255,.06) }
+    .back-btn:active{ background:rgba(0,0,0,.25); transform:translateY(1px) }
+    .back-btn:focus-visible{ outline:2px solid rgba(255,255,255,.4); outline-offset:2px }
+    .app-title{ font-size:22px; font-weight:300; letter-spacing:.3px; margin:0; user-select:none }
+    .container{ max-width: 720px; margin: 0 auto; }
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      margin-bottom: 16px;
+    }
+    .label{
+      font-weight:700; border-bottom:1px solid var(--border);
+      padding-bottom:6px; margin-bottom:10px; color:var(--text);
+    }
+    .qr-card{ padding:0; }
+    .qr-btn{
+      width:100%;
+      display:flex;
+      flex-direction:row;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius:16px;
+      padding:14px 16px;
+      font-weight:600; font-size:16px;
+      cursor:pointer; color:#fff;
+      box-shadow:0 6px 16px rgba(106,88,255,.35);
+      transition:filter .15s ease, transform .1s ease;
+      text-align:left;
+    }
+    .qr-btn:hover{ filter:brightness(1.08) }
+    .qr-btn:active{ transform:translateY(1px) }
+    .qr-btn img{ width:28px; height:28px; display:block; filter:invert(1); }
+    .qr-btn small{ color:rgba(255,255,255,.85); font-weight:400; display:block; }
+    .hidden{ display:none !important; }
+    @media (max-width: 480px){
+      .app-title{ font-size:20px }
+      .back-btn{ width:40px; height:40px }
+      button,.qr-btn{ padding:10px 12px }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-bar" role="banner">
+    <a class="back-btn" aria-label="Kembali" href="index.html">
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </a>
+    <h1 class="app-title">Peta Kunci</h1>
+  </div>
+  <div class="container">
+    <section class="card qr-card">
+      <button type="button" class="qr-btn" aria-busy="false">
+        <img src="icons/qrcode.png" alt="QR">
+        <span>Scan / Aktifkan Kamera<br><small>Peta Kunci</small></span>
+      </button>
+    </section>
+    <section class="card" id="resultCard">
+      <div class="label">📌 Hasil Scan</div>
+      <div class="text" id="mapCode">Tekan tombol di atas untuk memulai pemindaian…</div>
+      <img id="mapImage" alt="Peta" class="hidden" style="max-width:100%;margin-top:12px;" />
+    </section>
+  </div>
+  <audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+  <script src="kunci.js"></script>
+</body>
+</html>
