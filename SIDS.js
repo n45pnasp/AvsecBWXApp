@@ -92,12 +92,9 @@ function renderList(rows) {
     const passenger = (it.namaPemilik || it.nama || "-").toString().toUpperCase();
     const flight    = (it.flight || "-").toString().toUpperCase();
 
-    // Ambil waktu input dari kolom A; gunakan beberapa fallback untuk berjaga
+    // Ambil waktu input (kolom A) dengan beberapa fallback aman
     const tsRaw = [
-      Array.isArray(it) ? it[0] : undefined, // baris berupa array -> elemen pertama = kolom A
-      it.A,
-      it.a,
-      it["0"],
+      it.A, it.a, it["0"],
       it.timestamp,
       it.waktu,
       it.jam,
