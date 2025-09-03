@@ -625,6 +625,14 @@ async function startScan(){
 
     const needed = neededFormatsFor(scanTarget);
 
+    // Selalu gunakan ZXing jika membutuhkan PDF417
+    if (needed.includes("pdf417")) {
+      await ensureZXing();
+      scanState.running = true;
+      detectLoop_ZXing();
+      return;
+    }
+
     if (isSafariLike()) {           // Safari/iOS → ZXing
       await ensureZXing(); scanState.running = true; detectLoop_ZXing(); return;
     }
@@ -641,10 +649,7 @@ async function startScan(){
 
     scanState.running = true;
     if (scanState.usingDetector){ detectLoop_BarcodeDetector(); }
-    else {
-      if (needed.includes("pdf417")){ await ensureZXing(); detectLoop_ZXing(); }
-      else { await ensureJsQR(); prepareCanvas(); detectLoop_jsQR(); }
-    }
+    else { await ensureJsQR(); prepareCanvas(); detectLoop_jsQR(); }
   }catch(err){
     console.error(err); setWaitingUI(false);
     showOverlay('err','Tidak bisa mengakses kamera', err?.message||String(err));
