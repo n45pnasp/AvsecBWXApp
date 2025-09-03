@@ -20,6 +20,17 @@ const alertMsg    = document.getElementById("alertMsg");
 const spinnerRow  = document.getElementById("spinnerRow");
 const spinnerText = document.getElementById("spinnerText");
 
+const fields = [nama, jenisCuti, tanggalAwal, tanggalAkhir, kotaTujuan, kepentingan, jumlahCuti];
+
+function checkFormValidity() {
+  const allFilled = fields.every(el => !el.disabled && el.value.trim() !== "");
+  submitBtn.disabled = !allFilled;
+}
+
+fields.forEach(el => {
+  ["input", "change"].forEach(evt => el.addEventListener(evt, checkFormValidity));
+});
+
 const Modal = {
   show(msg, title = "Notifikasi", loading = false) {
     if (!alertBack) return;
@@ -78,6 +89,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // muat daftar nama dari spreadsheet
   await loadNames();
+  checkFormValidity();
 });
 
 jenisCuti.addEventListener("change", handleJenisCutiChange);
@@ -128,6 +140,7 @@ function handleJenisCutiChange(){
   } else if(jenisCuti.value === "CUTI ALASAN PENTING"){
     KEPENTINGAN_ALASAN.forEach(o => kepentingan.add(new Option(o.label, o.label)));
   }
+  checkFormValidity();
 }
 
 function handleKepentinganChange(){
@@ -138,6 +151,7 @@ function handleKepentinganChange(){
     jumlahCuti.add(new Option(opt.days, opt.days));
   }
   jumlahCuti.value = opt.days;
+  checkFormValidity();
 }
 
 async function loadNames() {
@@ -184,6 +198,7 @@ function resetForm() {
   jumlahCuti.add(jmlOpt);
   JML_CUTI.forEach(v => jumlahCuti.add(new Option(v, v)));
   jumlahCuti.value = "";
+  checkFormValidity();
 }
 
 export { loadNames };
