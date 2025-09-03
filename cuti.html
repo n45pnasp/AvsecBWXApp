@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Form Cuti</title>
+  <link rel="stylesheet" href="cuti.css" />
+  <style>html{visibility:hidden}</style>
+</head>
+<body>
+  <div class="app-bar">
+    <a class="back-btn" aria-label="Kembali" href="index.html">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
+      </svg>
+    </a>
+    <h1 class="app-title">Form Cuti</h1>
+  </div>
+
+  <main class="container">
+    <section class="card">
+
+      <div class="field">
+        <label for="nama">Pilih Nama</label>
+        <select id="nama" required>
+          <option value="" selected>Pilih Nama</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="jenisCuti">Pilih Jenis Cuti</label>
+        <select id="jenisCuti" required>
+          <option value="" selected>Pilih Jenis Cuti</option>
+        </select>
+      </div>
+
+      <div class="row-2">
+        <div class="field">
+          <label for="tanggalAwal">Pilih Tanggal Awal Cuti</label>
+          <input id="tanggalAwal" type="date" required />
+        </div>
+        <div class="field">
+          <label for="tanggalAkhir">Pilih Tanggal Akhir Cuti</label>
+          <input id="tanggalAkhir" type="date" required />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="kotaTujuan">Kota Tujuan</label>
+        <input id="kotaTujuan" type="text" required />
+      </div>
+
+      <div class="field">
+        <label for="kepentingan">Pilih Kepentingan Cuti</label>
+        <select id="kepentingan" disabled required>
+          <option value="" selected>Pilih Kepentingan Cuti</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="jumlahCuti">Pilih Jumlah Cuti</label>
+        <select id="jumlahCuti" required>
+          <option value="" selected>Pilih Jumlah Cuti</option>
+        </select>
+      </div>
+
+      <button id="submitBtn" type="button" class="btn primary full" disabled>Kirim Data</button>
+    </section>
+  </main>
+
+  <div id="alertBack" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="alertTitle">
+      <h3 id="alertTitle">Notifikasi</h3>
+      <div id="spinnerRow" class="spinner-row" aria-hidden="true">
+        <span class="icon spinner" aria-hidden="true"></span>
+        <span id="spinnerText"></span>
+      </div>
+      <p id="alertMsg"></p>
+      <div class="actions">
+        <button id="alertOk" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="cuti.js"></script>
+</body>
+</html>
