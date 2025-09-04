@@ -43,6 +43,20 @@ const fileInput     = $("#file");
 const preview       = $("#preview");
 const msg3          = $("#msg3");
 
+// Overlay spinner
+const overlay = $("#overlay");
+const ovTitle = $("#ovTitle");
+const ovDesc  = $("#ovDesc");
+
+function showOverlay(title = "Memuat…", desc = "") {
+  ovTitle.textContent = title;
+  ovDesc.textContent = desc;
+  overlay.classList.remove("hidden");
+}
+function hideOverlay() {
+  overlay.classList.add("hidden");
+}
+
 /* Buat dropdown ID untuk foto (disisipkan via JS agar HTML tetap ringkas) */
 let photoIdSel = null;
 (function injectPhotoIdSelect(){
@@ -64,8 +78,13 @@ let allRows     = [];   // cache list data
 init();
 
 async function init() {
-  await loadDropdowns();
-  await refreshLists();      // isi idList (cetak) + photoIdSel (semua)
+  showOverlay("Mengambil data…");
+  try {
+    await loadDropdowns(false);
+    await refreshLists("", false);
+  } finally {
+    hideOverlay();
+  }
   attachListeners();
   updateHarga();
   checkForm();
@@ -88,34 +107,39 @@ function attachListeners() {
 }
 
 /* ===== Dropdowns dari server ===== */
-async function loadDropdowns() {
-  const url = `${WORKER_URL}?action=dropdowns&token=${encodeURIComponent(SHARED_TOKEN)}`;
-  const res = await fetchJson(url);
+async function loadDropdowns(showSpin = true) {
+  if (showSpin) showOverlay("Mengambil data…");
+  try {
+    const url = `${WORKER_URL}?action=dropdowns&token=${encodeURIComponent(SHARED_TOKEN)}`;
+    const res = await fetchJson(url);
 
-  if (!res || !res.ok) throw new Error(res && res.error || "Gagal memuat dropdowns");
+    if (!res || !res.ok) throw new Error(res && res.error || "Gagal memuat dropdowns");
 
-  unitToNeeds = res.unitToNeeds || {};
-  unitToJenis = res.unitToJenis || {};
-  const fuels = res.fuels || [];
+    unitToNeeds = res.unitToNeeds || {};
+    unitToJenis = res.unitToJenis || {};
+    const fuels = res.fuels || [];
 
-  // Unit
-  unitSel.innerHTML = '<option value="">Pilih Unit Kerja</option>';
-  const units = Object.keys({ ...unitToNeeds, ...unitToJenis }).sort();
-  units.forEach(u => unitSel.add(new Option(u, u)));
+    // Unit
+    unitSel.innerHTML = '<option value="">Pilih Unit Kerja</option>';
+    const units = Object.keys({ ...unitToNeeds, ...unitToJenis }).sort();
+    units.forEach(u => unitSel.add(new Option(u, u)));
 
-  // Harga per jenis
-  hargaMap = {};
-  fuels.forEach(f => {
-    const j = String(f.jenis || "").toUpperCase();
-    const h = Number(f.harga || 0);
-    if (j) hargaMap[j] = h;
-  });
+    // Harga per jenis
+    hargaMap = {};
+    fuels.forEach(f => {
+      const j = String(f.jenis || "").toUpperCase();
+      const h = Number(f.harga || 0);
+      if (j) hargaMap[j] = h;
+    });
 
-  // Jenis & keperluan akan diisi ketika unit dipilih
-  jenisSel.innerHTML     = '<option value="">Pilih Jenis BBM</option>';
-  keperluanSel.innerHTML = '<option value="">Pilih Keperluan</option>';
-  keperluanSel.disabled  = true;
-  jenisSel.disabled      = true;
+    // Jenis & keperluan akan diisi ketika unit dipilih
+    jenisSel.innerHTML     = '<option value="">Pilih Jenis BBM</option>';
+    keperluanSel.innerHTML = '<option value="">Pilih Keperluan</option>';
+    keperluanSel.disabled  = true;
+    jenisSel.disabled      = true;
+  } finally {
+    if (showSpin) hideOverlay();
+  }
 }
 
 function onUnitChange() {
@@ -171,6 +195,7 @@ async function onKirim() {
 
   msg1.textContent = "Mengirim…";
   btnKirim.disabled = true;
+  showOverlay("Mengirim data…");
 
   try {
     const res = await fetchJson(WORKER_URL, {
@@ -193,7 +218,7 @@ async function onKirim() {
       checkForm();
 
       // refresh list ID
-      await refreshLists(res.id);
+      await refreshLists(res.id, false);
     } else {
       msg1.textContent = (res && res.error) || "Gagal mengirim";
     }
@@ -202,13 +227,17 @@ async function onKirim() {
     msg1.textContent = "Jaringan bermasalah";
   } finally {
     btnKirim.disabled = false;
+    hideOverlay();
   }
 }
 
 /* ===== List IDs ===== */
-async function refreshLists(selectId = "") {
-  const res = await fetchJson(`${WORKER_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`);
-  allRows = res.rows || [];
+async function refreshLists(selectId = "", showSpin = true) {
+  if (showSpin) showOverlay("Memuat daftar…");
+  let res;
+  try {
+    res = await fetchJson(`${WORKER_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`);
+    allRows = res.rows || [];
 
   // --- Card Cetak (hanya tampil kalau ada yg VERIFIED=cetak)
   const printable = allRows.filter(r => String(r.verified || "").toLowerCase() === "cetak");
@@ -232,6 +261,9 @@ async function refreshLists(selectId = "") {
   } else {
     verStat.textContent = "-";
     btnPdf.disabled = true;
+  }
+  } finally {
+    if (showSpin) hideOverlay();
   }
 }
 
@@ -270,6 +302,7 @@ async function onPickFile(e) {
     preview.src = dataUrl;
     preview.classList.remove("hidden");
     msg3.textContent = "Mengunggah…";
+    showOverlay("Mengunggah foto…");
 
     const res = await fetchJson(WORKER_URL, {
       method : "POST",
@@ -288,6 +321,7 @@ async function onPickFile(e) {
     msg3.textContent = "Jaringan bermasalah";
   } finally {
     fileInput.value = "";
+    hideOverlay();
   }
 }
 
