@@ -45,6 +45,16 @@ button{border:0;border-radius:12px;padding:10px 14px;cursor:pointer}
 .hint{color:#93c5fd;margin-top:8px;font-size:12px}
 .preview{display:block;max-width:100%;border-radius:10px;margin-top:10px;border:1px solid #334155}
 
+/* ===== Overlay Spinner ===== */
+.overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);z-index:9999}
+.sheet{position:relative;display:grid;grid-template-columns:48px 1fr;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px;width:min(520px,92vw);box-shadow:0 16px 40px rgba(0,0,0,.45);animation:pop .18s ease-out both}
+.icon{width:42px;height:42px;border-radius:50%}
+.spinner{border:5px solid rgba(255,255,255,.15);border-top-color:var(--sec);animation:spin .9s linear infinite}
+.texts .title{font-weight:700;font-size:16px}
+.texts .desc{color:var(--muted);font-size:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pop{from{transform:translateY(6px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+
 @media (max-width:560px){
   .app-title{font-size:clamp(18px,5vw,20px)}
   .back-btn{width:40px;height:40px}
