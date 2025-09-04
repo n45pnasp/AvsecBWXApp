@@ -1,3 +1,7 @@
+import { requireAuth } from "./auth-guard.js";
+
+requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+
 const SCRIPT_URL   = "https://fuel.avsecbwx2018.workers.dev/"; // URL Worker
 const SHARED_TOKEN = "N45p";
 
