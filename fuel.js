@@ -14,9 +14,12 @@ const $$ = (s, root=document) => Array.from(root.querySelectorAll(s));
 
 async function fetchJson(url, options) {
   const res  = await fetch(url, options);
+  const ct   = res.headers.get("content-type") || "";
   const text = await res.text();
-  try { return JSON.parse(text); }
-  catch { throw new Error(`Respon bukan JSON (status ${res.status}): ${text.slice(0,120)}`); }
+  if (!ct.includes("application/json")) {
+    throw new Error(`Respon bukan JSON (status ${res.status}): ${text.slice(0,120)}`);
+  }
+  return JSON.parse(text);
 }
 
 function rupiah(n) {
@@ -249,13 +252,14 @@ async function refreshLists(selectId = "", showSpin = true) {
     printable.forEach(row => idList.add(new Option(row.id, row.id)));
   }
 
-  // --- Dropdown ID untuk foto: semua baris
+  // --- Dropdown ID untuk foto: hanya baris verified=cetak
   photoIdSel.innerHTML = '<option value="">Pilih ID</option>';
-  allRows.forEach(row => photoIdSel.add(new Option(row.id, row.id)));
+  printable.forEach(row => photoIdSel.add(new Option(row.id, row.id)));
+  cardFoto.classList.toggle("hidden", printable.length === 0);
 
   // auto-select ID baru pada kedua dropdown jika ada
-  if (selectId) {
-    if (printable.find(r => r.id === selectId)) idList.value = selectId;
+  if (selectId && printable.find(r => r.id === selectId)) {
+    idList.value = selectId;
     photoIdSel.value = selectId;
     if (idList.value) onPickId();
   } else {
@@ -274,6 +278,7 @@ function onPickId() {
 
   verStat.textContent = row ? (v || "(kosong)") : "-";
   btnPdf.disabled = v.toLowerCase() !== "cetak";
+  if (photoIdSel) photoIdSel.value = id;
 }
 
 /* ===== Cetak Kupon ===== */
