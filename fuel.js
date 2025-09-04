@@ -1,17 +1,19 @@
 // fuel.js (module)
-// ----------------------------------------------------
 import { requireAuth } from "./auth-guard.js";
 
 // Wajib login
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
 // Proxy Cloudflare ke GAS /exec
-const SCRIPT_URL = "https://fuel.avsecbwx2018.workers.dev/";
+const SCRIPT_URL  = "https://fuel.avsecbwx2018.workers.dev/";
 const SHARED_TOKEN = "N45p";
 
+// Halaman kupon (GitHub Pages) yang akan render & auto-print
+const COUPON_PAGE = "https://n45pnasp.github.io/AvsecBWXApp/coupon.html";
+
 async function fetchJson(url, options) {
-  const res = await fetch(url, options);
-  const ct = res.headers.get("content-type") || "";
+  const res  = await fetch(url, options);
+  const ct   = res.headers.get("content-type") || "";
   const text = await res.text();
   if (!ct.includes("application/json")) {
     throw new Error(`Respon bukan JSON (status ${res.status}): ${text.slice(0, 200)}`);
@@ -57,14 +59,9 @@ init();
 async function init() {
   try {
     await loadDropdowns();
-  } catch (e) {
-    console.error("Gagal load dropdowns:", e);
-  }
-
-  try {
     await refreshLists(); // isi cardCetak & cardFoto dari Data
   } catch (e) {
-    console.error("Gagal load list Data:", e);
+    console.error(e);
   }
 
   attachListeners();
@@ -112,7 +109,7 @@ async function loadDropdowns() {
   const units = res.units && res.units.length ? res.units : Object.keys(unitToJenis || {});
   units.forEach(u => unitSel.add(new Option(u, u)));
 
-  // Jenis diisi saat unit dipilih
+  // Jenis akan diisi saat unit dipilih
   jenisSel.innerHTML = '<option value="">Pilih Jenis BBM</option>';
   jenisSel.disabled = true;
 }
@@ -250,11 +247,10 @@ function onPickIdForPrint() {
 function onOpenPdf() {
   const id = idList.value || "";
   if (!id) return;
-  const url = `coupon.html?id=${encodeURIComponent(id)}`;
+  // Arahkan ke halaman GitHub statis (coupon.html) -> fetch coupondata -> auto print
+  const url = `${COUPON_PAGE}?id=${encodeURIComponent(id)}`;
   const win = window.open(url, "_blank");
-  if (!win) {
-    location.href = url;
-  }
+  if (!win) location.href = url; // fallback bila popup diblok
 }
 
 // ================== FOTO (UPLOAD) ==================
