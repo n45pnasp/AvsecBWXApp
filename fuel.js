@@ -8,6 +8,18 @@ const SHARED_TOKEN = "N45p"; // token wajib dikirim ke Apps Script
 
 const $ = (s) => document.querySelector(s);
 
+async function fetchJson(url, options) {
+  const res = await fetch(url, options).catch((err) => {
+    throw new Error(`Fetch gagal: ${err}`);
+  });
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    throw new Error(`Respon bukan JSON: ${text.slice(0, 80)}`);
+  }
+}
+
 // ---- Elemen DOM ----
 const unitSel = $("#unit");
 const jenisSel = $("#jenis");
@@ -65,7 +77,7 @@ async function loadDropdowns() {
     const url = `${SCRIPT_URL}?action=dropdowns&token=${encodeURIComponent(
       SHARED_TOKEN,
     )}`;
-    const res = await fetch(url).then((r) => r.json());
+    const res = await fetchJson(url);
     unitToNeeds = res.unitToNeeds || {};
     fuels = res.fuels || [];
 
@@ -132,11 +144,11 @@ async function onKirim() {
       keperluan,
       token: SHARED_TOKEN,
     };
-    const res = await fetch(SCRIPT_URL, {
+    const res = await fetchJson(SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    }).then((r) => r.json());
+    });
 
     if (res && res.ok) {
       msg1.textContent = "Terkirim";
@@ -167,9 +179,9 @@ function resetForm() {
 /* ===== List ID (GET + token) ===== */
 async function refreshListIds(selectId = "") {
   try {
-    const res = await fetch(
-      `${SCRIPT_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`,
-    ).then((r) => r.json());
+      const res = await fetchJson(
+        `${SCRIPT_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`,
+      );
     const rows = res.rows || [];
     idList.innerHTML = '<option value="">Pilih ID</option>';
     rows.forEach((row) => idList.add(new Option(row.id, row.id)));
@@ -194,19 +206,18 @@ function onPickId() {
 
   if (!val) return;
 
-  fetch(
-    `${SCRIPT_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`,
-  )
-    .then((r) => r.json())
-    .then((res) => {
-      const row = (res.rows || []).find((x) => x.id === val);
-      const v = (row && row.verified) || "";
-      verStat.textContent = row ? v || "(kosong)" : "-";
-      btnPdf.disabled = v.toLowerCase() !== "cetak";
-    })
-    .catch((err) => {
-      console.error("Gagal cek status", err);
-    });
+    fetchJson(
+      `${SCRIPT_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`,
+    )
+      .then((res) => {
+        const row = (res.rows || []).find((x) => x.id === val);
+        const v = (row && row.verified) || "";
+        verStat.textContent = row ? v || "(kosong)" : "-";
+        btnPdf.disabled = v.toLowerCase() !== "cetak";
+      })
+      .catch((err) => {
+        console.error("Gagal cek status", err);
+      });
 }
 
 function onOpenPdf() {
@@ -231,7 +242,7 @@ async function onPickFile(e) {
     preview.classList.remove("hidden");
     msg3.textContent = "Mengunggah…";
 
-    const res = await fetch(SCRIPT_URL, {
+    const res = await fetchJson(SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -240,7 +251,7 @@ async function onPickFile(e) {
         dataUrl,
         token: SHARED_TOKEN,
       }),
-    }).then((r) => r.json());
+    });
 
     if (res && res.ok) {
       msg3.textContent = "Foto tersimpan";
