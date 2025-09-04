@@ -39,7 +39,7 @@ select:focus,input:focus{outline:2px solid #3b82f6}
 button{border:0;border-radius:12px;padding:10px 14px;cursor:pointer}
 .primary{background:linear-gradient(180deg,var(--acc),var(--acc2));color:#000;font-weight:700}
 .secondary{background:#0b3b72;color:#fff}
-.hidden{display:none}
+.hidden{display:none !important}
 .msg{margin-top:8px;color:var(--muted)}
 .badge{padding:6px 10px;border-radius:999px;border:1px solid #334155;background:#0b1220}
 .hint{color:#93c5fd;margin-top:8px;font-size:12px}
