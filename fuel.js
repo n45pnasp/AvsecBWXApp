@@ -42,6 +42,7 @@ const msg3 = $("#msg3");
 let unitToNeeds = {};
 let fuels = [];
 let hargaMap = {};
+let dataRows = [];
 let currentId = "";
 
 init();
@@ -74,17 +75,16 @@ function attachListeners() {
 async function loadDropdowns() {
   try {
     const url = `${SCRIPT_URL}?action=dropdowns&token=${encodeURIComponent(
-      SHARED_TOKEN,
+      SHARED_TOKEN
     )}`;
     const res = await fetchJson(url);
     unitToNeeds = res.unitToNeeds || {};
     fuels = res.fuels || [];
 
-    // isi dropdown unit
+    // isi dropdown unit (urutan sesuai server)
+    const units = res.units || Object.keys(unitToNeeds);
     unitSel.innerHTML = '<option value="">Pilih Unit Kerja</option>';
-    Object.keys(unitToNeeds).forEach((u) =>
-      unitSel.add(new Option(u, u)),
-    );
+    units.forEach((u) => unitSel.add(new Option(u, u)));
 
     // isi dropdown jenis BBM
     jenisSel.innerHTML = '<option value="">Pilih Jenis BBM</option>';
@@ -150,7 +150,8 @@ async function onKirim() {
     });
 
     if (res && res.ok) {
-      msg1.textContent = "Terkirim";
+      const total = Number(res.totalHarga || 0).toLocaleString("id-ID");
+      msg1.textContent = `Terkirim (Rp ${total})`;
       currentId = res.id || "";
       resetForm();
       await refreshListIds(currentId);
@@ -178,13 +179,13 @@ function resetForm() {
 /* ===== List ID (GET + token) ===== */
 async function refreshListIds(selectId = "") {
   try {
-      const res = await fetchJson(
-        `${SCRIPT_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`,
-      );
-    const rows = res.rows || [];
+    const res = await fetchJson(
+      `${SCRIPT_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`
+    );
+    dataRows = res.rows || [];
     idList.innerHTML = '<option value="">Pilih ID</option>';
-    rows.forEach((row) => idList.add(new Option(row.id, row.id)));
-    cardCetak.classList.toggle("hidden", rows.length === 0);
+    dataRows.forEach((row) => idList.add(new Option(row.id, row.id)));
+    cardCetak.classList.toggle("hidden", dataRows.length === 0);
     if (selectId) {
       idList.value = selectId;
       onPickId();
@@ -205,18 +206,10 @@ function onPickId() {
 
   if (!val) return;
 
-    fetchJson(
-      `${SCRIPT_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`,
-    )
-      .then((res) => {
-        const row = (res.rows || []).find((x) => x.id === val);
-        const v = (row && row.verified) || "";
-        verStat.textContent = row ? v || "(kosong)" : "-";
-        btnPdf.disabled = v.toLowerCase() !== "cetak";
-      })
-      .catch((err) => {
-        console.error("Gagal cek status", err);
-      });
+  const row = dataRows.find((x) => x.id === val);
+  const v = (row && row.verified) || "";
+  verStat.textContent = row ? v || "(kosong)" : "-";
+  btnPdf.disabled = v.toLowerCase() !== "cetak";
 }
 
 function onOpenPdf() {
