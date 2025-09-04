@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BBM App</title>
+  <link rel="stylesheet" href="fuel.css" />
+</head>
+<body>
+  <main class="wrap">
+    <!-- Card 1: Input -->
+    <section class="card">
+      <h2>Input BBM</h2>
+
+      <label>Unit Kerja
+        <select id="unit"></select>
+      </label>
+
+      <label>Jenis BBM
+        <select id="jenis"></select>
+      </label>
+
+      <label>Keperluan
+        <select id="keperluan"></select>
+      </label>
+
+      <label>Jumlah (Liter)
+        <input id="liter" type="number" min="0" step="0.1" inputmode="decimal" placeholder="0" />
+      </label>
+
+      <div class="row">
+        <div class="info">Total Harga</div>
+        <div class="price" id="harga">Rp 0</div>
+      </div>
+
+      <button id="btnKirim" class="primary">Kirim</button>
+      <div id="msg1" class="msg"></div>
+    </section>
+
+    <!-- Card 2: Cetak Kupon (tersembunyi sampai siap) -->
+    <section class="card hidden" id="cardCetak">
+      <h2>Cetak Kupon</h2>
+
+      <label>Pilih ID (Data)
+        <select id="idList"></select>
+      </label>
+
+      <div class="row">
+        <div class="info">Status VERIFIED</div>
+        <div class="badge" id="verStat">-</div>
+      </div>
+
+      <button id="btnPdf" class="secondary" disabled>Download PDF</button>
+      <div class="hint">Tombol aktif jika kolom VERIFIED = <b>cetak</b>.</div>
+    </section>
+
+    <!-- Card 3: Foto Struk -->
+    <section class="card hidden" id="cardFoto">
+      <h2>Foto Struk</h2>
+      <input id="file" type="file" accept="image/*" capture="environment" />
+      <img id="preview" alt="" class="preview hidden" />
+      <div id="msg3" class="msg"></div>
+    </section>
+  </main>
+
+  <script src="fuel.js" defer></script>
+</body>
+</html>
