@@ -9,15 +9,14 @@ const SHARED_TOKEN = "N45p"; // token wajib dikirim ke Apps Script
 const $ = (s) => document.querySelector(s);
 
 async function fetchJson(url, options) {
-  const res = await fetch(url, options).catch((err) => {
-    throw new Error(`Fetch gagal: ${err}`);
-  });
+  const res = await fetch(url, options);
+  const ct = res.headers.get("content-type") || "";
   const text = await res.text();
-  try {
-    return JSON.parse(text);
-  } catch (_) {
-    throw new Error(`Respon bukan JSON: ${text.slice(0, 80)}`);
+  if (!ct.includes("application/json")) {
+    // tampilkan 120 char pertama untuk debugging
+    throw new Error(`Respon bukan JSON (status ${res.status}): ${text.slice(0, 120)}`);
   }
+  return JSON.parse(text);
 }
 
 // ---- Elemen DOM ----
