@@ -250,11 +250,9 @@ function onPickIdForPrint() {
 function onOpenPdf() {
   const id = idList.value || "";
   if (!id) return;
-  const url = `${SCRIPT_URL}?action=coupon&id=${encodeURIComponent(id)}&token=${encodeURIComponent(SHARED_TOKEN)}`;
-  // Halaman kupon (server) sudah auto-print onload → buka tab baru
+  const url = `coupon.html?id=${encodeURIComponent(id)}`;
   const win = window.open(url, "_blank");
   if (!win) {
-    // fallback jika popup diblok
     location.href = url;
   }
 }

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kupon BBM — A4 Landscape (2 × 10cm + dashed guide)</title>
+<style>
+  :root{ --frame:#1d9bf0; --ink:#0f172a; --paper:#ffffff; --stripe:#eef2f7;
+    --label-w:18mm; --colon-w:2mm; --row-gap:.7mm; --cell-font:7.8pt;
+    --info-pad-v:2mm; --info-pad-h:2.6mm; --between-groups:6mm; }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{ margin:0; background:#f3f4f6; color:var(--ink);
+    font:10pt Calibri,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .page{ width:297mm;height:210mm;margin:10mm auto;background:#fff;
+    padding:10mm;position:relative;box-shadow:0 8px 30px rgba(0,0,0,.07) }
+  .cutline{ position:absolute;top:8mm;bottom:8mm;left:calc(50% - .25mm);width:.5mm;
+    background:repeating-linear-gradient(to bottom,transparent 0,transparent 3mm,rgba(107,114,128,.65) 3mm,rgba(107,114,128,.65) 4.5mm) }
+  .cutline::after{ content:"✂"; position:absolute; left:50%; top:0; transform:translate(-50%,-45%);
+    font-size:11pt; line-height:1; color:#374151; background:#ffffff; padding:0 .8mm; }
+  .halves{ display:grid;grid-template-columns:1fr 1fr;height:100%;align-items:center;justify-items:center;column-gap:22mm }
+  .coupon-wrap{ width:120mm; height:120mm; position:relative; display:flex; align-items:center; justify-content:center; overflow:visible; }
+  .coupon-wrap::before{ content:""; position:absolute; inset:0; border:.35mm dashed rgba(107,114,128,.75); border-radius:0; pointer-events:none; }
+  .coupon-wrap::after{ content:"✂"; position:absolute; left:50%; top:0; transform:translate(-50%,-45%);
+    font-size:11pt; line-height:1; color:#374151; background:#ffffff; padding:0 .8mm; }
+  .coupon{ width:100mm;height:100mm;border:3mm solid var(--frame);border-radius:3mm;
+    display:grid;grid-template-rows:auto auto auto;padding:4mm;overflow:hidden; }
+  .title{text-align:center;font-weight:900;margin:1mm 0 .8mm;font-size:14.2pt;letter-spacing:.2pt}
+  .sub{text-align:center;font-weight:800;margin:0 0 3.5mm;line-height:1.08;font-size:8.2pt}
+  .sub small{display:block;font-weight:800}
+  .info-card{background:var(--stripe);border-radius:3mm;padding:var(--info-pad-v) var(--info-pad-h);width:100%;align-self:start;margin:0 auto}
+  .infotab{width:100%;border-collapse:separate;border-spacing:0 var(--row-gap)}
+  .infotab td{padding:0;font-size:var(--cell-font);line-height:1;vertical-align:baseline}
+  .lab{width:var(--label-w);font-weight:800}
+  .colon{width:var(--colon-w)}
+  .val{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .valL{padding-right:var(--between-groups)}
+  .summary{margin-top:3mm;background:#fff;border-radius:2.5mm;padding:2.2mm 3mm;text-align:center;font-weight:900;line-height:1.15;border:.2mm solid #e5e7eb}
+  .summary .line1{text-transform:uppercase;font-size:8.5pt}
+  .summary .line2{text-transform:uppercase;font-size:8.7pt;margin-top:1.2mm}
+  .sign{text-align:center;line-height:1.2;font-size:8.2pt;margin-top:3mm}
+  .org{font-weight:900}.role{font-weight:900;margin-top:.9mm}
+  .sigline{width:72%;border-top:.3mm solid #111;margin:25mm auto 0}
+  .namehint{font-size:8pt;color:#374151;margin-top:2.5mm;margin-bottom:6mm}
+  @page { size: A4 landscape; margin: 0 }
+  @media print{ body{ background: transparent; } .page{ margin: 0; box-shadow: none; height: 210mm; padding: 10mm; } }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="cutline"></div>
+    <div class="halves">
+
+      <!-- Kupon kiri -->
+      <div class="coupon-wrap">
+        <section class="coupon">
+          <div>
+            <h2 class="title">KUPON BBM</h2>
+            <p class="sub">PT ANGKASA PURA INDONESIA<small>KANTOR CABANG BANDARA BANYUWANGI</small></p>
+          </div>
+          <div class="info-card">
+            <table class="infotab" role="presentation">
+              <tr>
+                <td class="lab">KODE</td><td class="colon">:</td><td class="val valL" data-field="kode">—</td>
+                <td class="lab">UNIT</td><td class="colon">:</td><td class="val" data-field="unit">—</td>
+              </tr>
+              <tr>
+                <td class="lab">TANGGAL</td><td class="colon">:</td><td class="val valL" data-field="tanggal">—</td>
+                <td class="lab">KEPERLUAN</td><td class="colon">:</td><td class="val" data-field="keperluan">—</td>
+              </tr>
+            </table>
+            <div class="summary">
+              <div class="line1">JENIS <span data-field="jenis">—</span> &nbsp; JUMLAH <span data-field="jumlah">—</span></div>
+              <div class="line2">TOTAL HARGA <span data-field="harga">—</span></div>
+            </div>
+          </div>
+          <div class="sign">
+            <div class="org">AIRPORT SECURITY, RESCUE &amp; FIRE FIGHTING</div>
+            <div class="role">DEPARTEMENT HEAD</div>
+            <div class="sigline"></div>
+            <div class="namehint">(Nama Jelas &amp; NIP)</div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Kupon kanan -->
+      <div class="coupon-wrap">
+        <section class="coupon">
+          <div>
+            <h2 class="title">KUPON BBM</h2>
+            <p class="sub">PT ANGKASA PURA INDONESIA<small>KANTOR CABANG BANDARA BANYUWANGI</small></p>
+          </div>
+          <div class="info-card">
+            <table class="infotab" role="presentation">
+              <tr>
+                <td class="lab">KODE</td><td class="colon">:</td><td class="val valL" data-field="kode">—</td>
+                <td class="lab">UNIT</td><td class="colon">:</td><td class="val" data-field="unit">—</td>
+              </tr>
+              <tr>
+                <td class="lab">TANGGAL</td><td class="colon">:</td><td class="val valL" data-field="tanggal">—</td>
+                <td class="lab">KEPERLUAN</td><td class="colon">:</td><td class="val" data-field="keperluan">—</td>
+              </tr>
+            </table>
+            <div class="summary">
+              <div class="line1">JENIS <span data-field="jenis">—</span> &nbsp; JUMLAH <span data-field="jumlah">—</span></div>
+              <div class="line2">TOTAL HARGA <span data-field="harga">—</span></div>
+            </div>
+          </div>
+          <div class="sign">
+            <div class="org">AIRPORT SECURITY, RESCUE &amp; FIRE FIGHTING</div>
+            <div class="role">DEPARTEMENT HEAD</div>
+            <div class="sigline"></div>
+            <div class="namehint">(Nama Jelas &amp; NIP)</div>
+          </div>
+        </section>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+const WORKER = "https://fuel.avsecbwx2018.workers.dev/";
+const TOKEN  = "N45p";
+
+function setField(name, value){
+  document.querySelectorAll(`[data-field="${name}"]`).forEach(el => el.textContent = value);
+}
+function rupiah(n){ return (Math.round(Number(n)||0)).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+
+(async () => {
+  const id = new URLSearchParams(location.search).get('id') || '';
+  if (!id) {
+    document.body.innerHTML = '<div style="padding:24px;font:14px system-ui">ID tidak diberikan.</div>';
+    return;
+  }
+  try {
+    const res = await fetch(`${WORKER}?action=coupondata&id=${encodeURIComponent(id)}&token=${encodeURIComponent(TOKEN)}`);
+    const data = await res.json();
+    if (!data.ok) {
+      document.body.innerHTML = `<div style="padding:24px;font:14px system-ui">Error: ${data.error||'Gagal memuat kupon.'}</div>`;
+      return;
+    }
+    const d = data.data;
+    setField('kode', d.id);
+    setField('unit', String(d.unit||'').toUpperCase());
+    setField('tanggal', d.tanggal);
+    setField('keperluan', String(d.keperluan||'').toUpperCase());
+    setField('jenis', String(d.jenis||'').toUpperCase());
+    setField('jumlah', `${d.liter} LITER`);
+    setField('harga', `Rp. ${rupiah(d.harga)}`);
+
+    // auto print
+    setTimeout(()=>window.print(), 80);
+  } catch (e) {
+    document.body.innerHTML = `<div style="padding:24px;font:14px system-ui">Gagal memuat: ${e}</div>`;
+  }
+})();
+</script>
+</body>
+</html>
