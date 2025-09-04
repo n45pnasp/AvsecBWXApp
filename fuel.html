@@ -49,7 +49,7 @@
       <div id="msg1" class="msg"></div>
     </section>
 
-    <!-- Card 2: Cetak Kupon (tersembunyi sampai siap) -->
+    <!-- Card 2: Cetak Kupon (muncul kalau ada yang VERIFIED=cetak) -->
     <section class="card hidden" id="cardCetak">
       <h2>Cetak Kupon</h2>
 
@@ -66,26 +66,16 @@
       <div class="hint">Tombol aktif jika kolom VERIFIED = <b>cetak</b>.</div>
     </section>
 
-    <!-- Card 3: Foto Struk -->
-    <section class="card hidden" id="cardFoto">
+    <!-- Card 3: Foto Struk (selalu tampil) -->
+    <section class="card" id="cardFoto">
       <h2>Foto Struk</h2>
+
+      <!-- Dropdown ID untuk foto akan disisipkan otomatis oleh fuel.js -->
       <input id="file" type="file" accept="image/*" capture="environment" />
       <img id="preview" alt="" class="preview hidden" />
       <div id="msg3" class="msg"></div>
     </section>
   </main>
-
-  <!-- Spinner overlay -->
-  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
-    <div class="sheet" role="document">
-      <div class="icon spinner"></div>
-      <div class="texts">
-        <div class="title" id="ovTitle">Memuat…</div>
-        <div class="desc" id="ovDesc">Mohon tunggu</div>
-      </div>
-    </div>
-  </div>
-
-    <script type="module" src="fuel.js"></script>
-  </body>
-  </html>
+  <script type="module" src="fuel.js"></script>
+</body>
+</html>
