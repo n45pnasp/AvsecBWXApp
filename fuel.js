@@ -1,61 +1,82 @@
+// fuel.js (module)
+// ----------------------------------------------------
 import { requireAuth } from "./auth-guard.js";
 
-// Lindungi halaman: user harus login
+// Wajib login
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
-/** URL proxy Cloudflare Worker */
+// Proxy Cloudflare ke GAS /exec
 const SCRIPT_URL = "https://fuel.avsecbwx2018.workers.dev/";
-/** Token shared */
 const SHARED_TOKEN = "N45p";
 
-/* ===== util fetch JSON robust ===== */
 async function fetchJson(url, options) {
   const res = await fetch(url, options);
   const ct = res.headers.get("content-type") || "";
   const text = await res.text();
   if (!ct.includes("application/json")) {
-    throw new Error(`Respon bukan JSON (status ${res.status}): ${text.slice(0, 160)}`);
+    throw new Error(`Respon bukan JSON (status ${res.status}): ${text.slice(0, 200)}`);
   }
   return JSON.parse(text);
 }
 
-/* ===== DOM ===== */
 const $ = (s) => document.querySelector(s);
 
-const unitSel       = $("#unit");
-const jenisSel      = $("#jenis");
-const keperluanSel  = $("#keperluan");
-const literInput    = $("#liter");
-const hargaEl       = $("#harga");
-const btnKirim      = $("#btnKirim");
-const msg1          = $("#msg1");
+// --------- Card 1 (Input) ----------
+const unitSel      = $("#unit");
+const jenisSel     = $("#jenis");
+const keperluanSel = $("#keperluan");
+const literInput   = $("#liter");
+const hargaEl      = $("#harga");
+const btnKirim     = $("#btnKirim");
+const msg1         = $("#msg1");
 
-const cardCetak     = $("#cardCetak");
-const idList        = $("#idList");
-const verStat       = $("#verStat");
-const btnPdf        = $("#btnPdf");
+// --------- Card 2 (Cetak) ----------
+const cardCetak = $("#cardCetak");
+const idList    = $("#idList");   // hanya ID dengan VERIFIED="cetak"
+const verStat   = $("#verStat");
+const btnPdf    = $("#btnPdf");
 
-const cardFoto      = $("#cardFoto");
-const fileInput     = $("#file");
-const preview       = $("#preview");
-const msg3          = $("#msg3");
+// --------- Card 3 (Foto Struk) ----------
+const cardFoto  = $("#cardFoto");
+const fileInput = $("#file");
+const preview   = $("#preview");
+const msg3      = $("#msg3");
 
-/* ===== State ===== */
-let unitToNeeds = {};       // unit -> [keperluan]
-let unitToJenis = {};       // unit -> [jenis bbm]   <-- BARU
-let hargaMap    = {};       // jenis -> harga/liter (uppercase key)
-let rowsCache   = [];
-let currentId   = "";
+// Akan dibuat dinamis di Card 3: <select id="idFoto">
+let idFotoSel = null;
 
-/* ===== Init ===== */
+// --------- State ----------
+let unitToNeeds = {};
+let unitToJenis = {};
+let hargaMap    = {};    // jenis (UPPER) -> harga/liter
+let rowsCache   = [];    // semua baris Data
+
 init();
 
+// ================== INIT ==================
 async function init() {
-  await loadDropdowns();
-  await refreshListIds();
+  try {
+    await loadDropdowns();
+  } catch (e) {
+    console.error("Gagal load dropdowns:", e);
+  }
+
+  try {
+    await refreshLists(); // isi cardCetak & cardFoto dari Data
+  } catch (e) {
+    console.error("Gagal load list Data:", e);
+  }
+
   attachListeners();
+
+  // Card 3 harus selalu terlihat
+  cardFoto.classList.remove("hidden");
+  ensureFotoIdSelect();
+
   keperluanSel.disabled = true;
-  jenisSel.disabled = true;         // sekarang jenis ikut unit
+  jenisSel.disabled     = true;
+
+  updateHarga();
   checkForm();
 }
 
@@ -66,15 +87,16 @@ function attachListeners() {
   literInput.addEventListener("input", () => { updateHarga(); checkForm(); });
 
   btnKirim.addEventListener("click", onKirim);
-  idList.addEventListener("change", onPickId);
+
+  idList.addEventListener("change", onPickIdForPrint);
   btnPdf.addEventListener("click", onOpenPdf);
+
   fileInput.addEventListener("change", onPickFile);
 }
 
-/* =================== Dropdowns =================== */
+// ================== DROPDOWNS ==================
 async function loadDropdowns() {
-  const url = `${SCRIPT_URL}?action=dropdowns&token=${encodeURIComponent(SHARED_TOKEN)}`;
-  const res = await fetchJson(url);
+  const res = await fetchJson(`${SCRIPT_URL}?action=dropdowns&token=${encodeURIComponent(SHARED_TOKEN)}`);
   if (!res.ok) throw new Error(res.error || "dropdowns: backend error");
 
   unitToNeeds = res.unitToNeeds || {};
@@ -87,60 +109,54 @@ async function loadDropdowns() {
 
   // Unit
   unitSel.innerHTML = '<option value="">Pilih Unit Kerja</option>';
-  const units = res.units && res.units.length ? res.units : Object.keys(unitToJenis);
+  const units = res.units && res.units.length ? res.units : Object.keys(unitToJenis || {});
   units.forEach(u => unitSel.add(new Option(u, u)));
 
-  // Kosongkan jenis; diisi saat unit dipilih
+  // Jenis diisi saat unit dipilih
   jenisSel.innerHTML = '<option value="">Pilih Jenis BBM</option>';
   jenisSel.disabled = true;
-
-  updateHarga();
 }
 
-/* =================== Dynamic by Unit =================== */
 function onUnitChange() {
   const unit = unitSel.value;
 
   // Keperluan
   keperluanSel.innerHTML = '<option value="">Pilih Keperluan</option>';
   if (unit && unitToNeeds[unit]) {
-    // fallback pecah koma kalau ada
     const items = unitToNeeds[unit]
       .flatMap(v => String(v).split(/[,;|]/))
       .map(s => s.trim())
       .filter(Boolean);
-    const uniq = [...new Set(items)];
-    uniq.forEach(k => keperluanSel.add(new Option(k, k)));
+    [...new Set(items)].forEach(k => keperluanSel.add(new Option(k, k)));
     keperluanSel.disabled = false;
   } else {
     keperluanSel.disabled = true;
   }
 
-  // Jenis BBM (BERGANTUNG UNIT)
+  // Jenis BBM
   jenisSel.innerHTML = '<option value="">Pilih Jenis BBM</option>';
   if (unit && unitToJenis[unit] && unitToJenis[unit].length) {
     unitToJenis[unit].forEach(j => jenisSel.add(new Option(j, j)));
     jenisSel.disabled = false;
   } else {
-    // fallback: gabungan semua jenis yang ada di mapping (kalau unit tidak ditemukan)
+    // fallback: seluruh jenis yang ada
     const set = new Set();
-    Object.values(unitToJenis).forEach(arr => (arr || []).forEach(x => set.add(x)));
+    Object.values(unitToJenis || {}).forEach(arr => (arr || []).forEach(x => set.add(x)));
     [...set].forEach(j => jenisSel.add(new Option(j, j)));
     jenisSel.disabled = set.size === 0;
   }
 
-  // reset harga karena jenis bisa berubah
   jenisSel.value = "";
   updateHarga();
   checkForm();
 }
 
-/* =================== Harga =================== */
+// ================== HARGA ==================
 function updateHarga() {
   const jenis = (jenisSel.value || "").toUpperCase().trim();
   const liter = parseFloat(literInput.value || "0");
   const hpl   = Number(hargaMap[jenis] || 0);
-  const total = Math.round(hpl * (isNaN(liter) ? 0 : liter));
+  const total = Math.round((isNaN(liter) ? 0 : liter) * hpl);
   hargaEl.textContent = `Rp ${total.toLocaleString("id-ID")}`;
 }
 
@@ -149,7 +165,7 @@ function checkForm() {
   btnKirim.disabled = !ok;
 }
 
-/* =================== Create record =================== */
+// ================== CREATE ==================
 async function onKirim() {
   if (btnKirim.disabled) return;
 
@@ -174,15 +190,13 @@ async function onKirim() {
 
     if (res.ok) {
       msg1.textContent = `Terkirim (ID: ${res.id})`;
-      currentId = res.id || "";
       resetForm();
-      await refreshListIds(currentId);
-      cardFoto.classList.toggle("hidden", !currentId);
+      await refreshLists(res.id); // refresh card 2 & 3; pilihkan id foto = id baru
     } else {
       msg1.textContent = res.error || "Gagal mengirim";
     }
   } catch (err) {
-    console.error("Gagal mengirim data", err);
+    console.error("Gagal mengirim:", err);
     msg1.textContent = "Jaringan bermasalah";
   } finally {
     btnKirim.disabled = false;
@@ -191,57 +205,87 @@ async function onKirim() {
 
 function resetForm() {
   unitSel.value = "";
-  jenisSel.innerHTML = '<option value="">Pilih Jenis BBM</option>';
-  jenisSel.disabled = true;
   keperluanSel.innerHTML = '<option value="">Pilih Keperluan</option>';
   keperluanSel.disabled = true;
+  jenisSel.innerHTML = '<option value="">Pilih Jenis BBM</option>';
+  jenisSel.disabled = true;
   literInput.value = "";
   updateHarga();
   checkForm();
 }
 
-/* =================== List ID =================== */
-async function refreshListIds(selectId = "") {
+// ================== LIST DATA (Cetak + Foto) ==================
+async function refreshLists(selectIdForFoto = "") {
   const res = await fetchJson(`${SCRIPT_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`);
   rowsCache = res.ok ? (res.rows || []) : [];
-  idList.innerHTML = '<option value="">Pilih ID</option>';
-  rowsCache.forEach(r => idList.add(new Option(r.id, r.id)));
-  cardCetak.classList.toggle("hidden", rowsCache.length === 0);
 
-  if (selectId) {
-    idList.value = selectId;
-    onPickId();
+  // Card 2: hanya ID yang VERIFIED=cetak
+  const cetakRows = rowsCache.filter(r => String(r.verified || "").toLowerCase() === "cetak");
+  cardCetak.classList.toggle("hidden", cetakRows.length === 0);
+
+  idList.innerHTML = '<option value="">Pilih ID</option>';
+  cetakRows.forEach(r => idList.add(new Option(r.id, r.id)));
+  verStat.textContent = "-";
+  btnPdf.disabled = true;
+
+  // Card 3: isi dropdown ID untuk foto (semua baris)
+  ensureFotoIdSelect();
+  idFotoSel.innerHTML = '<option value="">Pilih ID untuk Foto</option>';
+  rowsCache.forEach(r => idFotoSel.add(new Option(r.id, r.id)));
+
+  if (selectIdForFoto) {
+    idFotoSel.value = selectIdForFoto;
   }
 }
 
-function onPickId() {
-  const val = idList.value || "";
-  currentId = val;
-  verStat.textContent = "-";
-  btnPdf.disabled = true;
-  cardFoto.classList.toggle("hidden", !val);
-  preview.classList.add("hidden");
-  msg3.textContent = "";
-
-  if (!val) return;
-
-  const row = rowsCache.find(x => x.id === val);
+function onPickIdForPrint() {
+  const id = idList.value || "";
+  const row = rowsCache.find(x => x.id === id);
   const v = row ? String(row.verified || "") : "";
   verStat.textContent = row ? (v || "(kosong)") : "-";
   btnPdf.disabled = v.toLowerCase() !== "cetak";
 }
 
-/* =================== Kupon =================== */
+// ================== CETAK ==================
 function onOpenPdf() {
   const id = idList.value || "";
   if (!id) return;
-  window.open(`${SCRIPT_URL}?action=coupon&id=${encodeURIComponent(id)}&token=${encodeURIComponent(SHARED_TOKEN)}`, "_blank");
+  const url = `${SCRIPT_URL}?action=coupon&id=${encodeURIComponent(id)}&token=${encodeURIComponent(SHARED_TOKEN)}`;
+  // Halaman kupon (server) sudah auto-print onload → buka tab baru
+  const win = window.open(url, "_blank");
+  if (!win) {
+    // fallback jika popup diblok
+    location.href = url;
+  }
 }
 
-/* =================== Upload Foto =================== */
+// ================== FOTO (UPLOAD) ==================
+function ensureFotoIdSelect() {
+  if (idFotoSel) return idFotoSel;
+
+  const label = document.createElement("label");
+  label.textContent = "Pilih ID (Untuk Foto)";
+  const sel = document.createElement("select");
+  sel.id = "idFoto";
+  sel.innerHTML = '<option value="">Pilih ID untuk Foto</option>';
+  label.appendChild(sel);
+
+  // sisipkan sebelum input file
+  cardFoto.insertBefore(label, fileInput);
+  idFotoSel = sel;
+  return idFotoSel;
+}
+
 async function onPickFile(e) {
   const file = e.target.files && e.target.files[0];
-  if (!file || !currentId) return;
+  const targetId = idFotoSel ? idFotoSel.value : "";
+  if (!file) return;
+
+  if (!targetId) {
+    msg3.textContent = "Pilih ID terlebih dahulu.";
+    fileInput.value = "";
+    return;
+  }
 
   try {
     const dataUrl = await readAsDataURL(file, 1280);
@@ -254,7 +298,7 @@ async function onPickFile(e) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "uploadphoto",
-        id: currentId,
+        id: targetId,
         dataUrl,
         token: SHARED_TOKEN,
       }),
@@ -262,14 +306,14 @@ async function onPickFile(e) {
 
     msg3.textContent = res.ok ? "Foto tersimpan" : (res.error || "Gagal upload");
   } catch (err) {
-    console.error("Upload gagal", err);
+    console.error("Upload gagal:", err);
     msg3.textContent = "Jaringan bermasalah";
   } finally {
     fileInput.value = "";
   }
 }
 
-/* =================== Utils =================== */
+// ================== Utils ==================
 function readAsDataURL(file, maxSize = 1024) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -280,7 +324,7 @@ function readAsDataURL(file, maxSize = 1024) {
       img.onload = () => {
         const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
         const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
+        canvas.width  = Math.round(img.width  * scale);
         canvas.height = Math.round(img.height * scale);
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
