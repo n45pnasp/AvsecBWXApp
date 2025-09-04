@@ -6,6 +6,8 @@ requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 // Proxy Cloudflare Worker
 const SCRIPT_URL = "https://fuel.avsecbwx2018.workers.dev/";
 const SHARED_TOKEN = "N45p";
+// Halaman kupon statis (GitHub Pages)
+const COUPON_PAGE = "https://n45pnasp.github.io/AvsecBWXApp/coupon.html";
 
 /* ===== fetch JSON dengan verifikasi tipe ===== */
 async function fetchJson(url, options) {
@@ -252,7 +254,10 @@ function onPickId(){
 function onOpenPdf(){
   const id = idList.value || "";
   if (!id) return;
-  window.open(`${SCRIPT_URL}?action=coupon&id=${encodeURIComponent(id)}&token=${encodeURIComponent(SHARED_TOKEN)}`, "_blank");
+  // Buka halaman kupon statis (auto-print di dalam coupon.html)
+  const url = `${COUPON_PAGE}?id=${encodeURIComponent(id)}`;
+  const win = window.open(url, "_blank");
+  if (!win) location.href = url; // fallback jika popup diblok
 }
 
 /* =================== Upload Foto =================== */
