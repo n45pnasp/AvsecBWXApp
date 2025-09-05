@@ -6,9 +6,17 @@
 <title>Kupon BBM — A4 Landscape (2 × 10cm + dashed guide)</title>
 <style>
   :root{
-    --frame:#1d9bf0; --ink:#0f172a; --paper:#ffffff; --stripe:#eef2f7;
+    --frame:#1d9bf0; --ink:#0f172a; --paper:#ffffff;
+    --stripe:#eef2f7;                 /* << warna card abu-abu */
+
     --label-w:18mm; --colon-w:2mm; --row-gap:.7mm; --cell-font:7.8pt;
     --info-pad-v:2mm; --info-pad-h:2.6mm; --between-groups:6mm;
+
+    /* Pola garis putus-putus (tengah & keliling kupon) */
+    --dash-color: rgba(107,114,128,.75);
+    --dash-w: .5mm;     /* ketebalan garis */
+    --dash-l: 1.5mm;    /* panjang dash */
+    --dash-gap: 3mm;    /* jarak antar dash */
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -23,46 +31,69 @@
     width:297mm;height:210mm;margin:10mm auto;background:#fff;
     padding:10mm;position:relative;box-shadow:0 8px 30px rgba(0,0,0,.07)
   }
+
+  /* Garis putus-putus vertikal di tengah (pakai variabel dash) */
   .cutline{
-    position:absolute;top:8mm;bottom:8mm;left:calc(50% - .25mm);width:.5mm;
-    background:repeating-linear-gradient(to bottom,transparent 0,transparent 3mm,rgba(107,114,128,.65) 3mm,rgba(107,114,128,.65) 4.5mm)
+    position:absolute; top:8mm; bottom:8mm; left:calc(50% - (var(--dash-w)/2)); width:var(--dash-w);
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0, transparent var(--dash-gap),
+      var(--dash-color) var(--dash-gap),
+      var(--dash-color) calc(var(--dash-gap) + var(--dash-l))
+    );
   }
   .cutline::after{
     content:"✂";
     position:absolute; left:50%; top:0;
     transform:translate(-50%, -45%);
-    font-size:11pt; line-height:1;
-    color:#374151;
+    font-size:11pt; line-height:1; color:#374151;
     background:#ffffff; padding:0 .8mm;
   }
 
-  .halves{display:grid;grid-template-columns:1fr 1fr;height:100%;align-items:center;justify-items:center;column-gap:22mm}
+  .halves{
+    display:grid; grid-template-columns:1fr 1fr; height:100%;
+    align-items:center; justify-items:center; column-gap:22mm
+  }
 
-  /* Pembungkus dashed 1 cm di luar kupon */
+  /* Pembungkus kupon 10mm jarak di tiap sisi + dashed keliling dengan pola sama */
   .coupon-wrap{
-    width:120mm; height:120mm;
-    position:relative; display:flex; align-items:center; justify-content:center;
-    overflow:visible;
+    width:120mm; height:120mm; position:relative;
+    display:flex; align-items:center; justify-content:center; overflow:visible;
   }
   .coupon-wrap::before{
-    content:""; position:absolute; inset:0;
-    border:.35mm dashed rgba(107,114,128,.75);
-    border-radius:0;
-    pointer-events:none;
+    content:""; position:absolute; inset:0; pointer-events:none; border-radius:0;
+    /* 4 sisi dashed: atas, bawah, kiri, kanan */
+    background:
+      /* atas */
+      repeating-linear-gradient(to right,
+        var(--dash-color), var(--dash-color) var(--dash-l),
+        transparent var(--dash-l), transparent calc(var(--dash-l) + var(--dash-gap))
+      ) top left/100% var(--dash-w) no-repeat,
+      /* bawah */
+      repeating-linear-gradient(to right,
+        var(--dash-color), var(--dash-color) var(--dash-l),
+        transparent var(--dash-l), transparent calc(var(--dash-l) + var(--dash-gap))
+      ) bottom left/100% var(--dash-w) no-repeat,
+      /* kiri */
+      repeating-linear-gradient(to bottom,
+        var(--dash-color), var(--dash-color) var(--dash-l),
+        transparent var(--dash-l), transparent calc(var(--dash-l) + var(--dash-gap))
+      ) top left/var(--dash-w) 100% no-repeat,
+      /* kanan */
+      repeating-linear-gradient(to bottom,
+        var(--dash-color), var(--dash-color) var(--dash-l),
+        transparent var(--dash-l), transparent calc(var(--dash-l) + var(--dash-gap))
+      ) top right/var(--dash-w) 100% no-repeat;
   }
   .coupon-wrap::after{
-    content:"✂";
-    position:absolute; left:50%; top:0;
-    transform:translate(-50%, -45%);
-    font-size:11pt; line-height:1;
-    color:#374151;
-    background:#ffffff; padding:0 .8mm;
+    content:"✂"; position:absolute; left:50%; top:0; transform:translate(-50%, -45%);
+    font-size:11pt; line-height:1; color:#374151; background:#ffffff; padding:0 .8mm;
   }
 
   /* Kupon 10×10 cm */
   .coupon{
-    width:100mm;height:100mm;border:3mm solid var(--frame);border-radius:3mm;
-    display:grid;grid-template-rows:auto auto auto;padding:4mm;overflow:hidden;
+    width:100mm; height:100mm; border:3mm solid var(--frame); border-radius:3mm;
+    display:grid; grid-template-rows:auto auto auto; padding:4mm; overflow:hidden;
   }
 
   /* Header */
@@ -70,7 +101,7 @@
   .sub{text-align:center;font-weight:800;margin:0 0 3.5mm;line-height:1.08;font-size:8.2pt}
   .sub small{display:block;font-weight:800}
 
-  /* Card info */
+  /* Card info (abu-abu) */
   .info-card{background:var(--stripe);border-radius:3mm;padding:var(--info-pad-v) var(--info-pad-h);width:100%;align-self:start;margin:0 auto}
   .infotab{width:100%;border-collapse:separate;border-spacing:0 var(--row-gap)}
   .infotab td{padding:0;font-size:var(--cell-font);line-height:1;vertical-align:baseline}
@@ -88,18 +119,14 @@
   .sign{text-align:center;line-height:1.2;font-size:8.2pt;margin-top:3mm}
   .org{font-weight:900}
   .role{font-weight:900;margin-top:.9mm}
-  .sigline{width:72%;border-top:.3mm solid #111;margin:25mm auto 0}
-  .namehint{font-size:8pt;color:#374151;margin-top:2.5mm;margin-bottom:6mm}
+  .sigline{width:72%;border-top:.3mm solid #111;margin:25mm auto 0} /* 2.5 cm sebelum garis */
+  .namehint{font-size:10pt;color:#374151;margin-top:2.5mm;margin-bottom:6mm;font-weight:900} /* +25% & tebal */
 
+  /* Cetak 1 halaman */
   @page { size: A4 landscape; margin: 0 }
   @media print{
     body { background: transparent; }
-    .page{
-      margin: 0;
-      box-shadow: none;
-      height: 210mm;
-      padding: 10mm;
-    }
+    .page{ margin:0; box-shadow:none; height:210mm; padding:10mm; }
   }
 
   .msg{padding:18px;font:14px system-ui}
@@ -120,13 +147,22 @@
 
           <div class="info-card">
             <table class="infotab" role="presentation">
+              <!-- KODE (full lebar) -->
               <tr>
-                <td class="lab">KODE</td><td class="colon">:</td><td class="val valL" data-field="kode">—</td>
-                <td class="lab">UNIT</td><td class="colon">:</td><td class="val" data-field="unit">—</td>
+                <td class="lab">KODE</td><td class="colon">:</td>
+                <td class="val valL" colspan="4" data-field="kode">—</td>
               </tr>
+              <!-- KEPERLUAN (full lebar) -->
               <tr>
-                <td class="lab">TANGGAL</td><td class="colon">:</td><td class="val valL" data-field="tanggal">—</td>
-                <td class="lab">KEPERLUAN</td><td class="colon">:</td><td class="val" data-field="keperluan">—</td>
+                <td class="lab">KEPERLUAN</td><td class="colon">:</td>
+                <td class="val valL" colspan="4" data-field="keperluan">—</td>
+              </tr>
+              <!-- TANGGAL (kiri) & UNIT (kanan) -->
+              <tr>
+                <td class="lab">TANGGAL</td><td class="colon">:</td>
+                <td class="val valL" data-field="tanggal">—</td>
+                <td class="lab">UNIT</td><td class="colon">:</td>
+                <td class="val" data-field="unit">—</td>
               </tr>
             </table>
 
@@ -156,12 +192,18 @@
           <div class="info-card">
             <table class="infotab" role="presentation">
               <tr>
-                <td class="lab">KODE</td><td class="colon">:</td><td class="val valL" data-field="kode">—</td>
-                <td class="lab">UNIT</td><td class="colon">:</td><td class="val" data-field="unit">—</td>
+                <td class="lab">KODE</td><td class="colon">:</td>
+                <td class="val valL" colspan="4" data-field="kode">—</td>
               </tr>
               <tr>
-                <td class="lab">TANGGAL</td><td class="colon">:</td><td class="val valL" data-field="tanggal">—</td>
-                <td class="lab">KEPERLUAN</td><td class="colon">:</td><td class="val" data-field="keperluan">—</td>
+                <td class="lab">KEPERLUAN</td><td class="colon">:</td>
+                <td class="val valL" colspan="4" data-field="keperluan">—</td>
+              </tr>
+              <tr>
+                <td class="lab">TANGGAL</td><td class="colon">:</td>
+                <td class="val valL" data-field="tanggal">—</td>
+                <td class="lab">UNIT</td><td class="colon">:</td>
+                <td class="val" data-field="unit">—</td>
               </tr>
             </table>
 
