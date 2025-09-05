@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Form BBM</title>
   <link rel="stylesheet" href="fuel.css" />
+  <!-- html2pdf: untuk generate & download PDF tanpa membuka coupon.html -->
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
   <!-- Sembunyikan sampai status login dicek -->
   <style>html{visibility:hidden}</style>
 </head>
@@ -86,6 +88,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Stage tersembunyi untuk render A4 -> PDF -->
+  <div id="pdfStage" style="position:fixed;left:-9999px;top:0;"></div>
 
   <script type="module" src="fuel.js"></script>
 </body>
