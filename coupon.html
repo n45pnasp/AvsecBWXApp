@@ -97,7 +97,6 @@
     font-weight:900;
   }
 
-
   /* Spinner overlay */
   .loading{
     position:absolute; inset:0; display:flex; flex-direction:column;
@@ -185,7 +184,7 @@
           </div>
 
           <div class="sign">
-            <div class="org">AIRPORT SECURITY, RESCUE &amp; FIRE FIGHTING</div>
+            <div class="org" data-field="org">AIRPORT SECURITY, RESCUE &amp; FIRE FIGHTING</div>
             <div class="role">DEPARTEMENT HEAD</div>
             <div class="sigline"></div>
             <div class="namehint" data-field="signer">(Nama Jelas &amp; NIP)</div>
@@ -243,7 +242,7 @@
           </div>
 
           <div class="sign">
-            <div class="org">AIRPORT SECURITY, RESCUE &amp; FIRE FIGHTING</div>
+            <div class="org" data-field="org">AIRPORT SECURITY, RESCUE &amp; FIRE FIGHTING</div>
             <div class="role">DEPARTEMENT HEAD</div>
             <div class="sigline"></div>
             <div class="namehint" data-field="signer">(Nama Jelas &amp; NIP)</div>
@@ -304,6 +303,7 @@ function showMsg(txt){
     setField('jumlah', `${d.liter} LITER`);
     setField('harga', `Rp. ${rupiah(d.harga)}`);
     setField('signer', d.signer || '(Nama Jelas & NIP)');
+    setField('org', d.org || '');  // <<— label/jabatan dari sheet
 
     /* nama file default PDF mengikuti kode */
     document.title = `Kupon BBM — ${d.id}`;
