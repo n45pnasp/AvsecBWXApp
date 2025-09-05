@@ -14,18 +14,19 @@
     --label-w:18mm; --colon-w:2mm; --row-gap:.7mm; --cell-font:7.8pt;
     --info-pad-v:2mm; --info-pad-h:2.6mm; --between-groups:6mm;
 
-    /* pola garis putus-putus */
-    --dash-color: rgba(107,114,128,.75);
-    --dash-w: .5mm;     /* ketebalan garis */
-    --dash-l: 1.5mm;    /* panjang dash */
-    --dash-gap: 3mm;    /* jarak antar dash */
+    /* pengaturan garis putus-putus (SVG) */
+    --dash-color:#6b7280;   /* rgb(107,114,128) */
+    --dash-w:.5mm;          /* ketebalan garis */
+    --dash-l:1.5mm;         /* panjang dash */
+    --dash-gap:3mm;         /* jarak antar dash */
   }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
     margin:0; background:#f3f4f6; color:var(--ink);
     font:10pt Calibri,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact; color-adjust:exact;
+    -moz-print-color-adjust:exact;
   }
 
   /* A4 landscape */
@@ -34,21 +35,14 @@
     padding:10mm;position:relative;box-shadow:0 8px 30px rgba(0,0,0,.07)
   }
 
-  /* Garis putus-putus vertikal di tengah */
+  /* Garis putus-putus vertikal di tengah (SVG) */
   .cutline{
-    position:absolute; top:8mm; bottom:8mm; left:calc(50% - (var(--dash-w)/2)); width:var(--dash-w);
-    background: repeating-linear-gradient(
-      to bottom,
-      transparent 0, transparent var(--dash-gap),
-      var(--dash-color) var(--dash-gap),
-      var(--dash-color) calc(var(--dash-gap) + var(--dash-l))
-    );
+    position:absolute; inset:8mm 0 8mm 0; pointer-events:none;
   }
-  .cutline::after{
-    content:"✂"; position:absolute; left:50%; top:0;
-    transform:translate(-50%, -45%);
-    font-size:11pt; line-height:1; color:#374151;
-    background:#ffffff; padding:0 .8mm;
+  .cutline svg{position:absolute; left:50%; top:0; height:calc(100% - 0mm); transform:translateX(-50%);}
+  .cutline .scissor{
+    position:absolute; left:50%; top:8mm; transform:translate(-50%,-45%);
+    font-size:11pt; line-height:1; color:#374151; background:#ffffff; padding:0 .8mm;
   }
 
   .halves{
@@ -56,37 +50,17 @@
     align-items:center; justify-items:center; column-gap:22mm;
   }
 
-  /* Pembungkus kupon + dashed keliling */
+  /* Pembungkus kupon + dashed keliling (SVG) */
   .coupon-wrap{
     width:120mm; height:120mm; position:relative;
     display:flex; align-items:center; justify-content:center; overflow:visible;
   }
-  .coupon-wrap::before{
-    content:""; position:absolute; inset:0; pointer-events:none; border-radius:0;
-    background:
-      /* atas */
-      repeating-linear-gradient(to right,
-        var(--dash-color), var(--dash-color) var(--dash-l),
-        transparent var(--dash-l), transparent calc(var(--dash-l) + var(--dash-gap))
-      ) top left/100% var(--dash-w) no-repeat,
-      /* bawah */
-      repeating-linear-gradient(to right,
-        var(--dash-color), var(--dash-color) var(--dash-l),
-        transparent var(--dash-l), transparent calc(var(--dash-l) + var(--dash-gap))
-      ) bottom left/100% var(--dash-w) no-repeat,
-      /* kiri */
-      repeating-linear-gradient(to bottom,
-        var(--dash-color), var(--dash-color) var(--dash-l),
-        transparent var(--dash-l), transparent calc(var(--dash-l) + var(--dash-gap))
-      ) top left/var(--dash-w) 100% no-repeat,
-      /* kanan */
-      repeating-linear-gradient(to bottom,
-        var(--dash-color), var(--dash-color) var(--dash-l),
-        transparent var(--dash-l), transparent calc(var(--dash-l) + var(--dash-gap))
-      ) top right/var(--dash-w) 100% no-repeat;
+  .wrap-dash{
+    position:absolute; inset:0; pointer-events:none;
   }
-  .coupon-wrap::after{
-    content:"✂"; position:absolute; left:50%; top:0; transform:translate(-50%, -45%);
+  .wrap-dash svg{width:100%; height:100%; display:block;}
+  .wrap-dash .scissor{
+    position:absolute; left:50%; top:0; transform:translate(-50%,-45%);
     font-size:11pt; line-height:1; color:#374151; background:#ffffff; padding:0 .8mm;
   }
 
@@ -143,7 +117,7 @@
   @media print{
     body { background: transparent; }
     .page{ margin:0; box-shadow:none; height:210mm; padding:10mm; }
-    .loading{ display:none !important; } /* pastikan spinner tak ikut tercetak */
+    .loading{ display:none !important; }
   }
 
   .msg{padding:18px;font:14px system-ui}
@@ -151,11 +125,36 @@
 </head>
 <body>
   <div class="page" id="page">
-    <div class="cutline"></div>
+    <!-- Garis putus-putus tengah (SVG, stabil di PDF) -->
+    <div class="cutline" aria-hidden="true">
+      <svg viewBox="0 0 1 1000" preserveAspectRatio="none">
+        <!-- skala tinggi 1000 agar dash ikut proporsional -->
+        <line x1="0.5" y1="0" x2="0.5" y2="1000"
+              stroke="var(--dash-color)"
+              stroke-width="1"
+              vector-effect="non-scaling-stroke"
+              stroke-dasharray="15 30" />
+      </svg>
+      <div class="scissor">✂</div>
+    </div>
+
     <div class="halves">
 
       <!-- Kupon kiri -->
       <div class="coupon-wrap">
+        <!-- dashed keliling (SVG) -->
+        <div class="wrap-dash" aria-hidden="true">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+            <rect x="0.75" y="0.75" width="98.5" height="98.5"
+                  fill="none"
+                  stroke="var(--dash-color)"
+                  stroke-width="1.5"
+                  vector-effect="non-scaling-stroke"
+                  stroke-dasharray="15 30"/>
+          </svg>
+          <div class="scissor">✂</div>
+        </div>
+
         <section class="coupon">
           <div>
             <h2 class="title">KUPON BBM</h2>
@@ -206,6 +205,19 @@
 
       <!-- Kupon kanan -->
       <div class="coupon-wrap">
+        <!-- dashed keliling (SVG) -->
+        <div class="wrap-dash" aria-hidden="true">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+            <rect x="0.75" y="0.75" width="98.5" height="98.5"
+                  fill="none"
+                  stroke="var(--dash-color)"
+                  stroke-width="1.5"
+                  vector-effect="non-scaling-stroke"
+                  stroke-dasharray="15 30"/>
+          </svg>
+          <div class="scissor">✂</div>
+        </div>
+
         <section class="coupon">
           <div>
             <h2 class="title">KUPON BBM</h2>
@@ -300,6 +312,10 @@ function showMsg(txt){
     setField('harga', `Rp. ${rupiah(d.harga)}`);
     setField('signer', d.signer || '(Nama Jelas & NIP)');
 
+    /* jadikan judul halaman = nama file default PDF */
+    const suggestedName = `Kupon BBM — ${d.id}`;
+    document.title = suggestedName;
+
     /* sembunyikan spinner pada kedua kupon */
     document.querySelectorAll('.coupon').forEach(el => el.classList.add('is-ready'));
 
@@ -307,7 +323,6 @@ function showMsg(txt){
     document.getElementById('page').style.display = '';
     document.getElementById('status').hidden = true;
 
-    // beri sedikit jeda agar spinner sempat hilang sebelum dialog print muncul
     setTimeout(()=>window.print(), 120);
 
   } catch (e) {
