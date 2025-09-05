@@ -7,12 +7,14 @@
 <style>
   :root{
     --frame:#1d9bf0; --ink:#0f172a; --paper:#ffffff;
-    --stripe:#eef2f7;                 /* << warna card abu-abu */
+
+    /* warna card abu-abu */
+    --stripe:#bbbfc4;
 
     --label-w:18mm; --colon-w:2mm; --row-gap:.7mm; --cell-font:7.8pt;
     --info-pad-v:2mm; --info-pad-h:2.6mm; --between-groups:6mm;
 
-    /* Pola garis putus-putus (tengah & keliling kupon) */
+    /* pola garis putus-putus */
     --dash-color: rgba(107,114,128,.75);
     --dash-w: .5mm;     /* ketebalan garis */
     --dash-l: 1.5mm;    /* panjang dash */
@@ -32,7 +34,7 @@
     padding:10mm;position:relative;box-shadow:0 8px 30px rgba(0,0,0,.07)
   }
 
-  /* Garis putus-putus vertikal di tengah (pakai variabel dash) */
+  /* Garis putus-putus vertikal di tengah */
   .cutline{
     position:absolute; top:8mm; bottom:8mm; left:calc(50% - (var(--dash-w)/2)); width:var(--dash-w);
     background: repeating-linear-gradient(
@@ -43,8 +45,7 @@
     );
   }
   .cutline::after{
-    content:"✂";
-    position:absolute; left:50%; top:0;
+    content:"✂"; position:absolute; left:50%; top:0;
     transform:translate(-50%, -45%);
     font-size:11pt; line-height:1; color:#374151;
     background:#ffffff; padding:0 .8mm;
@@ -52,17 +53,16 @@
 
   .halves{
     display:grid; grid-template-columns:1fr 1fr; height:100%;
-    align-items:center; justify-items:center; column-gap:22mm
+    align-items:center; justify-items:center; column-gap:22mm;
   }
 
-  /* Pembungkus kupon 10mm jarak di tiap sisi + dashed keliling dengan pola sama */
+  /* Pembungkus kupon + dashed keliling */
   .coupon-wrap{
     width:120mm; height:120mm; position:relative;
     display:flex; align-items:center; justify-content:center; overflow:visible;
   }
   .coupon-wrap::before{
     content:""; position:absolute; inset:0; pointer-events:none; border-radius:0;
-    /* 4 sisi dashed: atas, bawah, kiri, kanan */
     background:
       /* atas */
       repeating-linear-gradient(to right,
@@ -93,7 +93,8 @@
   /* Kupon 10×10 cm */
   .coupon{
     width:100mm; height:100mm; border:3mm solid var(--frame); border-radius:3mm;
-    display:grid; grid-template-rows:auto auto auto; padding:4mm; overflow:hidden;
+    display:grid; grid-template-rows:auto auto auto; padding:4mm; padding-bottom:8mm; /* ruang ekstra bawah */
+    overflow:hidden; position:relative;     /* untuk spinner overlay */
   }
 
   /* Header */
@@ -120,13 +121,29 @@
   .org{font-weight:900}
   .role{font-weight:900;margin-top:.9mm}
   .sigline{width:72%;border-top:.3mm solid #111;margin:25mm auto 0} /* 2.5 cm sebelum garis */
-  .namehint{font-size:10pt;color:#374151;margin-top:2.5mm;margin-bottom:6mm;font-weight:900} /* +25% & tebal */
+  .namehint{font-size:10pt;color:#374151;margin-top:2.5mm;margin-bottom:10mm;font-weight:900} /* lebih besar + jarak bawah 10mm */
+
+  /* Spinner overlay */
+  .loading{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:8px;
+    background:rgba(255,255,255,.65); backdrop-filter:saturate(1.2) blur(1px);
+    z-index:5;
+  }
+  .spinner{
+    width:22px; height:22px; border:3px solid #cbd5e1; border-top-color:#2563eb;
+    border-radius:50%; animation:spin 0.8s linear infinite;
+  }
+  .loading-text{font-size:9pt; color:#334155; font-weight:700; letter-spacing:.2px}
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .coupon.is-ready .loading{ display:none; }
 
   /* Cetak 1 halaman */
   @page { size: A4 landscape; margin: 0 }
   @media print{
     body { background: transparent; }
     .page{ margin:0; box-shadow:none; height:210mm; padding:10mm; }
+    .loading{ display:none !important; } /* pastikan spinner tak ikut tercetak */
   }
 
   .msg{padding:18px;font:14px system-ui}
@@ -178,6 +195,12 @@
             <div class="sigline"></div>
             <div class="namehint" data-field="signer">(Nama Jelas &amp; NIP)</div>
           </div>
+
+          <!-- Spinner overlay -->
+          <div class="loading" aria-hidden="true">
+            <div class="spinner"></div>
+            <div class="loading-text">Memuat data…</div>
+          </div>
         </section>
       </div>
 
@@ -218,6 +241,12 @@
             <div class="role">DEPARTEMENT HEAD</div>
             <div class="sigline"></div>
             <div class="namehint" data-field="signer">(Nama Jelas &amp; NIP)</div>
+          </div>
+
+          <!-- Spinner overlay -->
+          <div class="loading" aria-hidden="true">
+            <div class="spinner"></div>
+            <div class="loading-text">Memuat data…</div>
           </div>
         </section>
       </div>
@@ -271,10 +300,15 @@ function showMsg(txt){
     setField('harga', `Rp. ${rupiah(d.harga)}`);
     setField('signer', d.signer || '(Nama Jelas & NIP)');
 
+    /* sembunyikan spinner pada kedua kupon */
+    document.querySelectorAll('.coupon').forEach(el => el.classList.add('is-ready'));
+
     // tampilkan halaman + auto print
     document.getElementById('page').style.display = '';
     document.getElementById('status').hidden = true;
-    setTimeout(()=>window.print(), 80);
+
+    // beri sedikit jeda agar spinner sempat hilang sebelum dialog print muncul
+    setTimeout(()=>window.print(), 120);
 
   } catch (e) {
     showMsg("Gagal memuat: " + e);
