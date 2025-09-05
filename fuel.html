@@ -20,8 +20,17 @@
   </div>
 
   <main class="wrap">
+    <!-- Card menu -->
+    <section class="card" id="cardMenu">
+      <div class="tab-buttons">
+        <button id="tabInput" class="btn tab-btn active">Input Form</button>
+        <button id="tabKupon" class="btn tab-btn">Ambil Kupon</button>
+        <button id="tabFoto" class="btn tab-btn">Lapor Struk</button>
+      </div>
+    </section>
+
     <!-- Card 1: Input -->
-    <section class="card">
+    <section class="card" id="cardInput">
       <h2>Input BBM</h2>
 
       <label>Unit Kerja
@@ -67,7 +76,7 @@
     </section>
 
     <!-- Card 3: Foto Struk (selalu tampil) -->
-    <section class="card" id="cardFoto">
+    <section class="card hidden" id="cardFoto">
       <h2>Foto Struk</h2>
 
       <!-- Dropdown ID untuk foto akan disisipkan otomatis oleh fuel.js -->

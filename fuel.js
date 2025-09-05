@@ -37,6 +37,7 @@ const hargaEl       = $("#harga");
 const btnKirim      = $("#btnKirim");
 const msg1          = $("#msg1");
 
+const cardInput     = $("#cardInput");
 const cardCetak     = $("#cardCetak");
 const idList        = $("#idList");
 const verStat       = $("#verStat");
@@ -46,6 +47,10 @@ const cardFoto      = $("#cardFoto");
 const fileInput     = $("#file");
 const preview       = $("#preview");
 const msg3          = $("#msg3");
+
+const tabInputBtn   = $("#tabInput");
+const tabKuponBtn   = $("#tabKupon");
+const tabFotoBtn    = $("#tabFoto");
 
 // Overlay spinner (dibuat null-safe)
 const overlay = $("#overlay");
@@ -86,6 +91,8 @@ let jenisToNeeds = {}; // dari Dropdown A46:B58
 let hargaMap     = {};   // jenis → harga
 let quotas       = {};   // { Unit: { Jenis: sisaLiters } }
 let allRows      = [];   // cache list data
+let hasPrintable = false;
+let activeTab    = 'form';
 
 /* ===== Init ===== */
 init();
@@ -99,6 +106,7 @@ async function init() {
     hideOverlay();
   }
   attachListeners();
+  setTab('form');
   updateHarga();
   checkForm();
 }
@@ -117,6 +125,30 @@ function attachListeners() {
 
   photoIdSel.addEventListener("change", () => { preview.classList.add("hidden"); msg3.textContent = ""; });
   fileInput.addEventListener("change", onPickFile);
+
+  tabInputBtn.addEventListener("click", () => setTab('form'));
+  tabKuponBtn.addEventListener("click", () => setTab('kupon'));
+  tabFotoBtn.addEventListener("click", () => setTab('foto'));
+}
+
+function setTab(tab){
+  activeTab = tab;
+  tabInputBtn.classList.remove('active');
+  tabKuponBtn.classList.remove('active');
+  tabFotoBtn.classList.remove('active');
+  cardInput.classList.add('hidden');
+  cardCetak.classList.add('hidden');
+  cardFoto.classList.add('hidden');
+  if(tab === 'form'){
+    tabInputBtn.classList.add('active');
+    cardInput.classList.remove('hidden');
+  } else if(tab === 'kupon'){
+    tabKuponBtn.classList.add('active');
+    if(hasPrintable) cardCetak.classList.remove('hidden');
+  } else if(tab === 'foto'){
+    tabFotoBtn.classList.add('active');
+    if(hasPrintable) cardFoto.classList.remove('hidden');
+  }
 }
 
 /* ===== Dropdowns dari server ===== */
@@ -323,20 +355,14 @@ async function refreshLists(selectId = "", showSpin = true) {
     const res = await fetchJson(`${WORKER_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`);
     allRows = res.rows || [];
 
-    // --- Card Cetak (hanya VERIFIED=cetak)
+    // --- Data berstatus cetak
     const printable = allRows.filter(r => String(r.verified || "").toLowerCase() === "cetak");
-    if (printable.length === 0) {
-      cardCetak.classList.add("hidden");
-    } else {
-      cardCetak.classList.remove("hidden");
-      idList.innerHTML = '<option value="">Pilih ID</option>';
-      printable.forEach(row => idList.add(new Option(row.id, row.id)));
-    }
+    hasPrintable = printable.length > 0;
+    idList.innerHTML = '<option value="">Pilih ID</option>';
+    printable.forEach(row => idList.add(new Option(row.id, row.id)));
 
-    // --- Dropdown ID untuk foto: (mengikuti kode-mu: verified=cetak)
     photoIdSel.innerHTML = '<option value="">Pilih ID</option>';
     printable.forEach(row => photoIdSel.add(new Option(row.id, row.id)));
-    cardFoto.classList.toggle("hidden", printable.length === 0);
 
     // auto-select ID baru pada kedua dropdown jika ada
     if (selectId && printable.find(r => r.id === selectId)) {
@@ -349,6 +375,7 @@ async function refreshLists(selectId = "", showSpin = true) {
     }
   } finally {
     if (showSpin) hideOverlay();
+    setTab(activeTab);
   }
 }
 

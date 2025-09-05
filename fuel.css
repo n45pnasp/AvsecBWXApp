@@ -56,6 +56,11 @@ select:focus,input:focus{outline:2px solid #3b82f6}
 .hint{color:#93c5fd;margin-top:8px;font-size:12px}
 .preview{display:block;max-width:100%;border-radius:10px;margin-top:10px;border:1px solid #334155}
 
+/* ===== Tab Buttons ===== */
+.tab-buttons{display:flex;gap:8px}
+.tab-btn{flex:1}
+.tab-btn.active{background:#2563eb;border-color:#1e40af}
+
 /* ===== Overlay Spinner ===== */
 .overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);z-index:9999}
 .sheet{position:relative;display:grid;grid-template-columns:48px 1fr;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px;width:min(520px,92vw);box-shadow:0 16px 40px rgba(0,0,0,.45);animation:pop .18s ease-out both}
