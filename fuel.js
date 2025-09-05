@@ -457,4 +457,3 @@ function readAsDataURL(file, maxSize = 1024) {
     reader.readAsDataURL(file);
   });
 }
-
