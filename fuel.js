@@ -40,7 +40,6 @@ const msg1          = $("#msg1");
 const cardInput     = $("#cardInput");
 const cardCetak     = $("#cardCetak");
 const idList        = $("#idList");
-const verStat       = $("#verStat");
 const btnPdf        = $("#btnPdf");
 
 const cardFoto      = $("#cardFoto");
@@ -370,7 +369,6 @@ async function refreshLists(selectId = "", showSpin = true) {
       photoIdSel.value = selectId;
       if (idList.value) onPickId();
     } else {
-      verStat.textContent = "-";
       btnPdf.disabled = true;
     }
   } finally {
@@ -384,7 +382,6 @@ function onPickId() {
   const row = allRows.find(r => r.id === id);
   const v   = (row && row.verified) ? String(row.verified) : "";
 
-  verStat.textContent = row ? (v || "(kosong)") : "-";
   btnPdf.disabled = v.toLowerCase() !== "cetak";
   if (photoIdSel) photoIdSel.value = id;
 }
