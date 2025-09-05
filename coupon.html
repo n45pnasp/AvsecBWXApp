@@ -7,18 +7,14 @@
 <style>
   :root{
     --frame:#1d9bf0; --ink:#0f172a; --paper:#ffffff;
-
-    /* warna card abu-abu */
     --stripe:#bbbfc4;
 
     --label-w:18mm; --colon-w:2mm; --row-gap:.7mm; --cell-font:7.8pt;
     --info-pad-v:2mm; --info-pad-h:2.6mm; --between-groups:6mm;
 
-    /* pengaturan garis putus-putus (SVG) */
-    --dash-color:#6b7280;   /* rgb(107,114,128) */
-    --dash-w:.5mm;          /* ketebalan garis */
-    --dash-l:1.5mm;         /* panjang dash */
-    --dash-gap:3mm;         /* jarak antar dash */
+    /* warna & ketebalan dash (SVG) */
+    --dash-color:#6b7280;
+    --dash-stroke:1; /* px, non-scaling */
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -39,9 +35,9 @@
   .cutline{
     position:absolute; inset:8mm 0 8mm 0; pointer-events:none;
   }
-  .cutline svg{position:absolute; left:50%; top:0; height:calc(100% - 0mm); transform:translateX(-50%);}
+  .cutline svg{position:absolute; left:50%; top:0; height:100%; transform:translateX(-50%);}
   .cutline .scissor{
-    position:absolute; left:50%; top:8mm; transform:translate(-50%,-45%);
+    position:absolute; left:50%; top:0; transform:translate(-50%,-45%);
     font-size:11pt; line-height:1; color:#374151; background:#ffffff; padding:0 .8mm;
   }
 
@@ -55,9 +51,7 @@
     width:120mm; height:120mm; position:relative;
     display:flex; align-items:center; justify-content:center; overflow:visible;
   }
-  .wrap-dash{
-    position:absolute; inset:0; pointer-events:none;
-  }
+  .wrap-dash{ position:absolute; inset:0; pointer-events:none; }
   .wrap-dash svg{width:100%; height:100%; display:block;}
   .wrap-dash .scissor{
     position:absolute; left:50%; top:0; transform:translate(-50%,-45%);
@@ -67,8 +61,8 @@
   /* Kupon 10×10 cm */
   .coupon{
     width:100mm; height:100mm; border:3mm solid var(--frame); border-radius:3mm;
-    display:grid; grid-template-rows:auto auto auto; padding:4mm; padding-bottom:8mm; /* ruang ekstra bawah */
-    overflow:hidden; position:relative;     /* untuk spinner overlay */
+    display:grid; grid-template-rows:auto auto auto; padding:4mm; padding-bottom:8mm;
+    overflow:hidden; position:relative;
   }
 
   /* Header */
@@ -94,8 +88,8 @@
   .sign{text-align:center;line-height:1.2;font-size:8.2pt;margin-top:3mm}
   .org{font-weight:900}
   .role{font-weight:900;margin-top:.9mm}
-  .sigline{width:72%;border-top:.3mm solid #111;margin:25mm auto 0} /* 2.5 cm sebelum garis */
-  .namehint{font-size:10pt;color:#374151;margin-top:2.5mm;margin-bottom:10mm;font-weight:900} /* lebih besar + jarak bawah 10mm */
+  .sigline{width:72%;border-top:.3mm solid #111;margin:25mm auto 0}
+  .namehint{font-size:10pt;color:#374151;margin-top:2.5mm;margin-bottom:10mm;font-weight:900}
 
   /* Spinner overlay */
   .loading{
@@ -125,32 +119,30 @@
 </head>
 <body>
   <div class="page" id="page">
-    <!-- Garis putus-putus tengah (SVG, stabil di PDF) -->
+    <!-- Garis putus-putus tengah (SVG, rapat) -->
     <div class="cutline" aria-hidden="true">
       <svg viewBox="0 0 1 1000" preserveAspectRatio="none">
-        <!-- skala tinggi 1000 agar dash ikut proporsional -->
         <line x1="0.5" y1="0" x2="0.5" y2="1000"
               stroke="var(--dash-color)"
-              stroke-width="1"
+              stroke-width="var(--dash-stroke)"
               vector-effect="non-scaling-stroke"
-              stroke-dasharray="15 30" />
+              stroke-dasharray="4 3" />
       </svg>
       <div class="scissor">✂</div>
     </div>
 
     <div class="halves">
-
       <!-- Kupon kiri -->
       <div class="coupon-wrap">
-        <!-- dashed keliling (SVG) -->
+        <!-- dashed keliling (SVG, rapat) -->
         <div class="wrap-dash" aria-hidden="true">
           <svg viewBox="0 0 100 100" preserveAspectRatio="none">
             <rect x="0.75" y="0.75" width="98.5" height="98.5"
                   fill="none"
                   stroke="var(--dash-color)"
-                  stroke-width="1.5"
+                  stroke-width="var(--dash-stroke)"
                   vector-effect="non-scaling-stroke"
-                  stroke-dasharray="15 30"/>
+                  stroke-dasharray="4 3"/>
           </svg>
           <div class="scissor">✂</div>
         </div>
@@ -163,17 +155,14 @@
 
           <div class="info-card">
             <table class="infotab" role="presentation">
-              <!-- KODE (full lebar) -->
               <tr>
                 <td class="lab">KODE</td><td class="colon">:</td>
                 <td class="val valL" colspan="4" data-field="kode">—</td>
               </tr>
-              <!-- KEPERLUAN (full lebar) -->
               <tr>
                 <td class="lab">KEPERLUAN</td><td class="colon">:</td>
                 <td class="val valL" colspan="4" data-field="keperluan">—</td>
               </tr>
-              <!-- TANGGAL (kiri) & UNIT (kanan) -->
               <tr>
                 <td class="lab">TANGGAL</td><td class="colon">:</td>
                 <td class="val valL" data-field="tanggal">—</td>
@@ -195,7 +184,6 @@
             <div class="namehint" data-field="signer">(Nama Jelas &amp; NIP)</div>
           </div>
 
-          <!-- Spinner overlay -->
           <div class="loading" aria-hidden="true">
             <div class="spinner"></div>
             <div class="loading-text">Memuat data…</div>
@@ -205,15 +193,14 @@
 
       <!-- Kupon kanan -->
       <div class="coupon-wrap">
-        <!-- dashed keliling (SVG) -->
         <div class="wrap-dash" aria-hidden="true">
           <svg viewBox="0 0 100 100" preserveAspectRatio="none">
             <rect x="0.75" y="0.75" width="98.5" height="98.5"
                   fill="none"
                   stroke="var(--dash-color)"
-                  stroke-width="1.5"
+                  stroke-width="var(--dash-stroke)"
                   vector-effect="non-scaling-stroke"
-                  stroke-dasharray="15 30"/>
+                  stroke-dasharray="4 3"/>
           </svg>
           <div class="scissor">✂</div>
         </div>
@@ -255,7 +242,6 @@
             <div class="namehint" data-field="signer">(Nama Jelas &amp; NIP)</div>
           </div>
 
-          <!-- Spinner overlay -->
           <div class="loading" aria-hidden="true">
             <div class="spinner"></div>
             <div class="loading-text">Memuat data…</div>
@@ -312,9 +298,8 @@ function showMsg(txt){
     setField('harga', `Rp. ${rupiah(d.harga)}`);
     setField('signer', d.signer || '(Nama Jelas & NIP)');
 
-    /* jadikan judul halaman = nama file default PDF */
-    const suggestedName = `Kupon BBM — ${d.id}`;
-    document.title = suggestedName;
+    /* nama file default PDF mengikuti kode */
+    document.title = `Kupon BBM — ${d.id}`;
 
     /* sembunyikan spinner pada kedua kupon */
     document.querySelectorAll('.coupon').forEach(el => el.classList.add('is-ready'));
