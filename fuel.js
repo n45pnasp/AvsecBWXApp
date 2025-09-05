@@ -26,6 +26,7 @@ function rupiah(n) {
   const v = Math.round(Number(n || 0));
   return v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
+const round2 = (n)=> Math.round(Number(n||0)*100)/100;
 
 /* ===== Elemen DOM ===== */
 const unitSel       = $("#unit");
@@ -46,19 +47,26 @@ const fileInput     = $("#file");
 const preview       = $("#preview");
 const msg3          = $("#msg3");
 
-// Overlay spinner
+// Overlay spinner (dibuat null-safe)
 const overlay = $("#overlay");
 const ovTitle = $("#ovTitle");
 const ovDesc  = $("#ovDesc");
-
-function showOverlay(title = "Memuat…", desc = "") {
-  ovTitle.textContent = title;
-  ovDesc.textContent = desc;
-  overlay.classList.remove("hidden");
+function showOverlay(title = "Mengambil data…", desc = "") {
+  if (ovTitle) ovTitle.textContent = title;
+  if (ovDesc)  ovDesc.textContent  = desc;
+  if (overlay) overlay.classList.remove("hidden");
 }
 function hideOverlay() {
-  overlay.classList.add("hidden");
+  if (overlay) overlay.classList.add("hidden");
 }
+
+/* Tambahan: tampilkan Sisa Kuota di bawah Total Harga */
+const priceRow = hargaEl.closest(".row");
+const quotaRow = document.createElement("div");
+quotaRow.className = "row";
+quotaRow.innerHTML = `<div class="info">Sisa Kuota</div><div class="badge" id="quotaInfo">-</div>`;
+priceRow.after(quotaRow);
+const quotaInfo = $("#quotaInfo");
 
 /* Buat dropdown ID untuk foto (disisipkan via JS agar HTML tetap ringkas) */
 let photoIdSel = null;
@@ -72,10 +80,12 @@ let photoIdSel = null;
 })();
 
 /* ===== State ===== */
-let unitToNeeds = {};
-let unitToJenis = {};
-let hargaMap    = {};   // jenis → harga
-let allRows     = [];   // cache list data
+let unitToNeeds  = {};
+let unitToJenis  = {};
+let jenisToNeeds = {}; // dari Dropdown A46:B58
+let hargaMap     = {};   // jenis → harga
+let quotas       = {};   // { Unit: { Jenis: sisaLiters } }
+let allRows      = [];   // cache list data
 
 /* ===== Init ===== */
 init();
@@ -96,7 +106,7 @@ async function init() {
 /* ===== Event Listeners ===== */
 function attachListeners() {
   unitSel.addEventListener("change", onUnitChange);
-  jenisSel.addEventListener("change", () => { updateHarga(); checkForm(); });
+  jenisSel.addEventListener("change", () => { updateKeperluanOptions(); updateHarga(); updateQuotaInfo(); checkForm(); });
   keperluanSel.addEventListener("change", checkForm);
   literInput.addEventListener("input", () => { updateHarga(); checkForm(); });
 
@@ -118,13 +128,15 @@ async function loadDropdowns(showSpin = true) {
 
     if (!res || !res.ok) throw new Error(res && res.error || "Gagal memuat dropdowns");
 
-    unitToNeeds = res.unitToNeeds || {};
-    unitToJenis = res.unitToJenis || {};
-    const fuels = res.fuels || [];
+    unitToNeeds  = res.unitToNeeds  || {};
+    unitToJenis  = res.unitToJenis  || {};
+    jenisToNeeds = res.jenisToNeeds || {};
+    quotas       = res.quotas       || {};
+    const fuels  = res.fuels || [];
 
     // Unit
     unitSel.innerHTML = '<option value="">Pilih Unit Kerja</option>';
-    const units = Object.keys({ ...unitToNeeds, ...unitToJenis }).sort();
+    const units = Object.keys({ ...unitToNeeds, ...unitToJenis, ...quotas }).sort();
     units.forEach(u => unitSel.add(new Option(u, u)));
 
     // Harga per jenis
@@ -135,11 +147,13 @@ async function loadDropdowns(showSpin = true) {
       if (j) hargaMap[j] = h;
     });
 
-    // Jenis & keperluan akan diisi ketika unit dipilih
+    // Jenis & Keperluan akan diisi ketika unit dipilih
     jenisSel.innerHTML     = '<option value="">Pilih Jenis BBM</option>';
     keperluanSel.innerHTML = '<option value="">Pilih Keperluan</option>';
     keperluanSel.disabled  = true;
     jenisSel.disabled      = true;
+
+    updateQuotaInfo();
   } finally {
     if (showSpin) hideOverlay();
   }
@@ -147,15 +161,6 @@ async function loadDropdowns(showSpin = true) {
 
 function onUnitChange() {
   const unit = unitSel.value;
-
-  // Keperluan
-  keperluanSel.innerHTML = '<option value="">Pilih Keperluan</option>';
-  if (unit && unitToNeeds[unit] && unitToNeeds[unit].length) {
-    unitToNeeds[unit].forEach(k => keperluanSel.add(new Option(k, k)));
-    keperluanSel.disabled = false;
-  } else {
-    keperluanSel.disabled = true;
-  }
 
   // Jenis BBM sesuai unit (fallback: semua jenis yg punya harga)
   const allowedJenis = (unit && unitToJenis[unit] && unitToJenis[unit].length)
@@ -166,8 +171,32 @@ function onUnitChange() {
   allowedJenis.forEach(j => jenisSel.add(new Option(j, j)));
   jenisSel.disabled = allowedJenis.length === 0;
 
+  // Keperluan akan di-filter lagi berdasarkan jenis
+  updateKeperluanOptions();
+
   updateHarga();
+  updateQuotaInfo();
   checkForm();
+}
+
+/* ===== Keperluan (irisan unit & jenis) ===== */
+function updateKeperluanOptions(){
+  const unit  = unitSel.value;
+  const jenis = (jenisSel.value || "").toUpperCase();
+
+  const fromUnit  = unitToNeeds[unit] || [];
+  const fromJenis = jenisToNeeds[jenis] || [];
+
+  const setB = new Set(fromJenis.map(x => String(x)));
+  const allowed = fromUnit.filter(x => setB.has(String(x)));
+
+  keperluanSel.innerHTML = '<option value="">Pilih Keperluan</option>';
+  if (allowed.length) {
+    allowed.forEach(k => keperluanSel.add(new Option(k, k)));
+    keperluanSel.disabled = false;
+  } else {
+    keperluanSel.disabled = true;
+  }
 }
 
 /* ===== Harga ===== */
@@ -178,8 +207,39 @@ function updateHarga() {
   hargaEl.textContent = `Rp ${rupiah(harga)}`;
 }
 
+/* ===== Kuota (UI) ===== */
+function getSisaQuota(unit, jenis){
+  const byUnit = quotas[unit] || {};
+  return round2(Number(byUnit[(jenis||"").toUpperCase()] || 0));
+}
+function updateQuotaInfo(){
+  const unit  = unitSel.value;
+  const jenis = (jenisSel.value || "").toUpperCase();
+  if (!unit) { quotaInfo.textContent = "-"; return; }
+
+  const pertamax = getSisaQuota(unit, "PERTAMAX");
+  const dexlite  = getSisaQuota(unit, "DEXLITE");
+
+  if (!jenis) {
+    quotaInfo.textContent = `PERTAMAX: ${pertamax.toFixed(2)} L | DEXLITE: ${dexlite.toFixed(2)} L`;
+  } else {
+    const s = getSisaQuota(unit, jenis);
+    quotaInfo.textContent = `${jenis}: ${s.toFixed(2)} L`;
+  }
+}
+
+/* ===== Validasi Form ===== */
 function checkForm() {
-  const ok = unitSel.value && jenisSel.value && keperluanSel.value && Number(literInput.value) > 0;
+  const unit  = unitSel.value;
+  const jenis = (jenisSel.value || "").toUpperCase();
+  const liter = parseFloat(literInput.value || "0");
+  const baseOk = unit && jenis && keperluanSel.value && Number.isFinite(liter) && liter > 0;
+
+  let ok = baseOk;
+  if (baseOk){
+    const sisa = getSisaQuota(unit, jenis);
+    if (liter > sisa) ok = false;
+  }
   btnKirim.disabled = !ok;
 }
 
@@ -187,11 +247,21 @@ function checkForm() {
 async function onKirim() {
   if (btnKirim.disabled) return;
 
+  const unit  = unitSel.value;
+  const jenis = (jenisSel.value || "").toUpperCase();
+  const liter = parseFloat(literInput.value || "0");
+
+  const sisa = getSisaQuota(unit, jenis);
+  if (liter > sisa) {
+    alert(`Sisa kuota ${jenis} untuk ${unit} tidak mencukupi.\nSisa: ${sisa.toFixed(2)} L, diminta: ${liter} L`);
+    return;
+  }
+
   const payload = {
     action   : "create",
-    unit     : unitSel.value,
-    jenis    : jenisSel.value,
-    liter    : parseFloat(literInput.value || "0"),
+    unit     : unit,
+    jenis    : jenis,
+    liter    : liter,
     keperluan: keperluanSel.value,
     token    : SHARED_TOKEN
   };
@@ -210,6 +280,11 @@ async function onKirim() {
     if (res && res.ok) {
       msg1.textContent = `Terkirim (ID: ${res.id})`;
 
+      // update kuota lokal (kurangi) & UI
+      if (!quotas[unit]) quotas[unit] = {};
+      quotas[unit][jenis] = round2(Math.max(0, (quotas[unit][jenis]||0) - liter));
+      updateQuotaInfo();
+
       // reset form
       unitSel.value = "";
       jenisSel.innerHTML = '<option value="">Pilih Jenis BBM</option>';
@@ -224,6 +299,12 @@ async function onKirim() {
       await refreshLists(res.id, false);
     } else {
       msg1.textContent = (res && res.error) || "Gagal mengirim";
+      // jika server kirim quotaLeft, sinkronkan
+      if (res && typeof res.quotaLeft === "number"){
+        if (!quotas[unit]) quotas[unit] = {};
+        quotas[unit][jenis] = round2(res.quotaLeft);
+        updateQuotaInfo();
+      }
     }
   } catch (e) {
     console.error(e);
@@ -237,35 +318,34 @@ async function onKirim() {
 /* ===== List IDs ===== */
 async function refreshLists(selectId = "", showSpin = true) {
   if (showSpin) showOverlay("Memuat daftar…");
-  let res;
   try {
-    res = await fetchJson(`${WORKER_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`);
+    const res = await fetchJson(`${WORKER_URL}?action=list&token=${encodeURIComponent(SHARED_TOKEN)}`);
     allRows = res.rows || [];
 
-  // --- Card Cetak (hanya tampil kalau ada yg VERIFIED=cetak)
-  const printable = allRows.filter(r => String(r.verified || "").toLowerCase() === "cetak");
-  if (printable.length === 0) {
-    cardCetak.classList.add("hidden");
-  } else {
-    cardCetak.classList.remove("hidden");
-    idList.innerHTML = '<option value="">Pilih ID</option>';
-    printable.forEach(row => idList.add(new Option(row.id, row.id)));
-  }
+    // --- Card Cetak (hanya VERIFIED=cetak)
+    const printable = allRows.filter(r => String(r.verified || "").toLowerCase() === "cetak");
+    if (printable.length === 0) {
+      cardCetak.classList.add("hidden");
+    } else {
+      cardCetak.classList.remove("hidden");
+      idList.innerHTML = '<option value="">Pilih ID</option>';
+      printable.forEach(row => idList.add(new Option(row.id, row.id)));
+    }
 
-  // --- Dropdown ID untuk foto: hanya baris verified=cetak
-  photoIdSel.innerHTML = '<option value="">Pilih ID</option>';
-  printable.forEach(row => photoIdSel.add(new Option(row.id, row.id)));
-  cardFoto.classList.toggle("hidden", printable.length === 0);
+    // --- Dropdown ID untuk foto: (mengikuti kode-mu: verified=cetak)
+    photoIdSel.innerHTML = '<option value="">Pilih ID</option>';
+    printable.forEach(row => photoIdSel.add(new Option(row.id, row.id)));
+    cardFoto.classList.toggle("hidden", printable.length === 0);
 
-  // auto-select ID baru pada kedua dropdown jika ada
-  if (selectId && printable.find(r => r.id === selectId)) {
-    idList.value = selectId;
-    photoIdSel.value = selectId;
-    if (idList.value) onPickId();
-  } else {
-    verStat.textContent = "-";
-    btnPdf.disabled = true;
-  }
+    // auto-select ID baru pada kedua dropdown jika ada
+    if (selectId && printable.find(r => r.id === selectId)) {
+      idList.value = selectId;
+      photoIdSel.value = selectId;
+      if (idList.value) onPickId();
+    } else {
+      verStat.textContent = "-";
+      btnPdf.disabled = true;
+    }
   } finally {
     if (showSpin) hideOverlay();
   }
@@ -352,3 +432,4 @@ function readAsDataURL(file, maxSize = 1024) {
     reader.readAsDataURL(file);
   });
 }
+
