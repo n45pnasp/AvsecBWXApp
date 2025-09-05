@@ -3,14 +3,34 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BBM App</title>
+  <title>Form BBM</title>
   <link rel="stylesheet" href="fuel.css" />
+  <!-- Sembunyikan sampai status login dicek -->
+  <style>html{visibility:hidden}</style>
 </head>
 <body>
+  <!-- App Bar -->
+  <div class="app-bar">
+    <a class="back-btn" aria-label="Kembali" href="index.html">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
+      </svg>
+    </a>
+    <h1 class="app-title">Form BBM</h1>
+  </div>
+
   <main class="wrap">
+    <!-- Card menu -->
+    <section class="card" id="cardMenu">
+      <div class="tab-buttons">
+        <button id="tabInput" class="btn tab-btn active">Input Form</button>
+        <button id="tabKupon" class="btn tab-btn">Ambil Kupon</button>
+        <button id="tabFoto" class="btn tab-btn">Lapor Struk</button>
+      </div>
+    </section>
+
     <!-- Card 1: Input -->
-    <section class="card">
-      <h2>Input BBM</h2>
+    <section class="card" id="cardInput">
 
       <label>Unit Kerja
         <select id="unit"></select>
@@ -33,36 +53,41 @@
         <div class="price" id="harga">Rp 0</div>
       </div>
 
-      <button id="btnKirim" class="primary">Kirim</button>
+      <button id="btnKirim" class="btn primary full">Kirim</button>
       <div id="msg1" class="msg"></div>
     </section>
 
-    <!-- Card 2: Cetak Kupon (tersembunyi sampai siap) -->
+    <!-- Card 2: Cetak Kupon (muncul kalau ada yang VERIFIED=cetak) -->
     <section class="card hidden" id="cardCetak">
-      <h2>Cetak Kupon</h2>
 
       <label>Pilih ID (Data)
         <select id="idList"></select>
       </label>
-
-      <div class="row">
-        <div class="info">Status VERIFIED</div>
-        <div class="badge" id="verStat">-</div>
-      </div>
-
-      <button id="btnPdf" class="secondary" disabled>Download PDF</button>
-      <div class="hint">Tombol aktif jika kolom VERIFIED = <b>cetak</b>.</div>
+      <button id="btnPdf" class="btn primary full" disabled>Download PDF</button>
     </section>
 
-    <!-- Card 3: Foto Struk -->
+    <!-- Card 3: Foto Struk (selalu tampil) -->
     <section class="card hidden" id="cardFoto">
-      <h2>Foto Struk</h2>
+
+      <!-- Dropdown ID untuk foto akan disisipkan otomatis oleh fuel.js -->
       <input id="file" type="file" accept="image/*" capture="environment" />
       <img id="preview" alt="" class="preview hidden" />
       <div id="msg3" class="msg"></div>
     </section>
   </main>
 
-  <script src="fuel.js" defer></script>
+  <!-- Overlay Spinner -->
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
+    <div class="sheet" role="document">
+      <div class="icon spinner"></div>
+      <div class="texts">
+        <div class="title" id="ovTitle">Memuat…</div>
+        <div class="desc" id="ovDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="fuel.js"></script>
 </body>
 </html>
+
