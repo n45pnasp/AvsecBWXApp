@@ -215,7 +215,7 @@ function getSisaQuota(unit, jenis){
 function updateQuotaInfo(){
   const unit  = unitSel.value;
   const jenis = (jenisSel.value || "").toUpperCase();
-  if (!unit) { quotaInfo.textContent = "-"; return; }
+  if (!unit || !quotas[unit]) { quotaInfo.textContent = "-"; return; }
 
   const pertamax = getSisaQuota(unit, "PERTAMAX");
   const dexlite  = getSisaQuota(unit, "DEXLITE");
@@ -294,6 +294,7 @@ async function onKirim() {
       literInput.value = "";
       updateHarga();
       checkForm();
+      updateQuotaInfo();
 
       // refresh list ID
       await refreshLists(res.id, false);
