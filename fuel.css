@@ -1,6 +1,6 @@
 :root{
   --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb;
-  --accent:#7c9bff; --danger:#ef4444;
+  --accent:#6a5cff; --accent-2:#8a7bff; --danger:#ef4444;
   --panel:#111827; --border:#334155;
 }
 *{box-sizing:border-box;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
@@ -37,7 +37,7 @@ select:focus,input:focus{outline:2px solid #3b82f6}
 .info{color:var(--muted)}
 .price{font-weight:700}
 
-/* tombol ala lb_all.css */
+/* tombol ala random.css / lb_all.css */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;
   background:#1f2937;color:#fff;border:1px solid var(--border);
@@ -46,8 +46,12 @@ select:focus,input:focus{outline:2px solid #3b82f6}
 }
 .btn:hover{filter:brightness(1.05)}
 .btn:active{transform:translateY(1px)}
-.btn.primary{background:#2563eb;border-color:#1e40af}
-.btn.secondary{background:#0b3b72;border-color:#0a2e5b}
+.btn.primary{
+  background:linear-gradient(135deg,#6a5cff,#8a7bff);
+  border-color:#6a5cff;
+  box-shadow:0 6px 16px rgba(106,88,255,.35)
+}
+.btn.secondary{background:#1f2937;border-color:var(--border)}
 .btn.full{width:100%}
 .btn:disabled{opacity:.55;cursor:not-allowed}
 .hidden{display:none !important}
@@ -59,7 +63,11 @@ select:focus,input:focus{outline:2px solid #3b82f6}
 /* ===== Tab Buttons ===== */
 .tab-buttons{display:flex;gap:8px}
 .tab-btn{flex:1}
-.tab-btn.active{background:#2563eb;border-color:#1e40af}
+.tab-btn.active{
+  background:linear-gradient(135deg,#6a5cff,#8a7bff);
+  border-color:#6a5cff;
+  box-shadow:0 6px 16px rgba(106,88,255,.35)
+}
 
 /* ===== Overlay Spinner ===== */
 .overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);z-index:9999}
