@@ -71,6 +71,9 @@
     "sop": "sop-view.html",
     "viewer": "sop-view.html",
     "pdf": "sop-view.html",
+
+    "fuel": "fuel.html",
+    "bbm": "fuel.html",             // alias opsional
   };
 
   // Jika route sudah ".html", langsung pakai (mis. "#chatbot.html")
