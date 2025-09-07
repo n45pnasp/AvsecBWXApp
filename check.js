@@ -26,37 +26,47 @@ function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId){
 
 function initTypeButtons(){
     const buttons = document.querySelectorAll('.type-btn');
-    const img = document.getElementById('typeImage');
-  const content = document.getElementById('dynamicContent');
+    const img1 = document.getElementById('typeImage1');
+    const img2 = document.getElementById('typeImage2');
+    const content1 = document.getElementById('dynamicContent1');
+    const content2 = document.getElementById('dynamicContent2');
 
-  function renderSTP(){
-    content.innerHTML = '';
+  function renderSTP(target){
+    target.innerHTML = '';
     const grid = document.createElement('div');
     grid.className = 'card subcard grid-checks';
     populateChecks(grid);
-    content.appendChild(grid);
+    target.appendChild(grid);
   }
 
-  function renderOTP(){
-    content.innerHTML = `\n      <table class="check-table">\n        <thead>\n          <tr>\n            <th>POSISI TEST</th>\n            <th>TIPE<br/>KNIFE 304</th>\n            <th>HASIL TEST<br/>centang=Alarm<br/>Kosong=No Alarm</th>\n          </tr>\n        </thead>\n        <tbody>\n          <tr>\n            <td rowspan="2">Lengan Kanan<br/>Bagian Dalam</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pinggang Kanan</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pinggang Belakang<br/>Bagian Tengah</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pergelangan Kaki<br/>Bagian Kanan</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n        </tbody>\n      </table>`;
+  function renderOTP(target){
+    const html = `\n      <table class="check-table">\n        <thead>\n          <tr>\n            <th>POSISI TEST</th>\n            <th>TIPE<br/>KNIFE 304</th>\n            <th>HASIL TEST<br/>centang=Alarm<br/>Kosong=No Alarm</th>\n          </tr>\n        </thead>\n        <tbody>\n          <tr>\n            <td rowspan="2">Lengan Kanan<br/>Bagian Dalam</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pinggang Kanan</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pinggang Belakang<br/>Bagian Tengah</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pergelangan Kaki<br/>Bagian Kanan</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n        </tbody>\n      </table>`;
+    target.innerHTML = html;
   }
 
-  function renderHHMD(){
-    content.innerHTML = `\n      <table class="check-table hhmd-table">\n        <tbody>\n          <tr>\n            <td>TEST 1</td>\n            <td>TEST 2</td>\n            <td>TEST 3</td>\n          </tr>\n          <tr>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n          </tr>\n        </tbody>\n      </table>`;
+  function renderHHMD(target){
+    const html = `\n      <table class="check-table hhmd-table">\n        <tbody>\n          <tr>\n            <td>TEST 1</td>\n            <td>TEST 2</td>\n            <td>TEST 3</td>\n          </tr>\n          <tr>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n          </tr>\n        </tbody>\n      </table>`;
+    target.innerHTML = html;
   }
 
   function handle(btn){
     buttons.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     if(btn.id === 'btnSTP'){
-        img.src = 'icons/stp.png';
-        renderSTP();
+        img1.src = 'icons/stp.png';
+        img2.src = 'icons/stp.png';
+        renderSTP(content1);
+        renderSTP(content2);
       } else if(btn.id === 'btnOTP'){
-        img.src = 'icons/otp.png';
-        renderOTP();
+        img1.src = 'icons/otp.png';
+        img2.src = 'icons/otp.png';
+        renderOTP(content1);
+        renderOTP(content2);
       } else if(btn.id === 'btnHHMD'){
-        img.src = 'icons/hhmd.png';
-        renderHHMD();
+        img1.src = 'icons/hhmd.png';
+        img2.src = 'icons/hhmd.png';
+        renderHHMD(content1);
+        renderHHMD(content2);
       }
   }
 
