@@ -21,24 +21,45 @@ function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId){
 
 function initTypeButtons(){
   const buttons = document.querySelectorAll('.type-btn');
-  const img1 = document.getElementById('image1');
-  const img2 = document.getElementById('image2');
+  const img = document.getElementById('typeImage');
+  const content = document.getElementById('dynamicContent');
+
+  function renderSTP(){
+    content.innerHTML = '';
+    const grid = document.createElement('div');
+    grid.className = 'card subcard grid-checks';
+    populateChecks(grid);
+    content.appendChild(grid);
+  }
+
+  function renderOTP(){
+    content.innerHTML = `\n      <table class="check-table">\n        <thead>\n          <tr>\n            <th>POSISI TEST</th>\n            <th>TIPE<br/>KNIFE 304</th>\n            <th>HASIL TEST<br/>centang=Alarm<br/>Kosong=No Alarm</th>\n          </tr>\n        </thead>\n        <tbody>\n          <tr>\n            <td rowspan="2">Lengan Kanan<br/>Bagian Dalam</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pinggang Kanan</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pinggang Belakang<br/>Bagian Tengah</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pergelangan Kaki<br/>Bagian Kanan</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n        </tbody>\n      </table>`;
+  }
+
+  function renderHHMD(){
+    content.innerHTML = `\n      <table class="check-table">\n        <tbody>\n          <tr>\n            <td>TEST 1</td>\n            <td>TEST 2</td>\n            <td>TEST 3</td>\n          </tr>\n          <tr>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n          </tr>\n        </tbody>\n      </table>`;
+  }
+
+  function handle(btn){
+    buttons.forEach(b => b.classList.remove('primary'));
+    btn.classList.add('primary');
+    if(btn.id === 'btnSTP'){
+      img.src = 'icons/stp.png';
+      renderSTP();
+    } else if(btn.id === 'btnOTP'){
+      img.src = 'icons/otp.png';
+      renderOTP();
+    } else if(btn.id === 'btnHHMD'){
+      img.src = 'icons/hhmd.png';
+      renderHHMD();
+    }
+  }
+
   buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      buttons.forEach(b => b.classList.remove('primary'));
-      btn.classList.add('primary');
-      if(btn.id === "btnSTP"){
-        img1.src = "icons/stp.png";
-        img2.src = "icons/stp.png";
-      } else if(btn.id === "btnOTP"){
-        img1.src = "icons/otp.png";
-        img2.src = "icons/otp.png";
-      } else if(btn.id === "btnHHMD"){
-        img1.src = "icons/hhmd.png";
-        img2.src = "icons/hhmd.png";
-      }
-    });
+    btn.addEventListener('click', () => handle(btn));
   });
+
+  handle(document.getElementById('btnSTP'));
 }
 
 function initSubmit(){
@@ -52,8 +73,7 @@ function initSubmit(){
   });
 }
 
-function populateChecks(id){
-  const wrap = document.getElementById(id);
+function populateChecks(wrap){
   for(let i=1;i<=36;i++){
     const label = document.createElement('label');
     const span = document.createElement('span');
@@ -71,6 +91,4 @@ document.addEventListener('DOMContentLoaded', () => {
   setupPhoto('photoBtn2','fileInput2','preview2','uploadInfo2','uploadStatus2','uploadName2');
   initTypeButtons();
   initSubmit();
-  populateChecks('checks1');
-  populateChecks('checks2');
 });
