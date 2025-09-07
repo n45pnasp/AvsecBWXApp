@@ -79,15 +79,20 @@ function initSubmit(){
 }
 
 function populateChecks(wrap){
-  for(let i=1;i<=36;i++){
-    const label = document.createElement('label');
-    const span = document.createElement('span');
-    span.textContent = i;
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    label.appendChild(span);
-    label.appendChild(cb);
-    wrap.appendChild(label);
+  const rows = 9;
+  const cols = 4;
+  for(let r=0; r<rows; r++){
+    for(let c=0; c<cols; c++){
+      const num = r + c * rows + 1;
+      const label = document.createElement('label');
+      const span = document.createElement('span');
+      span.textContent = num;
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      label.appendChild(span);
+      label.appendChild(cb);
+      wrap.appendChild(label);
+    }
   }
 }
 
