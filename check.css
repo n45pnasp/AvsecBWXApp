@@ -7,16 +7,35 @@
   margin-bottom:12px;
 }
 
-.icon-preview{
-  display:flex;
-  gap:12px;
-  align-items:center;
+select{
+  width:100%;
+  background:#0b1324;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+}
+
+.subcard{
   margin-bottom:12px;
 }
-.icon-preview img{
-  width:64px;
-  height:64px;
+
+.full-img{
+  width:100%;
+  height:auto;
   object-fit:contain;
   border-radius:12px;
   border:1px solid var(--border);
+}
+
+.grid-checks{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+
+.grid-checks label{
+  display:flex;
+  align-items:center;
+  gap:4px;
 }

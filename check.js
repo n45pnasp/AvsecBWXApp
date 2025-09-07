@@ -29,14 +29,6 @@ function initDropdown(){
   });
 }
 
-function initIcons(){
-  const params = new URLSearchParams(location.search);
-  const img1 = params.get('img1') || 'logobwx.png';
-  const img2 = params.get('img2') || 'logodju.png';
-  document.getElementById('icon1').src = `icons/${img1}`;
-  document.getElementById('icon2').src = `icons/${img2}`;
-}
-
 function initTypeButtons(){
   const buttons = document.querySelectorAll('.type-btn');
   buttons.forEach(btn => {
@@ -58,11 +50,26 @@ function initSubmit(){
   });
 }
 
+function populateChecks(id){
+  const wrap = document.getElementById(id);
+  for(let i=1;i<=36;i++){
+    const label = document.createElement('label');
+    const span = document.createElement('span');
+    span.textContent = i;
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    label.appendChild(span);
+    label.appendChild(cb);
+    wrap.appendChild(label);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   setupPhoto('photoBtn1','fileInput1','preview1','uploadInfo1','uploadStatus1','uploadName1');
   setupPhoto('photoBtn2','fileInput2','preview2','uploadInfo2','uploadStatus2','uploadName2');
   initDropdown();
-  initIcons();
   initTypeButtons();
   initSubmit();
+  populateChecks('checks1');
+  populateChecks('checks2');
 });

@@ -30,12 +30,8 @@
     <!-- Card 2: Foto dan Nilai -->
     <section class="card">
       <h1 class="card-title">Dokumentasi</h1>
-      <div class="row-2">
-        <button id="photoBtn1" class="btn" type="button">Ambil Foto 1</button>
-        <button id="photoBtn2" class="btn" type="button">Ambil Foto 2</button>
-        <input id="fileInput1" type="file" accept="image/*" capture="environment" class="hidden" />
-        <input id="fileInput2" type="file" accept="image/*" capture="environment" class="hidden" />
-      </div>
+      <button id="photoBtn1" class="btn" type="button">Ambil Foto 1</button>
+      <input id="fileInput1" type="file" accept="image/*" capture="environment" class="hidden" />
       <div id="uploadInfo1" class="upload-info hidden">
         <img id="preview1" alt="Preview 1" />
         <div class="meta">
@@ -43,6 +39,8 @@
           <div id="uploadName1" class="muted"></div>
         </div>
       </div>
+      <button id="photoBtn2" class="btn" type="button">Ambil Foto 2</button>
+      <input id="fileInput2" type="file" accept="image/*" capture="environment" class="hidden" />
       <div id="uploadInfo2" class="upload-info hidden">
         <img id="preview2" alt="Preview 2" />
         <div class="meta">
@@ -51,18 +49,21 @@
         </div>
       </div>
       <div class="field">
-        <label for="selectNilai">Nilai</label>
         <select id="selectNilai"></select>
       </div>
     </section>
 
     <!-- Card 3: Icons and Submit -->
     <section class="card">
-      <h1 class="card-title">Ikon</h1>
-      <div class="icon-preview">
-        <img id="icon1" alt="Icon 1" />
-        <img id="icon2" alt="Icon 2" />
+      <h1 class="card-title">STP</h1>
+      <div class="card subcard">
+        <img src="icons/stp1.png" alt="STP 1" class="full-img" />
       </div>
+      <div id="checks1" class="card subcard grid-checks"></div>
+      <div class="card subcard">
+        <img src="icons/stp2.png" alt="STP 2" class="full-img" />
+      </div>
+      <div id="checks2" class="card subcard grid-checks"></div>
       <button id="submitBtn" class="btn primary full" type="button">Kirim</button>
     </section>
   </main>
