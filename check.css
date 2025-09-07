@@ -53,6 +53,18 @@
   vertical-align:middle;
 }
 
+.hhmd-table td,
+.hhmd-table th{
+  text-align:center;
+  vertical-align:middle;
+}
+
+.hhmd-table td{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
 .label-text{
   font-weight:600;
   margin-bottom:12px;

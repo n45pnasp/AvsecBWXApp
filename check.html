@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Check</title>
+  <title>Daily Check</title>
   <link rel="stylesheet" href="check.css" />
+  <style>html{visibility:hidden}</style>
 </head>
 <body>
   <div class="app-bar">
@@ -13,7 +14,7 @@
         <path d="M15 6L9 12L15 18"></path>
       </svg>
     </a>
-    <h1 class="app-title">Check</h1>
+    <h1 class="app-title">Daily Check</h1>
   </div>
 
   <main class="container">
@@ -28,6 +29,9 @@
 
     <!-- Card 2: Foto -->
     <section class="card">
+      <label>Pilih Faskampen
+        <select id="faskampen"></select>
+      </label>
       <button id="photoBtn1" class="btn" type="button">Ambil Foto 1</button>
       <input id="fileInput1" type="file" accept="image/*" capture="environment" class="hidden" />
       <div id="uploadInfo1" class="upload-info hidden">
@@ -51,7 +55,8 @@
     <!-- Card 3: Konten Dinamis -->
     <section class="card">
       <div class="card subcard">
-        <img id="typeImage" src="icons/stp.png" alt="Tipe" class="full-img" />
+        <img id="typeImage1" src="icons/stp.png" alt="Tipe 1" class="full-img" />
+        <img id="typeImage2" src="icons/stp.png" alt="Tipe 2" class="full-img" />
       </div>
       <div id="dynamicContent"></div>
       <div class="label-text">HASIL KALIBRASI</div>

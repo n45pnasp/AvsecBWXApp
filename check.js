@@ -1,3 +1,8 @@
+import { requireAuth } from "./auth-guard.js";
+
+// Lindungi halaman: wajib login
+requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+
 // Interaksi untuk halaman check
 
 function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId){
@@ -20,8 +25,9 @@ function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId){
 }
 
 function initTypeButtons(){
-  const buttons = document.querySelectorAll('.type-btn');
-  const img = document.getElementById('typeImage');
+    const buttons = document.querySelectorAll('.type-btn');
+    const img1 = document.getElementById('typeImage1');
+    const img2 = document.getElementById('typeImage2');
   const content = document.getElementById('dynamicContent');
 
   function renderSTP(){
@@ -37,22 +43,25 @@ function initTypeButtons(){
   }
 
   function renderHHMD(){
-    content.innerHTML = `\n      <table class="check-table">\n        <tbody>\n          <tr>\n            <td>TEST 1</td>\n            <td>TEST 2</td>\n            <td>TEST 3</td>\n          </tr>\n          <tr>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n          </tr>\n        </tbody>\n      </table>`;
+    content.innerHTML = `\n      <table class="check-table hhmd-table">\n        <tbody>\n          <tr>\n            <td>TEST 1</td>\n            <td>TEST 2</td>\n            <td>TEST 3</td>\n          </tr>\n          <tr>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n          </tr>\n        </tbody>\n      </table>`;
   }
 
   function handle(btn){
     buttons.forEach(b => b.classList.remove('primary'));
     btn.classList.add('primary');
     if(btn.id === 'btnSTP'){
-      img.src = 'icons/stp.png';
-      renderSTP();
-    } else if(btn.id === 'btnOTP'){
-      img.src = 'icons/otp.png';
-      renderOTP();
-    } else if(btn.id === 'btnHHMD'){
-      img.src = 'icons/hhmd.png';
-      renderHHMD();
-    }
+        img1.src = 'icons/stp.png';
+        img2.src = 'icons/stp.png';
+        renderSTP();
+      } else if(btn.id === 'btnOTP'){
+        img1.src = 'icons/otp.png';
+        img2.src = 'icons/otp.png';
+        renderOTP();
+      } else if(btn.id === 'btnHHMD'){
+        img1.src = 'icons/hhmd.png';
+        img2.src = 'icons/hhmd.png';
+        renderHHMD();
+      }
   }
 
   buttons.forEach(btn => {
