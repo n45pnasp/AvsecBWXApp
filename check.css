@@ -1,9 +1,16 @@
 @import url('./lb_all.css');
 
-.row-3{
+.btn-group{
   display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:clamp(8px,2vw,12px);
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+
+.btn-group .btn.active{
+  background:linear-gradient(135deg,#6a5cff,#8a7bff);
+  border-color:#6a5cff;
+  box-shadow:0 6px 16px rgba(106,88,255,.35);
+  color:#fff;
 }
 
 .subcard{

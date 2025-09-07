@@ -46,8 +46,8 @@ function initTypeButtons(){
   }
 
   function handle(btn){
-    buttons.forEach(b => b.classList.remove('primary'));
-    btn.classList.add('primary');
+    buttons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
     if(btn.id === 'btnSTP'){
         img.src = 'icons/stp.png';
         renderSTP();
