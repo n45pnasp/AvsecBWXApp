@@ -44,7 +44,7 @@
 }
 
 .check-table:not(.hhmd-table) th:first-child,
-.check-table:not(.hhmd-table) td:first-child{
+.check-table:not(.hhmd-table) td[rowspan]{
   text-align:left;
 }
 
