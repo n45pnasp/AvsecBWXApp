@@ -19,7 +19,6 @@
   <main class="container">
     <!-- Card 1: Jenis -->
     <section class="card">
-      <h1 class="card-title">Jenis Check</h1>
       <div class="row-3">
         <button id="btnSTP" class="btn type-btn" type="button">STP</button>
         <button id="btnOTP" class="btn type-btn" type="button">OTP</button>
@@ -27,9 +26,8 @@
       </div>
     </section>
 
-    <!-- Card 2: Foto dan Nilai -->
+    <!-- Card 2: Foto -->
     <section class="card">
-      <h1 class="card-title">Dokumentasi</h1>
       <button id="photoBtn1" class="btn" type="button">Ambil Foto 1</button>
       <input id="fileInput1" type="file" accept="image/*" capture="environment" class="hidden" />
       <div id="uploadInfo1" class="upload-info hidden">
@@ -50,9 +48,8 @@
       </div>
     </section>
 
-    <!-- Card 3: Icons and Submit -->
+    <!-- Card 3: Icons -->
     <section class="card">
-      <h1 class="card-title">STP</h1>
       <div class="card subcard">
         <img src="icons/stp1.png" alt="STP 1" class="full-img" />
       </div>
@@ -61,6 +58,62 @@
         <img src="icons/stp2.png" alt="STP 2" class="full-img" />
       </div>
       <div id="checks2" class="card subcard grid-checks"></div>
+    </section>
+
+    <!-- Card 4: Tabel Kalibrasi -->
+    <section class="card">
+      <table class="check-table">
+        <thead>
+          <tr>
+            <th>POSISI TEST</th>
+            <th>TIPE<br/>KNIFE 304</th>
+            <th>HASIL TEST<br/>centang=Alarm<br/>Kosong=No Alarm</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Lengan Kanan</td>
+            <td>IN</td>
+            <td><input type="checkbox" /></td>
+          </tr>
+          <tr>
+            <td>Bagian Dalam</td>
+            <td>OUT</td>
+            <td><input type="checkbox" /></td>
+          </tr>
+          <tr>
+            <td>Pinggang Kanan</td>
+            <td>IN</td>
+            <td><input type="checkbox" /></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td>OUT</td>
+            <td><input type="checkbox" /></td>
+          </tr>
+          <tr>
+            <td>Pinggang Belakang</td>
+            <td>IN</td>
+            <td><input type="checkbox" /></td>
+          </tr>
+          <tr>
+            <td>Bagian Tengah</td>
+            <td>OUT</td>
+            <td><input type="checkbox" /></td>
+          </tr>
+          <tr>
+            <td>Pergelangan Kaki</td>
+            <td>IN</td>
+            <td><input type="checkbox" /></td>
+          </tr>
+          <tr>
+            <td>Bagian Kanan</td>
+            <td>OUT</td>
+            <td><input type="checkbox" /></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="label-text">HASIL KALIBRASI</div>
       <button id="submitBtn" class="btn primary full" type="button">Kirim</button>
     </section>
   </main>

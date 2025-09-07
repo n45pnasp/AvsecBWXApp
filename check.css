@@ -30,3 +30,26 @@
   align-items:center;
   gap:4px;
 }
+
+.check-table{
+  width:100%;
+  border-collapse:collapse;
+  margin-bottom:12px;
+}
+
+.check-table th,
+.check-table td{
+  border:1px solid var(--border);
+  padding:4px;
+  text-align:center;
+}
+
+.check-table th:first-child,
+.check-table td:first-child{
+  text-align:left;
+}
+
+.label-text{
+  font-weight:600;
+  margin-bottom:12px;
+}
