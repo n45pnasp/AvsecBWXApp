@@ -31,9 +31,11 @@
     <section class="card">
       <div class="field">
         <label for="faskampen">Pilih Faskampen</label>
-        <select id="faskampen"></select>
+        <select id="faskampen" required>
+          <option value="" selected>Pilih Faskampen</option>
+        </select>
       </div>
-      <button id="photoBtn1" class="btn" type="button">Ambil Foto 1</button>
+      <button id="photoBtn1" class="btn full" type="button">Ambil Foto 1</button>
       <input id="fileInput1" type="file" accept="image/*" capture="environment" class="hidden" />
       <div id="uploadInfo1" class="upload-info hidden">
         <img id="preview1" alt="Preview 1" />
@@ -42,7 +44,7 @@
           <div id="uploadName1" class="muted"></div>
         </div>
       </div>
-      <button id="photoBtn2" class="btn" type="button">Ambil Foto 2</button>
+      <button id="photoBtn2" class="btn full" type="button">Ambil Foto 2</button>
       <input id="fileInput2" type="file" accept="image/*" capture="environment" class="hidden" />
       <div id="uploadInfo2" class="upload-info hidden">
         <img id="preview2" alt="Preview 2" />

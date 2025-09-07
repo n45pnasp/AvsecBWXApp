@@ -44,8 +44,8 @@
   text-align:center;
 }
 
-.check-table th:first-child,
-.check-table td:first-child{
+.check-table:not(.hhmd-table) th:first-child,
+.check-table:not(.hhmd-table) td:first-child{
   text-align:left;
 }
 
@@ -73,4 +73,9 @@
   border-radius:12px;
   padding:12px;
   font-size:var(--fs-base);
+}
+
+.field select:disabled{
+  opacity:.55;
+  cursor:not-allowed;
 }
