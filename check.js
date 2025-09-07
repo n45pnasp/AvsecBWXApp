@@ -19,16 +19,6 @@ function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId){
   });
 }
 
-function initDropdown(){
-  const opts = ['Baik','Rusak','Perlu Perbaikan'];
-  const sel = document.getElementById('selectNilai');
-  sel.innerHTML = '<option value="">Pilih nilai…</option>';
-  opts.forEach(v => {
-    const o = document.createElement('option');
-    o.value = v; o.textContent = v; sel.appendChild(o);
-  });
-}
-
 function initTypeButtons(){
   const buttons = document.querySelectorAll('.type-btn');
   buttons.forEach(btn => {
@@ -67,7 +57,6 @@ function populateChecks(id){
 document.addEventListener('DOMContentLoaded', () => {
   setupPhoto('photoBtn1','fileInput1','preview1','uploadInfo1','uploadStatus1','uploadName1');
   setupPhoto('photoBtn2','fileInput2','preview2','uploadInfo2','uploadStatus2','uploadName2');
-  initDropdown();
   initTypeButtons();
   initSubmit();
   populateChecks('checks1');
