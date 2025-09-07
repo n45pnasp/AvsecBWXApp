@@ -26,8 +26,7 @@ function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId){
 
 function initTypeButtons(){
     const buttons = document.querySelectorAll('.type-btn');
-    const img1 = document.getElementById('typeImage1');
-    const img2 = document.getElementById('typeImage2');
+    const img = document.getElementById('typeImage');
   const content = document.getElementById('dynamicContent');
 
   function renderSTP(){
@@ -50,16 +49,13 @@ function initTypeButtons(){
     buttons.forEach(b => b.classList.remove('primary'));
     btn.classList.add('primary');
     if(btn.id === 'btnSTP'){
-        img1.src = 'icons/stp.png';
-        img2.src = 'icons/stp.png';
+        img.src = 'icons/stp.png';
         renderSTP();
       } else if(btn.id === 'btnOTP'){
-        img1.src = 'icons/otp.png';
-        img2.src = 'icons/otp.png';
+        img.src = 'icons/otp.png';
         renderOTP();
       } else if(btn.id === 'btnHHMD'){
-        img1.src = 'icons/hhmd.png';
-        img2.src = 'icons/hhmd.png';
+        img.src = 'icons/hhmd.png';
         renderHHMD();
       }
   }

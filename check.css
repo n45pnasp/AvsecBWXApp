@@ -59,13 +59,18 @@
   vertical-align:middle;
 }
 
-.hhmd-table td{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
 
 .label-text{
   font-weight:600;
   margin-bottom:12px;
+}
+
+.field select{
+  width:100%;
+  background:#0b1324;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  font-size:var(--fs-base);
 }

@@ -29,9 +29,10 @@
 
     <!-- Card 2: Foto -->
     <section class="card">
-      <label>Pilih Faskampen
+      <div class="field">
+        <label for="faskampen">Pilih Faskampen</label>
         <select id="faskampen"></select>
-      </label>
+      </div>
       <button id="photoBtn1" class="btn" type="button">Ambil Foto 1</button>
       <input id="fileInput1" type="file" accept="image/*" capture="environment" class="hidden" />
       <div id="uploadInfo1" class="upload-info hidden">
@@ -55,8 +56,7 @@
     <!-- Card 3: Konten Dinamis -->
     <section class="card">
       <div class="card subcard">
-        <img id="typeImage1" src="icons/stp.png" alt="Tipe 1" class="full-img" />
-        <img id="typeImage2" src="icons/stp.png" alt="Tipe 2" class="full-img" />
+        <img id="typeImage" src="icons/stp.png" alt="Tipe" class="full-img" />
       </div>
       <div id="dynamicContent"></div>
       <div class="label-text">HASIL KALIBRASI</div>
