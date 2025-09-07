@@ -49,6 +49,10 @@
   text-align:left;
 }
 
+.check-table td[rowspan]{
+  vertical-align:middle;
+}
+
 .label-text{
   font-weight:600;
   margin-bottom:12px;
