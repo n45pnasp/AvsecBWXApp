@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Check</title>
+  <link rel="stylesheet" href="check.css" />
+</head>
+<body>
+  <div class="app-bar">
+    <a class="back-btn" aria-label="Kembali" href="index.html">
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 6L9 12L15 18"></path>
+      </svg>
+    </a>
+    <h1 class="app-title">Check</h1>
+  </div>
+
+  <main class="container">
+    <!-- Card 1: Jenis -->
+    <section class="card">
+      <h1 class="card-title">Jenis Check</h1>
+      <div class="row-3">
+        <button id="btnSTP" class="btn type-btn" type="button">STP</button>
+        <button id="btnOTP" class="btn type-btn" type="button">OTP</button>
+        <button id="btnHHMD" class="btn type-btn" type="button">HHMD/ETD</button>
+      </div>
+    </section>
+
+    <!-- Card 2: Foto dan Nilai -->
+    <section class="card">
+      <h1 class="card-title">Dokumentasi</h1>
+      <div class="row-2">
+        <button id="photoBtn1" class="btn" type="button">Ambil Foto 1</button>
+        <button id="photoBtn2" class="btn" type="button">Ambil Foto 2</button>
+        <input id="fileInput1" type="file" accept="image/*" capture="environment" class="hidden" />
+        <input id="fileInput2" type="file" accept="image/*" capture="environment" class="hidden" />
+      </div>
+      <div id="uploadInfo1" class="upload-info hidden">
+        <img id="preview1" alt="Preview 1" />
+        <div class="meta">
+          <div id="uploadStatus1">Menunggu foto…</div>
+          <div id="uploadName1" class="muted"></div>
+        </div>
+      </div>
+      <div id="uploadInfo2" class="upload-info hidden">
+        <img id="preview2" alt="Preview 2" />
+        <div class="meta">
+          <div id="uploadStatus2">Menunggu foto…</div>
+          <div id="uploadName2" class="muted"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="selectNilai">Nilai</label>
+        <select id="selectNilai"></select>
+      </div>
+    </section>
+
+    <!-- Card 3: Icons and Submit -->
+    <section class="card">
+      <h1 class="card-title">Ikon</h1>
+      <div class="icon-preview">
+        <img id="icon1" alt="Icon 1" />
+        <img id="icon2" alt="Icon 2" />
+      </div>
+      <button id="submitBtn" class="btn primary full" type="button">Kirim</button>
+    </section>
+  </main>
+
+  <!-- Overlay -->
+  <div id="overlay" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="sheet" role="document">
+      <div class="icon spinner"></div>
+      <div class="texts">
+        <div class="title">Memproses…</div>
+        <div class="desc">Mohon tunggu</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="check.js"></script>
+</body>
+</html>
