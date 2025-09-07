@@ -1,0 +1,55 @@
+@import url('./lb_all.css');
+
+.row-3{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:clamp(8px,2vw,12px);
+  margin-bottom:12px;
+}
+
+.subcard{
+  margin-bottom:12px;
+}
+
+.full-img{
+  width:100%;
+  height:auto;
+  object-fit:contain;
+  border-radius:12px;
+  border:1px solid var(--border);
+}
+
+.grid-checks{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+
+.grid-checks label{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+
+.check-table{
+  width:100%;
+  border-collapse:collapse;
+  margin-bottom:12px;
+}
+
+.check-table th,
+.check-table td{
+  border:1px solid var(--border);
+  padding:4px;
+  text-align:center;
+}
+
+.check-table th:first-child,
+.check-table td:first-child{
+  text-align:left;
+}
+
+.label-text{
+  font-weight:600;
+  margin-bottom:12px;
+}
