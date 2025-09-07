@@ -4,7 +4,6 @@
   display:grid;
   grid-template-columns:1fr 1fr 1fr;
   gap:clamp(8px,2vw,12px);
-  margin-bottom:12px;
 }
 
 .subcard{
@@ -78,4 +77,8 @@
 .field select:disabled{
   opacity:.55;
   cursor:not-allowed;
+}
+
+#photoBtn2{
+  margin-top:12px;
 }
