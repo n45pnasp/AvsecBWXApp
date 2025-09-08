@@ -42,22 +42,31 @@ function updateResult() {
 function updateSecondPanelVisibility() {
   const wrap2 = document.getElementById('imageWrap2');
   const content2 = document.getElementById('dynamicContent2');
+  const photoBtn1 = document.getElementById('photoBtn1');
   const photoBtn2 = document.getElementById('photoBtn2');
   const uploadInfo2 = document.getElementById('uploadInfo2');
-  const show =
-    currentType === 'STP' &&
-    currentLookup &&
-    currentLookup.layar &&
-    currentLookup.layar.trim().toUpperCase() === 'DUAL VIEW';
+  const layarVal =
+    currentLookup && currentLookup.layar
+      ? currentLookup.layar.trim().toUpperCase()
+      : '';
+  const show = currentType === 'STP' && layarVal === 'DUAL VIEW';
   if (show) {
     wrap2.classList.remove('hidden');
     content2.classList.remove('hidden');
     photoBtn2.classList.remove('hidden');
+    photoBtn1.textContent = 'Layar Kiri';
   } else {
     wrap2.classList.add('hidden');
     content2.classList.add('hidden');
     photoBtn2.classList.add('hidden');
     uploadInfo2.classList.add('hidden');
+    if (currentType === 'STP') {
+      if (currentLookup) {
+        photoBtn1.textContent = layarVal ? 'Layar Kiri' : 'Foto Layar';
+      } else {
+        photoBtn1.textContent = 'Layar Kiri';
+      }
+    }
   }
   updateResult();
 }
