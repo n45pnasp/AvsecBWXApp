@@ -27,6 +27,22 @@ function getPetugas() {
   return "";
 }
 
+function showOverlay(state, title, desc) {
+  const overlay = document.getElementById("overlay");
+  const icon = document.getElementById("ovIcon");
+  const tEl = document.getElementById("ovTitle");
+  const dEl = document.getElementById("ovDesc");
+  const close = document.getElementById("ovClose");
+  overlay.classList.remove("hidden");
+  icon.className =
+    "icon " + (state === "loading" ? "spinner" : state === "ok" ? "ok" : "err");
+  tEl.textContent = title;
+  dEl.textContent = desc || "";
+  close.classList.toggle("hidden", state === "loading");
+  close.onclick = () => overlay.classList.add("hidden");
+  if (state !== "loading") setTimeout(() => overlay.classList.add("hidden"), 1200);
+}
+
 function updateResult() {
   let pass = false;
   if (currentType === "STP") pass = checkSTPPass();
@@ -398,14 +414,24 @@ async function loadFaskampen() {
 
 /* ================== SUBMIT ================== */
 function initSubmit() {
-  const overlay = document.getElementById("overlay");
   const select = document.getElementById("faskampen");
 
   // simpan lookup ketika user memilih dropdown
   select.addEventListener("change", async () => {
     const key = select.value;
-    currentLookup = key ? await apiLookup(key) : null;
-    const show = !!key;
+    if (key) {
+      try {
+        showOverlay("loading", "Mengambil data…", "");
+        currentLookup = await apiLookup(key);
+        showOverlay("ok", "Data ditemukan", "");
+      } catch (err) {
+        currentLookup = null;
+        showOverlay("err", "Lookup gagal", err.message || "Coba lagi");
+      }
+    } else {
+      currentLookup = null;
+    }
+    const show = !!key && !!currentLookup;
     const card = document.getElementById("resultCard");
     const btn1 = document.getElementById("photoBtn1");
     const btn2 = document.getElementById("photoBtn2");
@@ -470,20 +496,16 @@ function initSubmit() {
         Object.assign(payload, readChecks(c1, "k", 3));
       }
 
-      // kirim ke backend via Worker
-      overlay.classList.remove("hidden");
+      showOverlay("loading", "Mengirim data…", "");
       const resp = await apiSubmit(payload);
-      overlay.classList.add("hidden");
-
-      alert(`Data terkirim ke sheet: ${resp.routedTo}`);
+      showOverlay("ok", "Berhasil", `Data terkirim ke sheet: ${resp.routedTo}`);
 
       // reset foto (opsional)
       // document.getElementById('uploadInfo1').classList.add('hidden');
       // document.getElementById('uploadInfo2').classList.add('hidden');
     } catch (err) {
-      overlay.classList.add("hidden");
+      showOverlay("err", "Gagal mengirim", err.message || "Coba lagi");
       console.error(err);
-      alert("Gagal mengirim data: " + err.message);
     }
   });
 }

@@ -69,13 +69,18 @@
     </section>
   </main>
 
-  <!-- Overlay -->
-  <div id="overlay" class="overlay hidden" role="dialog" aria-modal="true">
+  <!-- Overlay ala lb_all -->
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
     <div class="sheet" role="document">
-      <div class="icon spinner"></div>
+      <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="icon spinner" id="ovIcon"></div>
       <div class="texts">
-        <div class="title">Memproses…</div>
-        <div class="desc">Mohon tunggu</div>
+        <div class="title" id="ovTitle"></div>
+        <div class="desc" id="ovDesc"></div>
       </div>
     </div>
   </div>
