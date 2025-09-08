@@ -416,17 +416,31 @@ function updateHHMDView() {
 /* ================== API ================== */
 async function apiOptions() {
   const res = await fetch(`${API_BASE}?action=options`, { method: "GET" });
-  const data = await res.json();
-  // code.gs mengembalikan {ok, options:[...]}
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    const raw = await res.text();
+    console.error("apiOptions() non-JSON:", raw);
+    throw new Error("Response bukan JSON");
+  }
   if (Array.isArray(data)) return data;
   if (data && data.ok && Array.isArray(data.options)) return data.options;
+  console.error("apiOptions() raw:", data);
   throw new Error("Format options tidak valid");
 }
 
 async function apiLookup(key) {
   const url = `${API_BASE}?action=lookup&key=${encodeURIComponent(key)}`;
   const res = await fetch(url, { method: "GET" });
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    const raw = await res.text();
+    console.error("apiLookup() non-JSON:", raw);
+    throw new Error("Response bukan JSON");
+  }
   if (data && data.ok) return data;
   throw new Error(data && data.error ? data.error : "Lookup gagal");
 }
@@ -438,7 +452,14 @@ async function apiSubmit(payload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    const raw = await res.text();
+    console.error("apiSubmit() non-JSON:", raw);
+    throw new Error("Response bukan JSON");
+  }
   if (!data.ok) throw new Error(data.error || "Submit gagal");
   return data;
 }
@@ -541,17 +562,20 @@ function initSubmit() {
 
       // gambar (dataURL)
       const gbr1 = await fileToDataURL("fileInput1");
+      const gbr2 = await fileToDataURL("fileInput2");
+      const gbr = gbr1 || gbr2;
+
+      // payload dasar
       const payload = {
         dropdown: key,
         petugas,
         date,
         pass: passBool,
         fail: failBool,
-        gbr1
+        gbr1,
+        gbr2,
+        gbr
       };
-      if (currentType === "STP") {
-        payload.gbr2 = await fileToDataURL("fileInput2");
-      }
 
       // tambahkan MERK dari lookup bila ada (dibutuhkan OTP/ETD)
       if (currentLookup && currentLookup.MERK) {
@@ -563,16 +587,23 @@ function initSubmit() {
       const c2 = document.getElementById("dynamicContent2");
 
       if (currentType === "STP") {
-        Object.assign(payload, readChecks(c1, "k", 36)); // k1..k36
+        // k1..k36 (panel kiri)
+        Object.assign(payload, readChecks(c1, "k", 36));
+        // x1..x36: jika panel kanan muncul → ambil; jika tidak → duplikasi k → x
         if (!c2.classList.contains('hidden')) {
-          Object.assign(payload, readChecks(c2, "x", 36)); // x1..x36
+          Object.assign(payload, readChecks(c2, "x", 36));
+        } else {
+          const kVals = readChecks(c1, "k", 36);
+          for (let i = 1; i <= 36; i++) payload["x" + i] = !!kVals["k" + i];
         }
       } else if (currentType === "OTP") {
         // WTMD: 8 checkbox k1..k8 (ambil dari panel 1 saja)
         Object.assign(payload, readChecks(c1, "k", 8));
+        payload.gbr = gbr;
       } else if (currentType === "HHMD") {
-        // HHMD: 3 checkbox k1..k3
+        // HHMD: 3 checkbox k1..k3 (ETD pakai k1..k2; k3 akan diabaikan code.gs)
         Object.assign(payload, readChecks(c1, "k", 3));
+        payload.gbr = gbr;
       }
 
       showOverlay("loading", "Mengirim data…", "");
