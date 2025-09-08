@@ -3,6 +3,10 @@ import { requireAuth } from "./auth-guard.js";
 // Lindungi halaman: wajib login
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
+const DROPDOWN_URL = "https://avsecbwxapp.online/api/dropdown"; // Cloudflare JSON lookup
+let allFaskampen = [];
+let currentType = "STP";
+
 // Interaksi untuk halaman check
 
 function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId){
@@ -52,22 +56,28 @@ function initTypeButtons(){
   function handle(btn){
     buttons.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+
     if(btn.id === 'btnSTP'){
+        currentType = 'STP';
         img1.src = 'icons/stp.png';
         img2.src = 'icons/stp.png';
         renderSTP(content1);
         renderSTP(content2);
       } else if(btn.id === 'btnOTP'){
+        currentType = 'OTP';
         img1.src = 'icons/otp.png';
         img2.src = 'icons/otp.png';
         renderOTP(content1);
         renderOTP(content2);
       } else if(btn.id === 'btnHHMD'){
+        currentType = 'HHMD';
         img1.src = 'icons/hhmd.png';
         img2.src = 'icons/hhmd.png';
         renderHHMD(content1);
         renderHHMD(content2);
       }
+
+    updateDropdown();
   }
 
   buttons.forEach(btn => {
@@ -106,9 +116,41 @@ function populateChecks(wrap){
   }
 }
 
+function updateDropdown(){
+  const select = document.getElementById('faskampen');
+  select.innerHTML = '<option value="" selected>Pilih Faskampen</option>';
+  if(!allFaskampen.length) return;
+
+  let prefixes;
+  if(currentType === 'OTP') prefixes = ['WTMD'];
+  else if(currentType === 'HHMD') prefixes = ['HHMD','ETD'];
+  else prefixes = ['PSCP','HBSCP','CARGO'];
+
+  const opts = allFaskampen.filter(name =>
+    prefixes.some(p => name.toUpperCase().startsWith(p))
+  );
+  for(const name of opts){
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    select.appendChild(opt);
+  }
+}
+
+async function loadFaskampen(){
+  try{
+    const res = await fetch(DROPDOWN_URL);
+    allFaskampen = await res.json();
+    updateDropdown();
+  }catch(err){
+    console.error('Gagal memuat faskampen', err);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   setupPhoto('photoBtn1','fileInput1','preview1','uploadInfo1','uploadStatus1','uploadName1');
   setupPhoto('photoBtn2','fileInput2','preview2','uploadInfo2','uploadStatus2','uploadName2');
   initTypeButtons();
   initSubmit();
+  loadFaskampen();
 });
