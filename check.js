@@ -6,6 +6,8 @@ requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
 /* ================== KONFIG API ================== */
 const API_BASE = "https://dailycheck.avsecbwx2018.workers.dev/"; // Worker kamu
+const CFN_DOWNLOAD_PDF_URL = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
+
 let allFaskampen = [];
 let currentType = "STP";
 let currentLookup = null; // hasil lookup meta (MERK, NO_SERTIFIKAT, LOKASI, layar)
@@ -170,7 +172,6 @@ function bindChecks(container) {
 }
 
 function readChecks(container, prefix, count) {
-  // return objek {prefix1:bool, prefix2:bool, ...}
   const cbs = Array.from(container.querySelectorAll('input[type="checkbox"]'));
   const out = {};
   for (let i = 0; i < Math.min(count, cbs.length); i++) {
@@ -231,9 +232,7 @@ function checkHHMDPass() {
 }
 
 function populateChecks(wrap) {
-  // 36 checkbox (9x4) untuk STP
-  const rows = 9;
-  const cols = 4;
+  const rows = 9, cols = 4;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const num = r + c * rows + 1;
@@ -274,7 +273,7 @@ function fileToDataURL(inputId) {
   if (!file) return Promise.resolve("");
   return new Promise((resolve, reject) => {
     const fr = new FileReader();
-    fr.onload = () => resolve(fr.result); // dataURL
+    fr.onload = () => resolve(fr.result);
     fr.onerror = reject;
     fr.readAsDataURL(file);
   });
@@ -285,44 +284,37 @@ function resetForm() {
   select.value = "";
   currentLookup = null;
 
-  // hide result card and photo sections
   document.getElementById("resultCard").classList.add("hidden");
   document.getElementById("photoBtn1").classList.add("hidden");
   document.getElementById("photoBtn2").classList.add("hidden");
   document.getElementById("uploadInfo1").classList.add("hidden");
   document.getElementById("uploadInfo2").classList.add("hidden");
 
-  // clear file inputs & previews
-  const inputs = ["fileInput1", "fileInput2"];
-  inputs.forEach((id) => {
+  ["fileInput1", "fileInput2"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
-  const previews = ["preview1", "preview2"];
-  previews.forEach((id) => {
+  ["preview1", "preview2"].forEach((id) => {
     const img = document.getElementById(id);
     if (img) img.src = "";
   });
 
-  // uncheck all checkboxes
   ["dynamicContent1", "dynamicContent2"].forEach((id) => {
     const cont = document.getElementById(id);
-    cont
-      .querySelectorAll('input[type="checkbox"]')
-      .forEach((cb) => (cb.checked = false));
+    cont.querySelectorAll('input[type="checkbox"]').forEach((cb) => (cb.checked = false));
   });
 
   updateSecondPanelVisibility();
   updateHHMDView();
   updateResult();
+
   const pdfBtn = document.getElementById("downloadPdfBtn");
   if (pdfBtn) pdfBtn.disabled = true;
 }
 
 function renderHHMD(target, isETD = false) {
   const cols = isETD ? 2 : 3;
-  const headers = [];
-  const body = [];
+  const headers = [], body = [];
   for (let i = 1; i <= cols; i++) {
     headers.push(`<td>TEST ${i}</td>`);
     body.push('<td><input type="checkbox" /></td>');
@@ -355,18 +347,18 @@ function updateHHMDView() {
 }
 
 /* ================== RENDER DINAMIS ================== */
-  function initTypeButtons() {
-    const buttons = document.querySelectorAll(".type-btn");
-    const img1 = document.getElementById("typeImage1");
-    const img2 = document.getElementById("typeImage2");
-    const content1 = document.getElementById("dynamicContent1");
-    const content2 = document.getElementById("dynamicContent2");
-    const photoBtn1 = document.getElementById("photoBtn1");
-    const photoBtn2 = document.getElementById("photoBtn2");
-    const resultCard = document.getElementById("resultCard");
-    const select = document.getElementById("faskampen");
-    const uploadInfo1 = document.getElementById("uploadInfo1");
-    const uploadInfo2 = document.getElementById("uploadInfo2");
+function initTypeButtons() {
+  const buttons = document.querySelectorAll(".type-btn");
+  const img1 = document.getElementById("typeImage1");
+  const img2 = document.getElementById("typeImage2");
+  const content1 = document.getElementById("dynamicContent1");
+  const content2 = document.getElementById("dynamicContent2");
+  const photoBtn1 = document.getElementById("photoBtn1");
+  const photoBtn2 = document.getElementById("photoBtn2");
+  const resultCard = document.getElementById("resultCard");
+  const select = document.getElementById("faskampen");
+  const uploadInfo1 = document.getElementById("uploadInfo1");
+  const uploadInfo2 = document.getElementById("uploadInfo2");
 
   function renderSTP(target) {
     target.innerHTML = "";
@@ -378,7 +370,6 @@ function updateHHMDView() {
   }
 
   function renderOTP(target) {
-    // OTP di sini = WTMD (8 checkbox)
     const pos = [
       "Lengan Kanan<br/>Bagian Dalam",
       "Pinggang Kanan",
@@ -386,14 +377,10 @@ function updateHHMDView() {
       "Pergelangan Kaki<br/>Bagian Kanan"
     ];
     let idx = 1;
-    const body = pos
-      .map(
-        (p) => `
-          <tr><td rowspan="2">${p}</td><td>IN</td><td><label><span>${idx++}</span><input type="checkbox" /></label></td></tr>
-          <tr><td>OUT</td><td><label><span>${idx++}</span><input type="checkbox" /></label></td></tr>
-        `
-      )
-      .join("");
+    const body = pos.map(p => `
+      <tr><td rowspan="2">${p}</td><td>IN</td><td><label><span>${idx++}</span><input type="checkbox" /></label></td></tr>
+      <tr><td>OUT</td><td><label><span>${idx++}</span><input type="checkbox" /></label></td></tr>
+    `).join("");
     const html = `
       <table class="check-table">
         <thead>
@@ -403,9 +390,7 @@ function updateHHMDView() {
             <th>HASIL TEST<br/>centang=Alarm<br/>Kosong=No Alarm</th>
           </tr>
         </thead>
-        <tbody>
-          ${body}
-        </tbody>
+        <tbody>${body}</tbody>
       </table>`;
     target.innerHTML = html;
     bindChecks(target);
@@ -441,40 +426,34 @@ function updateHHMDView() {
       renderHHMD(content2);
     }
 
-      currentLookup = null;
-      select.value = "";
-      resultCard.classList.add("hidden");
-      photoBtn1.classList.add("hidden");
-      photoBtn2.classList.add("hidden");
-      uploadInfo1.classList.add("hidden");
-      uploadInfo2.classList.add("hidden");
-      updateDropdown();
-      updateSecondPanelVisibility();
-      updateHHMDView();
-      updateResult();
-    }
+    currentLookup = null;
+    select.value = "";
+    resultCard.classList.add("hidden");
+    photoBtn1.classList.add("hidden");
+    photoBtn2.classList.add("hidden");
+    uploadInfo1.classList.add("hidden");
+    uploadInfo2.classList.add("hidden");
+    updateDropdown();
+    updateSecondPanelVisibility();
+    updateHHMDView();
+    updateResult();
 
-  buttons.forEach((btn) => {
-    btn.addEventListener("click", () => handle(btn));
-  });
-
-    handle(document.getElementById("btnSTP"));
+    const pdfBtn = document.getElementById("downloadPdfBtn");
+    if (pdfBtn) pdfBtn.disabled = true;
   }
+
+  buttons.forEach((btn) => btn.addEventListener("click", () => handle(btn)));
+  handle(document.getElementById("btnSTP"));
+}
 
 /* ================== API ================== */
 async function apiOptions() {
   const res = await fetch(`${API_BASE}?action=options`, { method: "GET" });
   let data;
-  try {
-    data = await res.json();
-  } catch {
-    const raw = await res.text();
-    console.error("apiOptions() non-JSON:", raw);
-    throw new Error("Response bukan JSON");
-  }
+  try { data = await res.json(); }
+  catch { throw new Error("Response bukan JSON"); }
   if (Array.isArray(data)) return data;
   if (data && data.ok && Array.isArray(data.options)) return data.options;
-  console.error("apiOptions() raw:", data);
   throw new Error("Format options tidak valid");
 }
 
@@ -482,13 +461,8 @@ async function apiLookup(key) {
   const url = `${API_BASE}?action=lookup&key=${encodeURIComponent(key)}`;
   const res = await fetch(url, { method: "GET" });
   let data;
-  try {
-    data = await res.json();
-  } catch {
-    const raw = await res.text();
-    console.error("apiLookup() non-JSON:", raw);
-    throw new Error("Response bukan JSON");
-  }
+  try { data = await res.json(); }
+  catch { throw new Error("Response bukan JSON"); }
   if (data && data.ok) return data;
   throw new Error(data && data.error ? data.error : "Lookup gagal");
 }
@@ -501,13 +475,8 @@ async function apiSubmit(payload) {
     body: JSON.stringify(body)
   });
   let data;
-  try {
-    data = await res.json();
-  } catch {
-    const raw = await res.text();
-    console.error("apiSubmit() non-JSON:", raw);
-    throw new Error("Response bukan JSON");
-  }
+  try { data = await res.json(); }
+  catch { throw new Error("Response bukan JSON"); }
   if (!data.ok) throw new Error(data.error || "Submit gagal");
   return data;
 }
@@ -518,12 +487,7 @@ function updateDropdown() {
   select.innerHTML = '<option value="" selected>Pilih Faskampen</option>';
   if (!allFaskampen.length) return;
 
-  // Filter nama berdasar type
   let prefixes;
-  // Sesuai pilihan Novan sebelumnya:
-  // STP -> PSCP/HBSCP/CARGO
-  // OTP (WTMD) -> WTMD
-  // HHMD -> HHMD dan ETD (kalau ingin menampilkan ETD di tab HHMD)
   if (currentType === "OTP") prefixes = ["WTMD"];
   else if (currentType === "HHMD") prefixes = ["HHMD", "ETD"];
   else prefixes = ["PSCP", "HBSCP", "CARGO"];
@@ -552,12 +516,32 @@ async function loadFaskampen() {
   }
 }
 
+/* ============ Mapping dropdown → site (Cloud Functions) ============ */
+function siteKeyForDropdown(dropdownName) {
+  const s = String(dropdownName || "").toUpperCase();
+
+  if (s === "PSCP DOM RAPISCAN 620DV")   return "STP_DV_PSCP_DOM";
+  if (s === "PSCP INTER RAPISCAN 620XR") return "STP_OV_PSCP_INTER";
+  if (s === "HBSCP DOM RAPISCAN 628DV")  return "STP_DV_HBSCP_DOM";
+  if (s === "HBSCP INTER NUCTECH")       return "STP_DV_HBSCP_INTER";
+  if (s === "CARGO SMITH HISCAN")        return "STP_DV_CARGO";
+
+  if (s.startsWith("WTMD"))              return "WTMD_PSCP";
+  if (s.startsWith("ETD"))               return "ETD";
+
+  if (s === "HHMD GARRETT PSCP" || s === "HHMD CEIA PSCP")   return "OTP_HHMD_PSCP";
+  if (s === "HHMD GARRETT HBSCP"|| s === "HHMD CEIA HBSCP")  return "OTP_HHMD_HBSCP";
+  if (s === "HHMD GARRETT ARRIVAL")                          return "OTP_HHMD_ARRIVAL";
+  if (s === "HHMD GARRETT POS 1")                            return "OTP_HHMD_POS1";
+
+  return "";
+}
+
 /* ================== SUBMIT ================== */
 function initSubmit() {
   const select = document.getElementById("faskampen");
   const pdfBtn = document.getElementById("downloadPdfBtn");
 
-  // simpan lookup ketika user memilih dropdown
   select.addEventListener("change", async () => {
     if (pdfBtn) pdfBtn.disabled = true;
     const key = select.value;
@@ -594,54 +578,38 @@ function initSubmit() {
       const key = select.value;
       if (!key) return alert("Pilih Faskampen terlebih dahulu!");
 
-      // pass/fail dari label
       const passBool = resultLabel.dataset.pass === "true";
       const failBool = !passBool;
 
       if (!passBool) {
-        const proceed = await askConfirm(
-          "HASIL FAIL, ANDA TETAP MENGIRIM DATA?",
-          { okText: "Yes", cancelText: "Batal" }
-        );
+        const proceed = await askConfirm("HASIL FAIL, ANDA TETAP MENGIRIM DATA?", { okText: "Yes", cancelText: "Batal" });
         if (!proceed) return;
       }
 
-      // ambil tanggal & petugas
       const petugas = getPetugas();
       const date = formatNow();
 
-      // gambar (dataURL)
       const gbr1 = await fileToDataURL("fileInput1");
       const gbr2 = await fileToDataURL("fileInput2");
       const gbr = gbr1 || gbr2;
 
-      // payload dasar
       const payload = {
-        dropdown: key,
-        petugas,
-        date,
-        pass: passBool,
-        fail: failBool,
-        gbr1,
-        gbr2,
-        gbr
+        dropdown: key, petugas, date,
+        pass: passBool, fail: failBool,
+        gbr1, gbr2, gbr
       };
 
-      // simpan meta dari lookup bila tersedia
       if (currentLookup) {
         if (currentLookup.MERK) payload.merk = currentLookup.MERK;
         if (currentLookup.LOKASI) payload.lokasi = currentLookup.LOKASI;
         if (currentLookup.NO_SERTIFIKAT) payload.noSertifikat = currentLookup.NO_SERTIFIKAT;
       }
 
-      // kumpulkan checkbox sesuai type
       const c1 = document.getElementById("dynamicContent1");
       const c2 = document.getElementById("dynamicContent2");
 
       if (currentType === "STP") {
-        // k1..k36 (panel kiri)
         Object.assign(payload, readChecks(c1, "k", 36));
-        // x1..x36: jika panel kanan muncul → ambil; jika tidak → duplikasi k → x
         if (!c2.classList.contains('hidden')) {
           Object.assign(payload, readChecks(c2, "x", 36));
         } else {
@@ -649,11 +617,9 @@ function initSubmit() {
           for (let i = 1; i <= 36; i++) payload["x" + i] = !!kVals["k" + i];
         }
       } else if (currentType === "OTP") {
-        // WTMD: 8 checkbox k1..k8 (ambil dari panel 1 saja)
         Object.assign(payload, readChecks(c1, "k", 8));
         payload.gbr = gbr;
       } else if (currentType === "HHMD") {
-        // HHMD: 3 checkbox k1..k3 (ETD pakai k1..k2; k3 akan diabaikan code.gs)
         Object.assign(payload, readChecks(c1, "k", 3));
         payload.gbr = gbr;
       }
@@ -662,10 +628,52 @@ function initSubmit() {
       await apiSubmit(payload);
       showOverlay("ok", "Data Berhasil di kirim", "");
       resetForm();
-      if (pdfBtn) pdfBtn.disabled = false;
+
+      if (pdfBtn) pdfBtn.disabled = false; // aktifkan setelah data terkirim
     } catch (err) {
       showOverlay("err", "Gagal mengirim", err.message || "Coba lagi");
       console.error(err);
+    }
+  });
+}
+
+/* ================== DOWNLOAD PDF (Cloud Functions) ================== */
+function initPdfDownload() {
+  const pdfBtn = document.getElementById("downloadPdfBtn");
+  if (!pdfBtn) return;
+
+  pdfBtn.addEventListener("click", async () => {
+    try {
+      const select = document.getElementById("faskampen");
+      const key = select.value;
+      if (!key) return alert("Pilih Faskampen dahulu.");
+
+      const site = siteKeyForDropdown(key);
+      if (!site) return alert("Sheet untuk PDF belum dipetakan.");
+
+      const { auth } = getFirebase();
+      const user = auth.currentUser;
+      if (!user) return alert("Silakan login ulang.");
+      const idToken = await user.getIdToken(true);
+
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=${encodeURIComponent(site)}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Gagal export (${res.status}). ${txt}`);
+      }
+
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${site}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      console.error(err);
+      showOverlay("err", "Download gagal", err.message || "Coba lagi");
     }
   });
 }
@@ -676,6 +684,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupPhoto("photoBtn2", "fileInput2", "preview2", "uploadInfo2", "uploadStatus2", "uploadName2");
   initTypeButtons();
   initSubmit();
+  initPdfDownload();
   loadFaskampen();
 });
 
