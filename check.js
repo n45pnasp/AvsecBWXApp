@@ -28,12 +28,10 @@ function getPetugas() {
 }
 
 function updateResult() {
-  const allChecks = document.querySelectorAll(
-    '#dynamicContent1 input[type="checkbox"], #dynamicContent2:not(.hidden) input[type="checkbox"]'
-  );
-  const total = allChecks.length;
-  const checked = Array.from(allChecks).filter((cb) => cb.checked).length;
-  const pass = total > 0 && checked === total;
+  let pass = false;
+  if (currentType === "STP") pass = checkSTPPass();
+  else if (currentType === "OTP") pass = checkOTPPass();
+  else if (currentType === "HHMD") pass = checkHHMDPass();
   resultLabel.textContent = `HASIL FASKAMPEN : ${pass ? "PASS" : "FAIL"}`;
   resultLabel.dataset.pass = pass;
   return pass;
@@ -85,6 +83,55 @@ function readChecks(container, prefix, count) {
     out[`${prefix}${i + 1}`] = cbs[i].checked;
   }
   return out;
+}
+
+function getCheckedNumbers(container) {
+  return Array.from(container.querySelectorAll('label')).filter((lab) => {
+    const cb = lab.querySelector('input');
+    return cb && cb.checked;
+  }).map((lab) => parseInt(lab.querySelector('span').textContent, 10));
+}
+
+function checkSet(required, checked) {
+  return required.every((n) => checked.includes(n));
+}
+
+function checkSTPPass() {
+  const select = document.getElementById('faskampen');
+  const val = (select.value || '').toUpperCase();
+  const layarVal =
+    currentLookup && currentLookup.layar
+      ? currentLookup.layar.trim().toUpperCase()
+      : '';
+  const setPSCP = [1,2,3,4,5,6,7,9,17,19,20,21,22,23,24,30,31,32,33,35];
+  const setHBSCP = [1,2,3,4,5,6,17,19,20,21,22,23,30,31,32,35];
+  let required;
+  if (val.includes('PSCP')) required = setPSCP;
+  else if (val.includes('HBSCP') || val.includes('CARGO')) required = setHBSCP;
+  else return false;
+  const nums1 = getCheckedNumbers(document.getElementById('dynamicContent1'));
+  if (layarVal === 'DUAL VIEW') {
+    const nums2 = getCheckedNumbers(document.getElementById('dynamicContent2'));
+    return checkSet(required, nums1) && checkSet(required, nums2);
+  }
+  return checkSet(required, nums1);
+}
+
+function checkOTPPass() {
+  const c1 = document.getElementById('dynamicContent1');
+  const cbs = c1.querySelectorAll('input[type="checkbox"]');
+  return Array.from(cbs).slice(0,8).every((cb) => cb.checked);
+}
+
+function checkHHMDPass() {
+  const select = document.getElementById('faskampen');
+  const val = (select.value || '').toUpperCase();
+  const c1 = document.getElementById('dynamicContent1');
+  const cbs = c1.querySelectorAll('input[type="checkbox"]');
+  if (val.includes('ETD')) {
+    return cbs.length >= 2 && cbs[0].checked && cbs[1].checked;
+  }
+  return cbs.length >= 3 && cbs[0].checked && cbs[1].checked && cbs[2].checked;
 }
 
 function populateChecks(wrap) {
@@ -173,14 +220,18 @@ function updateHHMDView() {
 }
 
 /* ================== RENDER DINAMIS ================== */
-function initTypeButtons() {
-  const buttons = document.querySelectorAll(".type-btn");
-  const img1 = document.getElementById("typeImage1");
-  const img2 = document.getElementById("typeImage2");
-  const content1 = document.getElementById("dynamicContent1");
-  const content2 = document.getElementById("dynamicContent2");
-  const photoBtn1 = document.getElementById("photoBtn1");
-  const photoBtn2 = document.getElementById("photoBtn2");
+  function initTypeButtons() {
+    const buttons = document.querySelectorAll(".type-btn");
+    const img1 = document.getElementById("typeImage1");
+    const img2 = document.getElementById("typeImage2");
+    const content1 = document.getElementById("dynamicContent1");
+    const content2 = document.getElementById("dynamicContent2");
+    const photoBtn1 = document.getElementById("photoBtn1");
+    const photoBtn2 = document.getElementById("photoBtn2");
+    const resultCard = document.getElementById("resultCard");
+    const select = document.getElementById("faskampen");
+    const uploadInfo1 = document.getElementById("uploadInfo1");
+    const uploadInfo2 = document.getElementById("uploadInfo2");
 
   function renderSTP(target) {
     target.innerHTML = "";
@@ -255,18 +306,25 @@ function initTypeButtons() {
       renderHHMD(content2);
     }
 
-    currentLookup = null;
-    updateDropdown();
-    updateSecondPanelVisibility();
-    updateHHMDView();
-  }
+      currentLookup = null;
+      select.value = "";
+      resultCard.classList.add("hidden");
+      photoBtn1.classList.add("hidden");
+      photoBtn2.classList.add("hidden");
+      uploadInfo1.classList.add("hidden");
+      uploadInfo2.classList.add("hidden");
+      updateDropdown();
+      updateSecondPanelVisibility();
+      updateHHMDView();
+      updateResult();
+    }
 
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => handle(btn));
   });
 
-  handle(document.getElementById("btnSTP"));
-}
+    handle(document.getElementById("btnSTP"));
+  }
 
 /* ================== API ================== */
 async function apiOptions() {
@@ -345,8 +403,20 @@ function initSubmit() {
   select.addEventListener("change", async () => {
     const key = select.value;
     currentLookup = key ? await apiLookup(key) : null;
+    const show = !!key;
+    const card = document.getElementById("resultCard");
+    const btn1 = document.getElementById("photoBtn1");
+    const btn2 = document.getElementById("photoBtn2");
+    card.classList.toggle("hidden", !show);
+    btn1.classList.toggle("hidden", !show);
+    btn2.classList.toggle("hidden", !show);
+    if (!show) {
+      document.getElementById("uploadInfo1").classList.add("hidden");
+      document.getElementById("uploadInfo2").classList.add("hidden");
+    }
     updateSecondPanelVisibility();
     updateHHMDView();
+    updateResult();
   });
 
   document.getElementById("submitBtn").addEventListener("click", async () => {
