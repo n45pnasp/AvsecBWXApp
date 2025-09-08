@@ -6,6 +6,21 @@ requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 const DROPDOWN_URL = "https://avsecbwxapp.online/api/dropdown"; // Cloudflare JSON lookup
 let allFaskampen = [];
 let currentType = "STP";
+const resultLabel = document.getElementById('resultLabel');
+
+function updateResult(){
+  const allChecks = document.querySelectorAll('#dynamicContent1 input[type="checkbox"], #dynamicContent2 input[type="checkbox"]');
+  const total = allChecks.length;
+  const checked = document.querySelectorAll('#dynamicContent1 input[type="checkbox"]:checked, #dynamicContent2 input[type="checkbox"]:checked').length;
+  const pass = total > 0 && checked === total;
+  resultLabel.textContent = `HASIL FASKAMPEN : ${pass ? 'PASS' : 'FAIL'}`;
+  resultLabel.dataset.pass = pass;
+  return pass;
+}
+
+function bindChecks(container){
+  container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.addEventListener('change', updateResult));
+}
 
 // Interaksi untuk halaman check
 
@@ -41,16 +56,19 @@ function initTypeButtons(){
     grid.className = 'card subcard grid-checks';
     populateChecks(grid);
     target.appendChild(grid);
+    bindChecks(target);
   }
 
   function renderOTP(target){
     const html = `\n      <table class="check-table">\n        <thead>\n          <tr>\n            <th>POSISI TEST</th>\n            <th>TIPE<br/>KNIFE 304</th>\n            <th>HASIL TEST<br/>centang=Alarm<br/>Kosong=No Alarm</th>\n          </tr>\n        </thead>\n        <tbody>\n          <tr>\n            <td rowspan="2">Lengan Kanan<br/>Bagian Dalam</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pinggang Kanan</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pinggang Belakang<br/>Bagian Tengah</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td rowspan="2">Pergelangan Kaki<br/>Bagian Kanan</td>\n            <td>IN</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n          <tr>\n            <td>OUT</td>\n            <td><input type="checkbox" /></td>\n          </tr>\n        </tbody>\n      </table>`;
     target.innerHTML = html;
+    bindChecks(target);
   }
 
   function renderHHMD(target){
     const html = `\n      <table class="check-table hhmd-table">\n        <tbody>\n          <tr>\n            <td>TEST 1</td>\n            <td>TEST 2</td>\n            <td>TEST 3</td>\n          </tr>\n          <tr>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n            <td><input type="checkbox" /></td>\n          </tr>\n        </tbody>\n      </table>`;
     target.innerHTML = html;
+    bindChecks(target);
   }
 
   function handle(btn){
@@ -77,6 +95,7 @@ function initTypeButtons(){
         renderHHMD(content2);
       }
 
+    updateResult();
     updateDropdown();
   }
 
@@ -90,6 +109,9 @@ function initTypeButtons(){
 function initSubmit(){
   const overlay = document.getElementById('overlay');
   document.getElementById('submitBtn').addEventListener('click', () => {
+    const pass = resultLabel.dataset.pass === 'true';
+    const fall = !pass;
+    console.log('Kirim ke spreadsheet', { pass, fall });
     overlay.classList.remove('hidden');
     setTimeout(() => {
       overlay.classList.add('hidden');
