@@ -14,8 +14,12 @@ const resultLabel = document.getElementById("resultLabel");
 /* ================== UTIL ================== */
 function formatNow() {
   const d = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const dua = (n) => String(n).padStart(2, "0");
+  const bulan = [
+    "Januari","Februari","Maret","April","Mei","Juni",
+    "Juli","Agustus","September","Oktober","November","Desember"
+  ];
+  return `${dua(d.getDate())} ${bulan[d.getMonth()]} ${d.getFullYear()} / ${dua(d.getHours())}:${dua(d.getMinutes())} WIB`;
 }
 
 function getPetugas() {
@@ -582,9 +586,11 @@ function initSubmit() {
         gbr
       };
 
-      // tambahkan MERK dari lookup bila ada (dibutuhkan OTP/ETD)
-      if (currentLookup && currentLookup.MERK) {
-        payload.merk = currentLookup.MERK;
+      // simpan meta dari lookup bila tersedia
+      if (currentLookup) {
+        if (currentLookup.MERK) payload.merk = currentLookup.MERK;
+        if (currentLookup.LOKASI) payload.lokasi = currentLookup.LOKASI;
+        if (currentLookup.NO_SERTIFIKAT) payload.noSertifikat = currentLookup.NO_SERTIFIKAT;
       }
 
       // kumpulkan checkbox sesuai type
