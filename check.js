@@ -43,6 +43,75 @@ function showOverlay(state, title, desc) {
   if (state !== "loading") setTimeout(() => overlay.classList.add("hidden"), 1200);
 }
 
+function askConfirm(message = "Yakin?", { okText = "Yes", cancelText = "Batal" } = {}) {
+  return new Promise((resolve) => {
+    let modal = document.getElementById("jsConfirm");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "jsConfirm";
+      modal.className = "hidden";
+      modal.setAttribute("role", "dialog");
+      modal.setAttribute("aria-modal", "true");
+      modal.innerHTML = `
+        <div class="jsc-backdrop"></div>
+        <div class="jsc-card">
+          <button class="jsc-x" aria-label="Tutup" title="Tutup">×</button>
+          <div class="jsc-msg"></div>
+          <div class="jsc-actions">
+            <button class="jsc-cancel" type="button"></button>
+            <button class="jsc-ok" type="button"></button>
+          </div>
+        </div>`;
+      const css = document.createElement("style");
+      css.textContent = `
+        #jsConfirm{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999}
+        #jsConfirm.hidden{display:none}
+        #jsConfirm .jsc-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:saturate(120%) blur(2px)}
+        #jsConfirm .jsc-card{position:relative;max-width:360px;width:90%;background:#0f172a;color:#e5e7eb;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:18px 16px 14px}
+        #jsConfirm .jsc-msg{font-size:14px;line-height:1.5;margin:4px 6px 12px;white-space:pre-wrap}
+        #jsConfirm .jsc-actions{display:flex;gap:8px;justify-content:flex-end;padding:0 6px}
+        #jsConfirm button{appearance:none;border:0;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer}
+        #jsConfirm .jsc-cancel{background:#374151;color:#e5e7eb}
+        #jsConfirm .jsc-ok{background:#ef4444;color:white}
+        #jsConfirm button:active{transform:translateY(1px)}
+        #jsConfirm .jsc-x{position:absolute;top:8px;right:8px;width:32px;height:32px;line-height:28px;border-radius:999px;background:#111827;color:#e5e7eb;font-size:20px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+        #jsConfirm .jsc-x:active{transform:scale(.98)}
+        #jsConfirm, #jsConfirm *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+      `;
+      document.head.appendChild(css);
+      document.body.appendChild(modal);
+      modal.addEventListener("contextmenu", (e) => e.preventDefault());
+    }
+    const msgEl = modal.querySelector(".jsc-msg");
+    const okBtn = modal.querySelector(".jsc-ok");
+    const noBtn = modal.querySelector(".jsc-cancel");
+    const xBtn = modal.querySelector(".jsc-x");
+
+    msgEl.textContent = message;
+    okBtn.textContent = okText;
+    noBtn.textContent = cancelText;
+
+    function close(val) {
+      modal.classList.add("hidden");
+      okBtn.removeEventListener("click", onOk);
+      noBtn.removeEventListener("click", onNo);
+      xBtn.removeEventListener("click", onNo);
+      modal.removeEventListener("click", onBackdrop);
+      resolve(val);
+    }
+    function onOk() { close(true); }
+    function onNo() { close(false); }
+    function onBackdrop(e) { if (e.target === modal) close(false); }
+
+    modal.classList.remove("hidden");
+    okBtn.addEventListener("click", onOk);
+    noBtn.addEventListener("click", onNo);
+    xBtn.addEventListener("click", onNo);
+    modal.addEventListener("click", onBackdrop);
+    setTimeout(() => okBtn.focus?.(), 0);
+  });
+}
+
 function updateResult() {
   let pass = false;
   if (currentType === "STP") pass = checkSTPPass();
@@ -403,12 +472,14 @@ function updateDropdown() {
 }
 
 async function loadFaskampen() {
+  showOverlay("loading", "Mengambil data…", "");
   try {
     const options = await apiOptions();
     allFaskampen = options;
     updateDropdown();
+    document.getElementById("overlay").classList.add("hidden");
   } catch (err) {
-    console.error("Gagal memuat faskampen", err);
+    showOverlay("err", "Gagal memuat", err.message || "Coba lagi");
   }
 }
 
@@ -455,6 +526,14 @@ function initSubmit() {
       // pass/fail dari label
       const passBool = resultLabel.dataset.pass === "true";
       const failBool = !passBool;
+
+      if (!passBool) {
+        const proceed = await askConfirm(
+          "HASIL FAIL, ANDA TETAP MENGIRIM DATA?",
+          { okText: "Yes", cancelText: "Batal" }
+        );
+        if (!proceed) return;
+      }
 
       // ambil tanggal & petugas
       const petugas = getPetugas();
