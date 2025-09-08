@@ -104,11 +104,13 @@ function checkSTPPass() {
       ? currentLookup.layar.trim().toUpperCase()
       : '';
   const setPSCP = [1,2,3,4,5,6,7,9,17,19,20,21,22,23,24,30,31,32,33,35];
-  const setHBSCP = [1,2,3,4,5,6,17,19,20,21,22,23,30,31,32,35];
+  const setHBSCPsingle = [1,2,3,4,5,6,17,19,20,21,22,23,30,31,32,35];
+  const setHBSCPdual = [1,2,3,4,5,6,17,19,20,21,22,23,30,31,35];
   let required;
   if (val.includes('PSCP')) required = setPSCP;
-  else if (val.includes('HBSCP') || val.includes('CARGO')) required = setHBSCP;
-  else return false;
+  else if (val.includes('HBSCP') || val.includes('CARGO')) {
+    required = layarVal === 'DUAL VIEW' ? setHBSCPdual : setHBSCPsingle;
+  } else return false;
   const nums1 = getCheckedNumbers(document.getElementById('dynamicContent1'));
   if (layarVal === 'DUAL VIEW') {
     const nums2 = getCheckedNumbers(document.getElementById('dynamicContent2'));
