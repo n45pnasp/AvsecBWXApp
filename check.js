@@ -170,6 +170,8 @@ function initTypeButtons() {
   const img2 = document.getElementById("typeImage2");
   const content1 = document.getElementById("dynamicContent1");
   const content2 = document.getElementById("dynamicContent2");
+  const photoBtn1 = document.getElementById("photoBtn1");
+  const photoBtn2 = document.getElementById("photoBtn2");
 
   function renderSTP(target) {
     target.innerHTML = "";
@@ -222,18 +224,24 @@ function initTypeButtons() {
       currentType = "STP";
       img1.src = "icons/stp.png";
       img2.src = "icons/stp.png";
+      photoBtn1.textContent = "Layar Kiri";
+      photoBtn2.textContent = "Layar Kanan";
       renderSTP(content1);
       renderSTP(content2);
     } else if (btn.id === "btnOTP") {
       currentType = "OTP"; // WTMD
       img1.src = "icons/otp.png";
       img2.src = "icons/otp.png";
+      photoBtn1.textContent = "Foto Dokumentasi";
+      photoBtn2.textContent = "Foto Dokumentasi";
       renderOTP(content1);
       renderOTP(content2);
     } else if (btn.id === "btnHHMD") {
       currentType = "HHMD";
       img1.src = "icons/hhmd.png";
       img2.src = "icons/hhmd.png";
+      photoBtn1.textContent = "Foto Dokumentasi";
+      photoBtn2.textContent = "Foto Dokumentasi";
       renderHHMD(content1);
       renderHHMD(content2);
     }
@@ -346,21 +354,18 @@ function initSubmit() {
       const date = formatNow();
 
       // gambar (dataURL)
-      const gbr1 = await fileToDataURL("fileInput1"); // STP: gbr1
-      const gbr2 = await fileToDataURL("fileInput2"); // STP: gbr2
-      const gbr = gbr1 || gbr2; // WTMD/HHMD/ETD: pakai salah satu
-
-      // siapkan payload dasar
+      const gbr1 = await fileToDataURL("fileInput1");
       const payload = {
         dropdown: key,
         petugas,
         date,
         pass: passBool,
         fail: failBool,
-        gbr1,
-        gbr2,
-        gbr
+        gbr1
       };
+      if (currentType === "STP") {
+        payload.gbr2 = await fileToDataURL("fileInput2");
+      }
 
       // tambahkan MERK dari lookup bila ada (dibutuhkan OTP/ETD)
       if (currentLookup && currentLookup.MERK) {
