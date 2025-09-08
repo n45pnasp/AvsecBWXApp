@@ -280,6 +280,43 @@ function fileToDataURL(inputId) {
   });
 }
 
+function resetForm() {
+  const select = document.getElementById("faskampen");
+  select.value = "";
+  currentLookup = null;
+
+  // hide result card and photo sections
+  document.getElementById("resultCard").classList.add("hidden");
+  document.getElementById("photoBtn1").classList.add("hidden");
+  document.getElementById("photoBtn2").classList.add("hidden");
+  document.getElementById("uploadInfo1").classList.add("hidden");
+  document.getElementById("uploadInfo2").classList.add("hidden");
+
+  // clear file inputs & previews
+  const inputs = ["fileInput1", "fileInput2"];
+  inputs.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  const previews = ["preview1", "preview2"];
+  previews.forEach((id) => {
+    const img = document.getElementById(id);
+    if (img) img.src = "";
+  });
+
+  // uncheck all checkboxes
+  ["dynamicContent1", "dynamicContent2"].forEach((id) => {
+    const cont = document.getElementById(id);
+    cont
+      .querySelectorAll('input[type="checkbox"]')
+      .forEach((cb) => (cb.checked = false));
+  });
+
+  updateSecondPanelVisibility();
+  updateHHMDView();
+  updateResult();
+}
+
 function renderHHMD(target, isETD = false) {
   const cols = isETD ? 2 : 3;
   const headers = [];
@@ -618,12 +655,9 @@ function initSubmit() {
       }
 
       showOverlay("loading", "Mengirim data…", "");
-      const resp = await apiSubmit(payload);
-      showOverlay("ok", "Berhasil", `Data terkirim ke sheet: ${resp.routedTo}`);
-
-      // reset foto (opsional)
-      // document.getElementById('uploadInfo1').classList.add('hidden');
-      // document.getElementById('uploadInfo2').classList.add('hidden');
+      await apiSubmit(payload);
+      showOverlay("ok", "Data Berhasil di kirim", "");
+      resetForm();
     } catch (err) {
       showOverlay("err", "Gagal mengirim", err.message || "Coba lagi");
       console.error(err);
