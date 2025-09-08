@@ -1,5 +1,5 @@
 // check.js — terhubung ke Cloudflare Worker + code.gs (token diinjeksi di Worker)
-import { requireAuth } from "./auth-guard.js";
+import { requireAuth, getFirebase } from "./auth-guard.js";
 
 // Lindungi halaman: wajib login
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
@@ -19,7 +19,12 @@ function formatNow() {
 }
 
 function getPetugas() {
-  // Coba ambil dari input#petugas bila ada, kalau tidak ambil dari localStorage, terakhir kosong
+  const { auth } = getFirebase();
+  const user = auth.currentUser;
+  if (user && user.displayName) {
+    localStorage.setItem("petugasName", user.displayName);
+    return user.displayName;
+  }
   const el = document.getElementById("petugas");
   if (el && el.value) return el.value.trim();
   const ls = localStorage.getItem("petugasName");
