@@ -29,16 +29,30 @@ function getPetugas() {
 
 function updateResult() {
   const allChecks = document.querySelectorAll(
-    '#dynamicContent1 input[type="checkbox"], #dynamicContent2 input[type="checkbox"]'
+    '#dynamicContent1 input[type="checkbox"], #dynamicContent2:not(.hidden) input[type="checkbox"]'
   );
   const total = allChecks.length;
-  const checked = document.querySelectorAll(
-    '#dynamicContent1 input[type="checkbox"]:checked, #dynamicContent2 input[type="checkbox"]:checked'
-  ).length;
+  const checked = Array.from(allChecks).filter((cb) => cb.checked).length;
   const pass = total > 0 && checked === total;
   resultLabel.textContent = `HASIL FASKAMPEN : ${pass ? "PASS" : "FAIL"}`;
   resultLabel.dataset.pass = pass;
   return pass;
+}
+
+function updateSecondPanelVisibility() {
+  const wrap2 = document.getElementById('imageWrap2');
+  const content2 = document.getElementById('dynamicContent2');
+  const select = document.getElementById('faskampen');
+  const show =
+    currentType === 'STP' && select.value.toUpperCase().includes('DV');
+  if (show) {
+    wrap2.classList.remove('hidden');
+    content2.classList.remove('hidden');
+  } else {
+    wrap2.classList.add('hidden');
+    content2.classList.add('hidden');
+  }
+  updateResult();
 }
 
 function bindChecks(container) {
@@ -191,8 +205,8 @@ function initTypeButtons() {
       renderHHMD(content2);
     }
 
-    updateResult();
     updateDropdown();
+    updateSecondPanelVisibility();
   }
 
   buttons.forEach((btn) => {
@@ -279,6 +293,7 @@ function initSubmit() {
   select.addEventListener("change", async () => {
     const key = select.value;
     currentLookup = key ? await apiLookup(key) : null;
+    updateSecondPanelVisibility();
   });
 
   document.getElementById("submitBtn").addEventListener("click", async () => {
@@ -322,7 +337,9 @@ function initSubmit() {
 
       if (currentType === "STP") {
         Object.assign(payload, readChecks(c1, "k", 36)); // k1..k36
-        Object.assign(payload, readChecks(c2, "x", 36)); // x1..x36
+        if (!c2.classList.contains('hidden')) {
+          Object.assign(payload, readChecks(c2, "x", 36)); // x1..x36
+        }
       } else if (currentType === "OTP") {
         // WTMD: 8 checkbox k1..k8 (ambil dari panel 1 saja)
         Object.assign(payload, readChecks(c1, "k", 8));
