@@ -315,6 +315,8 @@ function resetForm() {
   updateSecondPanelVisibility();
   updateHHMDView();
   updateResult();
+  const pdfBtn = document.getElementById("downloadPdfBtn");
+  if (pdfBtn) pdfBtn.disabled = true;
 }
 
 function renderHHMD(target, isETD = false) {
@@ -553,9 +555,11 @@ async function loadFaskampen() {
 /* ================== SUBMIT ================== */
 function initSubmit() {
   const select = document.getElementById("faskampen");
+  const pdfBtn = document.getElementById("downloadPdfBtn");
 
   // simpan lookup ketika user memilih dropdown
   select.addEventListener("change", async () => {
+    if (pdfBtn) pdfBtn.disabled = true;
     const key = select.value;
     if (key) {
       try {
@@ -658,6 +662,7 @@ function initSubmit() {
       await apiSubmit(payload);
       showOverlay("ok", "Data Berhasil di kirim", "");
       resetForm();
+      if (pdfBtn) pdfBtn.disabled = false;
     } catch (err) {
       showOverlay("err", "Gagal mengirim", err.message || "Coba lagi");
       console.error(err);
