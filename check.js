@@ -42,6 +42,8 @@ function updateResult() {
 function updateSecondPanelVisibility() {
   const wrap2 = document.getElementById('imageWrap2');
   const content2 = document.getElementById('dynamicContent2');
+  const photoBtn2 = document.getElementById('photoBtn2');
+  const uploadInfo2 = document.getElementById('uploadInfo2');
   const show =
     currentType === 'STP' &&
     currentLookup &&
@@ -50,9 +52,12 @@ function updateSecondPanelVisibility() {
   if (show) {
     wrap2.classList.remove('hidden');
     content2.classList.remove('hidden');
+    photoBtn2.classList.remove('hidden');
   } else {
     wrap2.classList.add('hidden');
     content2.classList.add('hidden');
+    photoBtn2.classList.add('hidden');
+    uploadInfo2.classList.add('hidden');
   }
   updateResult();
 }
@@ -177,6 +182,21 @@ function initTypeButtons() {
 
   function renderOTP(target) {
     // OTP di sini = WTMD (8 checkbox)
+    const pos = [
+      "Lengan Kanan<br/>Bagian Dalam",
+      "Pinggang Kanan",
+      "Pinggang Belakang<br/>Bagian Tengah",
+      "Pergelangan Kaki<br/>Bagian Kanan"
+    ];
+    let idx = 1;
+    const body = pos
+      .map(
+        (p) => `
+          <tr><td rowspan="2">${p}</td><td>IN</td><td><label><span>${idx++}</span><input type="checkbox" /></label></td></tr>
+          <tr><td>OUT</td><td><label><span>${idx++}</span><input type="checkbox" /></label></td></tr>
+        `
+      )
+      .join("");
     const html = `
       <table class="check-table">
         <thead>
@@ -187,14 +207,7 @@ function initTypeButtons() {
           </tr>
         </thead>
         <tbody>
-          <tr><td rowspan="2">Lengan Kanan<br/>Bagian Dalam</td><td>IN</td><td><input type="checkbox" /></td></tr>
-          <tr><td>OUT</td><td><input type="checkbox" /></td></tr>
-          <tr><td rowspan="2">Pinggang Kanan</td><td>IN</td><td><input type="checkbox" /></td></tr>
-          <tr><td>OUT</td><td><input type="checkbox" /></td></tr>
-          <tr><td rowspan="2">Pinggang Belakang<br/>Bagian Tengah</td><td>IN</td><td><input type="checkbox" /></td></tr>
-          <tr><td>OUT</td><td><input type="checkbox" /></td></tr>
-          <tr><td rowspan="2">Pergelangan Kaki<br/>Bagian Kanan</td><td>IN</td><td><input type="checkbox" /></td></tr>
-          <tr><td>OUT</td><td><input type="checkbox" /></td></tr>
+          ${body}
         </tbody>
       </table>`;
     target.innerHTML = html;

@@ -59,6 +59,13 @@
   vertical-align:middle;
 }
 
+.check-table label{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+}
+
 .hhmd-table td,
 .hhmd-table th{
   text-align:center;
