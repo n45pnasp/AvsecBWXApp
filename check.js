@@ -42,9 +42,11 @@ function updateResult() {
 function updateSecondPanelVisibility() {
   const wrap2 = document.getElementById('imageWrap2');
   const content2 = document.getElementById('dynamicContent2');
-  const select = document.getElementById('faskampen');
   const show =
-    currentType === 'STP' && select.value.toUpperCase().includes('DV');
+    currentType === 'STP' &&
+    currentLookup &&
+    currentLookup.layar &&
+    currentLookup.layar.trim().toUpperCase() === 'DUAL VIEW';
   if (show) {
     wrap2.classList.remove('hidden');
     content2.classList.remove('hidden');
@@ -205,6 +207,7 @@ function initTypeButtons() {
       renderHHMD(content2);
     }
 
+    currentLookup = null;
     updateDropdown();
     updateSecondPanelVisibility();
   }
