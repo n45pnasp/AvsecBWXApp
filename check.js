@@ -123,6 +123,41 @@ function fileToDataURL(inputId) {
   });
 }
 
+function renderHHMD(target, isETD = false) {
+  const cols = isETD ? 2 : 3;
+  const headers = [];
+  const body = [];
+  for (let i = 1; i <= cols; i++) {
+    headers.push(`<td>TEST ${i}</td>`);
+    body.push('<td><input type="checkbox" /></td>');
+  }
+  target.innerHTML = `
+      <table class="check-table hhmd-table">
+        <tbody>
+          <tr>${headers.join("")}</tr>
+          <tr>${body.join("")}</tr>
+        </tbody>
+      </table>`;
+  bindChecks(target);
+}
+
+function updateHHMDView() {
+  if (currentType !== "HHMD") return;
+  const select = document.getElementById("faskampen");
+  const val = (select.value || "").toUpperCase();
+  const isETD = val.includes("ETD");
+  const img1 = document.getElementById("typeImage1");
+  const img2 = document.getElementById("typeImage2");
+  const src = isETD ? "icons/etd.png" : "icons/hhmd.png";
+  img1.src = src;
+  img2.src = src;
+  const c1 = document.getElementById("dynamicContent1");
+  const c2 = document.getElementById("dynamicContent2");
+  renderHHMD(c1, isETD);
+  renderHHMD(c2, isETD);
+  updateResult();
+}
+
 /* ================== RENDER DINAMIS ================== */
 function initTypeButtons() {
   const buttons = document.querySelectorAll(".type-btn");
@@ -166,23 +201,6 @@ function initTypeButtons() {
     bindChecks(target);
   }
 
-  function renderHHMD(target) {
-    // 3 checkbox
-    const html = `
-      <table class="check-table hhmd-table">
-        <tbody>
-          <tr><td>TEST 1</td><td>TEST 2</td><td>TEST 3</td></tr>
-          <tr>
-            <td><input type="checkbox" /></td>
-            <td><input type="checkbox" /></td>
-            <td><input type="checkbox" /></td>
-          </tr>
-        </tbody>
-      </table>`;
-    target.innerHTML = html;
-    bindChecks(target);
-  }
-
   function handle(btn) {
     buttons.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
@@ -210,6 +228,7 @@ function initTypeButtons() {
     currentLookup = null;
     updateDropdown();
     updateSecondPanelVisibility();
+    updateHHMDView();
   }
 
   buttons.forEach((btn) => {
@@ -297,6 +316,7 @@ function initSubmit() {
     const key = select.value;
     currentLookup = key ? await apiLookup(key) : null;
     updateSecondPanelVisibility();
+    updateHHMDView();
   });
 
   document.getElementById("submitBtn").addEventListener("click", async () => {
