@@ -156,3 +156,15 @@ input, textarea{
   box-shadow:0 16px 40px rgba(0,0,0,.45);
 }
 .photo-sheet img{ display:block; max-width:100%; max-height:calc(92vh - 40px); border-radius:12px; }
+
+/* ===== Kendaraan collapsible card ===== */
+.vehicle-nav{
+  display:flex; align-items:center; gap:8px;
+  width:100%; background:transparent; border:none; padding:0;
+  color:var(--text); font-weight:600; cursor:pointer;
+}
+.vehicle-nav svg{ transition:transform .2s ease; }
+.vehicle-card .veh-body{ display:none; margin-top:12px; }
+.vehicle-card.open .veh-body{ display:block; }
+.vehicle-card.open .vehicle-nav .label{ display:none; }
+.vehicle-card.open .vehicle-nav svg{ transform:rotate(180deg); }
