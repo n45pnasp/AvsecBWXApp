@@ -73,8 +73,13 @@ imgLinks.forEach(link=>{
   });
 });
 vehYes.addEventListener("click", () => {
+  const unchecked = inspectionChecks.some(cb => !cb.checked);
   vehConfirm.classList.add("hidden");
-  submitData();
+  if (unchecked) {
+    showOverlay('err', 'Masih ada area kendaraan yang belum diperiksa', '');
+  } else {
+    submitData();
+  }
 });
 vehNo.addEventListener("click", () => vehConfirm.classList.add("hidden"));
 
