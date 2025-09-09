@@ -40,15 +40,26 @@
           <span id="instansi" class="info-value">-</span>
         </div>
       </div>
-    </section>
-
-    <section class="card">
-      <h1 class="card-title">Input Data ACP</h1>
-
       <div class="field">
         <label for="prohibited">Prohibited Item</label>
         <input id="prohibited" type="text" />
       </div>
+    </section>
+
+    <section id="vehicleCard" class="card collapsed">
+      <button id="vehicleToggle" class="nav-toggle" type="button" aria-expanded="false">
+        <span class="nav-label">Menggunakan Kendaraan</span>
+        <span class="chevron">▼</span>
+      </button>
+      <div id="vehicleContent">
+        <div class="field checkbox-field">
+          <label><input id="kendaraan" type="checkbox" /> Menggunakan Kendaraan</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h1 class="card-title">Input Data ACP</h1>
       <div class="field">
         <label for="lokasi">Lokasi ACP</label>
         <input id="lokasi" type="text" />

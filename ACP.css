@@ -132,3 +132,24 @@ input, textarea{
 
 @keyframes spin{ to{ transform:rotate(360deg); } }
 @keyframes pop{ from{ transform:translateY(6px) scale(.98); opacity:0 } to{ transform:none; opacity:1 } }
+
+/* ===== Vehicle Card ===== */
+#vehicleCard .nav-toggle{
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:none;
+  border:none;
+  color:var(--text);
+  font-weight:600;
+  font-size:16px;
+  margin-bottom:12px;
+  cursor:pointer;
+  padding:8px 0;
+  text-align:left;
+}
+#vehicleCard .nav-toggle .chevron{ margin-left:8px; }
+#vehicleCard.collapsed #vehicleContent{ display:none; }
+#vehicleCard .checkbox-field{ display:flex; align-items:center; gap:8px; }
+#vehicleCard .checkbox-field input{ width:18px; height:18px; }

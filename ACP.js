@@ -16,6 +16,9 @@ const jamMasuk   = document.getElementById("jamMasuk");
 const jamKeluar  = document.getElementById("jamKeluar");
 const pemeriksa  = document.getElementById("pemeriksa");
 const supervisor = document.getElementById("supervisor");
+const kendaraan  = document.getElementById("kendaraan");
+const vehicleCard = document.getElementById("vehicleCard");
+const vehicleToggle = document.getElementById("vehicleToggle");
 const submitBtn  = document.getElementById("submitBtn");
 const scanBtn    = document.getElementById("scanBtn");
 
@@ -36,6 +39,14 @@ pemeriksa.addEventListener("input", (e) => {
 });
 
 ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
+vehicleToggle?.addEventListener("click",()=>{
+  if(!vehicleCard) return;
+  vehicleCard.classList.toggle("collapsed");
+  const expanded=!vehicleCard.classList.contains("collapsed");
+  vehicleToggle.setAttribute("aria-expanded",expanded);
+  const c=vehicleToggle.querySelector('.chevron');
+  if(c) c.textContent=expanded?"▲":"▼";
+});
 
 function showOverlay(state, title, desc){
   overlay.classList.remove("hidden");
@@ -61,10 +72,15 @@ function clearInputs(){
   kodePas.textContent = "-";
   instansi.textContent = "-";
   [prohibited,lokasi,jamMasuk,jamKeluar,supervisor,pemeriksa].forEach(el=>el.value="");
+  if(kendaraan) kendaraan.checked=false;
+  if(vehicleCard){ vehicleCard.classList.add("collapsed"); }
+  if(vehicleToggle){ vehicleToggle.setAttribute("aria-expanded","false"); const c=vehicleToggle.querySelector('.chevron'); if(c) c.textContent='▼'; }
   setAuthName();
 }
 
 clearInputs();
+
+loadRoster();
 
 submitBtn.addEventListener("click", onSubmit);
 if (scanBtn) scanBtn.addEventListener("click", () => {
@@ -81,12 +97,13 @@ async function onSubmit(){
     namaLengkap: nama.textContent.trim().toUpperCase(),
     kodePas: kodePas.textContent.trim().toUpperCase(),
     instansi: instansi.textContent.trim().toUpperCase(),
-    prohibitedItem: prohibited.value.trim().toUpperCase(),
+    prohibitedItem: prohibited.value.trim() ? prohibited.value.trim().toUpperCase() : "NIHIL",
     lokasiAcp: lokasi.value.trim().toUpperCase(),
     jamMasuk: jamMasuk.value.trim(),
     jamKeluar: jamKeluar.value.trim(),
     pemeriksa: pemeriksa.value.trim().toUpperCase(),
-    supervisor: supervisor.value.trim().toUpperCase()
+    supervisor: supervisor.value.trim().toUpperCase(),
+    kendaraan: kendaraan && kendaraan.checked ? "YA" : "NIHIL"
   };
   submitBtn.disabled = true;
   showOverlay('spinner','Mengirim data…','');
@@ -342,3 +359,17 @@ async function receiveBarcode(code){
 }
 
 window.receiveBarcode = receiveBarcode;
+
+async function loadRoster(){
+  showOverlay('spinner','Mengambil roster…','');
+  try{
+    const url=LOOKUP_URL+'?token='+SHARED_TOKEN+'&action=roster';
+    const res=await fetch(url);
+    const j=await res.json();
+    lokasi.value=(j?.lokasi||'').toUpperCase();
+    supervisor.value=(j?.supervisor||'').toUpperCase();
+    hideOverlay();
+  }catch(err){
+    showOverlay('err','Gagal mengambil roster',err?.message||err);
+  }
+}
