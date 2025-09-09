@@ -1,5 +1,5 @@
 // =============================
-// schedule.js (FINAL - Pagi & Malam, Arrival dari PSCP[5th] bila ada, PSCP max 4, SCP→HBSCP/PSCP, Mobile fallback PIC)
+// schedule.js (FINAL - Dropzone dari POS1: 'DROPZONE', Arrival & Pos1 by label, PSCP max 4, HBSCP/PSCP, Mobile malam fallback PIC)
 // =============================
 
 import { requireAuth, getFirebase } from "./auth-guard.js";
@@ -95,25 +95,24 @@ function bySection(data, section){
   return (data.rosters || []).filter(r => (r.section || "").toUpperCase() === section);
 }
 function classifyRoster(data){
-  const getName = (arr, idx) => (arr?.[idx]?.nama) || "-";
   const hbs   = bySection(data, "HBSCP");
   const pscp  = bySection(data, "PSCP");
-  const pos1  = bySection(data, "POS1");      // ideal: [0]=Arrival, [1]=Pos1 (fallback di logic)
-  const patroli = bySection(data, "PATROLI");  // dropzone/patroli
-  const malam = bySection(data, "MALAM");      // malam/cargo
+  const pos1  = bySection(data, "POS1");      // berisi POS 1 / DROPZONE / (kadang ARRIVAL)
+  const patroli = bySection(data, "PATROLI");  // personel PATROLI (bukan Dropzone)
+  const malam = bySection(data, "MALAM");
   return {
     chief: data.config?.chief || "-",
     asstChief: data.config?.assistant_chief || "-",
     chief2: data.config?.chief2 || "-",
     asstChief2: data.config?.assistant_chief2 || "-",
-    spvPscp: data.config?.supervisor_pscp || "-",    // PSCP
-    spvHbs:  data.config?.supervisor_hbscp || "-",   // HBSCP
+    spvPscp: data.config?.supervisor_pscp || "-",
+    spvHbs:  data.config?.supervisor_hbscp || "-",
     spvCctv: data.config?.supervisor_cctv || "-",
     spvPatroli: data.config?.supervisor_patroli || "-",
     pos1Arr: pos1,
     angHbs:  hbs,
     angPscp: pscp,
-    angDropzone: patroli,
+    angPatroli: patroli,
     angMalam: malam
   };
 }
@@ -155,6 +154,9 @@ function listNumberedFromRoster(rosterArr, minOneDash = true){
 function ensureDateText(dateStr){
   return (dateStr || "").trim();
 }
+const toUpperTrim = s => (s || "").toString().trim().toUpperCase();
+const findByPos = (arr, kw) =>
+  (arr || []).find(x => (x?.posisi || "").toString().toLowerCase().includes(kw)) || null;
 
 // ========== GENERATOR TEKS WA (PAGI) ==========
 function composeWhatsAppText_Morning(data){
@@ -173,20 +175,31 @@ function composeWhatsAppText_Morning(data){
 
   const hbs   = bySection(data, "HBSCP");
   const pscp  = bySection(data, "PSCP");
-
-  // === Aturan: PSCP maksimal 4 pada blok PSCP ===
-  const pscpTop4 = pscp.slice(0, 4);
-  const pscp5th  = (pscp[4]?.nama || "").trim(); // kandidat Arrival jika ada
-
   const pos1Arr  = bySection(data, "POS1");
-  const patro    = bySection(data, "PATROLI");
 
-  // === Logika Arrival/Pos1:
-  // Jika ada orang ke-5 di PSCP → Arrival = PSCP[4], Pos1 = POS1[0]
-  // Jika tidak → Arrival = POS1[0], Pos1 = POS1[1]
-  const arrivalName = pscp5th || (pos1Arr?.[0]?.nama || "-").trim();
-  const pos1Name    = pscp5th ? (pos1Arr?.[0]?.nama || "-").trim()
-                              : (pos1Arr?.[1]?.nama || "-").trim();
+  // PSCP blok: maksimal 4
+  const pscpTop4 = pscp.slice(0, 4);
+  const pscp5th  = (pscp[4]?.nama || "").trim();
+
+  // Cari label di POS1
+  const pos1Row     = findByPos(pos1Arr, "pos 1") || findByPos(pos1Arr, "pos1");
+  const dropzoneRow = findByPos(pos1Arr, "dropzone");
+  const arrivalRow  = findByPos(pos1Arr, "arrival");
+
+  // Arrival: PSCP[5] > POS1 label ARRIVAL > default POS1[0]
+  const arrivalName = pscp5th ||
+                      (arrivalRow?.nama || "").trim() ||
+                      (pos1Arr?.[0]?.nama || "-").trim();
+
+  // Pos 1: label POS 1 jika ada; jika tidak, ambil orang pertama POS1 yang bukan Arrival
+  let pos1Name = (pos1Row?.nama || "").trim();
+  if (!pos1Name) {
+    const pos1Names = (pos1Arr || []).map(x => (x?.nama || "").trim()).filter(Boolean);
+    pos1Name = (pos1Names.find(nm => toUpperTrim(nm) !== toUpperTrim(arrivalName)) || "-");
+  }
+
+  // Dropzone: HANYA dari baris POS1 yang berposisi DROPZONE (tidak dari PATROLI / fallback lain)
+  const dropzoneName = (dropzoneRow?.nama || "-").trim();
 
   const cutiList    = normalizeStringList(cfg.cuti);
   const sakitList   = normalizeStringList(cfg.sakit);
@@ -224,16 +237,17 @@ Pos 1 :
 ${listNumberedFromNames([pos1Name])}
 
 Dropzone : 
-${listNumberedFromRoster(patro)}`;
+${listNumberedFromNames([dropzoneName])}
+`;
 
   const cutiBlock =
-`\n\nCuti :
+`Cuti :
 ${listNumberedFromNames(cutiList)}
 
 Sakit :
 ${listNumberedFromNames(sakitList)}`;
 
-  const apel = `\n\nApel pagi dipimpin oleh Chief ${c1} \n`;
+  const apel = `\nApel pagi dipimpin oleh Chief ${c1} \n`;
 
   const attensi =
 `\nAttensi:
@@ -258,7 +272,7 @@ Demikian beberapa atensi yang kami buat, atas perhatiannya disampaikan Terimakas
 *_Inovation_*
 *_Hospitality_*`;
 
-  return [header, pimpinan, spv, anggota, cutiBlock, apel, attensi, footer].join("");
+  return [header, pimpinan, spv, anggota, "\n", cutiBlock, "\n\n", apel, attensi, footer].join("");
 }
 
 // ========== GENERATOR TEKS WA (MALAM) ==========
@@ -277,7 +291,6 @@ function splitNightByRole(malamRoster){
     } else if (ps.includes("pos 1") || ps === "pos1" || ps.includes("pos")) {
       pos1.push(nm);
     } else {
-      // default: terminal
       terminal.push(nm);
     }
   });
@@ -293,7 +306,7 @@ function composeWhatsAppText_Night(data){
 
   let { mobile, terminal, pos1 } = splitNightByRole(malamRoster);
 
-  // Fallback: jika Mobile kosong, isi dengan PIC malam (sesuai permintaan)
+  // Fallback: jika Mobile kosong, isi PIC malam
   if ((!mobile || mobile.length === 0) && picMalam && picMalam !== "-") {
     mobile = [picMalam];
   }
@@ -411,7 +424,7 @@ async function init(){
       }
     }
 
-    // Render UI yang sudah ada
+    // Render UI
     fillText("tgl", data.config?.tanggal);
     fillText("chief", data.config?.chief);
     fillText("assistantChief", data.config?.assistant_chief);
@@ -463,4 +476,3 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-
