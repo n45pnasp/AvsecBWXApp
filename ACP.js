@@ -23,6 +23,7 @@ const imgPreview = document.getElementById("imgPreview");
 const imgClose   = document.getElementById("imgClose");
 const imgLinks   = Array.from(document.querySelectorAll('.img-link'));
 const ROSTER_ENDPOINT = "https://roster-proxy.avsecbwx2018.workers.dev";
+const infoCard    = document.getElementById("infoCard");
 const vehicleCard = document.getElementById("vehicleCard");
 const vehToggle   = document.getElementById("vehToggle");
 
@@ -35,7 +36,14 @@ const inspectionChecks = Array.from(document.querySelectorAll('.insp-table tbody
 vehToggle.addEventListener("click", () => {
   const open = vehicleCard.classList.toggle("open");
   vehToggle.setAttribute("aria-expanded", open);
-  if (!open) inspectionChecks.forEach(cb => cb.checked = false);
+  if (open) {
+    vehicleCard.appendChild(submitBtn);
+    submitBtn.style.marginTop = "16px";
+  } else {
+    infoCard.appendChild(submitBtn);
+    submitBtn.style.marginTop = "";
+    inspectionChecks.forEach(cb => cb.checked = false);
+  }
 });
 
 // overlay ala lb_all
@@ -100,6 +108,8 @@ function clearInputs(){
   inspectionChecks.forEach(cb => cb.checked = false);
   vehicleCard.classList.remove("open");
   vehToggle.setAttribute("aria-expanded","false");
+  infoCard.appendChild(submitBtn);
+  submitBtn.style.marginTop = "";
   setAuthName();
 }
 clearInputs();
@@ -120,7 +130,7 @@ submitBtn.addEventListener("click", onSubmit);
 if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan(); });
 
 async function fetchRoster(){
-  showOverlay('spinner','Memuat roster…','');
+  showOverlay('spinner','Memuat Data…','');
   try{
     const url = new URL(ROSTER_ENDPOINT);
     url.searchParams.set("action", "getRoster");
@@ -158,7 +168,7 @@ async function fetchRoster(){
     }
   }catch(err){
     console.warn("Failed to load roster", err);
-    showOverlay('err','Gagal memuat roster', err?.message || err);
+    showOverlay('err','Gagal memuat data', err?.message || err);
   }finally{
     hideOverlay();
   }
@@ -401,6 +411,8 @@ async function receiveBarcode(code){
         vehicleCard.classList.remove('open');
         vehToggle.setAttribute('aria-expanded','false');
         inspectionChecks.forEach(cb=>cb.checked=false);
+        infoCard.appendChild(submitBtn);
+        submitBtn.style.marginTop = '';
         hideOverlay();
       }
     } else {
