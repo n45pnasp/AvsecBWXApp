@@ -230,8 +230,65 @@ body.blur-bg > *:not(#loadingOverlay){
   letter-spacing: .3px;
 }
 /* Semua data dari Sheet otomatis bold */
-span[id]{
-  font-weight: 700;
+span[id]{ font-weight: 700; }
+
+/* =========================
+   ACTION BUTTONS (Salin WA)
+   ========================= */
+.app-bar { gap: 12px; }
+.app-title { flex: 1; }
+
+.actions{
+  display:flex; gap:8px; align-items:center;
+}
+
+.icon-btn{
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding:.5rem .75rem; border-radius:12px;
+  background: linear-gradient(180deg, #0f172a, #0b1220);
+  border:1px solid var(--border);
+  color: var(--text); cursor:pointer; user-select:none;
+  box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  transition: background .15s ease, border-color .15s ease, transform .08s ease;
+}
+.icon-btn:hover{
+  background: linear-gradient(180deg, rgba(168,85,247,.16), rgba(168,85,247,.06));
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
+}
+.icon-btn:active{ transform: translateY(1px); }
+.icon-btn:focus-visible{
+  outline: 3px solid color-mix(in oklab, var(--accent) 40%, transparent);
+  outline-offset: 2px;
+}
+
+.icon-btn svg{
+  display:block; stroke: currentColor; stroke-width: 2;
+  fill: none;
+}
+
+/* Variasi warna halus untuk Pagi vs Malam */
+.icon-btn#copyWaMorningBtn{
+  border-color: rgba(168,85,247,.45);
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(168,85,247,.20) 0%, transparent 55%),
+    linear-gradient(180deg, #101826, #0b1220);
+}
+.icon-btn#copyWaMorningBtn:hover{
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(168,85,247,.28) 0%, transparent 60%),
+    linear-gradient(180deg, #121a2a, #0c1321);
+}
+
+.icon-btn#copyWaNightBtn{
+  border-color: rgba(107,33,168,.5);
+  background:
+    radial-gradient(120% 100% at 100% 0%, rgba(107,33,168,.22) 0%, transparent 55%),
+    linear-gradient(180deg, #0e1322, #0a0f1d);
+}
+.icon-btn#copyWaNightBtn:hover{
+  background:
+    radial-gradient(120% 100% at 100% 0%, rgba(107,33,168,.30) 0%, transparent 60%),
+    linear-gradient(180deg, #10162a, #0b1120);
 }
 
 /* =========================
@@ -243,4 +300,8 @@ span[id]{
   .header-title h2{ font-size:18px }
   .logo{ width:56px; height:56px }
   th, td{ padding:10px 12px; font-size:13.5px }
+
+  .actions { gap:6px; }
+  .icon-btn { padding:.45rem .6rem; border-radius:10px; }
+  .icon-btn span { font-size: 13px; }
 }
