@@ -187,7 +187,6 @@ async function fetchRoster(){
       }
     }
   }catch(err){
-    console.warn("Failed to load roster", err);
     showOverlay('err','Gagal memuat data', err?.message || err);
   }finally{
     hideOverlay();
@@ -230,7 +229,6 @@ async function submitData(){
     // 9 field area di root (sesuai code.gs)
     ...areaState
   };
-  console.log("Inspection payload", areaState);
 
   submitBtn.disabled = true;
   showOverlay('spinner','Mengirim data…','');
@@ -376,7 +374,6 @@ function detectLoop_BarcodeDetector(){
         if (value){ handleScanSuccess(value); return; }
       }
     }catch(e){
-      console.warn('detector error', e);
       if (!scanState.canvas){
         try{ await ensureJsQR(); prepareCanvas(); scanState.usingDetector=false; detectLoop_jsQR(); return; }catch(_){}}
     }
