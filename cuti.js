@@ -233,8 +233,8 @@ function initPdfDownload(){
       if (!user) return Modal.show("Silakan login ulang.", "Autentikasi");
 
       const idToken = await user.getIdToken(true);
-      // site=CutiFilesPDF -> harus terdaftar di Cloud Functions (SHEETS)
-      const url = `${CFN_DOWNLOAD_PDF_URL}?site=CutiFilesPDF`;
+      // site=CUTI_FILESPDF -> harus terdaftar di Cloud Functions (SHEETS)
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=CUTI_FILESPDF`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
       if (!res.ok){
         const txt = await res.text().catch(()=> "");
