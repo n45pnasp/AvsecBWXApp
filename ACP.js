@@ -121,11 +121,12 @@ async function fetchRoster(){
     const spv = (j?.config?.supervisor_pos1 || "").toString().trim().toUpperCase();
     if (spv) supervisor.value = spv;
 
-    const loginName = (pemeriksa.value || "").trim().toUpperCase();
+    const normalize = s => (s || "").toString().toUpperCase().replace(/[^A-Z]/g,"");
+    const loginName = normalize(pemeriksa.value || "");
     const roster = Array.isArray(j?.rosters) ? j.rosters : [];
     const me = roster.find(r => {
-      const nm = (r?.nama || "").trim().toUpperCase();
-      return nm === loginName || nm.startsWith(loginName + " ") || loginName.startsWith(nm + " ");
+      const nm = normalize(r?.nama);
+      return nm === loginName || nm.startsWith(loginName) || loginName.startsWith(nm);
     });
     const section = (me?.section || "").toUpperCase();
     if (section.includes("HBSCP")) {
