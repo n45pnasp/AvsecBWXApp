@@ -342,13 +342,23 @@ class SiteMachine {
     const r = this._rosterData || {};
     let names = [];
     if(this.siteKey === "PSCP"){
-      const arr=[r.angCabin1,r.angCabin2,r.angCabin3,r.angCabin4];
-      names = arr.filter(n=>n && n!=="-");
-      if(arr.some(n=>n==="-") && r.spvCabin && r.spvCabin!=="-") names.push(r.spvCabin);
+      let arr = [r.angCabin1, r.angCabin2, r.angCabin3, r.angCabin4];
+      if(Array.isArray(r.angPSCP)){
+        arr = r.angPSCP.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
+      } else if(Array.isArray(r.angPscp)){
+        arr = r.angPscp.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
+      }
+      names = arr.filter(n => n && n !== "-");
+      if(names.length < 4 && r.spvCabin && r.spvCabin !== "-") names.push(r.spvCabin);
     } else if(this.siteKey === "HBSCP"){
-      const arr=[r.angHbs1,r.angHbs2,r.angHbs3];
-      names = arr.filter(n=>n && n!=="-");
-      if(arr.some(n=>n==="-") && r.spvHbs && r.spvHbs!=="-") names.push(r.spvHbs);
+      let arr = [r.angHbs1, r.angHbs2, r.angHbs3];
+      if(Array.isArray(r.angHBSCP)){
+        arr = r.angHBSCP.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
+      } else if(Array.isArray(r.angHbs)){
+        arr = r.angHbs.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
+      }
+      names = arr.filter(n => n && n !== "-");
+      if(names.length < 3 && r.spvHbs && r.spvHbs !== "-") names.push(r.spvHbs);
     }
     const entries = await Promise.all(names.map(async n=>{
       const spec = await this._resolveSpec(n);
