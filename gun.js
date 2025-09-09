@@ -452,6 +452,7 @@ function initPdfDownload(){
   if (!downloadPdfBtn) return;
   downloadPdfBtn.addEventListener("click", async () => {
     try{
+      showOverlay("spinner","Menyiapkan PDF…","" );
       const { auth } = getFirebase();
       const user = auth.currentUser;
       if (!user) return alert("Silakan login ulang.");
@@ -471,6 +472,7 @@ function initPdfDownload(){
       a.click();
       a.remove();
       URL.revokeObjectURL(a.href);
+      showOverlay("ok","Download siap","PDF telah diunduh");
     }catch(err){
       console.error(err);
       showOverlay("err","Download gagal", err.message || "Coba lagi");
