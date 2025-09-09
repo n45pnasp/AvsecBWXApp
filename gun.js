@@ -479,7 +479,7 @@ function initPdfDownload(){
 }
 
 /* ================== STARTUP ================== */
-document.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", () => {
   initPdfDownload(); // aktifkan tombol download PDF (jika ada di halaman)
 });
 

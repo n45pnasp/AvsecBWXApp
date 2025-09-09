@@ -529,8 +529,10 @@ function initPdfDownload(){
   });
 }
 
-disableNativeTimePicker();
-loadLogs();
-initPdfDownload(); // aktifkan tombol Download PDF (jika ada)
+window.addEventListener("DOMContentLoaded", () => {
+  disableNativeTimePicker();
+  loadLogs();
+  initPdfDownload(); // aktifkan tombol Download PDF (jika ada)
+});
 
 window.receiveBarcode = receiveBarcode;
