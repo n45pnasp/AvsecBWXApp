@@ -140,7 +140,7 @@ submitBtn.addEventListener("click", async () => {
   showOverlay('spinner','Mengirim data…','');
 
   try {
-    await sendToSheet('GunFilesPDF', payload);
+    await sendToSheet('GUN_FILESPDF', payload);
     await sendToSheet('Files', payload);
 
     showOverlay('ok','Data berhasil dikirim','');
@@ -457,7 +457,7 @@ function initPdfDownload(){
       if (!user) return alert("Silakan login ulang.");
 
       const idToken = await user.getIdToken(true);
-      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GunFilesPDF`;
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GUN_FILESPDF`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
       if (!res.ok){
         const txt = await res.text().catch(()=> "");

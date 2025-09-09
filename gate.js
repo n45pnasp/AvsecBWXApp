@@ -507,8 +507,8 @@ function initPdfDownload(){
       if (!user) return alert("Silakan login ulang.");
       const idToken = await user.getIdToken(true);
 
-      // site=GateFilesPDF → harus didaftarkan di index.js (SHEETS)
-      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GateFilesPDF`;
+      // site=GATE_FILESPDF → harus didaftarkan di index.js (SHEETS)
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GATE_FILESPDF`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
       if (!res.ok){
         const txt = await res.text().catch(()=> "");
