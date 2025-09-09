@@ -1,0 +1,27 @@
+{
+  "name": "Avsec BWX App",
+  "short_name": "BWX",
+  "description": "Aviation Security BWX Application",
+  "start_url": "https://n45pnasp.github.io/AvsecBWXApp/index.html",
+  "scope": "https://n45pnasp.github.io/AvsecBWXApp/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
