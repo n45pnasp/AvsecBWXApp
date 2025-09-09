@@ -75,7 +75,6 @@ input, textarea{
 .btn:disabled{ opacity:.55; cursor:not-allowed }
 
 /* Tombol scan ala boardingpass */
-.qr-card{ padding:0; }
 .qr-btn{
   width:100%; display:flex; flex-direction:row; align-items:center; justify-content:center;
   gap:12px; background:linear-gradient(135deg,var(--accent),var(--accent-2));
@@ -87,6 +86,9 @@ input, textarea{
 .qr-btn:active{ transform:translateY(1px) }
 .qr-btn img{ width:28px; height:28px; filter:invert(1); }
 .qr-btn small{ color:rgba(255,255,255,.85); font-weight:400; display:block; }
+
+/* Scan button inside info card */
+.info-card .qr-btn{ margin-bottom:12px; }
 
 /* Info card untuk hasil scan */
 .info-card{ display:grid; gap:12px; }
@@ -132,3 +134,25 @@ input, textarea{
 
 @keyframes spin{ to{ transform:rotate(360deg); } }
 @keyframes pop{ from{ transform:translateY(6px) scale(.98); opacity:0 } to{ transform:none; opacity:1 } }
+
+/* ===== Modal Gambar ===== */
+.img-link{ color:var(--accent-2); text-decoration:underline; cursor:pointer; }
+.insp-table{
+  width:100%; border-collapse:separate; border-spacing:0;
+  border:1px solid var(--border); border-radius:12px; overflow:hidden;
+  table-layout:fixed;
+}
+.insp-table th, .insp-table td{
+  padding:10px 12px; text-align:left; border-bottom:1px solid var(--border);
+}
+.insp-table th{ background:#111827; white-space:nowrap; text-align:center }
+.insp-table tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
+.insp-table td:nth-child(2), .insp-table td:nth-child(3){ text-align:center; }
+.insp-table td:first-child{ text-align:left; }
+.insp-table th .status-sample{ font-size:18px; margin-right:4px; }
+.photo-sheet{
+  position:relative; background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:10px; max-width:min(92vw,720px); max-height:92vh;
+  box-shadow:0 16px 40px rgba(0,0,0,.45);
+}
+.photo-sheet img{ display:block; max-width:100%; max-height:calc(92vh - 40px); border-radius:12px; }
