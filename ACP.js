@@ -23,6 +23,8 @@ const imgPreview = document.getElementById("imgPreview");
 const imgClose   = document.getElementById("imgClose");
 const imgLinks   = Array.from(document.querySelectorAll('.img-link'));
 const ROSTER_ENDPOINT = "https://roster-proxy.avsecbwx2018.workers.dev";
+const vehicleCard = document.getElementById("vehicleCard");
+const vehToggle   = document.getElementById("vehToggle");
 
 // === 9 checkbox area (urutan fallback jika tidak ada data-area di HTML)
 const AREA_FIELDS = [
@@ -30,6 +32,11 @@ const AREA_FIELDS = [
   "laciDashboard","bawahKursi","kapMobil","areaLain"
 ];
 const inspectionChecks = Array.from(document.querySelectorAll('.insp-table tbody input[type="checkbox"]'));
+vehToggle.addEventListener("click", () => {
+  const open = vehicleCard.classList.toggle("open");
+  vehToggle.setAttribute("aria-expanded", open);
+  if (!open) inspectionChecks.forEach(cb => cb.checked = false);
+});
 
 // overlay ala lb_all
 const overlay = document.getElementById("overlay");
@@ -91,19 +98,21 @@ function clearInputs(){
   instansi.textContent = "-";
   [prohibited,lokasi,jamMasuk,supervisor,pemeriksa].forEach(el=>el.value="");
   inspectionChecks.forEach(cb => cb.checked = false);
+  vehicleCard.classList.remove("open");
+  vehToggle.setAttribute("aria-expanded","false");
   setAuthName();
 }
 clearInputs();
 
 // === Kolektor nilai checkbox → {bagasiMobil: true/false, ...}
 function getInspectionState(){
+  const used = vehicleCard.classList.contains("open");
   const out = {};
   inspectionChecks.forEach((cb, idx) => {
     const key = (cb.dataset.area || AREA_FIELDS[idx] || "").trim();
-    if (key) out[key] = !!cb.checked;
+    if (key) out[key] = used ? (cb.checked ? "AMAN" : "TIDAK AMAN") : "NIHIL";
   });
-  // pastikan semua key ada (default false)
-  AREA_FIELDS.forEach(k => { if (!(k in out)) out[k] = false; });
+  AREA_FIELDS.forEach(k => { if (!(k in out)) out[k] = "NIHIL"; });
   return out;
 }
 
@@ -111,6 +120,7 @@ submitBtn.addEventListener("click", onSubmit);
 if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan(); });
 
 async function fetchRoster(){
+  showOverlay('spinner','Memuat roster…','');
   try{
     const url = new URL(ROSTER_ENDPOINT);
     url.searchParams.set("action", "getRoster");
@@ -146,7 +156,12 @@ async function fetchRoster(){
     } else if (section.includes("POS")) {
       lokasi.value = "POS 1";
     }
-  }catch(err){ console.warn("Failed to load roster", err); }
+  }catch(err){
+    console.warn("Failed to load roster", err);
+    showOverlay('err','Gagal memuat roster', err?.message || err);
+  }finally{
+    hideOverlay();
+  }
 }
 
 async function onSubmit(){
@@ -162,7 +177,7 @@ async function onSubmit(){
     namaLengkap: nama.textContent.trim().toUpperCase(),
     kodePas:     kodePas.textContent.trim().toUpperCase(),
     instansi:    instansi.textContent.trim().toUpperCase(),
-    prohibitedItem: prohibitedItem ? prohibitedItem.toUpperCase() : "TIDAK BAWA",
+    prohibitedItem: prohibitedItem ? prohibitedItem.toUpperCase() : "NIHIL",
     lokasiAcp:      (lokasi.value     || "").trim().toUpperCase(),
     jamMasuk:  (jamMasuk.value  || "").trim(),
     pemeriksa:  (pemeriksa.value  || "").trim().toUpperCase(),
@@ -383,6 +398,9 @@ async function receiveBarcode(code){
         prohibited.value = '';
         lokasi.value     = '';
         supervisor.value = '';
+        vehicleCard.classList.remove('open');
+        vehToggle.setAttribute('aria-expanded','false');
+        inspectionChecks.forEach(cb=>cb.checked=false);
         hideOverlay();
       }
     } else {
