@@ -19,6 +19,10 @@ const pemeriksa  = document.getElementById("pemeriksa");
 const supervisor = document.getElementById("supervisor");
 const submitBtn  = document.getElementById("submitBtn");
 const scanBtn    = document.getElementById("scanBtn");
+const imgModal   = document.getElementById("imgModal");
+const imgPreview = document.getElementById("imgPreview");
+const imgClose   = document.getElementById("imgClose");
+const imgLinks   = Array.from(document.querySelectorAll('.img-link'));
 
 // === 9 checkbox area (urutan fallback jika tidak ada data-area di HTML)
 const AREA_FIELDS = [
@@ -42,6 +46,15 @@ onAuthStateChanged(auth, setAuthName);
 pemeriksa.addEventListener("input", (e) => { e.target.value = e.target.value.toUpperCase(); });
 
 ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
+imgClose.addEventListener("click", closeImgModal);
+imgModal.addEventListener("click", (e)=>{ if(e.target===imgModal) closeImgModal(); });
+imgLinks.forEach(link=>{
+  link.addEventListener('click', e=>{
+    e.preventDefault();
+    const src = link.dataset.img;
+    if(src) openImgModal(src);
+  });
+});
 
 function showOverlay(state, title, desc){
   overlay.classList.remove("hidden");
@@ -55,6 +68,15 @@ function showOverlay(state, title, desc){
   }
 }
 function hideOverlay(){ overlay.classList.add("hidden"); }
+
+function openImgModal(src){
+  imgPreview.src = src;
+  imgModal.classList.remove('hidden');
+}
+function closeImgModal(){
+  imgModal.classList.add('hidden');
+  imgPreview.removeAttribute('src');
+}
 
 function setAuthName(){
   const user = auth.currentUser;

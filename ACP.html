@@ -35,42 +35,42 @@
         <tr>
           <td>BAGASI MOBIL</td>
           <td><input type="checkbox" data-area="bagasiMobil" /></td>
-          <td><img src="icons/bagasicar.png" alt="BAGASI MOBIL" /></td>
+          <td><a href="#" class="img-link" data-img="icons/bagasicar.png">Gambar</a></td>
         </tr>
         <tr>
           <td>BAWAH MOBIL</td>
           <td><input type="checkbox" data-area="bawahMobil" /></td>
-          <td><img src="icons/bawahcar.png" alt="BAWAH MOBIL" /></td>
+          <td><a href="#" class="img-link" data-img="icons/bawahcar.png">Gambar</a></td>
         </tr>
         <tr>
           <td>SEKITAR RODA</td>
           <td><input type="checkbox" data-area="sekitarRoda" /></td>
-          <td><img src="icons/rodacar.png" alt="SEKITAR RODA" /></td>
+          <td><a href="#" class="img-link" data-img="icons/rodacar.png">Gambar</a></td>
         </tr>
         <tr>
           <td>KANTONG PINTU</td>
           <td><input type="checkbox" data-area="kantongPintu" /></td>
-          <td><img src="icons/pintucar.png" alt="KANTONG PINTU" /></td>
+          <td><a href="#" class="img-link" data-img="icons/pintucar.png">Gambar</a></td>
         </tr>
         <tr>
           <td>VISOR</td>
           <td><input type="checkbox" data-area="visor" /></td>
-          <td><img src="icons/visorcar.png" alt="VISOR" /></td>
+          <td><a href="#" class="img-link" data-img="icons/visorcar.png">Gambar</a></td>
         </tr>
         <tr>
           <td>LACI DASHBOARD</td>
           <td><input type="checkbox" data-area="laciDashboard" /></td>
-          <td><img src="icons/lacicar.png" alt="LACI DASHBOARD" /></td>
+          <td><a href="#" class="img-link" data-img="icons/lacicar.png">Gambar</a></td>
         </tr>
         <tr>
           <td>BAWAH KURSI</td>
           <td><input type="checkbox" data-area="bawahKursi" /></td>
-          <td><img src="icons/kursicar.png" alt="BAWAH KURSI" /></td>
+          <td><a href="#" class="img-link" data-img="icons/kursicar.png">Gambar</a></td>
         </tr>
         <tr>
           <td>KAP MOBIL</td>
           <td><input type="checkbox" data-area="kapMobil" /></td>
-          <td><img src="icons/kapcar.png" alt="KAP MOBIL" /></td>
+          <td><a href="#" class="img-link" data-img="icons/kapcar.png">Gambar</a></td>
         </tr>
         <tr>
           <td>AREA LAIN</td>
@@ -142,6 +142,17 @@
         <div class="title" id="ovTitle"></div>
         <div class="desc" id="ovDesc"></div>
       </div>
+    </div>
+  </div>
+
+  <div id="imgModal" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="photo-sheet">
+      <button id="imgClose" class="icon-x" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <img id="imgPreview" alt="Preview gambar" />
     </div>
   </div>
 

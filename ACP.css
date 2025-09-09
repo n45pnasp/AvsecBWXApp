@@ -132,3 +132,12 @@ input, textarea{
 
 @keyframes spin{ to{ transform:rotate(360deg); } }
 @keyframes pop{ from{ transform:translateY(6px) scale(.98); opacity:0 } to{ transform:none; opacity:1 } }
+
+/* ===== Modal Gambar ===== */
+.img-link{ color:var(--accent-2); text-decoration:underline; cursor:pointer; }
+.photo-sheet{
+  position:relative; background:var(--card); border:1px solid var(--border);
+  border-radius:16px; padding:10px; max-width:min(92vw,720px); max-height:92vh;
+  box-shadow:0 16px 40px rgba(0,0,0,.45);
+}
+.photo-sheet img{ display:block; max-width:100%; max-height:calc(92vh - 40px); border-radius:12px; }
