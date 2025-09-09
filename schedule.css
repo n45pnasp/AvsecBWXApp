@@ -260,13 +260,26 @@ body.blur-bg > *:not(#loadingOverlay){
 span[id]{ font-weight: 700; }
 
 /* =========================
-   ACTION BUTTONS (Salin WA)
+   TOMBOL SALIN WA
    ========================= */
-.app-bar { gap: 12px; }
 .app-title { flex: 1; }
 
-.actions{
-  display:flex; gap:8px; align-items:center;
+.copy-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+  margin-top:16px;
+  box-shadow:var(--shadow);
+}
+.copy-actions{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.copy-actions .icon-btn{
+  width:100%;
+  justify-content:center;
 }
 
 .icon-btn{
@@ -328,7 +341,6 @@ span[id]{ font-weight: 700; }
   .logo{ width:56px; height:56px }
   th, td{ padding:10px 12px; font-size:13.5px }
 
-  .actions { gap:6px; }
   .icon-btn { padding:.45rem .6rem; border-radius:10px; }
   .icon-btn span { font-size: 13px; }
 }
