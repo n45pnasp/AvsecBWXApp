@@ -52,6 +52,9 @@ const ovIcon  = document.getElementById("ovIcon");
 const ovTitle = document.getElementById("ovTitle");
 const ovDesc  = document.getElementById("ovDesc");
 const ovClose = document.getElementById("ovClose");
+const vehConfirm = document.getElementById("vehConfirm");
+const vehYes = document.getElementById("vehYes");
+const vehNo  = document.getElementById("vehNo");
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
 
 const auth = getAuth();
@@ -70,6 +73,11 @@ imgLinks.forEach(link=>{
     if(src) openImgModal(src);
   });
 });
+vehYes.addEventListener("click", () => {
+  vehConfirm.classList.add("hidden");
+  submitData();
+});
+vehNo.addEventListener("click", () => vehConfirm.classList.add("hidden"));
 
 function showOverlay(state, title, desc){
   overlay.classList.remove("hidden");
@@ -179,7 +187,17 @@ async function onSubmit(){
   jamMasuk.value = new Intl.DateTimeFormat('en-GB', {
     hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Jakarta'
   }).format(new Date());
+  if (vehicleCard.classList.contains("open")) {
+    const unchecked = inspectionChecks.some(cb => !cb.checked);
+    if (unchecked) {
+      vehConfirm.classList.remove("hidden");
+      return;
+    }
+  }
+  submitData();
+}
 
+async function submitData(){
   const areaState = getInspectionState();
   const prohibitedItem = (prohibited.value || "").trim();
   const payload = {

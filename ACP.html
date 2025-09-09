@@ -51,7 +51,8 @@
     <section id="vehicleCard" class="card vehicle-card">
       <button id="vehToggle" class="vehicle-nav" type="button" aria-expanded="false">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 15l-6-6h12z" fill="currentColor" /></svg>
-        <span class="label">Menggunakan Kendaraan</span>
+        <span class="open-label">Menggunakan Kendaraan</span>
+        <span class="close-label">Tutup</span>
       </button>
       <div class="veh-body">
         <table class="insp-table" aria-label="Daftar Pemeriksaan">
@@ -132,6 +133,16 @@
       <div class="texts">
         <div class="title" id="ovTitle"></div>
         <div class="desc" id="ovDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="vehConfirm" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="sheet confirm">
+      <p>Apakah pemeriksaan kendaraan sudah dilakukan?</p>
+      <div class="actions">
+        <button id="vehYes" type="button" class="btn primary">Sudah</button>
+        <button id="vehNo" type="button" class="btn">Belum</button>
       </div>
     </div>
   </div>
