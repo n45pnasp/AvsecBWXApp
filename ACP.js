@@ -18,6 +18,7 @@ const pemeriksa  = document.getElementById("pemeriksa");
 const supervisor = document.getElementById("supervisor");
 const submitBtn  = document.getElementById("submitBtn");
 const scanBtn    = document.getElementById("scanBtn");
+const inspectionChecks = Array.from(document.querySelectorAll('section.card table input[type="checkbox"]'));
 
 // overlay ala lb_all
 const overlay = document.getElementById("overlay");
@@ -61,6 +62,7 @@ function clearInputs(){
   kodePas.textContent = "-";
   instansi.textContent = "-";
   [prohibited,lokasi,jamMasuk,jamKeluar,supervisor,pemeriksa].forEach(el=>el.value="");
+  inspectionChecks.forEach(cb => cb.checked = false);
   setAuthName();
 }
 
