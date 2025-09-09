@@ -1,5 +1,5 @@
 // =============================
-// schedule.js (FINAL - Pagi & Malam, SCP→HBSCP/PSCP, PSCP max 4)
+// schedule.js (FINAL - Pagi & Malam, Arrival dari PSCP[5th] bila ada, PSCP max 4, SCP→HBSCP/PSCP, Mobile fallback PIC)
 // =============================
 
 import { requireAuth, getFirebase } from "./auth-guard.js";
@@ -97,8 +97,8 @@ function bySection(data, section){
 function classifyRoster(data){
   const getName = (arr, idx) => (arr?.[idx]?.nama) || "-";
   const hbs   = bySection(data, "HBSCP");
-  const cabin = bySection(data, "PSCP");
-  const pos1  = bySection(data, "POS1");      // [0]=Arrival, [1]=Pos1
+  const pscp  = bySection(data, "PSCP");
+  const pos1  = bySection(data, "POS1");      // ideal: [0]=Arrival, [1]=Pos1 (fallback di logic)
   const patroli = bySection(data, "PATROLI");  // dropzone/patroli
   const malam = bySection(data, "MALAM");      // malam/cargo
   return {
@@ -106,14 +106,13 @@ function classifyRoster(data){
     asstChief: data.config?.assistant_chief || "-",
     chief2: data.config?.chief2 || "-",
     asstChief2: data.config?.assistant_chief2 || "-",
-    spvCabin: data.config?.supervisor_pscp || "-",   // PSCP
-    spvHbs: data.config?.supervisor_hbscp || "-",    // HBSCP
+    spvPscp: data.config?.supervisor_pscp || "-",    // PSCP
+    spvHbs:  data.config?.supervisor_hbscp || "-",   // HBSCP
     spvCctv: data.config?.supervisor_cctv || "-",
     spvPatroli: data.config?.supervisor_patroli || "-",
-    arrival1: getName(pos1,0),
-    pos1:     getName(pos1,1),
-    angHbs:   hbs,
-    angCabin: cabin,
+    pos1Arr: pos1,
+    angHbs:  hbs,
+    angPscp: pscp,
     angDropzone: patroli,
     angMalam: malam
   };
@@ -169,19 +168,25 @@ function composeWhatsAppText_Morning(data){
 
   const spvHbs  = (cfg.supervisor_hbscp || "-").trim();
   const spvCctv = (cfg.supervisor_cctv || "-").trim();
-  const spvPscp = (cfg.supervisor_pscp || "-").trim();   // rename label ke PSCP
+  const spvPscp = (cfg.supervisor_pscp || "-").trim();
   const spvPat  = (cfg.supervisor_patroli || "-").trim();
 
   const hbs   = bySection(data, "HBSCP");
-  const cabin = bySection(data, "PSCP");
-  // === aturan: PSCP maksimal 4 orang ===
-  const cabinTop4 = cabin.slice(0, 4);
+  const pscp  = bySection(data, "PSCP");
 
-  const pos1  = bySection(data, "POS1");
-  const patro = bySection(data, "PATROLI");
+  // === Aturan: PSCP maksimal 4 pada blok PSCP ===
+  const pscpTop4 = pscp.slice(0, 4);
+  const pscp5th  = (pscp[4]?.nama || "").trim(); // kandidat Arrival jika ada
 
-  const arrivalName = (pos1?.[0]?.nama || "-").trim();
-  const pos1Name    = (pos1?.[1]?.nama || "-").trim();
+  const pos1Arr  = bySection(data, "POS1");
+  const patro    = bySection(data, "PATROLI");
+
+  // === Logika Arrival/Pos1:
+  // Jika ada orang ke-5 di PSCP → Arrival = PSCP[4], Pos1 = POS1[0]
+  // Jika tidak → Arrival = POS1[0], Pos1 = POS1[1]
+  const arrivalName = pscp5th || (pos1Arr?.[0]?.nama || "-").trim();
+  const pos1Name    = pscp5th ? (pos1Arr?.[0]?.nama || "-").trim()
+                              : (pos1Arr?.[1]?.nama || "-").trim();
 
   const cutiList    = normalizeStringList(cfg.cuti);
   const sakitList   = normalizeStringList(cfg.sakit);
@@ -198,7 +203,6 @@ function composeWhatsAppText_Morning(data){
 *AsstChief 1 : ${a1}*
 *AsstChief 2 : ${a2}*`;
 
-  // label SCP→HBSCP/PSCP
   const spv =
 `\n*SPV HBSCP : ${spvHbs}*
 *SPV CCTV : ${spvCctv}*
@@ -211,7 +215,7 @@ HBSCP :
 ${listNumberedFromRoster(hbs)}
 
 PSCP :
-${listNumberedFromRoster(cabinTop4)}
+${listNumberedFromRoster(pscpTop4)}
 
 Arrival : 
 ${listNumberedFromNames([arrivalName])}
@@ -287,7 +291,12 @@ function composeWhatsAppText_Night(data){
   const malamRoster = bySection(data, "MALAM");
   const picMalam = (cfg.pic_malam || malamRoster?.[0]?.nama || "-").toString().trim();
 
-  const { mobile, terminal, pos1 } = splitNightByRole(malamRoster);
+  let { mobile, terminal, pos1 } = splitNightByRole(malamRoster);
+
+  // Fallback: jika Mobile kosong, isi dengan PIC malam (sesuai permintaan)
+  if ((!mobile || mobile.length === 0) && picMalam && picMalam !== "-") {
+    mobile = [picMalam];
+  }
 
   const cutiList  = normalizeStringList(cfg.cuti_malam || cfg.cuti);
   const sakitList = normalizeStringList(cfg.sakit_malam || cfg.sakit);
@@ -454,3 +463,4 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
