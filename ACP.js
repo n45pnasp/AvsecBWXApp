@@ -14,7 +14,6 @@ const instansi   = document.getElementById("instansi");
 const prohibited = document.getElementById("prohibited");
 const lokasi     = document.getElementById("lokasi");
 const jamMasuk   = document.getElementById("jamMasuk");
-const jamKeluar  = document.getElementById("jamKeluar");
 const pemeriksa  = document.getElementById("pemeriksa");
 const supervisor = document.getElementById("supervisor");
 const submitBtn  = document.getElementById("submitBtn");
@@ -90,7 +89,7 @@ function clearInputs(){
   nama.textContent = "-";
   kodePas.textContent = "-";
   instansi.textContent = "-";
-  [prohibited,lokasi,jamMasuk,jamKeluar,supervisor,pemeriksa].forEach(el=>el.value="");
+  [prohibited,lokasi,jamMasuk,supervisor,pemeriksa].forEach(el=>el.value="");
   inspectionChecks.forEach(cb => cb.checked = false);
   setAuthName();
 }
@@ -124,7 +123,10 @@ async function fetchRoster(){
 
     const loginName = (pemeriksa.value || "").trim().toUpperCase();
     const roster = Array.isArray(j?.rosters) ? j.rosters : [];
-    const me = roster.find(r => (r?.nama || "").trim().toUpperCase() === loginName);
+    const me = roster.find(r => {
+      const nm = (r?.nama || "").trim().toUpperCase();
+      return nm === loginName || nm.startsWith(loginName + " ") || loginName.startsWith(nm + " ");
+    });
     const section = (me?.section || "").toUpperCase();
     if (section.includes("HBSCP")) {
       lokasi.value = "TERMINAL";
@@ -135,22 +137,25 @@ async function fetchRoster(){
 }
 
 async function onSubmit(){
-  // Gabungkan payload utama + 9 area checkbox (boolean)
+  // set jamMasuk otomatis WIB saat submit
+  jamMasuk.value = new Intl.DateTimeFormat('en-GB', {
+    hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Jakarta'
+  }).format(new Date());
+
   const areaState = getInspectionState();
+  const prohibitedItem = (prohibited.value || "").trim();
   const payload = {
     token: SHARED_TOKEN,
     namaLengkap: nama.textContent.trim().toUpperCase(),
     kodePas:     kodePas.textContent.trim().toUpperCase(),
     instansi:    instansi.textContent.trim().toUpperCase(),
-    prohibitedItem: (prohibited.value || "").trim().toUpperCase(),
+    prohibitedItem: prohibitedItem ? prohibitedItem.toUpperCase() : "TIDAK BAWA",
     lokasiAcp:      (lokasi.value     || "").trim().toUpperCase(),
     jamMasuk:  (jamMasuk.value  || "").trim(),
-    jamKeluar: (jamKeluar.value || "").trim(), // di server akan di-override jika jamMasuk terisi
     pemeriksa:  (pemeriksa.value  || "").trim().toUpperCase(),
     supervisor: (supervisor.value || "").trim().toUpperCase(),
     // spread 9 field area di root (sesuai code.gs)
     ...areaState
-    // Alternatif kalau mau dibungkus: area: areaState, tapi code.gs kita kirim di root.
   };
 
   submitBtn.disabled = true;
@@ -364,7 +369,6 @@ async function receiveBarcode(code){
         instansi.textContent = (j.columns.E || '-').toUpperCase();
         prohibited.value = '';
         lokasi.value     = '';
-        jamKeluar.value  = ''; // biarkan server yang mengisi random berdasarkan jam sekarang
         supervisor.value = '';
         hideOverlay();
       }

@@ -143,9 +143,10 @@ input, textarea{
 .insp-table th, .insp-table td{
   padding:10px 12px; text-align:left; border-bottom:1px solid var(--border);
 }
-.insp-table th{ background:#111827; white-space:nowrap }
+.insp-table th{ background:#111827; white-space:nowrap; text-align:center }
 .insp-table tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
 .insp-table td:nth-child(2), .insp-table td:nth-child(3){ text-align:center; }
+.insp-table td:first-child{ text-align:left; }
 .insp-table th .status-sample{ font-size:18px; margin-right:4px; }
 .photo-sheet{
   position:relative; background:var(--card); border:1px solid var(--border);
