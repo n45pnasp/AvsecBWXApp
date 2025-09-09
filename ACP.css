@@ -16,7 +16,7 @@
   border-bottom:1px solid var(--border);
   box-shadow:0 6px 20px rgba(0,0,0,.18);
 }
-.app-title{ font-size:var(--fs-lg); font-weight:500; letter-spacing:.3px; margin:0; user-select:none }
+.app-title{ font-size:var(--fs-lg); font-weight:500; letter-spacing:.3px; margin:0 }
 .back-btn{
   display:inline-flex; align-items:center; justify-content:center;
   width:44px; height:44px; flex:0 0 auto; background:transparent;
@@ -61,7 +61,7 @@ input, textarea{
 .btn{
   display:inline-flex; align-items:center; justify-content:center;
   background:#1f2937; color:#fff; border:1px solid var(--border);
-  border-radius:12px; padding:12px; cursor:pointer; user-select:none;
+  border-radius:12px; padding:12px; cursor:pointer;
   transition:filter .15s ease, transform .06s ease; text-align:center;
 }
 .btn:hover{ filter:brightness(1.05) }
