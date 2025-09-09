@@ -275,7 +275,8 @@ span[id]{ font-weight: 700; }
 .copy-actions{
   display:flex;
   flex-direction:column;
-  gap:8px;
+  gap:12px;
+  align-items:stretch;
 }
 .copy-actions .icon-btn{
   width:100%;
