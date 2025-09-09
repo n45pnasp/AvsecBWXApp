@@ -129,8 +129,8 @@ function getInspectionState(){
   const pick = (key) => document.querySelector(`.insp-table tbody input[type="checkbox"][data-area="${key}"]`);
 
   const mapVal = (cb) => {
-    if (!used) return "";                // Kalau panel kendaraan ditutup → kosong (ubah ke "NIHIL" kalau ingin)
-    if (!cb)   return "";                // Kalau checkbox tidak ketemu
+    if (!used) return "NIHIL";          // Panel kendaraan ditutup → isi default
+    if (!cb)   return "";              // Checkbox tidak ketemu
     return cb.checked ? "AMAN" : "TIDAK AMAN";
   };
 
@@ -230,6 +230,7 @@ async function submitData(){
     // 9 field area di root (sesuai code.gs)
     ...areaState
   };
+  console.log("Inspection payload", areaState);
 
   submitBtn.disabled = true;
   showOverlay('spinner','Mengirim data…','');
