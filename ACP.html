@@ -51,7 +51,8 @@
     <section id="vehicleCard" class="card vehicle-card">
       <button id="vehToggle" class="vehicle-nav" type="button" aria-expanded="false">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 15l-6-6h12z" fill="currentColor" /></svg>
-        <span class="label">Menggunakan Kendaraan</span>
+        <span class="open-label">Menggunakan Kendaraan</span>
+        <span class="close-label">Tutup</span>
       </button>
       <div class="veh-body">
         <table class="insp-table" aria-label="Daftar Pemeriksaan">
@@ -73,47 +74,47 @@
           <tbody>
             <tr>
               <td>Bagasi Mobil</td>
-              <td><input type="checkbox" data-area="bagasiMobil" /></td>
+              <td><input type="checkbox" data-area="bagasiMobil"></td>
               <td><a href="#" class="img-link" data-img="icons/bagasicar.png">Gambar</a></td>
             </tr>
             <tr>
               <td>Bawah Mobil</td>
-              <td><input type="checkbox" data-area="bawahMobil" /></td>
+              <td><input type="checkbox" data-area="bawahMobil"></td>
               <td><a href="#" class="img-link" data-img="icons/bawahcar.png">Gambar</a></td>
             </tr>
             <tr>
               <td>Sekitar Roda</td>
-              <td><input type="checkbox" data-area="sekitarRoda" /></td>
+              <td><input type="checkbox" data-area="sekitarRoda"></td>
               <td><a href="#" class="img-link" data-img="icons/rodacar.png">Gambar</a></td>
             </tr>
             <tr>
               <td>Kantong Pintu</td>
-              <td><input type="checkbox" data-area="kantongPintu" /></td>
+              <td><input type="checkbox" data-area="kantongPintu"></td>
               <td><a href="#" class="img-link" data-img="icons/pintucar.png">Gambar</a></td>
             </tr>
             <tr>
               <td>Visor</td>
-              <td><input type="checkbox" data-area="visor" /></td>
+              <td><input type="checkbox" data-area="visor"></td>
               <td><a href="#" class="img-link" data-img="icons/visorcar.png">Gambar</a></td>
             </tr>
             <tr>
               <td>Laci Dashboard</td>
-              <td><input type="checkbox" data-area="laciDashboard" /></td>
+              <td><input type="checkbox" data-area="laciDashboard"></td>
               <td><a href="#" class="img-link" data-img="icons/lacicar.png">Gambar</a></td>
             </tr>
             <tr>
               <td>Bawah Kursi</td>
-              <td><input type="checkbox" data-area="bawahKursi" /></td>
+              <td><input type="checkbox" data-area="bawahKursi"></td>
               <td><a href="#" class="img-link" data-img="icons/kursicar.png">Gambar</a></td>
             </tr>
             <tr>
               <td>Kap Mobil</td>
-              <td><input type="checkbox" data-area="kapMobil" /></td>
+              <td><input type="checkbox" data-area="kapMobil"></td>
               <td><a href="#" class="img-link" data-img="icons/kapcar.png">Gambar</a></td>
             </tr>
             <tr>
               <td>Area Lain</td>
-              <td><input type="checkbox" data-area="areaLain" /></td>
+              <td><input type="checkbox" data-area="areaLain"></td>
               <td>-</td>
             </tr>
           </tbody>
@@ -132,6 +133,16 @@
       <div class="texts">
         <div class="title" id="ovTitle"></div>
         <div class="desc" id="ovDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="vehConfirm" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="sheet confirm">
+      <p>Apakah pemeriksaan kendaraan sudah dilakukan?</p>
+      <div class="actions">
+        <button id="vehYes" type="button" class="btn primary">Sudah</button>
+        <button id="vehNo" type="button" class="btn">Belum</button>
       </div>
     </div>
   </div>

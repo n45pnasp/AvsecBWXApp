@@ -16,7 +16,7 @@
   border-bottom:1px solid var(--border);
   box-shadow:0 6px 20px rgba(0,0,0,.18);
 }
-.app-title{ font-size:var(--fs-lg); font-weight:500; letter-spacing:.3px; margin:0; user-select:none }
+.app-title{ font-size:var(--fs-lg); font-weight:500; letter-spacing:.3px; margin:0 }
 .back-btn{
   display:inline-flex; align-items:center; justify-content:center;
   width:44px; height:44px; flex:0 0 auto; background:transparent;
@@ -61,7 +61,7 @@ input, textarea{
 .btn{
   display:inline-flex; align-items:center; justify-content:center;
   background:#1f2937; color:#fff; border:1px solid var(--border);
-  border-radius:12px; padding:12px; cursor:pointer; user-select:none;
+  border-radius:12px; padding:12px; cursor:pointer;
   transition:filter .15s ease, transform .06s ease; text-align:center;
 }
 .btn:hover{ filter:brightness(1.05) }
@@ -95,7 +95,8 @@ input, textarea{
 .info-name{ display:grid; gap:4px; padding-bottom:8px; border-bottom:1px solid var(--border); }
 .info-pair{ display:grid; grid-template-columns:1fr 1fr; gap:12px; padding-top:8px; }
 .info-field{ display:grid; gap:4px; }
-.info-label{ font-size:var(--fs-sm); color:var(--muted); }
+.info-label{ font-size:var(--fs-sm); color:var(--muted); user-select:none; }
+label{ user-select:none; }
 .info-value{ font-weight:600; }
 
 .hidden{ display:none !important }
@@ -132,6 +133,17 @@ input, textarea{
 .texts .title{ font-weight:700; font-size:clamp(14px,1.6vw,16px); }
 .texts .desc{ color:var(--muted); font-size:clamp(12px,1.4vw,14px); }
 
+.sheet.confirm{
+  grid-template-columns:1fr;
+  text-align:center;
+}
+.sheet.confirm .actions{
+  display:flex;
+  justify-content:center;
+  gap:12px;
+  margin-top:16px;
+}
+
 @keyframes spin{ to{ transform:rotate(360deg); } }
 @keyframes pop{ from{ transform:translateY(6px) scale(.98); opacity:0 } to{ transform:none; opacity:1 } }
 
@@ -166,5 +178,7 @@ input, textarea{
 .vehicle-nav svg{ transition:transform .2s ease; }
 .vehicle-card .veh-body{ display:none; margin-top:12px; }
 .vehicle-card.open .veh-body{ display:block; }
-.vehicle-card.open .vehicle-nav .label{ display:none; }
+.vehicle-nav .close-label{ display:none; }
+.vehicle-card.open .vehicle-nav .open-label{ display:none; }
+.vehicle-card.open .vehicle-nav .close-label{ display:block; }
 .vehicle-card.open .vehicle-nav svg{ transform:rotate(180deg); }
