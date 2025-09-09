@@ -140,7 +140,7 @@ submitBtn.addEventListener("click", async () => {
   showOverlay('spinner','Mengirim data…','');
 
   try {
-    await sendToSheet('GUN_FILESPDF', payload);
+    await sendToSheet('GunFilesPDF', payload);
     await sendToSheet('Files', payload);
 
     showOverlay('ok','Data berhasil dikirim','');
@@ -452,13 +452,12 @@ function initPdfDownload(){
   if (!downloadPdfBtn) return;
   downloadPdfBtn.addEventListener("click", async () => {
     try{
-      showOverlay("spinner","Menyiapkan PDF…","" );
       const { auth } = getFirebase();
       const user = auth.currentUser;
       if (!user) return alert("Silakan login ulang.");
 
       const idToken = await user.getIdToken(true);
-      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GUN_FILESPDF`;
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GunFilesPDF`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
       if (!res.ok){
         const txt = await res.text().catch(()=> "");
@@ -472,7 +471,6 @@ function initPdfDownload(){
       a.click();
       a.remove();
       URL.revokeObjectURL(a.href);
-      showOverlay("ok","Download siap","PDF telah diunduh");
     }catch(err){
       console.error(err);
       showOverlay("err","Download gagal", err.message || "Coba lagi");

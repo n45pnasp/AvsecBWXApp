@@ -229,13 +229,12 @@ function initPdfDownload(){
   if (!downloadPdfBtn) return;
   downloadPdfBtn.addEventListener("click", async () => {
     try{
-      Modal.show("Menyiapkan PDF…", "", true);
       const user = auth.currentUser;
       if (!user) return Modal.show("Silakan login ulang.", "Autentikasi");
 
       const idToken = await user.getIdToken(true);
-      // site=CUTI_FILESPDF -> harus terdaftar di Cloud Functions (SHEETS)
-      const url = `${CFN_DOWNLOAD_PDF_URL}?site=CUTI_FILESPDF`;
+      // site=CutiFilesPDF -> harus terdaftar di Cloud Functions (SHEETS)
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=CutiFilesPDF`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
       if (!res.ok){
         const txt = await res.text().catch(()=> "");
@@ -249,7 +248,6 @@ function initPdfDownload(){
       a.click();
       a.remove();
       URL.revokeObjectURL(a.href);
-      Modal.show("PDF berhasil diunduh", "Berhasil");
     }catch(err){
       console.error(err);
       Modal.show(err?.message || "Download gagal", "Kesalahan");

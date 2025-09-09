@@ -503,13 +503,12 @@ function initPdfDownload(){
   if (!downloadPdfBtn) return;
   downloadPdfBtn.addEventListener("click", async () => {
     try{
-      showOverlay("spinner","Menyiapkan PDF…","" );
       const user = auth.currentUser;
       if (!user) return alert("Silakan login ulang.");
       const idToken = await user.getIdToken(true);
 
-      // site=GATE_FILESPDF → harus didaftarkan di index.js (SHEETS)
-      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GATE_FILESPDF`;
+      // site=GateFilesPDF → harus didaftarkan di index.js (SHEETS)
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GateFilesPDF`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
       if (!res.ok){
         const txt = await res.text().catch(()=> "");
@@ -523,7 +522,6 @@ function initPdfDownload(){
       a.click();
       a.remove();
       URL.revokeObjectURL(a.href);
-      showOverlay("ok","Download siap","PDF telah diunduh");
     }catch(err){
       console.error(err);
       showOverlay("err","Download gagal", err.message || "Coba lagi");
