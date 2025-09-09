@@ -1,5 +1,5 @@
 // =============================
-// schedule.js (FINAL - dua format WA: PAGI & MALAM)
+// schedule.js (FINAL - Pagi & Malam, SCP→HBSCP/PSCP, PSCP max 4)
 // =============================
 
 import { requireAuth, getFirebase } from "./auth-guard.js";
@@ -106,8 +106,8 @@ function classifyRoster(data){
     asstChief: data.config?.assistant_chief || "-",
     chief2: data.config?.chief2 || "-",
     asstChief2: data.config?.assistant_chief2 || "-",
-    spvCabin: data.config?.supervisor_pscp || "-",
-    spvHbs: data.config?.supervisor_hbscp || "-",
+    spvCabin: data.config?.supervisor_pscp || "-",   // PSCP
+    spvHbs: data.config?.supervisor_hbscp || "-",    // HBSCP
     spvCctv: data.config?.supervisor_cctv || "-",
     spvPatroli: data.config?.supervisor_patroli || "-",
     arrival1: getName(pos1,0),
@@ -137,7 +137,7 @@ async function fetchData(){
   return data;
 }
 
-// ========== GENERATOR TEKS WA (PAGI) ==========
+// ========== UTIL GENERATOR TEKS ==========
 function normalizeStringList(strOrArr){
   if (Array.isArray(strOrArr)) return strOrArr.map(s => `${s}`.trim()).filter(Boolean);
   const s = (strOrArr || "").toString();
@@ -157,6 +157,7 @@ function ensureDateText(dateStr){
   return (dateStr || "").trim();
 }
 
+// ========== GENERATOR TEKS WA (PAGI) ==========
 function composeWhatsAppText_Morning(data){
   const cfg = data?.config || {};
   const tglTeks = ensureDateText(cfg.tanggal || "-");
@@ -168,11 +169,14 @@ function composeWhatsAppText_Morning(data){
 
   const spvHbs  = (cfg.supervisor_hbscp || "-").trim();
   const spvCctv = (cfg.supervisor_cctv || "-").trim();
-  const spvCab  = (cfg.supervisor_pscp || "-").trim();
+  const spvPscp = (cfg.supervisor_pscp || "-").trim();   // rename label ke PSCP
   const spvPat  = (cfg.supervisor_patroli || "-").trim();
 
   const hbs   = bySection(data, "HBSCP");
   const cabin = bySection(data, "PSCP");
+  // === aturan: PSCP maksimal 4 orang ===
+  const cabinTop4 = cabin.slice(0, 4);
+
   const pos1  = bySection(data, "POS1");
   const patro = bySection(data, "PATROLI");
 
@@ -180,6 +184,7 @@ function composeWhatsAppText_Morning(data){
   const pos1Name    = (pos1?.[1]?.nama || "-").trim();
 
   const cutiList    = normalizeStringList(cfg.cuti);
+  const sakitList   = normalizeStringList(cfg.sakit);
   const attensiList = normalizeStringList(cfg.attensi);
   const attPad = [...attensiList];
   while (attPad.length < 5) attPad.push("-");
@@ -187,16 +192,26 @@ function composeWhatsAppText_Morning(data){
   const header = "‎ السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ\n\nSelamat pagi komandan, \n\n" +
                  `Ijin melaporkan kekuatan personil yg berdinas pada pagi hari ini *${tglTeks}* \n`;
 
-  const pimpinan = `\n*Chief 1 : ${c1}*\n*Chief 2 : ${c2}*\n*AsstChief 1 : ${a1}*\n*AsstChief 2 : ${a2}*`;
-  const spv = `\n*SPV HBS : ${spvHbs}*\n*SPV CCTV : ${spvCctv}*\n*SPV Cabin : ${spvCab}*\n*SPV Cargo & Patroli : ${spvPat}*`;
+  const pimpinan =
+`\n*Chief 1 : ${c1}*
+*Chief 2 : ${c2}*
+*AsstChief 1 : ${a1}*
+*AsstChief 2 : ${a2}*`;
+
+  // label SCP→HBSCP/PSCP
+  const spv =
+`\n*SPV HBSCP : ${spvHbs}*
+*SPV CCTV : ${spvCctv}*
+*SPV PSCP : ${spvPscp}*
+*SPV Cargo & Patroli : ${spvPat}*`;
 
   const anggota =
 `\n\n*Anggota* 
-SCP HBS :
+HBSCP :
 ${listNumberedFromRoster(hbs)}
 
-SCP Cabin :
-${listNumberedFromRoster(cabin)}
+PSCP :
+${listNumberedFromRoster(cabinTop4)}
 
 Arrival : 
 ${listNumberedFromNames([arrivalName])}
@@ -207,7 +222,12 @@ ${listNumberedFromNames([pos1Name])}
 Dropzone : 
 ${listNumberedFromRoster(patro)}`;
 
-  const cutiBlock = `\n\nCuti :\n${listNumberedFromNames(cutiList)}`;
+  const cutiBlock =
+`\n\nCuti :
+${listNumberedFromNames(cutiList)}
+
+Sakit :
+${listNumberedFromNames(sakitList)}`;
 
   const apel = `\n\nApel pagi dipimpin oleh Chief ${c1} \n`;
 
@@ -238,7 +258,6 @@ Demikian beberapa atensi yang kami buat, atas perhatiannya disampaikan Terimakas
 }
 
 // ========== GENERATOR TEKS WA (MALAM) ==========
-// Klasifikasi berdasarkan r.posisi (case-insensitive): "mobile", "terminal", "pos 1"
 function splitNightByRole(malamRoster){
   const mobile = [];
   const terminal = [];
@@ -254,7 +273,7 @@ function splitNightByRole(malamRoster){
     } else if (ps.includes("pos 1") || ps === "pos1" || ps.includes("pos")) {
       pos1.push(nm);
     } else {
-      // kalau tidak jelas, letakkan ke terminal sebagai default
+      // default: terminal
       terminal.push(nm);
     }
   });
@@ -265,20 +284,22 @@ function composeWhatsAppText_Night(data){
   const cfg = data?.config || {};
   const tglTeks = ensureDateText(cfg.tanggal || "-");
 
-  // PIC Dinas Malam: ambil config.pic_malam, kalau kosong ambil nama pertama dari roster MALAM
   const malamRoster = bySection(data, "MALAM");
   const picMalam = (cfg.pic_malam || malamRoster?.[0]?.nama || "-").toString().trim();
 
   const { mobile, terminal, pos1 } = splitNightByRole(malamRoster);
 
-  const cutiSakit = (cfg.cuti_malam || cfg.cuti || "-").toString().trim();
+  const cutiList  = normalizeStringList(cfg.cuti_malam || cfg.cuti);
+  const sakitList = normalizeStringList(cfg.sakit_malam || cfg.sakit);
+
   const attensiList = normalizeStringList(cfg.attensi_malam);
   const attPad = [...attensiList];
   while (attPad.length < 6) attPad.push("-");
 
-  const header = "السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ\n\n" +
-                 "Selamat Malam komandan,  \n\n" +
-                 `Ijin melaporkan kekuatan personil yg berdinas pada Malam hari ini *${tglTeks}*  \n\n`;
+  const header =
+"السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ\n\n" +
+"Selamat Malam komandan,  \n\n" +
+`Ijin melaporkan kekuatan personil yg berdinas pada Malam hari ini *${tglTeks}*  \n\n`;
 
   const pic = `PIC Dinas Malam : ${picMalam}\n`;
 
@@ -295,7 +316,14 @@ Pos 1 :
 ${listNumberedFromNames(pos1)}
 `;
 
-  const ket = `\nKeterangan (Cuti/Sakit) : ${cutiSakit}\n`;
+  const ket =
+`\nKeterangan :
+Cuti :
+${listNumberedFromNames(cutiList)}
+
+Sakit :
+${listNumberedFromNames(sakitList)}
+`;
 
   const att =
 `\nDilaksanakan apel malam dengan atensi sebagai berikut :
