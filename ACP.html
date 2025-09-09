@@ -25,61 +25,6 @@
       </button>
     </section>
 
-    <section class="card">
-      <table>
-        <tr>
-          <th>Tempat<br />Pemeriksaan</th>
-          <th>CENTANG=AMAN<br />KOSONG=TIDAK AMAN</th>
-          <th>LIHAT<br />GAMBAR</th>
-        </tr>
-        <tr>
-          <td>BAGASI MOBIL</td>
-          <td><input type="checkbox" data-area="bagasiMobil" /></td>
-          <td><a href="#" class="img-link" data-img="icons/bagasicar.png">Gambar</a></td>
-        </tr>
-        <tr>
-          <td>BAWAH MOBIL</td>
-          <td><input type="checkbox" data-area="bawahMobil" /></td>
-          <td><a href="#" class="img-link" data-img="icons/bawahcar.png">Gambar</a></td>
-        </tr>
-        <tr>
-          <td>SEKITAR RODA</td>
-          <td><input type="checkbox" data-area="sekitarRoda" /></td>
-          <td><a href="#" class="img-link" data-img="icons/rodacar.png">Gambar</a></td>
-        </tr>
-        <tr>
-          <td>KANTONG PINTU</td>
-          <td><input type="checkbox" data-area="kantongPintu" /></td>
-          <td><a href="#" class="img-link" data-img="icons/pintucar.png">Gambar</a></td>
-        </tr>
-        <tr>
-          <td>VISOR</td>
-          <td><input type="checkbox" data-area="visor" /></td>
-          <td><a href="#" class="img-link" data-img="icons/visorcar.png">Gambar</a></td>
-        </tr>
-        <tr>
-          <td>LACI DASHBOARD</td>
-          <td><input type="checkbox" data-area="laciDashboard" /></td>
-          <td><a href="#" class="img-link" data-img="icons/lacicar.png">Gambar</a></td>
-        </tr>
-        <tr>
-          <td>BAWAH KURSI</td>
-          <td><input type="checkbox" data-area="bawahKursi" /></td>
-          <td><a href="#" class="img-link" data-img="icons/kursicar.png">Gambar</a></td>
-        </tr>
-        <tr>
-          <td>KAP MOBIL</td>
-          <td><input type="checkbox" data-area="kapMobil" /></td>
-          <td><a href="#" class="img-link" data-img="icons/kapcar.png">Gambar</a></td>
-        </tr>
-        <tr>
-          <td>AREA LAIN</td>
-          <td><input type="checkbox" data-area="areaLain" /></td>
-          <td>-</td>
-        </tr>
-      </table>
-    </section>
-
     <section id="infoCard" class="card info-card">
       <div class="info-name">
         <span class="info-label">Nama Lengkap</span>
@@ -95,6 +40,70 @@
           <span id="instansi" class="info-value">-</span>
         </div>
       </div>
+    </section>
+
+    <section class="card">
+      <table class="insp-table" aria-label="Daftar Pemeriksaan">
+        <colgroup>
+          <col class="col-area" />
+          <col class="col-status" />
+          <col class="col-img" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Tempat<br />Pemeriksaan</th>
+            <th>CENTANG=AMAN<br />KOSONG=TIDAK AMAN</th>
+            <th>LIHAT<br />GAMBAR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>BAGASI MOBIL</td>
+            <td><input type="checkbox" data-area="bagasiMobil" /></td>
+            <td><a href="#" class="img-link" data-img="icons/bagasicar.png">Gambar</a></td>
+          </tr>
+          <tr>
+            <td>BAWAH MOBIL</td>
+            <td><input type="checkbox" data-area="bawahMobil" /></td>
+            <td><a href="#" class="img-link" data-img="icons/bawahcar.png">Gambar</a></td>
+          </tr>
+          <tr>
+            <td>SEKITAR RODA</td>
+            <td><input type="checkbox" data-area="sekitarRoda" /></td>
+            <td><a href="#" class="img-link" data-img="icons/rodacar.png">Gambar</a></td>
+          </tr>
+          <tr>
+            <td>KANTONG PINTU</td>
+            <td><input type="checkbox" data-area="kantongPintu" /></td>
+            <td><a href="#" class="img-link" data-img="icons/pintucar.png">Gambar</a></td>
+          </tr>
+          <tr>
+            <td>VISOR</td>
+            <td><input type="checkbox" data-area="visor" /></td>
+            <td><a href="#" class="img-link" data-img="icons/visorcar.png">Gambar</a></td>
+          </tr>
+          <tr>
+            <td>LACI DASHBOARD</td>
+            <td><input type="checkbox" data-area="laciDashboard" /></td>
+            <td><a href="#" class="img-link" data-img="icons/lacicar.png">Gambar</a></td>
+          </tr>
+          <tr>
+            <td>BAWAH KURSI</td>
+            <td><input type="checkbox" data-area="bawahKursi" /></td>
+            <td><a href="#" class="img-link" data-img="icons/kursicar.png">Gambar</a></td>
+          </tr>
+          <tr>
+            <td>KAP MOBIL</td>
+            <td><input type="checkbox" data-area="kapMobil" /></td>
+            <td><a href="#" class="img-link" data-img="icons/kapcar.png">Gambar</a></td>
+          </tr>
+          <tr>
+            <td>AREA LAIN</td>
+            <td><input type="checkbox" data-area="areaLain" /></td>
+            <td>-</td>
+          </tr>
+        </tbody>
+      </table>
     </section>
 
     <section class="card">

@@ -23,6 +23,7 @@ const imgModal   = document.getElementById("imgModal");
 const imgPreview = document.getElementById("imgPreview");
 const imgClose   = document.getElementById("imgClose");
 const imgLinks   = Array.from(document.querySelectorAll('.img-link'));
+const ROSTER_ENDPOINT = "https://roster-proxy.avsecbwx2018.workers.dev";
 
 // === 9 checkbox area (urutan fallback jika tidak ada data-area di HTML)
 const AREA_FIELDS = [
@@ -91,6 +92,7 @@ function clearInputs(){
   [prohibited,lokasi,jamMasuk,jamKeluar,supervisor,pemeriksa].forEach(el=>el.value="");
   inspectionChecks.forEach(cb => cb.checked = false);
   setAuthName();
+  fetchSupervisor();
 }
 clearInputs();
 
@@ -108,6 +110,19 @@ function getInspectionState(){
 
 submitBtn.addEventListener("click", onSubmit);
 if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan(); });
+
+async function fetchSupervisor(){
+  try{
+    const url = new URL(ROSTER_ENDPOINT);
+    url.searchParams.set("action", "getRoster");
+    url.searchParams.set("token", SHARED_TOKEN);
+    url.searchParams.set("_", Date.now());
+    const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
+    const j = await res.json();
+    const spv = (j?.config?.supervisor_pos1 || "").toString().trim().toUpperCase();
+    if (spv) supervisor.value = spv;
+  }catch(err){ console.warn("Failed to load supervisor", err); }
+}
 
 async function onSubmit(){
   // Gabungkan payload utama + 9 area checkbox (boolean)
