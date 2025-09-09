@@ -146,6 +146,7 @@ input, textarea{
 .insp-table th{ background:#111827; white-space:nowrap }
 .insp-table tbody tr:nth-child(odd){ background:rgba(255,255,255,.02) }
 .insp-table td:nth-child(2), .insp-table td:nth-child(3){ text-align:center; }
+.insp-table th .status-sample{ font-size:18px; margin-right:4px; }
 .photo-sheet{
   position:relative; background:var(--card); border:1px solid var(--border);
   border-radius:16px; padding:10px; max-width:min(92vw,720px); max-height:92vh;

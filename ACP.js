@@ -30,7 +30,7 @@ const AREA_FIELDS = [
   "bagasiMobil","bawahMobil","sekitarRoda","kantongPintu","visor",
   "laciDashboard","bawahKursi","kapMobil","areaLain"
 ];
-const inspectionChecks = Array.from(document.querySelectorAll('section.card table input[type="checkbox"]'));
+const inspectionChecks = Array.from(document.querySelectorAll('.insp-table tbody input[type="checkbox"]'));
 
 // overlay ala lb_all
 const overlay = document.getElementById("overlay");
@@ -83,6 +83,7 @@ function setAuthName(){
   const user = auth.currentUser;
   const name = user?.displayName?.trim() || (user?.email ? user.email.split("@")[0] : "");
   pemeriksa.value = (name || "").toUpperCase();
+  fetchRoster();
 }
 
 function clearInputs(){
@@ -92,7 +93,6 @@ function clearInputs(){
   [prohibited,lokasi,jamMasuk,jamKeluar,supervisor,pemeriksa].forEach(el=>el.value="");
   inspectionChecks.forEach(cb => cb.checked = false);
   setAuthName();
-  fetchSupervisor();
 }
 clearInputs();
 
@@ -111,7 +111,7 @@ function getInspectionState(){
 submitBtn.addEventListener("click", onSubmit);
 if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan(); });
 
-async function fetchSupervisor(){
+async function fetchRoster(){
   try{
     const url = new URL(ROSTER_ENDPOINT);
     url.searchParams.set("action", "getRoster");
@@ -121,7 +121,17 @@ async function fetchSupervisor(){
     const j = await res.json();
     const spv = (j?.config?.supervisor_pos1 || "").toString().trim().toUpperCase();
     if (spv) supervisor.value = spv;
-  }catch(err){ console.warn("Failed to load supervisor", err); }
+
+    const loginName = (pemeriksa.value || "").trim().toUpperCase();
+    const roster = Array.isArray(j?.rosters) ? j.rosters : [];
+    const me = roster.find(r => (r?.nama || "").trim().toUpperCase() === loginName);
+    const section = (me?.section || "").toUpperCase();
+    if (section.includes("HBSCP")) {
+      lokasi.value = "TERMINAL";
+    } else if (section.includes("POS")) {
+      lokasi.value = "POS 1";
+    }
+  }catch(err){ console.warn("Failed to load roster", err); }
 }
 
 async function onSubmit(){
