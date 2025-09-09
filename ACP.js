@@ -123,6 +123,18 @@ async function fetchRoster(){
 
     const normalize = s => (s || "").toString().toUpperCase().replace(/[^A-Z]/g,"");
     const loginName = normalize(pemeriksa.value || "");
+
+    const spvPos1 = normalize(j?.config?.supervisor_pos1);
+    const spvHbs  = normalize(j?.config?.supervisor_hbscp);
+    if (loginName && loginName === spvPos1){
+      lokasi.value = "POS 1";
+      return;
+    }
+    if (loginName && loginName === spvHbs){
+      lokasi.value = "TERMINAL";
+      return;
+    }
+
     const roster = Array.isArray(j?.rosters) ? j.rosters : [];
     const me = roster.find(r => {
       const nm = normalize(r?.nama);
