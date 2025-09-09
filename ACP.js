@@ -30,11 +30,7 @@ const infoCard    = document.getElementById("infoCard");
 const vehicleCard = document.getElementById("vehicleCard");
 const vehToggle   = document.getElementById("vehToggle");
 
-// === 9 checkbox area (nama kanonik sesuai code.gs)
-const AREA_FIELDS = [
-  "bagasiMobil","bawahMobil","sekitarRoda","kantongPintu","visor",
-  "laciDashboard","bawahKursi","kapMobil","areaLain"
-];
+// === 9 checkbox area kendaraan (gunakan atribut data-area)
 const inspectionChecks = Array.from(document.querySelectorAll('.insp-table tbody input[type="checkbox"]'));
 vehToggle.addEventListener("click", () => {
   const open = vehicleCard.classList.toggle("open");
@@ -128,13 +124,28 @@ clearInputs();
 // === Kolektor nilai checkbox → object 9 kolom
 function getInspectionState(){
   const used = vehicleCard.classList.contains("open");
-  const out = {};
-  // PAKAI NAMA KANONIK BERDASAR URUTAN
-  inspectionChecks.forEach((cb, idx) => {
-    const key = AREA_FIELDS[idx];
-    out[key] = used ? (cb.checked ? "AMAN" : "TIDAK AMAN") : "";
-  });
-  AREA_FIELDS.forEach(k => { if (!(k in out)) out[k] = ""; });
+
+  // helper ambil checkbox by data-area
+  const pick = (key) => document.querySelector(`.insp-table tbody input[type="checkbox"][data-area="${key}"]`);
+
+  const mapVal = (cb) => {
+    if (!used) return "";                // Kalau panel kendaraan ditutup → kosong (ubah ke "NIHIL" kalau ingin)
+    if (!cb)   return "";                // Kalau checkbox tidak ketemu
+    return cb.checked ? "AMAN" : "TIDAK AMAN";
+  };
+
+  const out = {
+    bagasiMobil:   mapVal(pick("bagasiMobil")),
+    bawahMobil:    mapVal(pick("bawahMobil")),
+    sekitarRoda:   mapVal(pick("sekitarRoda")),
+    kantongPintu:  mapVal(pick("kantongPintu")),
+    visor:         mapVal(pick("visor")),
+    laciDashboard: mapVal(pick("laciDashboard")),
+    bawahKursi:    mapVal(pick("bawahKursi")),
+    kapMobil:      mapVal(pick("kapMobil")),
+    areaLain:      mapVal(pick("areaLain")),
+  };
+
   return out;
 }
 
