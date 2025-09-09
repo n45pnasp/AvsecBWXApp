@@ -156,10 +156,37 @@ body.blur-bg > *:not(#loadingOverlay){
 }
 #loadingOverlay .icon{
   width:48px; height:48px; border-radius:50%; display:inline-block; position:relative;
+}
+#loadingOverlay .icon.spinner{
   border:5px solid rgba(255,255,255,.15);
   border-top-color: var(--accent);
   animation: spin .9s linear infinite;
 }
+#loadingOverlay .icon.success{
+  background: rgba(34,197,94,.12);
+  border:2px solid var(--ok);
+}
+#loadingOverlay .icon.success::after{
+  content:""; position:absolute;
+  left:12px; top:10px;
+  width:14px; height:24px;
+  border: solid var(--ok);
+  border-width:0 4px 4px 0;
+  transform: rotate(45deg);
+  border-radius:2px;
+}
+#loadingOverlay .icon.error{
+  background: rgba(239,68,68,.12);
+  border:2px solid var(--danger);
+}
+#loadingOverlay .icon.error::before,
+#loadingOverlay .icon.error::after{
+  content:""; position:absolute; left:22px; top:10px;
+  width:4px; height:28px; background: var(--danger);
+  border-radius:2px;
+}
+#loadingOverlay .icon.error::after{ transform: rotate(90deg); }
+
 #loadingOverlay .texts{ display:grid; gap:6px }
 #loadingOverlay .title{ font-weight:800; letter-spacing:.2px }
 #loadingOverlay .desc{ color:var(--muted); font-size:14px }
