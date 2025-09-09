@@ -95,7 +95,8 @@ input, textarea{
 .info-name{ display:grid; gap:4px; padding-bottom:8px; border-bottom:1px solid var(--border); }
 .info-pair{ display:grid; grid-template-columns:1fr 1fr; gap:12px; padding-top:8px; }
 .info-field{ display:grid; gap:4px; }
-.info-label{ font-size:var(--fs-sm); color:var(--muted); }
+.info-label{ font-size:var(--fs-sm); color:var(--muted); user-select:none; }
+label{ user-select:none; }
 .info-value{ font-weight:600; }
 
 .hidden{ display:none !important }
