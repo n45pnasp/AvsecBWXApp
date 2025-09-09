@@ -1,10 +1,16 @@
 @import url('./lb_all.css');
 
-.row-3{
+.btn-group{
   display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:clamp(8px,2vw,12px);
-  margin-bottom:12px;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+
+.btn-group .btn.active{
+  background:linear-gradient(135deg,#6a5cff,#8a7bff);
+  border-color:#6a5cff;
+  box-shadow:0 6px 16px rgba(106,88,255,.35);
+  color:#fff;
 }
 
 .subcard{
@@ -44,12 +50,49 @@
   text-align:center;
 }
 
-.check-table th:first-child,
-.check-table td:first-child{
+.check-table:not(.hhmd-table) th:first-child,
+.check-table:not(.hhmd-table) td[rowspan]{
   text-align:left;
 }
 
+.check-table td[rowspan]{
+  vertical-align:middle;
+}
+
+.check-table label{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+}
+
+.hhmd-table td,
+.hhmd-table th{
+  text-align:center;
+  vertical-align:middle;
+}
+
+
 .label-text{
   font-weight:600;
-  margin-bottom:12px;
+  margin:12px 0;
+}
+
+.field select{
+  width:100%;
+  background:#0b1324;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  font-size:var(--fs-base);
+}
+
+.field select:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+#photoBtn2{
+  margin-top:12px;
 }

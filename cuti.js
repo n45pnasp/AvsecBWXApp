@@ -1,4 +1,5 @@
-import { requireAuth } from "./auth-guard.js";
+// cuti.js (FINAL) — dengan tombol Download PDF
+import { requireAuth, getFirebase } from "./auth-guard.js";
 
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
@@ -6,6 +7,13 @@ requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 const SCRIPT_URL = "https://formcuti.avsecbwx2018.workers.dev/";
 const TOKEN = "N45p"; // token minimal guard
 
+// Cloud Functions download PDF
+const CFN_DOWNLOAD_PDF_URL = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
+
+// ====== Auth (untuk ambil Firebase ID token saat download PDF) ======
+const { auth } = getFirebase();
+
+// ====== DOM ======
 const nama         = document.getElementById("nama");
 const jenisCuti    = document.getElementById("jenisCuti");
 const tanggalAwal  = document.getElementById("tanggalAwal");
@@ -14,11 +22,14 @@ const kotaTujuan   = document.getElementById("kotaTujuan");
 const kepentingan  = document.getElementById("kepentingan");
 const jumlahCuti   = document.getElementById("jumlahCuti");
 const submitBtn    = document.getElementById("submitBtn");
-const alertBack   = document.getElementById("alertBack");
-const alertOk     = document.getElementById("alertOk");
-const alertMsg    = document.getElementById("alertMsg");
-const spinnerRow  = document.getElementById("spinnerRow");
-const spinnerText = document.getElementById("spinnerText");
+const alertBack    = document.getElementById("alertBack");
+const alertOk      = document.getElementById("alertOk");
+const alertMsg     = document.getElementById("alertMsg");
+const spinnerRow   = document.getElementById("spinnerRow");
+const spinnerText  = document.getElementById("spinnerText");
+
+// Tombol download PDF (opsional; tampil jika ada di HTML)
+const downloadPdfBtn = document.getElementById("downloadPdfBtn");
 
 const fields = [nama, jenisCuti, tanggalAwal, tanggalAkhir, kotaTujuan, kepentingan, jumlahCuti];
 
@@ -99,6 +110,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   // muat daftar nama dari spreadsheet
   await loadNames();
   checkFormValidity();
+
+  // inisialisasi tombol Download PDF
+  initPdfDownload();
 });
 
 jenisCuti.addEventListener("change", handleJenisCutiChange);
@@ -210,4 +224,36 @@ function resetForm() {
   checkFormValidity();
 }
 
+// ====== Download PDF ======
+function initPdfDownload(){
+  if (!downloadPdfBtn) return;
+  downloadPdfBtn.addEventListener("click", async () => {
+    try{
+      const user = auth.currentUser;
+      if (!user) return Modal.show("Silakan login ulang.", "Autentikasi");
+
+      const idToken = await user.getIdToken(true);
+      // site=CutiFilesPDF -> harus terdaftar di Cloud Functions (SHEETS)
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=CutiFilesPDF`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+      if (!res.ok){
+        const txt = await res.text().catch(()=> "");
+        throw new Error(`Gagal export (${res.status}). ${txt}`);
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "FormCuti.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    }catch(err){
+      console.error(err);
+      Modal.show(err?.message || "Download gagal", "Kesalahan");
+    }
+  });
+}
+
 export { loadNames };
+

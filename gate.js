@@ -5,6 +5,9 @@ const SCRIPT_URL   = "https://loggate.avsecbwx2018.workers.dev/";
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";
 const SHARED_TOKEN = "N45p";
 
+// Cloud Functions download PDF
+const CFN_DOWNLOAD_PDF_URL = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
+
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 const { auth } = getFirebase();
 let authName = "";
@@ -21,6 +24,9 @@ const flightSel    = document.getElementById("flight");
 const kodeSel      = document.getElementById("kodeKunci");
 const submitBtn    = document.getElementById("submitBtn");
 const logList      = document.getElementById("logList");
+
+// Tombol download PDF (opsional; ada jika disediakan di HTML)
+const downloadPdfBtn = document.getElementById("downloadPdfBtn");
 
 const overlay = document.getElementById("overlay");
 const ovIcon  = document.getElementById("ovIcon");
@@ -73,6 +79,13 @@ submitBtn.addEventListener("click", onSubmit);
 actClose.addEventListener("click", closeActionModal);
 actReturn.addEventListener("click", () => { const id = activeLogId; closeActionModal(); editReturn(id); });
 actDelete.addEventListener("click", () => { const id = activeLogId; closeActionModal(); deleteLog(id); });
+
+overlay.addEventListener("click", e => {
+  if (e.target === overlay && ovClose.classList.contains("hidden")) e.preventDefault();
+});
+overlay.addEventListener("click", e => {
+  if (e.target === ovClose) overlay.classList.add("hidden");
+});
 
 function showOverlay(state, title, desc){
   overlay.classList.remove("hidden");
@@ -485,7 +498,41 @@ async function loadLogs(){
   }
 }
 
-disableNativeTimePicker();
-loadLogs();
+// ====== DOWNLOAD PDF ======
+function initPdfDownload(){
+  if (!downloadPdfBtn) return;
+  downloadPdfBtn.addEventListener("click", async () => {
+    try{
+      const user = auth.currentUser;
+      if (!user) return alert("Silakan login ulang.");
+      const idToken = await user.getIdToken(true);
+
+      // site=GateFilesPDF → harus didaftarkan di index.js (SHEETS)
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GateFilesPDF`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+      if (!res.ok){
+        const txt = await res.text().catch(()=> "");
+        throw new Error(`Gagal export (${res.status}). ${txt}`);
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "GateFiles.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    }catch(err){
+      console.error(err);
+      showOverlay("err","Download gagal", err.message || "Coba lagi");
+    }
+  });
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  disableNativeTimePicker();
+  loadLogs();
+  initPdfDownload(); // aktifkan tombol Download PDF (jika ada)
+});
 
 window.receiveBarcode = receiveBarcode;

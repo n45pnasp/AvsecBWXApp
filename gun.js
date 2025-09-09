@@ -6,6 +6,9 @@ import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.
 // Pakai Cloudflare Worker proxy (bukan URL Apps Script langsung)
 const SCRIPT_URL = "https://loggun.avsecbwx2018.workers.dev/";
 
+// Cloud Functions download PDF
+const CFN_DOWNLOAD_PDF_URL = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
+
 // ====== Auth guard ======
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
@@ -31,6 +34,7 @@ const scanBtn         = document.getElementById("scanBtn");
 const imgAvsec        = document.getElementById("imgAvsec");
 const fotoIdInp       = document.getElementById("fotoId");
 const fotoNote        = document.querySelector(".foto-note");
+const downloadPdfBtn  = document.getElementById("downloadPdfBtn"); // tombol download (opsional)
 
 // ====== Firebase ======
 const { app, auth } = getFirebase();
@@ -442,4 +446,40 @@ async function receiveBarcode(code){
     showOverlay('err','Gagal mengambil data', err?.message || err);
   }
 }
+
+/* ================== DOWNLOAD PDF ================== */
+function initPdfDownload(){
+  if (!downloadPdfBtn) return;
+  downloadPdfBtn.addEventListener("click", async () => {
+    try{
+      const { auth } = getFirebase();
+      const user = auth.currentUser;
+      if (!user) return alert("Silakan login ulang.");
+
+      const idToken = await user.getIdToken(true);
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GunFilesPDF`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+      if (!res.ok){
+        const txt = await res.text().catch(()=> "");
+        throw new Error(`Gagal export (${res.status}). ${txt}`);
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "GunFiles.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    }catch(err){
+      console.error(err);
+      showOverlay("err","Download gagal", err.message || "Coba lagi");
+    }
+  });
+}
+
+/* ================== STARTUP ================== */
+window.addEventListener("DOMContentLoaded", () => {
+  initPdfDownload(); // aktifkan tombol download PDF (jika ada di halaman)
+});
 

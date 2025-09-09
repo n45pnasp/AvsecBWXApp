@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Check</title>
+  <title>Daily Check</title>
   <link rel="stylesheet" href="check.css" />
+  <style>html{visibility:hidden}</style>
 </head>
 <body>
   <div class="app-bar">
@@ -13,13 +14,13 @@
         <path d="M15 6L9 12L15 18"></path>
       </svg>
     </a>
-    <h1 class="app-title">Check</h1>
+    <h1 class="app-title">Daily Check</h1>
   </div>
 
   <main class="container">
     <!-- Card 1: Jenis -->
     <section class="card">
-      <div class="row-3">
+      <div class="btn-group">
         <button id="btnSTP" class="btn type-btn" type="button">STP</button>
         <button id="btnOTP" class="btn type-btn" type="button">OTP</button>
         <button id="btnHHMD" class="btn type-btn" type="button">HHMD/ETD</button>
@@ -28,7 +29,13 @@
 
     <!-- Card 2: Foto -->
     <section class="card">
-      <button id="photoBtn1" class="btn" type="button">Ambil Foto 1</button>
+      <button id="downloadPdfBtn" class="btn full purple" type="button" disabled>Download PDF</button>
+      <div class="field">
+        <select id="faskampen" required>
+          <option value="" selected>Pilih Faskampen</option>
+        </select>
+      </div>
+      <button id="photoBtn1" class="btn full hidden" type="button">Layar Kiri</button>
       <input id="fileInput1" type="file" accept="image/*" capture="environment" class="hidden" />
       <div id="uploadInfo1" class="upload-info hidden">
         <img id="preview1" alt="Preview 1" />
@@ -37,7 +44,7 @@
           <div id="uploadName1" class="muted"></div>
         </div>
       </div>
-      <button id="photoBtn2" class="btn" type="button">Ambil Foto 2</button>
+      <button id="photoBtn2" class="btn full hidden" type="button">Layar Kanan</button>
       <input id="fileInput2" type="file" accept="image/*" capture="environment" class="hidden" />
       <div id="uploadInfo2" class="upload-info hidden">
         <img id="preview2" alt="Preview 2" />
@@ -48,83 +55,33 @@
       </div>
     </section>
 
-    <!-- Card 3: Icons -->
-    <section class="card">
-      <div class="card subcard">
-        <img src="icons/stp1.png" alt="STP 1" class="full-img" />
+    <!-- Card 3: Konten Dinamis -->
+    <section id="resultCard" class="card hidden">
+      <div id="imageWrap1" class="card subcard">
+        <img id="typeImage1" src="icons/stp.png" alt="Tipe" class="full-img" />
       </div>
-      <div id="checks1" class="card subcard grid-checks"></div>
-      <div class="card subcard">
-        <img src="icons/stp2.png" alt="STP 2" class="full-img" />
+      <div id="dynamicContent1"></div>
+      <div id="imageWrap2" class="card subcard">
+        <img id="typeImage2" src="icons/stp.png" alt="Tipe" class="full-img" />
       </div>
-      <div id="checks2" class="card subcard grid-checks"></div>
-    </section>
-
-    <!-- Card 4: Tabel Kalibrasi -->
-    <section class="card">
-      <table class="check-table">
-        <thead>
-          <tr>
-            <th>POSISI TEST</th>
-            <th>TIPE<br/>KNIFE 304</th>
-            <th>HASIL TEST<br/>centang=Alarm<br/>Kosong=No Alarm</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Lengan Kanan</td>
-            <td>IN</td>
-            <td><input type="checkbox" /></td>
-          </tr>
-          <tr>
-            <td>Bagian Dalam</td>
-            <td>OUT</td>
-            <td><input type="checkbox" /></td>
-          </tr>
-          <tr>
-            <td>Pinggang Kanan</td>
-            <td>IN</td>
-            <td><input type="checkbox" /></td>
-          </tr>
-          <tr>
-            <td></td>
-            <td>OUT</td>
-            <td><input type="checkbox" /></td>
-          </tr>
-          <tr>
-            <td>Pinggang Belakang</td>
-            <td>IN</td>
-            <td><input type="checkbox" /></td>
-          </tr>
-          <tr>
-            <td>Bagian Tengah</td>
-            <td>OUT</td>
-            <td><input type="checkbox" /></td>
-          </tr>
-          <tr>
-            <td>Pergelangan Kaki</td>
-            <td>IN</td>
-            <td><input type="checkbox" /></td>
-          </tr>
-          <tr>
-            <td>Bagian Kanan</td>
-            <td>OUT</td>
-            <td><input type="checkbox" /></td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="label-text">HASIL KALIBRASI</div>
+      <div id="dynamicContent2"></div>
+      <div id="resultLabel" class="label-text">HASIL FASKAMPEN : FAIL</div>
       <button id="submitBtn" class="btn primary full" type="button">Kirim</button>
     </section>
   </main>
 
-  <!-- Overlay -->
-  <div id="overlay" class="overlay hidden" role="dialog" aria-modal="true">
+  <!-- Overlay ala lb_all -->
+  <div id="overlay" class="overlay hidden" role="dialog" aria-live="polite" aria-modal="true">
     <div class="sheet" role="document">
-      <div class="icon spinner"></div>
+      <button id="ovClose" class="icon-x hidden" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <div class="icon spinner" id="ovIcon"></div>
       <div class="texts">
-        <div class="title">Memproses…</div>
-        <div class="desc">Mohon tunggu</div>
+        <div class="title" id="ovTitle"></div>
+        <div class="desc" id="ovDesc"></div>
       </div>
     </div>
   </div>
