@@ -16,7 +16,6 @@ const jamMasuk   = document.getElementById("jamMasuk");
 const jamKeluar  = document.getElementById("jamKeluar");
 const pemeriksa  = document.getElementById("pemeriksa");
 const supervisor = document.getElementById("supervisor");
-const kendaraan  = document.getElementById("kendaraan");
 const vehicleCard = document.getElementById("vehicleCard");
 const vehicleToggle = document.getElementById("vehicleToggle");
 const submitBtn  = document.getElementById("submitBtn");
@@ -72,8 +71,10 @@ function clearInputs(){
   kodePas.textContent = "-";
   instansi.textContent = "-";
   [prohibited,lokasi,jamMasuk,jamKeluar,supervisor,pemeriksa].forEach(el=>el.value="");
-  if(kendaraan) kendaraan.checked=false;
-  if(vehicleCard){ vehicleCard.classList.add("collapsed"); }
+  if(vehicleCard){
+    vehicleCard.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.checked=false);
+    vehicleCard.classList.add("collapsed");
+  }
   if(vehicleToggle){ vehicleToggle.setAttribute("aria-expanded","false"); const c=vehicleToggle.querySelector('.chevron'); if(c) c.textContent='▼'; }
   setAuthName();
 }
@@ -91,6 +92,13 @@ if (scanBtn) scanBtn.addEventListener("click", () => {
   }
 });
 
+function getKendaraanStatus(){
+  if(!vehicleCard || vehicleCard.classList.contains("collapsed")) return "NIHIL";
+  const checks = vehicleCard.querySelectorAll('input[type="checkbox"]');
+  if(checks.length === 0) return "NIHIL";
+  return Array.from(checks).every(c=>c.checked) ? "AMAN" : "TIDAK AMAN";
+}
+
 async function onSubmit(){
   const payload = {
     token: SHARED_TOKEN,
@@ -103,7 +111,7 @@ async function onSubmit(){
     jamKeluar: jamKeluar.value.trim(),
     pemeriksa: pemeriksa.value.trim().toUpperCase(),
     supervisor: supervisor.value.trim().toUpperCase(),
-    kendaraan: kendaraan && kendaraan.checked ? "YA" : "NIHIL"
+    kendaraan: getKendaraanStatus()
   };
   submitBtn.disabled = true;
   showOverlay('spinner','Mengirim data…','');
