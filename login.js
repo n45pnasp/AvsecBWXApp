@@ -178,6 +178,22 @@ function getTimeOfDayUTC7(){
   }
 }
 
+/** Klaim sesi unik untuk perangkat ini; kembalikan false jika sudah ada yang aktif */
+async function claimSession(user){
+  try{
+    const currRef = ref(db, `sessions/${user.uid}/current`);
+    const snap = await get(currRef);
+    const cur = snap.val();
+    if (cur && cur !== DEVICE_ID){
+      await set(ref(db, `sessions/${user.uid}/lastAttempt`), { device: DEVICE_ID, ts: Date.now() });
+      return false;
+    }
+    await set(currRef, DEVICE_ID);
+    onDisconnect(currRef).remove().catch(()=>{});
+    return true;
+  }catch(_){ return true; }
+}
+
 /** ===== Offline Sheet ===== */
 (function setupOfflineSheet(){
   const sheet = document.createElement("div");
@@ -281,12 +297,6 @@ async function notifyKodularAndGoHome(status, user){
     sessionStorage.setItem("justSignedIn", "1");
   } catch (_) {}
 
-  try {
-    const sRef = ref(db, `sessions/${user.uid}`);
-    await set(sRef, DEVICE_ID);
-    onDisconnect(sRef).remove().catch(()=>{});
-  } catch (_) {}
-
   // 2) (opsional) kirim ke Kodular
   const payload = JSON.stringify({
     event: "auth",
@@ -331,6 +341,14 @@ form?.addEventListener("submit", async (e)=>{
   Overlay.show("Memproses login…");
   try{
     const cred = await signInWithEmailAndPassword(auth, email, pass);
+    const okSess = await claimSession(cred.user);
+    if (!okSess){
+      await signOut(auth);
+      Overlay.hide();
+      err("Akun sedang digunakan di perangkat lain.");
+      disableForm(false);
+      return;
+    }
     Overlay.show("Mengalihkan ke Home…");
     await notifyKodularAndGoHome("success", cred.user);
   }catch(e){
@@ -359,6 +377,13 @@ onAuthStateChanged(auth, async (user)=>{
   }
 
   if (user){
+    const okSess = await claimSession(user);
+    if (!okSess){
+      await signOut(auth);
+      Overlay.hide();
+      show(welcome);
+      return;
+    }
     Overlay.show("Mengalihkan ke Home…");
     await notifyKodularAndGoHome("already_signed_in", user);
   }else{

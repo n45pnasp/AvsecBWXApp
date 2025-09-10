@@ -106,13 +106,26 @@ export function requireAuth({
         return;
       }
 
+      const currRef = ref(db, `sessions/${user.uid}/current`);
+      set(currRef, DEVICE_ID).catch(()=>{});
+      onDisconnect(currRef).remove().catch(()=>{});
       const sessRef = ref(db, `sessions/${user.uid}`);
-      set(sessRef, DEVICE_ID).catch(()=>{});
-      onDisconnect(sessRef).remove().catch(()=>{});
+      let lastAttemptTs = 0;
       onValue(sessRef, s => {
-        const val = s.val();
-        if (val && val !== DEVICE_ID) {
+        const data = s.val() || {};
+        if (data.current && data.current !== DEVICE_ID) {
           signOut(auth).finally(()=>alert("Akun digunakan di perangkat lain."));
+          return;
+        }
+        const att = data.lastAttempt;
+        if (att && att.device !== DEVICE_ID) {
+          const ts = att.ts || 0;
+          if (lastAttemptTs === 0) {
+            lastAttemptTs = ts;
+          } else if (ts > lastAttemptTs) {
+            lastAttemptTs = ts;
+            alert("Ada perangkat lain mencoba masuk ke akun Anda.");
+          }
         }
       });
 
