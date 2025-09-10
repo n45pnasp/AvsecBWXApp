@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-// ======== Konfigurasi (samakan dgn auth-guard.js) ========
+// ======== Konfigurasi Firebase ========
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
   authDomain: "avsecbwx-4229c.firebaseapp.com",
@@ -16,20 +16,13 @@ const firebaseConfig = {
   appId: "1:1029406629258:web:53e8f09585cd77823efc73",
   measurementId: "G-P37F88HGFE"
 };
-
-// Singleton
 const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db   = getDatabase(app);
 const auth = getAuth(app);
 
-
 // ========= Endpoint =========
-// Pakai endpoint relatif agar tidak kena CORS ketika diakses dari Hosting.
-// Saat dijalankan secara lokal gunakan emulator Functions.
-const FN = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-  ? "http://127.0.0.1:5001/avsecbwx-4229c/us-central1/downloadPdf"
-  : "/downloadPdf"; // Cloud Functions download
-const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyANqVp-sZAscrvgzM0Be0ZQ75UsRCffBKegnc7lbR7gCcd4NyYEf8kjXHOyzADCBE_/exec"; // Apps Script save ke Drive
+const FN_DOWNLOAD = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf"; // Cloud Functions
+const SHEET_WEBAPP_PROXY = "https://roster-proxy.avsecbwx2018.workers.dev/";               // Cloudflare Worker proxy ke GAS
 
 // ====== Utility: nama file ======
 function makePdfFilename(siteKey){
@@ -52,7 +45,7 @@ const SITE_CONFIG = {
     ],
   },
   HBSCP: {
-    enable2040: true, // aktif jika jr/sr >= 3
+    enable2040: true,
     cycleMs: 20_000,
     positions: [
       { id:"pos1",  name:"Operator Xray",       allowed:["SENIOR","JUNIOR"] },
@@ -79,19 +72,20 @@ const peopleRows   = $("peopleRows");
 const btnPSCP      = $("pscpBtn");
 const btnHBSCP     = $("hbscpBtn");
 
-// ========= Loading Overlay =========
+// ========= Loading Overlay + Card Popup =========
 (function setupLoadingUI(){
   const overlay = document.createElement("div");
   overlay.id = "loadingOverlay";
   overlay.innerHTML = `
-    <div class="load-card">
-      <div class="icon spinner" id="loadIcon"></div>
+    <div class="load-card" role="status" aria-live="polite">
+      <div class="icon spinner" id="loadIcon" aria-hidden="true"></div>
       <div class="texts">
         <div class="title" id="loadTitle">Menyiapkan PDF…</div>
         <div class="desc" id="loadDesc">Mohon tunggu sebentar</div>
       </div>
-      <button class="close" id="loadClose">&times;</button>
-    </div>`;
+      <button class="close" id="loadClose" title="Tutup" aria-label="Tutup">&times;</button>
+    </div>
+  `;
   document.body.appendChild(overlay);
 
   function setState(state){
@@ -99,14 +93,33 @@ const btnHBSCP     = $("hbscpBtn");
     icon.classList.remove("spinner","success","error");
     icon.classList.add(state);
   }
+
   window.__loadingUI = {
-    show(t="Proses…", d="Tunggu"){ $("loadTitle").textContent=t; $("loadDesc").textContent=d; setState("spinner"); overlay.style.display="flex"; },
-    update(t,d){ if(t) $("loadTitle").textContent=t; if(d) $("loadDesc").textContent=d; },
-    success(t="Berhasil",d="PDF siap"){ this.update(t,d); setState("success"); },
-    error(t="Gagal",d="Ada kendala"){ this.update(t,d); setState("error"); },
-    hide(){ overlay.style.display="none"; }
+    show(title="Memproses…", desc="Mohon tunggu"){
+      $("loadTitle").textContent = title;
+      $("loadDesc").textContent  = desc;
+      setState("spinner");
+      overlay.style.display = "flex";
+      document.body.classList.add("blur-bg");
+      try{ downloadBtn && (downloadBtn.disabled = true); }catch(_){ }
+    },
+    update(title, desc){
+      if(title) $("loadTitle").textContent = title;
+      if(desc)  $("loadDesc").textContent  = desc;
+    },
+    success(title="Selesai", desc="PDF tersimpan & terunduh"){
+      this.update(title, desc); setState("success");
+    },
+    error(title="Gagal", desc="Terjadi kendala"){
+      this.update(title, desc); setState("error");
+    },
+    hide(){
+      overlay.style.display = "none";
+      document.body.classList.remove("blur-bg");
+      try{ downloadBtn && (downloadBtn.disabled = false); }catch(_){ }
+    }
   };
-  overlay.querySelector("#loadClose").addEventListener("click", ()=> __loadingUI.hide());
+  overlay.querySelector("#loadClose")?.addEventListener("click", ()=> __loadingUI.hide());
 })();
 
 // ========= Modal sederhana untuk pesan =========
@@ -120,7 +133,6 @@ const btnHBSCP     = $("hbscpBtn");
     </div>
   `;
   document.body.appendChild(overlay);
-
   const textEl  = overlay.querySelector("#alertText");
   const btn     = overlay.querySelector("#alertClose");
   function hide(){ overlay.style.display = "none"; document.body.classList.remove("blur-bg"); }
@@ -137,18 +149,14 @@ onValue(ref(db, ".info/connected"), snap => { connDot?.classList.toggle("ok", !!
 const pad = n => String(n).padStart(2,"0");
 const fmt = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-// ========= Pewarnaan tombol berdasar status RTDB =========
+// ========= Pewarnaan tombol =========
 function paintSiteButton(btn, isRunning){
   if(!btn) return;
-  btn.classList.toggle("start", !!isRunning); // hijau
-  btn.classList.toggle("stop",  !isRunning);  // merah
+  btn.classList.toggle("start", !!isRunning);
+  btn.classList.toggle("stop",  !isRunning);
 }
-onValue(ref(db, "sites/PSCP/control/state"), snap=>{
-  paintSiteButton(btnPSCP, !!(snap.val()?.running));
-});
-onValue(ref(db, "sites/HBSCP/control/state"), snap=>{
-  paintSiteButton(btnHBSCP, !!(snap.val()?.running));
-});
+onValue(ref(db, "sites/PSCP/control/state"), snap=>{ paintSiteButton(btnPSCP, !!(snap.val()?.running)); });
+onValue(ref(db, "sites/HBSCP/control/state"), snap=>{ paintSiteButton(btnHBSCP, !!(snap.val()?.running)); });
 
 // ========= Mesin per-site =========
 class SiteMachine {
@@ -161,11 +169,11 @@ class SiteMachine {
     this.peopleRef      = child(this.baseRef, "people");
     this.assignmentsRef = child(this.baseRef, "assignments");
     this.cooldownRef    = child(this.baseRef, "control/xrayCooldown");
-    this.stateRef       = child(this.baseRef, "control/state"); // {running,nextAt,mode2040,lastCycleAt}
+    this.stateRef       = child(this.baseRef, "control/state");
 
     this.rosterRef    = ref(db, "roster");
-    this.usersRef     = ref(db, "users");       // data pengguna
-    this.nameToUidRef = ref(db, "nameToUid");   // pemetaan nameLower -> uid
+    this.usersRef     = ref(db, "users");
+    this.nameToUidRef = ref(db, "nameToUid");
     this._rosterData  = {};
     this._specCache   = {};
     this._uidCache    = {};
@@ -199,7 +207,6 @@ class SiteMachine {
     });
     this._listen(this.rosterRef, s=>{
       this._rosterData = s.val()||{};
-      console.log("[roster]", this._rosterData);
       this.syncRosterPeople();
     });
 
@@ -253,20 +260,14 @@ class SiteMachine {
       tr.innerHTML = `<td>${p.name}</td><td>${specText}</td>`;
       peopleRows.appendChild(tr);
     });
-    peopleRows.onchange = null;
-    peopleRows.onclick = null;
     const hasMissingSpec = Object.values(people||{}).some(p => !Array.isArray(p.spec) || p.spec.length===0);
     if(!this.running && startBtn){ startBtn.disabled = hasMissingSpec; }
   }
 
   async _resolveSpec(name){
     const key = String(name||"").trim().toLowerCase();
-    if(this._specCache[key]){
-      console.log("[spec-cache]", name, this._specCache[key]);
-      return this._specCache[key];
-    }
+    if(this._specCache[key]) return this._specCache[key];
 
-    console.log("[lookup]", name, "->", key);
     let spec = [];
     try{
       let uid = this._uidCache[key];
@@ -275,7 +276,6 @@ class SiteMachine {
         const obj = snap.val() || {};
         uid = Object.keys(obj)[0] || null;
         this._uidCache[key] = uid;
-        console.log("[lookup-uid]", name, uid);
       }
       if(uid){
         const specSnap = await get(child(this.usersRef, `${uid}/spec`));
@@ -283,43 +283,29 @@ class SiteMachine {
         if(Array.isArray(s))      spec = s.map(x=>String(x).toUpperCase());
         else if(typeof s === "string" && s) spec = [String(s).toUpperCase()];
       }
-      console.log("[spec]", name, spec);
-    }catch(err){
-      console.error("Ambil spec gagal", name, err);
-    }
+    }catch(err){ console.error("Ambil spec gagal", name, err); }
     this._specCache[key] = spec;
     return spec;
   }
 
   async syncRosterPeople(){
-    this._specCache = {}; // selalu ambil data terbaru saat sinkronisasi
+    this._specCache = {};
     this._uidCache  = {};
     const r = this._rosterData || {};
     let names = [];
     if(this.siteKey === "PSCP"){
       let arr = [r.angCabin1, r.angCabin2, r.angCabin3, r.angCabin4];
-      if(Array.isArray(r.angPSCP)){
-        arr = r.angPSCP.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
-      } else if(Array.isArray(r.angPscp)){
-        arr = r.angPscp.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
-      }
+      if(Array.isArray(r.angPSCP)) arr = r.angPSCP.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
+      else if(Array.isArray(r.angPscp)) arr = r.angPscp.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
       let arrivals = [];
-      if(Array.isArray(r.angArrival)){
-        arrivals = r.angArrival.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
-      }
+      if(Array.isArray(r.angArrival)) arrivals = r.angArrival.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
       const arrivalSet = new Set(arrivals.map(n => String(n || "").toLowerCase()));
-      names = arr.filter(n => {
-        if(!n || n === "-") return false;
-        return !arrivalSet.has(String(n).toLowerCase());
-      }).slice(0, 4);
+      names = arr.filter(n => n && n !== "-" && !arrivalSet.has(String(n).toLowerCase())).slice(0, 4);
       if(names.length < 4 && r.spvCabin && r.spvCabin !== "-") names.push(r.spvCabin);
     } else if(this.siteKey === "HBSCP"){
       let arr = [r.angHbs1, r.angHbs2, r.angHbs3];
-      if(Array.isArray(r.angHBSCP)){
-        arr = r.angHBSCP.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
-      } else if(Array.isArray(r.angHbs)){
-        arr = r.angHbs.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
-      }
+      if(Array.isArray(r.angHBSCP)) arr = r.angHBSCP.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
+      else if(Array.isArray(r.angHbs)) arr = r.angHbs.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
       names = arr.filter(n => n && n !== "-");
       if(names.length < 3 && r.spvHbs && r.spvHbs !== "-") names.push(r.spvHbs);
     }
@@ -328,42 +314,31 @@ class SiteMachine {
       return [n.toLowerCase(), { name:n, spec }];
     }));
     const people = Object.fromEntries(entries);
-    try{
-      await set(this.peopleRef, people);
-    }catch(err){
-      console.error("Sync roster gagal:", err);
-    }
+    try{ await set(this.peopleRef, people); }catch(err){ console.error("Sync roster gagal:", err); }
   }
 
   rotate(arr, idx){ return arr.length ? arr.slice(idx).concat(arr.slice(0,idx)) : []; }
-  isEligible(person, allowed){
-    return Array.isArray(person.spec) && person.spec.some(s=>allowed.includes(String(s).toUpperCase()));
-  }
+  isEligible(person, allowed){ return Array.isArray(person.spec) && person.spec.some(s=>allowed.includes(String(s).toUpperCase())); }
 
   async buildPools(useCooldown){
     const [pSnap, cdSnap] = await Promise.all([
       get(this.peopleRef),
       useCooldown ? get(this.cooldownRef) : Promise.resolve({ val:()=>({}) })
     ]);
-    const folks = Object.values(pSnap.val()||{}).map(p=>({
-      ...p, spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toUpperCase()) : []
-    }));
+    const folks = Object.values(pSnap.val()||{}).map(p=>({ ...p, spec: Array.isArray(p.spec) ? p.spec.map(s=>String(s).toUpperCase()) : [] }));
     const cooldown = useCooldown ? (cdSnap.val()||{}) : {};
-
     if(useCooldown){
       const names = new Set(folks.map(f=>f.name));
       for(const k of Object.keys(cooldown)){ if(!names.has(k)) delete cooldown[k]; }
     }
-
     const pools = this.cfg.positions.map(pos=>{
       let candidates = folks.filter(f=>this.isEligible(f,pos.allowed));
-      if(useCooldown && pos.id==="pos1"){ // cooldown khusus Operator Xray
+      if(useCooldown && pos.id==="pos1"){
         candidates = candidates.filter(f=>(cooldown[f.name]||0)<=0);
       }
       const rot = this.rotate(candidates, this.rotIdx[pos.id] % Math.max(candidates.length,1));
       return { pos, list: rot };
     });
-
     pools.sort((a,b)=> (a.list.length - b.list.length));
     return { pools, cooldown };
   }
@@ -410,17 +385,12 @@ class SiteMachine {
         const cd = { ...(cooldown||{}) };
         for(const k of Object.keys(cd)){ cd[k]=Math.max(0,(cd[k]|0)-1); }
         const xrayName = finalAssign.pos1;
-        if(xrayName && xrayName!=="-") cd[xrayName]=2; // 2 siklus tak boleh pos1
-        await Promise.all([
-          set(this.assignmentsRef, finalAssign),
-          set(this.cooldownRef, cd)
-        ]);
+        if(xrayName && xrayName!=="-") cd[xrayName]=2;
+        await Promise.all([ set(this.assignmentsRef, finalAssign), set(this.cooldownRef, cd) ]);
       } else {
         await set(this.assignmentsRef, finalAssign);
       }
-    }catch(err){
-      showModal("Tulis assignments gagal: " + (err?.message||err));
-    }
+    }catch(err){ showModal("Tulis assignments gagal: " + (err?.message||err)); }
 
     this.advanceRotIdx(pools);
   }
@@ -431,9 +401,7 @@ class SiteMachine {
       if(!cur||typeof cur!=="object") return cur;
       if(!cur.running) return cur;
       const nextAt=cur.nextAt|0;
-      if(force || (nextAt && now>=nextAt)){
-        return { ...cur, nextAt: now + this.CYCLE_MS, lastCycleAt: now };
-      }
+      if(force || (nextAt && now>=nextAt)){ return { ...cur, nextAt: now + this.CYCLE_MS, lastCycleAt: now }; }
       return cur;
     });
     if(res.committed){
@@ -446,18 +414,10 @@ class SiteMachine {
   }
 
   async onStart(){
-    if(!auth.currentUser){
-      showModal("Harus login terlebih dulu.");
-      return;
-    }
-
-    const pSnap = await get(this.peopleRef);
-    const people = pSnap.val() || {};
+    if(!auth.currentUser){ showModal("Harus login terlebih dulu."); return; }
+    const pSnap = await get(this.peopleRef); const people = pSnap.val() || {};
     const missing = Object.values(people).filter(p => !Array.isArray(p?.spec) || p.spec.length===0).map(p=>p.name);
-    if(missing.length){
-      showModal("Spesifikasi belum tersedia untuk: " + missing.join(", "));
-      return;
-    }
+    if(missing.length){ showModal("Spesifikasi belum tersedia untuk: " + missing.join(", ")); return; }
 
     let enable2040Now=false;
     if(this.cfg.enable2040){
@@ -468,16 +428,10 @@ class SiteMachine {
     }
     this.mode2040State = this.cfg.enable2040 && enable2040Now;
 
-    const now  = Date.now();
-    const next = now + this.CYCLE_MS;
-    try{
-      await set(this.stateRef, { running:true, nextAt: next, mode2040: this.mode2040State, lastCycleAt: now });
-    }catch(err){
-      showModal("Gagal memulai: " + (err?.message||err));
-      return;
-    }
-    this.nextAtLocal      = next;
-    this.lastCycleAtLocal = now;
+    const now  = Date.now(); const next = now + this.CYCLE_MS;
+    try{ await set(this.stateRef, { running:true, nextAt: next, mode2040: this.mode2040State, lastCycleAt: now }); }
+    catch(err){ showModal("Gagal memulai: " + (err?.message||err)); return; }
+    this.nextAtLocal = next; this.lastCycleAtLocal = now;
 
     await this.computeAndWriteAssignments(this.cfg.enable2040 && this.mode2040State);
     this.setRunningUI(true);
@@ -486,30 +440,49 @@ class SiteMachine {
   async onStop(){
     const tasks=[ update(this.stateRef,{ running:false, nextAt:0, mode2040:false, lastCycleAt:0 }) ];
     if(this.cfg.enable2040) tasks.push(set(this.cooldownRef, {}));
-    try{
-      await Promise.all(tasks);
-    }catch(err){
-      showModal("Gagal menghentikan: " + (err?.message||err));
-    }
-    this.setRunningUI(false);
-    this.nextAtLocal=null;
-    this.lastCycleAtLocal=null;
-    nextEl && (nextEl.textContent="-");
+    try{ await Promise.all(tasks); }catch(err){ showModal("Gagal menghentikan: " + (err?.message||err)); }
+    this.setRunningUI(false); this.nextAtLocal=null; this.lastCycleAtLocal=null; nextEl && (nextEl.textContent="-");
   }
 
   async onNext(){
-    const snap=await get(this.stateRef);
-    const cur=snap.val()||{};
-    if(cur.running){
-      this.mode2040State=!!cur.mode2040;
-      await this.tryAdvanceCycle(true);
-    }
+    const snap=await get(this.stateRef); const cur=snap.val()||{};
+    if(cur.running){ this.mode2040State=!!cur.mode2040; await this.tryAdvanceCycle(true); }
   }
 }
 
-// ========= Save ke Drive via Apps Script =========
+// ====== Boot & switch viewer site ======
+let machine=null;
+let currentSite = null;
+
+function resetSurface(){
+  assignRows.innerHTML=""; peopleRows.innerHTML="";
+  nextEl && (nextEl.textContent="-");
+  clockEl && (clockEl.textContent=fmt(new Date()));
+  assignTable.classList.add("hidden");
+  manageBox.classList.remove("hidden");
+}
+function selectSiteButtonUI(site){
+  btnPSCP?.classList.toggle("selected", site==="PSCP");
+  btnHBSCP?.classList.toggle("selected", site==="HBSCP");
+}
+function bootSite(siteKey){
+  try{ localStorage.setItem("siteSelected", siteKey); }catch(_){ }
+  if(machine) machine.unmount();
+  resetSurface();
+  machine = new SiteMachine(siteKey);
+  machine.mount();
+  selectSiteButtonUI(siteKey);
+  currentSite = siteKey;
+  if (manageTitle) {
+    manageTitle.textContent = `Petugas ${siteKey}`;
+    manageBox?.setAttribute("aria-label", `Petugas ${siteKey}`);
+  }
+  if (downloadBtn) downloadBtn.disabled = false;
+}
+
+// ====== Save ke Drive via Proxy (Apps Script) ======
 async function saveToDrive(siteKey){
-  const resp = await fetch(SHEET_WEBAPP_URL, {
+  const resp = await fetch(SHEET_WEBAPP_PROXY, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "save", site: siteKey })
@@ -521,62 +494,63 @@ async function saveToDrive(siteKey){
   return resp.text();
 }
 
-// ========= Download via Cloud Functions =========
-async function downloadViaFunctions(siteKey){
+// ====== Download PDF via Cloud Functions ======
+async function downloadViaFunctions(siteKey) {
   const user = auth.currentUser;
-  if(!user){ showModal("Harus login."); return; }
+  if (!user) { showModal("Harus login terlebih dulu."); return; }
   const idToken = await user.getIdToken(true);
 
-  const resp = await fetch(`${FN}?site=${encodeURIComponent(siteKey)}`, {
-    method:"GET", headers:{ "Authorization":`Bearer ${idToken}`, "Accept":"application/pdf" }
+  const resp = await fetch(`${FN_DOWNLOAD}?site=${encodeURIComponent(siteKey)}`, {
+    method: "GET",
+    headers: { "Authorization": `Bearer ${idToken}`, "Accept": "application/pdf" }
   });
-  if(!resp.ok){
-    const txt = await resp.text().catch(()=>resp.statusText);
-    throw new Error(`${resp.status} ${resp.statusText} — ${txt}`);
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => resp.statusText);
+    throw new Error(`${resp.status} ${resp.statusText}${txt ? " — "+txt : ""}`);
   }
+
   const blob = await resp.blob();
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = makePdfFilename(siteKey);
-  document.body.appendChild(a); a.click();
-  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1200);
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1200);
 }
 
-// ========= Handler Download =========
+// ====== Handler klik tombol Download ======
 async function onClickDownload(){
   if(!currentSite){ showModal("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
   try{
-    __loadingUI.show("Menyimpan ke Drive…","Membuat PDF");
+    __loadingUI.show("Menyimpan ke Drive…","Membuat PDF pada Google Drive");
     await saveToDrive(currentSite);
-    __loadingUI.update("Mengunduh…","Ambil PDF dari server");
+
+    __loadingUI.update("Mengunduh ke perangkat…","Mengambil PDF dari server");
     await downloadViaFunctions(currentSite);
+
     __loadingUI.success("Selesai","PDF tersimpan di Drive & diunduh");
-  }catch(e){
-    console.error(e);
-    __loadingUI.error("Error", e.message);
+  }catch(err){
+    console.error(err);
+    __loadingUI.error("Proses gagal", String(err?.message || err));
   }finally{
-    setTimeout(()=>__loadingUI.hide(),1500);
+    setTimeout(()=> __loadingUI.hide(), 1200);
   }
 }
 
-// ========= Boot site (singkat, class SiteMachine tetap ada di atas) =========
-let machine=null, currentSite=null;
-function bootSite(siteKey){
-  if(machine) machine.unmount();
-  machine = new SiteMachine(siteKey); machine.mount();
-  currentSite=siteKey;
-  manageTitle.textContent=`Petugas ${siteKey}`;
-  downloadBtn.disabled=false;
-}
-
-// ========= Init =========
+// ====== Init ======
 (function init(){
-  downloadBtn.disabled=true;
+  if (downloadBtn) downloadBtn.disabled = true;
+
+  const url = new URL(location.href);
+  const qsSite = url.searchParams.get("site");
   let initial="PSCP";
-  try{ initial = localStorage.getItem("siteSelected") || "PSCP"; }catch(_){ }
+  try{ initial = qsSite || localStorage.getItem("siteSelected") || "PSCP"; }catch(_){ }
   bootSite(initial);
-  btnPSCP.addEventListener("click", ()=>bootSite("PSCP"));
-  btnHBSCP.addEventListener("click", ()=>bootSite("HBSCP"));
-  downloadBtn.addEventListener("click", onClickDownload);
+
+  btnPSCP?.addEventListener("click", ()=> bootSite("PSCP"));
+  btnHBSCP?.addEventListener("click", ()=> bootSite("HBSCP"));
+  downloadBtn?.addEventListener("click", onClickDownload);
+
   document.documentElement.style.visibility="visible";
 })();
+
