@@ -20,9 +20,8 @@ const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db   = getDatabase(app);
 const auth = getAuth(app);
 
-// ========= Endpoint =========
-const FN_DOWNLOAD = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf"; // Cloud Functions
-const SHEET_WEBAPP_PROXY = "https://roster-proxy.avsecbwx2018.workers.dev/";               // Cloudflare Worker proxy ke GAS
+// ========= Endpoint (GAS via Cloudflare Worker Proxy) =========
+const SHEET_WEBAPP_PROXY = "https://roster-proxy.avsecbwx2018.workers.dev/"; // Worker yang meneruskan ke GAS /exec
 
 // ====== Utility: nama file ======
 function makePdfFilename(siteKey){
@@ -30,6 +29,30 @@ function makePdfFilename(siteKey){
   const pad = (n)=> String(n).padStart(2, "0");
   const dateStr = `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}`;
   return `Plotting_${siteKey}_${dateStr}.pdf`;
+}
+
+/* ===== INFO SHEET UNTUK DOWNLOAD PDF ===== */
+const SHEET_INFO = {
+  PSCP:  { id: '1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8', gid: '' },
+  HBSCP: { id: '1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8', gid: '1552839141' },
+};
+
+/* ===== UTIL DOWNLOAD PDF (Google Sheets) ===== */
+const USE_PUB = false;
+const PDF_DEFAULT_OPTS = {
+  format: "pdf", size: "A4", portrait: "true", scale: "2",
+  top_margin: "0.50", bottom_margin: "0.50", left_margin: "0.50", right_margin: "0.50",
+  sheetnames: "false", printtitle: "false", pagenumbers: "true", gridlines: "false", fzr: "true"
+};
+function buildSheetPdfUrl(sheetId, gid, opts = {}) {
+  const cacheBuster = { t: Date.now() };
+  if (USE_PUB) {
+    const params = new URLSearchParams({ gid, single: "true", output: "pdf", ...cacheBuster });
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
+  } else {
+    const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
+  }
 }
 
 // ========= Konfigurasi per site =========
@@ -314,8 +337,6 @@ class SiteMachine {
       return [n.toLowerCase(), { name:n, spec }];
     }));
     const people = Object.fromEntries(entries);
-    // Tampilkan langsung agar tabel terisi meski penulisan ke DB gagal
-    this.renderPeople(people);
     try{ await set(this.peopleRef, people); }catch(err){ console.error("Sync roster gagal:", err); }
   }
 
@@ -496,41 +517,33 @@ async function saveToDrive(siteKey){
   return resp.text();
 }
 
-// ====== Download PDF via Cloud Functions ======
-async function downloadViaFunctions(siteKey) {
-  const user = auth.currentUser;
-  if (!user) { showModal("Harus login terlebih dulu."); return; }
-  const idToken = await user.getIdToken(true);
-
-  const resp = await fetch(`${FN_DOWNLOAD}?site=${encodeURIComponent(siteKey)}`, {
-    method: "GET",
-    headers: { "Authorization": `Bearer ${idToken}`, "Accept": "application/pdf" }
-  });
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => resp.statusText);
-    throw new Error(`${resp.status} ${resp.statusText}${txt ? " — "+txt : ""}`);
-  }
-
-  const blob = await resp.blob();
+// ====== Download langsung dari Google Sheets (export) ======
+function downloadDirectFromSheets(siteKey){
+  const meta = SHEET_INFO[siteKey];
+  if(!meta) throw new Error("Unknown site.");
+  const url = buildSheetPdfUrl(meta.id, meta.gid || "");
+  // Buka tab baru agar tidak kena CORS/fetch restrictions dan tetap dapat file dari Google
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = makePdfFilename(siteKey);
+  a.href = url;
+  a.target = "_blank";
+  // atribut download sering diabaikan cross-origin, jadi kita andalkan nama default dari Google
   document.body.appendChild(a);
   a.click();
-  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1200);
+  setTimeout(()=> a.remove(), 100);
 }
 
 // ====== Handler klik tombol Download ======
 async function onClickDownload(){
   if(!currentSite){ showModal("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
   try{
-    __loadingUI.show("Menyimpan ke Drive…","Membuat PDF pada Google Drive");
+    __loadingUI.show("Menyimpan ke Drive…","Membuat PDF di Google Drive (via GAS)");
     await saveToDrive(currentSite);
 
-    __loadingUI.update("Mengunduh ke perangkat…","Mengambil PDF dari server");
-    await downloadViaFunctions(currentSite);
+    __loadingUI.update("Mengunduh PDF…","Mengekspor dari Google Sheets");
+    // Trigger export & download (dibuka di tab baru oleh browser)
+    downloadDirectFromSheets(currentSite);
 
-    __loadingUI.success("Selesai","PDF tersimpan di Drive & diunduh");
+    __loadingUI.success("Selesai","PDF dibuat di Drive & diunduh dari Sheets");
   }catch(err){
     console.error(err);
     __loadingUI.error("Proses gagal", String(err?.message || err));
