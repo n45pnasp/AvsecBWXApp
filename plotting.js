@@ -23,40 +23,17 @@ const db   = getDatabase(app);
 const auth = getAuth(app);
 
 
-// ========= Cloud Functions download PDF (endpoint) =========
-const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
+// ========= Endpoint =========
+const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf"; // Cloud Functions download
+const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyANqVp-sZAscrvgzM0Be0ZQ75UsRCffBKegnc7lbR7gCcd4NyYEf8kjXHOyzADCBE_/exec"; // Apps Script save ke Drive
 
-// ====== Utility: penamaan file ======
+// ====== Utility: nama file ======
 function makePdfFilename(siteKey){
   const d = new Date();
   const pad = (n)=> String(n).padStart(2, "0");
   const dateStr = `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${d.getFullYear()}`;
   return `Plotting_${siteKey}_${dateStr}.pdf`;
 }
-
-/* ========= (Opsional) export publik langsung — tidak dipakai karena via Functions ======== */
-const USE_PUB = false;
-const PDF_DEFAULT_OPTS = {
-  format: "pdf", size: "A4", portrait: "true", scale: "2",
-  top_margin: "0.50", bottom_margin: "0.50", left_margin: "0.50", right_margin: "0.50",
-  sheetnames: "false", printtitle: "false", pagenumbers: "true", gridlines: "false", fzr: "true"
-};
-function buildSheetPdfUrl(sheetId, gid, opts = {}) {
-  const cacheBuster = { t: Date.now() };
-  if (USE_PUB) {
-    const params = new URLSearchParams({ gid, single: "true", output: "pdf", ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
-  } else {
-    const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
-  }
-}
-
-/* ========= Info Sheets (referensi; download via Functions) ========= */
-const SHEETS = {
-  PSCP:  { id: "1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8", gid: "" },
-  HBSCP: { id: "1NwPi_H6W7SrCiXevy8y3uxovO2xKwlQKUryXM3q4iiU", gid: "" },
-};
 
 // ========= Konfigurasi per site =========
 const SITE_CONFIG = {
@@ -98,60 +75,34 @@ const peopleRows   = $("peopleRows");
 const btnPSCP      = $("pscpBtn");
 const btnHBSCP     = $("hbscpBtn");
 
-// ========= Loading Overlay + Card Popup =========
+// ========= Loading Overlay =========
 (function setupLoadingUI(){
-  // Elemen overlay/card dibuat via JS agar tidak perlu ubah HTML
   const overlay = document.createElement("div");
   overlay.id = "loadingOverlay";
   overlay.innerHTML = `
-    <div class="load-card" role="status" aria-live="polite">
-      <div class="icon spinner" id="loadIcon" aria-hidden="true"></div>
+    <div class="load-card">
+      <div class="icon spinner" id="loadIcon"></div>
       <div class="texts">
         <div class="title" id="loadTitle">Menyiapkan PDF…</div>
         <div class="desc" id="loadDesc">Mohon tunggu sebentar</div>
       </div>
-      <button class="close" id="loadClose" title="Tutup" aria-label="Tutup">&times;</button>
-    </div>
-  `;
+      <button class="close" id="loadClose">&times;</button>
+    </div>`;
   document.body.appendChild(overlay);
 
-  // Helper untuk toggle state (spinner / success / error)
   function setState(state){
     const icon = document.getElementById("loadIcon");
     icon.classList.remove("spinner","success","error");
     icon.classList.add(state);
   }
-
   window.__loadingUI = {
-    show(title="Memproses…", desc="Mohon tunggu"){
-      document.getElementById("loadTitle").textContent = title;
-      document.getElementById("loadDesc").textContent  = desc;
-      setState("spinner");
-      overlay.style.display = "flex";
-      document.body.classList.add("blur-bg");
-      try{ downloadBtn && (downloadBtn.disabled = true); }catch(_){}
-    },
-    update(title, desc){
-      if(title) document.getElementById("loadTitle").textContent = title;
-      if(desc)  document.getElementById("loadDesc").textContent  = desc;
-    },
-    success(title="PDF telah tersimpan", desc="Silakan cek folder unduhan Anda"){
-      this.update(title, desc);
-      setState("success");
-    },
-    error(title="Gagal", desc="Terjadi kendala saat mengunduh"){
-      this.update(title, desc);
-      setState("error");
-    },
-    hide(){
-      overlay.style.display = "none";
-      document.body.classList.remove("blur-bg");
-      try{ downloadBtn && (downloadBtn.disabled = false); }catch(_){}
-    }
+    show(t="Proses…", d="Tunggu"){ $("loadTitle").textContent=t; $("loadDesc").textContent=d; setState("spinner"); overlay.style.display="flex"; },
+    update(t,d){ if(t) $("loadTitle").textContent=t; if(d) $("loadDesc").textContent=d; },
+    success(t="Berhasil",d="PDF siap"){ this.update(t,d); setState("success"); },
+    error(t="Gagal",d="Ada kendala"){ this.update(t,d); setState("error"); },
+    hide(){ overlay.style.display="none"; }
   };
-
-  // Tombol tutup (optional)
-  overlay.querySelector("#loadClose")?.addEventListener("click", ()=> __loadingUI.hide());
+  overlay.querySelector("#loadClose").addEventListener("click", ()=> __loadingUI.hide());
 })();
 
 // ========= Modal sederhana untuk pesan =========
@@ -552,103 +503,76 @@ class SiteMachine {
   }
 }
 
-// ====== Boot & switch viewer site ======
-let machine=null;
-let currentSite = null; // untuk download PDF
-
-function resetSurface(){
-  assignRows.innerHTML=""; peopleRows.innerHTML="";
-  nextEl && (nextEl.textContent="-");
-  clockEl && (clockEl.textContent=fmt(new Date()));
-  assignTable.classList.add("hidden");
-  manageBox.classList.remove("hidden");
-}
-function selectSiteButtonUI(site){
-  btnPSCP?.classList.toggle("selected", site==="PSCP");
-  btnHBSCP?.classList.toggle("selected", site==="HBSCP");
-}
-function bootSite(siteKey){
-  try{ localStorage.setItem("siteSelected", siteKey); }catch(_){}
-  if(machine) machine.unmount();
-  resetSurface();
-  machine = new SiteMachine(siteKey);
-  machine.mount();
-  selectSiteButtonUI(siteKey);
-  currentSite = siteKey;
-  if (manageTitle) {
-    manageTitle.textContent = `Petugas ${siteKey}`;
-    manageBox?.setAttribute("aria-label", `Petugas ${siteKey}`);
+// ========= Save ke Drive via Apps Script =========
+async function saveToDrive(siteKey){
+  const resp = await fetch(SHEET_WEBAPP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "save", site: siteKey })
+  });
+  if(!resp.ok){
+    const txt = await resp.text().catch(()=>resp.statusText);
+    throw new Error(`Save gagal (${resp.status}) ${txt}`);
   }
-  if (downloadBtn) downloadBtn.disabled = false;
+  return resp.text();
 }
 
-// ====== Download PDF (dengan card popup + status bertahap) ======
-async function downloadViaFunctions(siteKey) {
+// ========= Download via Cloud Functions =========
+async function downloadViaFunctions(siteKey){
   const user = auth.currentUser;
-  if (!user) { showModal("Harus login terlebih dulu."); return; }
+  if(!user){ showModal("Harus login."); return; }
+  const idToken = await user.getIdToken(true);
 
-  const idToken = await user.getIdToken(true); // paksa refresh
-
-  let resp;
-  try {
-    __loadingUI.show("Menyiapkan PDF…", "Menghubungkan ke server");
-    resp = await fetch(`${FN}?site=${encodeURIComponent(siteKey)}`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${idToken}`,
-        "Accept": "application/pdf"
-      }
-    });
-  } catch (e) {
-    __loadingUI.error("Gagal terhubung", (e?.message || "Periksa koneksi Anda"));
-    setTimeout(()=> __loadingUI.hide(), 1400);
-    return;
+  const resp = await fetch(`${FN}?site=${encodeURIComponent(siteKey)}`, {
+    method:"GET", headers:{ "Authorization":`Bearer ${idToken}`, "Accept":"application/pdf" }
+  });
+  if(!resp.ok){
+    const txt = await resp.text().catch(()=>resp.statusText);
+    throw new Error(`${resp.status} ${resp.statusText} — ${txt}`);
   }
-
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => resp.statusText);
-    __loadingUI.error("Gagal mengunduh", `${resp.status} ${resp.statusText}${txt ? " — "+txt : ""}`);
-    setTimeout(()=> __loadingUI.hide(), 1600);
-    return;
-  }
-
-  __loadingUI.update("Mendownload…", "Menyiapkan berkas PDF");
   const blob = await resp.blob();
-
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = makePdfFilename(siteKey);
-  document.body.appendChild(a);
-  a.click();
-
-  // Setelah link terpicu, anggap sukses — tampilkan status & auto-hide
-  __loadingUI.success("PDF telah tersimpan", "Cek folder unduhan Anda");
-  setTimeout(()=>{
-    URL.revokeObjectURL(a.href);
-    a.remove();
-    __loadingUI.hide();
-  }, 1200);
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1200);
 }
 
-// ====== Handler klik tombol Download ======
-function onClickDownload(){
+// ========= Handler Download =========
+async function onClickDownload(){
   if(!currentSite){ showModal("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
-  downloadViaFunctions(currentSite);
+  try{
+    __loadingUI.show("Menyimpan ke Drive…","Membuat PDF");
+    await saveToDrive(currentSite);
+    __loadingUI.update("Mengunduh…","Ambil PDF dari server");
+    await downloadViaFunctions(currentSite);
+    __loadingUI.success("Selesai","PDF tersimpan di Drive & diunduh");
+  }catch(e){
+    console.error(e);
+    __loadingUI.error("Error", e.message);
+  }finally{
+    setTimeout(()=>__loadingUI.hide(),1500);
+  }
 }
 
-// ====== Init ======
+// ========= Boot site (singkat, class SiteMachine tetap ada di atas) =========
+let machine=null, currentSite=null;
+function bootSite(siteKey){
+  if(machine) machine.unmount();
+  machine = new SiteMachine(siteKey); machine.mount();
+  currentSite=siteKey;
+  manageTitle.textContent=`Petugas ${siteKey}`;
+  downloadBtn.disabled=false;
+}
+
+// ========= Init =========
 (function init(){
-  if (downloadBtn) downloadBtn.disabled = true;
-
-  const url = new URL(location.href);
-  const qsSite = url.searchParams.get("site");
+  downloadBtn.disabled=true;
   let initial="PSCP";
-  try{ initial = qsSite || localStorage.getItem("siteSelected") || "PSCP"; }catch(_){}
+  try{ initial = localStorage.getItem("siteSelected") || "PSCP"; }catch(_){ }
   bootSite(initial);
-
-  btnPSCP?.addEventListener("click", ()=> bootSite("PSCP"));
-  btnHBSCP?.addEventListener("click", ()=> bootSite("HBSCP"));
-  downloadBtn?.addEventListener("click", onClickDownload);
-
+  btnPSCP.addEventListener("click", ()=>bootSite("PSCP"));
+  btnHBSCP.addEventListener("click", ()=>bootSite("HBSCP"));
+  downloadBtn.addEventListener("click", onClickDownload);
   document.documentElement.style.visibility="visible";
 })();
