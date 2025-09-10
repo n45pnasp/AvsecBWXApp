@@ -348,7 +348,15 @@ class SiteMachine {
       } else if(Array.isArray(r.angPscp)){
         arr = r.angPscp.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
       }
-      names = arr.filter(n => n && n !== "-");
+      let arrivals = [];
+      if(Array.isArray(r.angArrival)){
+        arrivals = r.angArrival.map(p => typeof p === "object" ? (p.nama || p.name || "") : p);
+      }
+      const arrivalSet = new Set(arrivals.map(n => String(n || "").toLowerCase()));
+      names = arr.filter(n => {
+        if(!n || n === "-") return false;
+        return !arrivalSet.has(String(n).toLowerCase());
+      });
       if(names.length < 4 && r.spvCabin && r.spvCabin !== "-") names.push(r.spvCabin);
     } else if(this.siteKey === "HBSCP"){
       let arr = [r.angHbs1, r.angHbs2, r.angHbs3];
