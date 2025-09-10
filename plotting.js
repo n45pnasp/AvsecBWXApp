@@ -356,7 +356,7 @@ class SiteMachine {
       names = arr.filter(n => {
         if(!n || n === "-") return false;
         return !arrivalSet.has(String(n).toLowerCase());
-      });
+      }).slice(0, 4);
       if(names.length < 4 && r.spvCabin && r.spvCabin !== "-") names.push(r.spvCabin);
     } else if(this.siteKey === "HBSCP"){
       let arr = [r.angHbs1, r.angHbs2, r.angHbs3];
