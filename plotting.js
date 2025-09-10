@@ -24,7 +24,11 @@ const auth = getAuth(app);
 
 
 // ========= Endpoint =========
-const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf"; // Cloud Functions download
+// Pakai endpoint relatif agar tidak kena CORS ketika diakses dari Hosting.
+// Saat dijalankan secara lokal gunakan emulator Functions.
+const FN = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+  ? "http://127.0.0.1:5001/avsecbwx-4229c/us-central1/downloadPdf"
+  : "/downloadPdf"; // Cloud Functions download
 const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyANqVp-sZAscrvgzM0Be0ZQ75UsRCffBKegnc7lbR7gCcd4NyYEf8kjXHOyzADCBE_/exec"; // Apps Script save ke Drive
 
 // ====== Utility: nama file ======
