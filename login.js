@@ -360,6 +360,7 @@ window.logout = async function(){
     sessionStorage.removeItem("authProfile");
     sessionStorage.removeItem("justSignedIn");
     ok("Berhasil keluar.");
+    history.replaceState(null, "", location.pathname);
     show(welcome);
     Overlay.hide();
   }catch(e){

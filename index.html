@@ -34,10 +34,13 @@
   <!-- 1) Router untuk handle deep-link dari 404.html -->
   <script type="module" src="router.js"></script>
 
-  <!-- 2) Auto-redirect kalau sudah login -->
+  <!-- 2) Auto-redirect kalau sudah login (skip saat logout) -->
   <script type="module">
     import { redirectIfAuthed } from "./auth-guard.js";
-    redirectIfAuthed({ homePath: "home.html" });
+    const params = new URLSearchParams(location.search);
+    if (params.get("logout") !== "1") {
+      redirectIfAuthed({ homePath: "home.html" });
+    }
   </script>
 </head>
 <body class="blur-bg">
