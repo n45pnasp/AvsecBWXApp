@@ -137,12 +137,6 @@ body{
   outline:3px solid #fff;
   box-shadow:0 0 6px rgba(255,255,255,.5);
 }
-/* Warna dasar tombol mengikuti kelas global yang sudah ada */
-button.start{ background: var(--btn-ok); border-color:#1a6a3a }
-button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
-.site-btn:hover{ filter:brightness(1.05); }
-.site-btn:active{ transform: translateY(1px); }
-
 /* =========================
    CONTROLS
    ========================= */
@@ -170,6 +164,12 @@ button:not(.btn){
 button:not(.btn):hover{ filter: brightness(1.05); }
 button:not(.btn):active{ transform: translateY(1px); }
 button:not(.btn):disabled{ opacity:.55; cursor:not-allowed; filter: grayscale(30%); }
+
+/* Warna dasar tombol Start/Stop */
+button.start{ background: var(--btn-ok); border-color:#1a6a3a }
+button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
+.site-btn:hover{ filter:brightness(1.05); }
+.site-btn:active{ transform: translateY(1px); }
 
 /* Tombol Download PDF di baris bawah (full width) */
 .controls .download{
