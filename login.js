@@ -5,7 +5,7 @@ import {
   setPersistence, browserLocalPersistence, signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
-  getDatabase, ref, get, child
+  getDatabase, ref, get, child, set, remove, onDisconnect
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 /** Firebase config */
@@ -23,6 +23,16 @@ const firebaseConfig = {
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
+
+function getDeviceId(){
+  let id = localStorage.getItem("deviceId");
+  if(!id){
+    id = self.crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem("deviceId", id);
+  }
+  return id;
+}
+const DEVICE_ID = getDeviceId();
 
 // Sesi persisten
 (async () => {
@@ -271,6 +281,12 @@ async function notifyKodularAndGoHome(status, user){
     sessionStorage.setItem("justSignedIn", "1");
   } catch (_) {}
 
+  try {
+    const sRef = ref(db, `sessions/${user.uid}`);
+    await set(sRef, DEVICE_ID);
+    onDisconnect(sRef).remove().catch(()=>{});
+  } catch (_) {}
+
   // 2) (opsional) kirim ke Kodular
   const payload = JSON.stringify({
     event: "auth",
@@ -354,6 +370,10 @@ onAuthStateChanged(auth, async (user)=>{
 /** LOGOUT (dipanggil dari index.html?logout=1 atau manual) */
 window.logout = async function(){
   try{
+    const uid = auth.currentUser?.uid;
+    if(uid){
+      try { await remove(ref(db, `sessions/${uid}`)); } catch(_){ }
+    }
     await signOut(auth);
     sessionStorage.removeItem("authProfile");
     sessionStorage.removeItem("justSignedIn");

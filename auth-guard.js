@@ -1,6 +1,7 @@
 // auth-guard.js — PATCH anti-loop (Cloudflare/GitHub Pages friendly)
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
@@ -17,7 +18,8 @@ const firebaseConfig = {
 function getFb() {
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  return { app, auth };
+  const db   = getDatabase(app);
+  return { app, auth, db };
 }
 export function getFirebase() { return getFb(); }
 
@@ -53,12 +55,22 @@ function showDoc() { document.documentElement.style.visibility = "visible"; }
  * Contoh:
  *   requireAuth({ loginPath: "/index.html", hideWhileChecking: true })
  */
+function getDeviceId(){
+  let id = localStorage.getItem("deviceId");
+  if(!id){
+    id = self.crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem("deviceId", id);
+  }
+  return id;
+}
+const DEVICE_ID = getDeviceId();
+
 export function requireAuth({
   loginPath = "/index.html",
   hideWhileChecking = true,
   requireEmailVerified = false
 } = {}) {
-  const { auth } = getFb();
+  const { auth, db } = getFb();
 
   const loginAbs = resolveToAbsolute(loginPath); // URL absolut
   let watchdog = null;
@@ -93,6 +105,16 @@ export function requireAuth({
         showDoc();
         return;
       }
+
+      const sessRef = ref(db, `sessions/${user.uid}`);
+      set(sessRef, DEVICE_ID).catch(()=>{});
+      onDisconnect(sessRef).remove().catch(()=>{});
+      onValue(sessRef, s => {
+        const val = s.val();
+        if (val && val !== DEVICE_ID) {
+          signOut(auth).finally(()=>alert("Akun digunakan di perangkat lain."));
+        }
+      });
 
       if (hideWhileChecking) showDoc();
     } finally {
