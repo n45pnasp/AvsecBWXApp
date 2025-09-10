@@ -35,7 +35,6 @@ const $ = (q) => document.querySelector(q);
 const welcome    = $("#welcome");
 const login      = $("#login");
 const goLoginBtn = $("#goLoginBtn");
-const backBtn    = $("#backBtn");
 const form       = $("#loginForm");
 const emailEl    = $("#email");
 const passEl     = $("#password");
@@ -133,7 +132,6 @@ function disableForm(d){
 
 /** NAV */
 goLoginBtn?.addEventListener("click", () => show(login));
-backBtn?.addEventListener("click", () => show(welcome));
 for (const b of document.querySelectorAll(".btn")){
   b.addEventListener("pointerdown", (e)=>{
     const r = b.getBoundingClientRect();
