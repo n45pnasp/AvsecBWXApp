@@ -505,16 +505,13 @@ function bootSite(siteKey){
 
 // ====== Save ke Drive via Proxy (Apps Script) ======
 async function saveToDrive(siteKey){
-  const resp = await fetch(SHEET_WEBAPP_PROXY, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "save", site: siteKey })
-  });
+  const params = new URLSearchParams({ action: "save", site: siteKey });
+  const resp = await fetch(`${SHEET_WEBAPP_PROXY}?${params.toString()}`);
+  const txt = await resp.text().catch(()=>resp.statusText);
   if(!resp.ok){
-    const txt = await resp.text().catch(()=>resp.statusText);
     throw new Error(`Save gagal (${resp.status}) ${txt}`);
   }
-  return resp.text();
+  return txt;
 }
 
 // ====== Download langsung dari Google Sheets (export) ======
