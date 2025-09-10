@@ -53,9 +53,12 @@
 <body>
   <div class="card">
     <h1>Daftar</h1>
-    <p>Isi <b>nama lengkap (tepat 2 kata)</b>, spesifikasi, tipe akun, email, sandi, dan <b>wajib</b> upload foto.</p>
+    <p>Isi <b>kode mendaftar</b>, <b>nama lengkap (tepat 2 kata)</b>, spesifikasi, tipe akun, email, sandi, dan <b>wajib</b> upload foto.</p>
 
     <form id="registerForm" novalidate>
+      <label for="regCode">Kode Mendaftar</label>
+      <input type="text" id="regCode" placeholder="Masukkan Kode" required />
+
       <label for="nama">Nama Lengkap (2 kata)</label>
       <input type="text" id="nama" placeholder="Contoh: Budi Santoso" required />
       <div class="hint">Huruf & spasi saja</div>
@@ -144,6 +147,7 @@
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbye3DxrOPeCS58sWdKQdEFXm9xfrTzLXIYAG0v5wFKwaqfSSyQXq_32RXszqJJOdRXgKQ/exec";
     const FOLDER_ID  = "1_bk5jcyq_3xkzWw69D64qPGHMd6yNba5";
 
+    const REGISTER_CODE = "BWX-REGISTER";
     const ADMIN_CODE = "BWX-ADMIN";
 
     const app  = initializeApp(firebaseConfig);
@@ -153,6 +157,7 @@
     // EL
     const $ = (q)=>document.querySelector(q);
     const form = $("#registerForm");
+    const regCodeEl = $("#regCode");
     const namaEl = $("#nama");
     const specEl = $("#spec");
     const roleEl = $("#role");
@@ -314,12 +319,16 @@
     form.addEventListener("submit", async (e)=>{
       e.preventDefault(); msgBox.style.display="none";
 
+      const regCode = regCodeEl.value.trim();
       let nama = namaEl.value.trim();
       const spec = specEl.value.toUpperCase();
       const roleReq = roleEl.value;
       const adminCode = (document.getElementById("adminCode")?.value || "").trim();
       const email = emailEl.value.trim();
       const pass  = passEl.value;
+
+      if (!regCode) return showMsg("Kode mendaftar wajib diisi.");
+      if (regCode !== REGISTER_CODE) return showMsg("Kode mendaftar salah.");
 
       const onlyLetters = /^[\p{L}\s.'-]+$/u.test(nama);
       const words = nama.split(/\s+/).filter(Boolean);
