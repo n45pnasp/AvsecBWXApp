@@ -1,9 +1,9 @@
 // ==== Firebase SDK v9 (modular) ====
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
   getDatabase, ref, child, onValue, set, update, get, runTransaction
-} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 // ======== Konfigurasi Firebase ========
 const firebaseConfig = {
