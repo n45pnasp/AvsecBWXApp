@@ -10,7 +10,7 @@ const { app, auth } = getFirebase();
 const db = getDatabase(app);
 
 // ===== KONFIG =====
-const PROXY_ENDPOINT = "https://roster-proxy.avsecbwx2018.workers.dev";
+const PROXY_ENDPOINT = "https://sched.avsecbwx2018.workers.dev/";
 const SHARED_TOKEN   = "N45p";
 
 // ====== DOM utils & overlay ======
