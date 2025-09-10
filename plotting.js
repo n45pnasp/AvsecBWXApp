@@ -20,8 +20,9 @@ const app  = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db   = getDatabase(app);
 const auth = getAuth(app);
 
-// ========= Endpoint (GAS via Cloudflare Worker Proxy) =========
-const SHEET_WEBAPP_PROXY = "https://roster-proxy.avsecbwx2018.workers.dev/"; // Worker yang meneruskan ke GAS /exec
+// ========= Endpoint =========
+const SHEET_WEBAPP_PROXY = "https://roster-proxy.avsecbwx2018.workers.dev/"; // Proxy ke Apps Script (save ke Drive)
+const FN_DOWNLOAD = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf"; // Cloud Functions (ambil PDF)
 
 // ====== Utility: nama file ======
 function makePdfFilename(siteKey){
@@ -37,23 +38,6 @@ const SHEET_INFO = {
   HBSCP: { id: '1qOd-uWNGIguR4wTj85R5lQQF3GhTFnHru78scoTkux8', gid: '1552839141' },
 };
 
-/* ===== UTIL DOWNLOAD PDF (Google Sheets) ===== */
-const USE_PUB = false;
-const PDF_DEFAULT_OPTS = {
-  format: "pdf", size: "A4", portrait: "true", scale: "2",
-  top_margin: "0.50", bottom_margin: "0.50", left_margin: "0.50", right_margin: "0.50",
-  sheetnames: "false", printtitle: "false", pagenumbers: "true", gridlines: "false", fzr: "true"
-};
-function buildSheetPdfUrl(sheetId, gid, opts = {}) {
-  const cacheBuster = { t: Date.now() };
-  if (USE_PUB) {
-    const params = new URLSearchParams({ gid, single: "true", output: "pdf", ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
-  } else {
-    const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
-  }
-}
 
 // ========= Konfigurasi per site =========
 const SITE_CONFIG = {
@@ -514,33 +498,49 @@ async function saveToDrive(siteKey){
   return txt;
 }
 
-// ====== Download langsung dari Google Sheets (export) ======
-function downloadDirectFromSheets(siteKey){
-  const meta = SHEET_INFO[siteKey];
-  if(!meta) throw new Error("Unknown site.");
-  const url = buildSheetPdfUrl(meta.id, meta.gid || "");
-  // Buka tab baru agar tidak kena CORS/fetch restrictions dan tetap dapat file dari Google
+// ====== Download PDF via Cloud Functions ======
+async function downloadViaFunctions(siteKey){
+  const info = SHEET_INFO[siteKey];
+  if(!info?.id){
+    throw new Error("PDF belum tersedia untuk lokasi ini");
+  }
+
+  const user = auth.currentUser;
+  if (!user) { showModal("Harus login terlebih dulu."); return; }
+  const idToken = await user.getIdToken(true);
+
+  const resp = await fetch(`${FN_DOWNLOAD}?site=${encodeURIComponent(siteKey)}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${idToken}`,
+      "Accept": "application/pdf"
+    }
+  });
+  if (!resp.ok){
+    const txt = await resp.text().catch(()=> resp.statusText);
+    throw new Error(`${resp.status} ${resp.statusText}${txt ? " — "+txt : ""}`);
+  }
+
+  const blob = await resp.blob();
   const a = document.createElement("a");
-  a.href = url;
-  a.target = "_blank";
-  // atribut download sering diabaikan cross-origin, jadi kita andalkan nama default dari Google
+  a.href = URL.createObjectURL(blob);
+  a.download = makePdfFilename(siteKey);
   document.body.appendChild(a);
   a.click();
-  setTimeout(()=> a.remove(), 100);
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1200);
 }
 
 // ====== Handler klik tombol Download ======
 async function onClickDownload(){
   if(!currentSite){ showModal("Pilih lokasi dulu (PSCP / HBSCP)."); return; }
   try{
-    __loadingUI.show("Menyimpan ke Drive…","Membuat PDF di Google Drive (via GAS)");
+    __loadingUI.show("Menyimpan ke Drive…","Membuat PDF pada Google Drive");
     await saveToDrive(currentSite);
 
-    __loadingUI.update("Mengunduh PDF…","Mengekspor dari Google Sheets");
-    // Trigger export & download (dibuka di tab baru oleh browser)
-    downloadDirectFromSheets(currentSite);
+    __loadingUI.update("Mengunduh ke perangkat…","Mengambil PDF dari server");
+    await downloadViaFunctions(currentSite);
 
-    __loadingUI.success("Selesai","PDF dibuat di Drive & diunduh dari Sheets");
+    __loadingUI.success("Selesai","PDF tersimpan di Drive & diunduh");
   }catch(err){
     console.error(err);
     __loadingUI.error("Proses gagal", String(err?.message || err));
