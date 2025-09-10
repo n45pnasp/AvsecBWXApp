@@ -1,7 +1,9 @@
 // auth-guard.js — PATCH anti-loop (Cloudflare/GitHub Pages friendly)
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getDatabase, ref, runTransaction, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import {
+  getDatabase, ref, runTransaction, onValue, onDisconnect, update
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
@@ -31,8 +33,6 @@ function getBasePrefix() {
 
 // Pastikan loginPath/homePath selalu absolut terhadap base prefix
 function resolveToAbsolute(pathLike) {
-  // Jika pathLike sudah absolut (diawali "/"), gunakan apa adanya terhadap origin.
-  // Jika relatif, sandarkan ke base prefix (root repo / subfolder).
   const base = location.origin + getBasePrefix();
   return new URL(pathLike, base);
 }
@@ -82,18 +82,14 @@ export function requireAuth({
 
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
     try {
-      console.log(user ? `✅ Auth OK, UID: ${user.uid}` : "❌ Belum login Firebase");
+      console.log(user ? `✅ Auth OK, UID: ${user?.uid}` : "❌ Belum login Firebase");
 
       if (!user) {
         // Sudah di halaman login → jangan redirect lagi
         if (!isOnLoginPage(loginAbs)) {
-          // Hindari membawa hash agar tidak muncul #index.html berulang
           const next = encodeURIComponent(location.pathname + location.search);
-          // Jika URL login saat ini sudah punya ?next, jangan tumpuk lagi
           const loginURL = new URL(loginAbs.href);
-          if (!loginURL.searchParams.has("next")) {
-            loginURL.searchParams.set("next", next);
-          }
+          if (!loginURL.searchParams.has("next")) loginURL.searchParams.set("next", next);
           location.replace(loginURL.href);
         } else {
           showDoc();
@@ -106,35 +102,53 @@ export function requireAuth({
         return;
       }
 
+      // ===== Single-session lock di sessions/$uid/current (sesuai rules) =====
       const currRef = ref(db, `sessions/${user.uid}/current`);
       try {
-        const res = await runTransaction(currRef, cur => {
+        const res = await runTransaction(currRef, (cur) => {
+          // Jika kosong atau sudah milik perangkat ini → ambil/pertahankan
           if (cur === null || cur === DEVICE_ID) return DEVICE_ID;
-          return; // abort jika sudah diambil perangkat lain
+          // Jika milik perangkat lain → abort (tidak committed)
+          return;
         });
         if (!res.committed) {
-          await signOut(auth); // perangkat lain sedang aktif
+          await signOut(auth);
           alert("Akun digunakan di perangkat lain.");
           return;
         }
-      } catch (_) { /* abaikan */ }
+      } catch (_) {
+        // Abaikan error network kecil, dokumen tetap ditampilkan
+      }
 
+      // Cleanup saat tab/perangkat putus
       onDisconnect(currRef).remove().catch(()=>{});
+
+      // (Opsional) catat lastAttempt untuk audit/alert silang device
+      update(ref(db, `sessions/${user.uid}/lastAttempt`), {
+        device: DEVICE_ID,
+        ts: Date.now()
+      }).catch(()=>{});
+
+      // Monitor sesi & percobaan login dari device lain
       const sessRef = ref(db, `sessions/${user.uid}`);
-      let lastAttemptTs = 0;
-      onValue(sessRef, s => {
+      let lastSeenAttemptTs = 0;
+      onValue(sessRef, (s) => {
         const data = s.val() || {};
+
+        // Jika current berubah menjadi milik device lain → force signOut
         if (data.current && data.current !== DEVICE_ID) {
-          signOut(auth).finally(()=>alert("Akun digunakan di perangkat lain."));
+          signOut(auth).finally(() => alert("Akun digunakan di perangkat lain."));
           return;
         }
+
+        // Jika ada lastAttempt dari device lain yang lebih baru → beri tahu
         const att = data.lastAttempt;
         if (att && att.device !== DEVICE_ID) {
           const ts = att.ts || 0;
-          if (lastAttemptTs === 0) {
-            lastAttemptTs = ts;
-          } else if (ts > lastAttemptTs) {
-            lastAttemptTs = ts;
+          if (lastSeenAttemptTs === 0) {
+            lastSeenAttemptTs = ts;
+          } else if (ts > lastSeenAttemptTs) {
+            lastSeenAttemptTs = ts;
             alert("Ada perangkat lain mencoba masuk ke akun Anda.");
           }
         }
@@ -171,3 +185,4 @@ export function redirectIfAuthed({ homePath = "/home/" } = {}) {
     }
   });
 }
+
