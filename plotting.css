@@ -1,3 +1,5 @@
+@import url("./ACP.css");
+
 :root{
   --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb;
   --border:#334; --btn-ok:#14532d; --btn-stop:#7f1d1d; --card:#0b1324;
@@ -138,7 +140,7 @@ button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
   flex-wrap: wrap;           /* agar download bisa turun ke baris bawah */
   margin-bottom: 12px;
 }
-button{
+button:not(.btn){
   padding: 10px 16px;
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -151,23 +153,14 @@ button{
   flex: 1 1 0;
   white-space: nowrap;
 }
-button:hover{ filter: brightness(1.05); }
-button:active{ transform: translateY(1px); }
-button:disabled{ opacity:.55; cursor:not-allowed; filter: grayscale(30%); }
+button:not(.btn):hover{ filter: brightness(1.05); }
+button:not(.btn):active{ transform: translateY(1px); }
+button:not(.btn):disabled{ opacity:.55; cursor:not-allowed; filter: grayscale(30%); }
 
 /* Tombol Download PDF di baris bawah (full width) */
 .controls .download{
   flex: 1 0 100%;
-  background: #374151;
-  border-color: #4b5563;
-  font-weight: 600;
   margin-top: 6px;
-}
-.controls .download:hover{ background:#4b5563; }
-.controls .download:disabled{
-  opacity:.6;
-  cursor:not-allowed;
-  filter: grayscale(20%);
 }
 
 /* >>> Sembunyikan tombol download pdf saat plotting berjalan <<< */
