@@ -158,6 +158,19 @@ function applyProfile({ name, photoURL }) {
   }
 }
 
+// ===== Gunakan cache lokal lebih dulu =====
+(function applyCachedProfile(){
+  try{
+    const name = localStorage.getItem('tinydb_name');
+    const photo = localStorage.getItem('tinydb_photo');
+    if (name || photo){
+      applyProfile({ name, photoURL: photo || DEFAULT_AVATAR });
+    }
+  }catch(_){
+    // abaikan jika storage tidak tersedia
+  }
+})();
+
 // ===== Toggle foto ↔ logout =====
 (function setupGreetCard() {
   const card = $("#greetCard");
