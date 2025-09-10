@@ -17,6 +17,22 @@ body{
   -webkit-tap-highlight-color: transparent;
 }
 
+/* tombol util ala ACP */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  background:#1f2937; color:#fff; border:1px solid var(--border);
+  border-radius:12px; padding:12px; cursor:pointer; text-align:center;
+  transition:filter .15s ease, transform .06s ease;
+}
+.btn:hover{ filter:brightness(1.05); }
+.btn:active{ transform:translateY(1px); }
+.btn.full{ width:100%; }
+.btn.purple{
+  background:linear-gradient(135deg,#6a5cff,#8a7bff);
+  box-shadow:0 6px 16px rgba(106,88,255,.35);
+}
+.btn:disabled{ opacity:.55; cursor:not-allowed; }
+
 /* =========================
    APP BAR (Back + Title)
    ========================= */
@@ -121,12 +137,6 @@ body{
   outline:3px solid #fff;
   box-shadow:0 0 6px rgba(255,255,255,.5);
 }
-/* Warna dasar tombol mengikuti kelas global yang sudah ada */
-button.start{ background: var(--btn-ok); border-color:#1a6a3a }
-button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
-.site-btn:hover{ filter:brightness(1.05); }
-.site-btn:active{ transform: translateY(1px); }
-
 /* =========================
    CONTROLS
    ========================= */
@@ -138,7 +148,7 @@ button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
   flex-wrap: wrap;           /* agar download bisa turun ke baris bawah */
   margin-bottom: 12px;
 }
-button{
+button:not(.btn){
   padding: 10px 16px;
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -151,23 +161,20 @@ button{
   flex: 1 1 0;
   white-space: nowrap;
 }
-button:hover{ filter: brightness(1.05); }
-button:active{ transform: translateY(1px); }
-button:disabled{ opacity:.55; cursor:not-allowed; filter: grayscale(30%); }
+button:not(.btn):hover{ filter: brightness(1.05); }
+button:not(.btn):active{ transform: translateY(1px); }
+button:not(.btn):disabled{ opacity:.55; cursor:not-allowed; filter: grayscale(30%); }
+
+/* Warna dasar tombol Start/Stop */
+button.start{ background: var(--btn-ok); border-color:#1a6a3a }
+button.stop{  background: var(--btn-stop); border-color:#9f1d1d }
+.site-btn:hover{ filter:brightness(1.05); }
+.site-btn:active{ transform: translateY(1px); }
 
 /* Tombol Download PDF di baris bawah (full width) */
 .controls .download{
   flex: 1 0 100%;
-  background: #374151;
-  border-color: #4b5563;
-  font-weight: 600;
   margin-top: 6px;
-}
-.controls .download:hover{ background:#4b5563; }
-.controls .download:disabled{
-  opacity:.6;
-  cursor:not-allowed;
-  filter: grayscale(20%);
 }
 
 /* >>> Sembunyikan tombol download pdf saat plotting berjalan <<< */
