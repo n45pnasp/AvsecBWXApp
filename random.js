@@ -1,7 +1,7 @@
 // random.js — FINAL (Safari/iOS → ZXing; lainnya → BarcodeDetector/jsQR, sinkron code.gs + aksi suspect)
 import { requireAuth, getFirebase } from "./auth-guard.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
