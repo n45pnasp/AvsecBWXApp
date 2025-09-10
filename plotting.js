@@ -314,6 +314,8 @@ class SiteMachine {
       return [n.toLowerCase(), { name:n, spec }];
     }));
     const people = Object.fromEntries(entries);
+    // Tampilkan langsung agar tabel terisi meski penulisan ke DB gagal
+    this.renderPeople(people);
     try{ await set(this.peopleRef, people); }catch(err){ console.error("Sync roster gagal:", err); }
   }
 
