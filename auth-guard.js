@@ -1,7 +1,7 @@
 // auth-guard.js — PATCH anti-loop (Cloudflare/GitHub Pages friendly)
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getDatabase, ref, set, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { getDatabase, ref, runTransaction, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
@@ -80,7 +80,7 @@ export function requireAuth({
     watchdog = setTimeout(() => showDoc(), 3500);
   }
 
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
     try {
       console.log(user ? `✅ Auth OK, UID: ${user.uid}` : "❌ Belum login Firebase");
 
@@ -107,7 +107,18 @@ export function requireAuth({
       }
 
       const currRef = ref(db, `sessions/${user.uid}/current`);
-      set(currRef, DEVICE_ID).catch(()=>{});
+      try {
+        const res = await runTransaction(currRef, cur => {
+          if (cur === null || cur === DEVICE_ID) return DEVICE_ID;
+          return; // abort jika sudah diambil perangkat lain
+        });
+        if (!res.committed) {
+          await signOut(auth); // perangkat lain sedang aktif
+          alert("Akun digunakan di perangkat lain.");
+          return;
+        }
+      } catch (_) { /* abaikan */ }
+
       onDisconnect(currRef).remove().catch(()=>{});
       const sessRef = ref(db, `sessions/${user.uid}`);
       let lastAttemptTs = 0;

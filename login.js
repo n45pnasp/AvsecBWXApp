@@ -5,7 +5,7 @@ import {
   setPersistence, browserLocalPersistence, signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
-  getDatabase, ref, get, child, set, remove, onDisconnect
+  getDatabase, ref, get, child, set, remove, onDisconnect, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 /** Firebase config */
@@ -182,13 +182,14 @@ function getTimeOfDayUTC7(){
 async function claimSession(user){
   try{
     const currRef = ref(db, `sessions/${user.uid}/current`);
-    const snap = await get(currRef);
-    const cur = snap.val();
-    if (cur && cur !== DEVICE_ID){
+    const res = await runTransaction(currRef, cur => {
+      if (cur === null || cur === DEVICE_ID) return DEVICE_ID;
+      return; // abort jika sudah ada perangkat lain
+    });
+    if (!res.committed){
       await set(ref(db, `sessions/${user.uid}/lastAttempt`), { device: DEVICE_ID, ts: Date.now() });
       return false;
     }
-    await set(currRef, DEVICE_ID);
     onDisconnect(currRef).remove().catch(()=>{});
     return true;
   }catch(_){ return true; }
