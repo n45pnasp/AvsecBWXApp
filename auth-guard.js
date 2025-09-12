@@ -50,6 +50,34 @@ function isOnLoginPage(loginPathAbsURL) {
 function hideDoc() { document.documentElement.style.visibility = "hidden"; }
 function showDoc() { document.documentElement.style.visibility = "visible"; }
 
+function showSingleDeviceModal(msg) {
+  let modal = document.getElementById("singleDeviceModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "singleDeviceModal";
+    modal.innerHTML = `
+      <div class="sdm-backdrop"></div>
+      <div class="sdm-dialog">
+        <p id="sdm-text"></p>
+        <button id="sdm-close">OK</button>
+      </div>`;
+    document.body.appendChild(modal);
+    const style = document.createElement("style");
+    style.textContent = `
+#singleDeviceModal{position:fixed;top:0;left:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;z-index:9999;}
+#singleDeviceModal .sdm-backdrop{position:absolute;width:100%;height:100%;top:0;left:0;background:rgba(0,0,0,.5);}
+#singleDeviceModal .sdm-dialog{position:relative;background:#fff;padding:20px;border-radius:8px;max-width:90%;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.3);}
+#singleDeviceModal button{margin-top:15px;padding:6px 12px;}
+    `;
+    document.head.appendChild(style);
+    modal.querySelector("#sdm-close").addEventListener("click", () => {
+      modal.style.display = "none";
+    });
+  }
+  modal.querySelector("#sdm-text").textContent = msg;
+  modal.style.display = "flex";
+}
+
 /**
  * Guard: panggil di halaman yang WAJIB login (home.html, dll.)
  * Contoh:
@@ -149,7 +177,7 @@ export function requireAuth({
             lastSeenAttemptTs = ts;
           } else if (ts > lastSeenAttemptTs) {
             lastSeenAttemptTs = ts;
-            alert("Ada perangkat lain mencoba masuk ke akun Anda, tetapi login tersebut ditolak.");
+            showSingleDeviceModal("Ada perangkat lain mencoba masuk ke akun Anda, Web ini dibatasi hanya bisa login 1 device saja");
           }
         }
       });
