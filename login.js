@@ -346,7 +346,7 @@ form?.addEventListener("submit", async (e)=>{
     if (!okSess){
       await signOut(auth);
       Overlay.hide();
-      err("Akun sedang digunakan di perangkat lain.");
+      err("Akun ini sudah aktif di perangkat lain. Login ditolak.");
       disableForm(false);
       return;
     }

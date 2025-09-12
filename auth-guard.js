@@ -149,7 +149,7 @@ export function requireAuth({
             lastSeenAttemptTs = ts;
           } else if (ts > lastSeenAttemptTs) {
             lastSeenAttemptTs = ts;
-            alert("Ada perangkat lain mencoba masuk ke akun Anda.");
+            alert("Ada perangkat lain mencoba masuk ke akun Anda, tetapi login tersebut ditolak.");
           }
         }
       });
