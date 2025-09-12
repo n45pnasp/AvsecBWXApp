@@ -141,7 +141,7 @@ export function requireAuth({
         });
         if (!res.committed) {
           await signOut(auth);
-          alert("Akun digunakan di perangkat lain.");
+          showSingleDeviceModal("Akun digunakan di perangkat lain. Web ini dibatasi hanya bisa login 1 device saja");
           return;
         }
       } catch (_) {
@@ -165,7 +165,9 @@ export function requireAuth({
 
         // Jika current berubah menjadi milik device lain → force signOut
         if (data.current && data.current !== DEVICE_ID) {
-          signOut(auth).finally(() => alert("Akun digunakan di perangkat lain."));
+          signOut(auth).finally(() => {
+            showSingleDeviceModal("Akun digunakan di perangkat lain. Web ini dibatasi hanya bisa login 1 device saja");
+          });
           return;
         }
 
