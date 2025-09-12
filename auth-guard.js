@@ -65,9 +65,10 @@ function showSingleDeviceModal(msg) {
     const style = document.createElement("style");
     style.textContent = `
 #singleDeviceModal{position:fixed;top:0;left:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;z-index:9999;}
-#singleDeviceModal .sdm-backdrop{position:absolute;width:100%;height:100%;top:0;left:0;background:rgba(0,0,0,.5);}
-#singleDeviceModal .sdm-dialog{position:relative;background:#fff;padding:20px;border-radius:8px;max-width:90%;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.3);}
-#singleDeviceModal button{margin-top:15px;padding:6px 12px;}
+#singleDeviceModal .sdm-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(2px);}
+#singleDeviceModal .sdm-dialog{position:relative;background:var(--card,#111827);color:var(--text,#e5e7eb);padding:24px 20px;border-radius:16px;max-width:90%;text-align:center;border:1px solid rgba(148,163,184,.25);box-shadow:0 6px 16px rgba(0,0,0,.3);}
+#singleDeviceModal button{margin-top:18px;padding:10px 18px;border:none;border-radius:12px;background:var(--accent,#A855F7);color:#fff;font-weight:600;cursor:pointer;}
+#singleDeviceModal button:hover{background:var(--accent-2,#6B21A8);}
     `;
     document.head.appendChild(style);
     modal.querySelector("#sdm-close").addEventListener("click", () => {
