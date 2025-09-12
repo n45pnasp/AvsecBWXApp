@@ -125,7 +125,7 @@
         <div class="app-icon"><img src="icons/key-map.png" alt="Key Map"></div>
         <span>Key Map</span>
       </a>
-      <a class="dock-btn" href="plotting.html">
+      <a class="dock-btn is-disabled" href="#" id="plottingBtn" aria-disabled="true">
         <div class="app-icon"><img src="icons/plotting.png" alt="Plotting"></div>
         <span>Plotting</span>
       </a>
@@ -135,6 +135,11 @@
       </a>
     </div>
   </nav>
+
+  <!-- Spinner lookup schedule -->
+  <div id="lookupOverlay" hidden>
+    <div class="spinner"></div>
+  </div>
 
   <!-- Auth Guard: wajib login -->
   <script type="module">

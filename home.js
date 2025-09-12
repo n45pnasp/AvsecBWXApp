@@ -231,7 +231,60 @@ onAuthStateChanged(auth, async (user) => {
   try {
     const p = await fetchProfile(user);
     applyProfile({ name: p.name, photoURL: p.photoURL });
+    lookupSchedule(p.name);
   } catch {
-    applyProfile({ name: resolveDisplayName(user), photoURL: DEFAULT_AVATAR });
+    const nm = resolveDisplayName(user);
+    applyProfile({ name: nm, photoURL: DEFAULT_AVATAR });
+    lookupSchedule(nm);
   }
 });
+
+// ===== Cek roster untuk akses plotting =====
+async function lookupSchedule(name){
+  const overlay = document.getElementById('lookupOverlay');
+  overlay?.classList.add('show');
+  try{
+    const url = new URL('https://sched.avsecbwx2018.workers.dev/');
+    url.searchParams.set('action','getRoster');
+    url.searchParams.set('token','N45p');
+    url.searchParams.set('_', Date.now());
+
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      cache: 'no-store',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    const ctype = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ctype.includes('application/json')) {
+      const text = await res.text().catch(() => '');
+      throw new Error(text || 'Respon tidak valid');
+    }
+
+    const payload = await res.json();
+    if (!payload || !payload.ok) {
+      throw new Error(payload?.error || `HTTP ${res.status}`);
+    }
+    const data = payload.data || payload;
+
+    const names = (data.rosters || []).map(r => String(r.nama || '').trim().toUpperCase());
+    const isOn = names.includes((name || '').trim().toUpperCase());
+    const btn = document.getElementById('plottingBtn');
+    if (btn) {
+      if (isOn) {
+        btn.href = 'plotting.html';
+        btn.classList.remove('is-disabled');
+        btn.removeAttribute('aria-disabled');
+      } else {
+        btn.href = '#';
+        btn.classList.add('is-disabled');
+        btn.setAttribute('aria-disabled', 'true');
+      }
+    }
+  } catch (err) {
+    console.error('Roster lookup failed', err);
+    alert('Gagal mengambil data jadwal: ' + (err?.message || err));
+  } finally {
+    overlay?.classList.remove('show');
+  }
+}
