@@ -11,16 +11,16 @@
   <meta name="color-scheme" content="dark light" />
 
   <!-- ====== ICONS & MANIFEST ====== -->
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
-  <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
-  <link rel="icon" type="image/png" sizes="128x128" href="/favicon-128.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
-  <link rel="icon" type="image/png" sizes="256x256" href="/favicon-256.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512.png">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <link rel="manifest" href="/site.webmanifest">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="icons/favicon-128.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/favicon-192.png">
+  <link rel="icon" type="image/png" sizes="256x256" href="icons/favicon-256.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/favicon-512.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
   <meta name="theme-color" content="#000000">
 
   <!-- ====== OPEN GRAPH / SOCIAL ====== -->
@@ -34,10 +34,13 @@
   <!-- 1) Router untuk handle deep-link dari 404.html -->
   <script type="module" src="router.js"></script>
 
-  <!-- 2) Auto-redirect kalau sudah login -->
+  <!-- 2) Auto-redirect kalau sudah login (skip saat logout) -->
   <script type="module">
     import { redirectIfAuthed } from "./auth-guard.js";
-    redirectIfAuthed({ homePath: "home.html" });
+    const params = new URLSearchParams(location.search);
+    if (params.get("logout") !== "1") {
+      redirectIfAuthed({ homePath: "home.html" });
+    }
   </script>
 </head>
 <body class="blur-bg">

@@ -84,7 +84,14 @@ body{
 /* Konten salam */
 .greet-text{ flex:1 1 auto; min-width:0; margin-top: 10px; }
 .greet-big{ font-size: clamp(18px, 5.2vw, 28px); font-weight:800; color:#f1f5ff; }
-.name-big{  font-size: clamp(28px, 8.6vw, 40px); font-weight:900; color:#fff; line-height:1.08; letter-spacing:.2px; text-wrap: balance; }
+.name-big {
+  font-size: clamp(20px, 7vw, 36px); /* lebih kecil dan compact */
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.08;
+  letter-spacing: .2px;
+  text-wrap: balance;
+}
 
 /* Profil / Logout slot */
 .profile-slot{ position:relative; flex:0 0 auto; width: clamp(68px, 18vw, 88px); height: clamp(68px, 18vw, 88px); }

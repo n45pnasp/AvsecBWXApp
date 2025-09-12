@@ -3,14 +3,14 @@
 // =============================
 
 import { requireAuth, getFirebase } from "./auth-guard.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const { app, auth } = getFirebase();
 const db = getDatabase(app);
 
 // ===== KONFIG =====
-const PROXY_ENDPOINT = "https://roster-proxy.avsecbwx2018.workers.dev";
+const PROXY_ENDPOINT = "https://sched.avsecbwx2018.workers.dev/";
 const SHARED_TOKEN   = "N45p";
 
 // ====== DOM utils & overlay ======
@@ -124,12 +124,21 @@ async function fetchData(){
   url.searchParams.set("token", SHARED_TOKEN);
   url.searchParams.set("_", Date.now());
 
-  const res = await fetch(url.toString(), { method: "GET", cache: "no-store" });
+  const res = await fetch(url.toString(), {
+    method: "GET",
+    cache: "no-store",
+    headers: { "Accept": "application/json" }
+  });
+
   const ctype = (res.headers.get("content-type") || "").toLowerCase();
   if (!ctype.includes("application/json")) {
-    const text = await res.text().catch(()=> "");
+    const text = await res.text().catch(() => "");
+    if (text.trim().startsWith("OK: Web App up")) {
+      throw new Error("Layanan roster belum siap. Coba lagi nanti.");
+    }
     throw new Error(`non-json response${text ? `: ${text.slice(0,120)}…` : ""}`);
   }
+
   const data = await res.json();
   if (!data || !data.ok) throw new Error(data?.error || `HTTP ${res.status}`);
   return data;

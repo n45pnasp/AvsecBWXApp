@@ -3,7 +3,7 @@
 // - Fallback: isi lokasi/supervisor dari roster sebelum submit jika kosong
 // - 9 area kendaraan dipetakan dengan nama kanonik (selalu match ke code.gs)
 import { requireAuth } from "./auth-guard.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 const SCRIPT_URL   = "https://logacp.avsecbwx2018.workers.dev/";
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";

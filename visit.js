@@ -1,5 +1,5 @@
 import { requireAuth, getFirebase } from "./auth-guard.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 const SCRIPT_URL   = "https://pasvisit.avsecbwx2018.workers.dev/"; // POST add/delete + GET list
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";

@@ -5,7 +5,7 @@ import {
   setPersistence, browserLocalPersistence, signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
-  getDatabase, ref, get, child
+  getDatabase, ref, get, child, set, remove, onDisconnect, runTransaction
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 /** Firebase config */
@@ -24,6 +24,16 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
 
+function getDeviceId(){
+  let id = localStorage.getItem("deviceId");
+  if(!id){
+    id = self.crypto?.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem("deviceId", id);
+  }
+  return id;
+}
+const DEVICE_ID = getDeviceId();
+
 // Sesi persisten
 (async () => {
   try { await setPersistence(auth, browserLocalPersistence); }
@@ -35,7 +45,6 @@ const $ = (q) => document.querySelector(q);
 const welcome    = $("#welcome");
 const login      = $("#login");
 const goLoginBtn = $("#goLoginBtn");
-const backBtn    = $("#backBtn");
 const form       = $("#loginForm");
 const emailEl    = $("#email");
 const passEl     = $("#password");
@@ -133,7 +142,6 @@ function disableForm(d){
 
 /** NAV */
 goLoginBtn?.addEventListener("click", () => show(login));
-backBtn?.addEventListener("click", () => show(welcome));
 for (const b of document.querySelectorAll(".btn")){
   b.addEventListener("pointerdown", (e)=>{
     const r = b.getBoundingClientRect();
@@ -168,6 +176,23 @@ function getTimeOfDayUTC7(){
     if (hour >= 15 && hour < 18) return "Sore";
     return "Malam";
   }
+}
+
+/** Klaim sesi unik untuk perangkat ini; kembalikan false jika sudah ada yang aktif */
+async function claimSession(user){
+  try{
+    const currRef = ref(db, `sessions/${user.uid}/current`);
+    const res = await runTransaction(currRef, cur => {
+      if (cur === null || cur === DEVICE_ID) return DEVICE_ID;
+      return; // abort jika sudah ada perangkat lain
+    });
+    if (!res.committed){
+      await set(ref(db, `sessions/${user.uid}/lastAttempt`), { device: DEVICE_ID, ts: Date.now() });
+      return false;
+    }
+    onDisconnect(currRef).remove().catch(()=>{});
+    return true;
+  }catch(_){ return true; }
 }
 
 /** ===== Offline Sheet ===== */
@@ -317,6 +342,14 @@ form?.addEventListener("submit", async (e)=>{
   Overlay.show("Memproses login…");
   try{
     const cred = await signInWithEmailAndPassword(auth, email, pass);
+    const okSess = await claimSession(cred.user);
+    if (!okSess){
+      await signOut(auth);
+      Overlay.hide();
+      err("Akun ini sudah aktif di perangkat lain. Login ditolak.");
+      disableForm(false);
+      return;
+    }
     Overlay.show("Mengalihkan ke Home…");
     await notifyKodularAndGoHome("success", cred.user);
   }catch(e){
@@ -345,6 +378,13 @@ onAuthStateChanged(auth, async (user)=>{
   }
 
   if (user){
+    const okSess = await claimSession(user);
+    if (!okSess){
+      await signOut(auth);
+      Overlay.hide();
+      show(welcome);
+      return;
+    }
     Overlay.show("Mengalihkan ke Home…");
     await notifyKodularAndGoHome("already_signed_in", user);
   }else{
@@ -356,10 +396,15 @@ onAuthStateChanged(auth, async (user)=>{
 /** LOGOUT (dipanggil dari index.html?logout=1 atau manual) */
 window.logout = async function(){
   try{
+    const uid = auth.currentUser?.uid;
+    if(uid){
+      try { await remove(ref(db, `sessions/${uid}`)); } catch(_){ }
+    }
     await signOut(auth);
     sessionStorage.removeItem("authProfile");
     sessionStorage.removeItem("justSignedIn");
     ok("Berhasil keluar.");
+    history.replaceState(null, "", location.pathname);
     show(welcome);
     Overlay.hide();
   }catch(e){
