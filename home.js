@@ -75,6 +75,16 @@ function resolveDisplayName(user){
   return "Pengguna";
 }
 
+function normalizeName(n) {
+  return String(n || "")
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z\s]/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
 // ===== URL helpers (Drive primary+fallback) =====
 function cleanURL(s) {
   if (!s) return "";
@@ -240,14 +250,14 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ===== Cek roster untuk akses plotting =====
-async function lookupSchedule(name){
-  const overlay = document.getElementById('lookupOverlay');
-  overlay?.classList.add('show');
-  try{
-    const url = new URL('https://sched.avsecbwx2018.workers.dev/');
-    url.searchParams.set('action','getRoster');
-    url.searchParams.set('token','N45p');
-    url.searchParams.set('_', Date.now());
+  async function lookupSchedule(name){
+    const overlay = document.getElementById('lookupOverlay');
+    overlay?.classList.add('show');
+    try{
+      const url = new URL('https://sched.avsecbwx2018.workers.dev/');
+      url.searchParams.set('action','getRoster');
+      url.searchParams.set('token','N45p');
+      url.searchParams.set('_', Date.now());
 
     const res = await fetch(url.toString(), {
       method: 'GET',
@@ -262,18 +272,31 @@ async function lookupSchedule(name){
     }
 
     const payload = await res.json();
-    if (!payload || !payload.ok) {
-      throw new Error(payload?.error || `HTTP ${res.status}`);
-    }
-    const data = payload.data || payload;
-
-    const names = (data.rosters || []).map(r => String(r.nama || '').trim().toUpperCase());
-    const isOn = names.includes((name || '').trim().toUpperCase());
-    const btn = document.getElementById('plottingBtn');
-    if (btn) {
-      if (isOn) {
-        btn.href = 'plotting.html';
-        btn.classList.remove('is-disabled');
+      if (!payload || !payload.ok) {
+        throw new Error(payload?.error || `HTTP ${res.status}`);
+      }
+      const data = payload.data || payload;
+      const rosterNames = (data.rosters || []).map(r => normalizeName(r.nama));
+      const cfg = data.config || {};
+      const extra = [
+        cfg.chief,
+        cfg.assistant_chief,
+        cfg.chief2,
+        cfg.assistant_chief2,
+        cfg.supervisor_pscp,
+        cfg.supervisor_hbscp,
+        cfg.supervisor_cctv,
+        cfg.supervisor_patroli,
+        cfg.supervisor_pos1,
+        cfg.pic_malam,
+      ].map(normalizeName);
+      const names = new Set([...rosterNames, ...extra].filter(Boolean));
+      const isOn = names.has(normalizeName(name));
+      const btn = document.getElementById('plottingBtn');
+      if (btn) {
+        if (isOn) {
+          btn.href = 'plotting.html';
+          btn.classList.remove('is-disabled');
         btn.removeAttribute('aria-disabled');
       } else {
         btn.href = '#';
@@ -283,8 +306,8 @@ async function lookupSchedule(name){
     }
   } catch (err) {
     console.error('Roster lookup failed', err);
-    alert('Gagal mengambil data jadwal: ' + (err?.message || err));
-  } finally {
-    overlay?.classList.remove('show');
+      alert('Gagal mengambil data jadwal: ' + (err?.message || err));
+    } finally {
+      overlay?.classList.remove('show');
+    }
   }
-}
