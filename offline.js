@@ -15,6 +15,7 @@ function ensureStyle(){
   const style = document.createElement('style');
   style.id = 'offline-style';
   style.textContent = `
+label{user-select:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none}
 .offline-sheet{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:8px;padding:14px 16px;background:#c62828;border-top-left-radius:var(--radius,12px);border-top-right-radius:var(--radius,12px);transform:translateY(100%);transition:transform .3s ease;z-index:200;}
 .offline-sheet.show{transform:translateY(0);}
 .offline-icon{width:32px;height:32px;flex:0 0 auto;display:grid;place-items:center;}
