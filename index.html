@@ -20,15 +20,22 @@
   <link rel="icon" type="image/png" sizes="256x256" href="icons/favicon-256.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icons/favicon-512.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json" type="application/manifest+json">
   <meta name="theme-color" content="#000000">
+
+  <!-- iOS PWA Support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- Safari pinned tab -->
+  <link rel="mask-icon" href="icons/safari-pinned-tab.svg" color="#000000">
 
   <!-- ====== OPEN GRAPH / SOCIAL ====== -->
   <meta property="og:site_name" content="Avsec BWX App">
   <meta property="og:title" content="Avsec BWX App">
   <meta property="og:description" content="Aviation Security BWX Application">
-  <meta property="og:image" content="https://avsecbwxapp.online/favicon-512.png">
-  <meta property="og:url" content="https://avsecbwxapp.online/">
+  <meta property="og:image" content="https://n45pnasp.github.io/AvsecBWXApp/icons/favicon-512.png">
+  <meta property="og:url" content="https://n45pnasp.github.io/AvsecBWXApp">
   <meta name="twitter:card" content="summary_large_image">
 
   <!-- 1) Router untuk handle deep-link dari 404.html -->
@@ -49,7 +56,7 @@
       <!-- WELCOME -->
       <section id="welcome" class="section active" role="region" aria-label="Welcome">
         <div class="logo-wrap">
-          <img id="appLogo" alt="Logo Aplikasi" />
+          <img id="appLogo" src="icons/favicon-192.png" alt="Logo Aplikasi" />
         </div>
         <h1 class="title">Selamat Datang 👋</h1>
 
@@ -95,7 +102,7 @@
   </main>
 
   <!-- OPSIONAL: override logo default -->
-  <!-- <script>window.LOGO_URL = "https://avsecbwxapp.online/favicon-192.png";</script> -->
+  <!-- <script>window.LOGO_URL = "https://n45pnasp.github.io/AvsecBWXApp/icons/favicon-192.png";</script> -->
 
   <!-- Loading overlay -->
   <div id="loadingOverlay" style="display:flex">
@@ -110,6 +117,10 @@
 
   <script type="module" src="login.js"></script>
   <script type="module" src="offline.js"></script>
-  <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js"));}</script>
+  <script>
+    if("serviceWorker" in navigator){
+      window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js"));
+    }
+  </script>
 </body>
 </html>
