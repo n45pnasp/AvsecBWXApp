@@ -262,3 +262,27 @@ body{
   animation:spin .9s linear infinite;
 }
 @keyframes spin{ to{ transform:rotate(360deg); } }
+
+/* Offline bottom sheet */
+.offline-sheet{
+  position:fixed; left:0; right:0; bottom:0;
+  display:flex; align-items:center; gap:12px;
+  padding:14px 16px;
+  background:rgba(10,15,26,.95);
+  border-top-left-radius:var(--radius);
+  border-top-right-radius:var(--radius);
+  border:1px solid var(--border);
+  transform:translateY(100%);
+  transition:transform .3s ease;
+  z-index:200;
+}
+.offline-sheet.show{ transform:translateY(0); }
+.offline-icon{
+  width:40px; height:40px; flex:0 0 auto;
+  border-radius:50%;
+  display:grid; place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  box-shadow:0 6px 16px rgba(106,88,255,.35);
+}
+.offline-icon svg{ width:24px; height:24px; color:#fff; }
+.offline-msg{ flex:1; font-size:14px; color:var(--text); }

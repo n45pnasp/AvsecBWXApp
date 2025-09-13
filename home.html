@@ -141,6 +141,19 @@
     <div class="spinner"></div>
   </div>
 
+  <!-- Bottom sheet: offline notice -->
+  <div id="offlineSheet" class="offline-sheet" role="alert" aria-live="assertive">
+    <div class="offline-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="M2 8.82A15.91 15.91 0 0 1 12 4a15.91 15.91 0 0 1 10 4.82" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M5 12.55A11.86 11.86 0 0 1 12 9a11.86 11.86 0 0 1 7 3.55" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M8.5 16.1A7.42 7.42 0 0 1 12 14a7.42 7.42 0 0 1 3.5 2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" stroke-width="2"/>
+      </svg>
+    </div>
+    <div class="offline-msg">Koneksi terputus</div>
+  </div>
+
   <!-- Auth Guard: wajib login -->
   <script type="module">
     import { requireAuth } from "./auth-guard.js";

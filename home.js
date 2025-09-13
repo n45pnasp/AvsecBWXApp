@@ -321,3 +321,18 @@ onAuthStateChanged(auth, async (user) => {
       overlay?.classList.remove('show');
     }
   }
+
+// ===== Offline bottom sheet =====
+function updateOfflineSheet(){
+  const sheet = document.getElementById('offlineSheet');
+  if (!sheet) return;
+  if (navigator.onLine){
+    sheet.classList.remove('show');
+  } else {
+    sheet.classList.add('show');
+  }
+}
+
+window.addEventListener('online', updateOfflineSheet);
+window.addEventListener('offline', updateOfflineSheet);
+updateOfflineSheet();
