@@ -7,11 +7,25 @@
   <link rel="stylesheet" href="lb_all.css" />
   <!-- Sembunyikan sampai status login dicek -->
   <style>html{visibility:hidden}</style>
+
+  <!-- BASE HREF dinamis agar semua link relatif nempel ke subpath repo -->
+  <script>
+  (function ensureProjectBase(){
+    // Hanya terapkan di GitHub Pages; biarkan kosong di custom domain
+    if (!location.hostname.endsWith("github.io")) return;
+    const parts = location.pathname.split("/").filter(Boolean);
+    const base = parts.length ? `/${parts[0]}/` : "/";
+    let el = document.querySelector("base");
+    if (!el) { el = document.createElement("base"); document.head.prepend(el); }
+    el.setAttribute("href", base);
+  })();
+  </script>
 </head>
 <body>
   <!-- App Bar -->
   <div class="app-bar">
-    <a class="back-btn" aria-label="Kembali" href="index.html">
+    <!-- Back aman: pakai JS supaya tidak nyasar ke root user -->
+    <a class="back-btn" aria-label="Kembali" href="#" onclick="safeBackTo('index.html');return false;">
       <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M15 6L9 12L15 18"></path>
       </svg>
@@ -158,14 +172,54 @@
     </div>
   </div>
 
+  <!-- ====== Penjaga subpath & Back aman (GLOBAL) ====== -->
+  <script>
+  // Selalu tetap di subpath repo; pantulkan jika keluar (mis. saat back)
+  (function stayInSubpath(){
+    function base(){ const p=location.pathname.split("/").filter(Boolean); return p.length?`/${p[0]}/`:"/"; }
+    const b = base();
+    if (location.hostname.endsWith("github.io") && !location.pathname.startsWith(b)) {
+      location.replace(location.origin + b);
+    }
+    window.addEventListener("popstate", () => {
+      if (location.hostname.endsWith("github.io") && !location.pathname.startsWith(b)) {
+        location.replace(location.origin + b);
+      }
+    });
+  })();
+
+  // Back aman: kembali jika referrer masih di scope; kalau tidak, ke index.html di subpath
+  function getBasePrefix(){ const parts=location.pathname.split("/").filter(Boolean); return parts.length?`/${parts[0]}/`:"/"; }
+  function toAbsolute(pathLike){
+    const base = location.origin + getBasePrefix();
+    if (!pathLike) pathLike = "index.html";
+    if (pathLike.startsWith("/")) return new URL(pathLike, location.origin).href;
+    return new URL(pathLike.replace(/^\/+/, ""), base).href;
+  }
+  function safeBackTo(fallback="index.html"){
+    try{
+      const want = location.origin + getBasePrefix();
+      const ref  = document.referrer || "";
+      if (ref.startsWith(want)) {
+        history.back();
+        setTimeout(()=>{ if (document.visibilityState === "visible") location.replace(toAbsolute(fallback)); }, 400);
+      } else {
+        location.replace(toAbsolute(fallback));
+      }
+    } catch {
+      location.replace(toAbsolute(fallback));
+    }
+  }
+  </script>
+
   <!-- Auth Guard: wajib login -->
   <script type="module">
-    import { requireAuth } from "./auth-guard.js";
+    import { requireAuth } from "./auth-guard.js?v=20250913c";
     requireAuth({ loginPath: "index.html", hideWhileChecking: true });
   </script>
 
   <!-- Script utama -->
-  <script type="module" src="lb_all.js"></script>
-  <script type="module" src="offline.js"></script>
+  <script type="module" src="lb_all.js?v=20250913c"></script>
+  <script type="module" src="offline.js?v=20250913c"></script>
 </body>
 </html>
