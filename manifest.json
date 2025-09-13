@@ -2,6 +2,7 @@
   "name": "Avsec BWX App",
   "short_name": "BWX",
   "description": "Aviation Security BWX Application",
+  "lang": "id",
   "start_url": "index.html",
   "scope": ".",
   "display": "standalone",
