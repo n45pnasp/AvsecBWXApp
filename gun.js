@@ -198,7 +198,10 @@ function injectScanStyles(){
     .scan-shutter{position:absolute;left:50%;bottom:max(24px,calc(18px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);width:74px;height:74px;border-radius:999px;background:#fff;border:4px solid rgba(255,255,255,.35);box-shadow:0 6px 22px rgba(0,0,0,.45), inset 0 0 0 4px #fff;pointer-events:auto;transition: transform .06s ease, opacity .15s ease, filter .15s ease}
     .scan-shutter:active{transform:translateX(-50%) scale(.96)}
     .scan-shutter.disabled,.scan-shutter:disabled{opacity:.45;filter:grayscale(60%);pointer-events:auto}
-    .scan-msg-portrait{position:absolute;left:50%;bottom:max(110px,calc(96px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:10px 14px;border-radius:12px;letter-spacing:.2px;box-shadow:0 4px 12px rgba(0,0,0,.35);display:none}
+    .scan-msg-portrait{position:absolute;left:50%;bottom:max(110px,calc(96px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);width:74px;height:74px;background:rgba(0,0,0,.55);border-radius:999px;display:none;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.35)}
+    .scan-msg-portrait .rotate-icon{width:36px;height:36px;border:3px solid #fff;border-radius:50%;position:relative}
+    .scan-msg-portrait .rotate-icon:before{content:"";position:absolute;top:6px;left:6px;width:20px;height:20px;border:3px solid #fff;border-left-color:transparent;border-bottom-color:transparent;border-radius:50%;transform:rotate(45deg)}
+    .scan-msg-portrait .rotate-icon:after{content:"";position:absolute;top:4px;right:2px;width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:8px solid #fff;transform:rotate(45deg)}
   `;
   const style = document.createElement('style'); style.id='scan-style'; style.textContent = css; document.head.appendChild(style);
 }
@@ -267,7 +270,9 @@ function ensureOverlay(){
       <div class="scan-topbar">
         <button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button>
       </div>
-      <div class="scan-msg-portrait" role="alert" aria-live="assertive">Putar perangkat ke horizontal untuk memotret</div>
+      <div class="scan-msg-portrait" role="alert" aria-live="assertive" aria-label="Putar perangkat ke mode horizontal">
+        <div class="rotate-icon" aria-hidden="true"></div>
+      </div>
       <button id="scan-shutter" class="scan-shutter" aria-label="Ambil gambar" title="Ambil gambar"></button>
     `;
   } else {
@@ -329,8 +334,9 @@ function ensureOverlay(){
 
 
 function isLandscape(){
-  if (typeof deviceTilt === 'number' && Math.abs(deviceTilt) >= 60) {
-    return true;
+  if (typeof deviceTilt === 'number') {
+    const tilt = Math.abs(deviceTilt);
+    if (tilt >= 80 && tilt <= 120) return true;
   }
   if (screen.orientation && typeof screen.orientation.type === "string") {
     return screen.orientation.type.startsWith("landscape");
@@ -352,7 +358,7 @@ function updateCaptureState(){
     btn.classList.toggle('disabled', !onLS);
   }
   if (msg){
-    msg.style.display = onLS ? 'none' : 'block';
+    msg.style.display = onLS ? 'none' : 'flex';
   }
 }
 
@@ -360,14 +366,26 @@ async function captureFrame(){
   if (!scanState.video) throw new Error('Video belum siap');
 
   const vid = scanState.video;
-  const w   = vid.videoWidth  || 1280;
-  const h   = vid.videoHeight || 720;
+  let w   = vid.videoWidth  || 1280;
+  let h   = vid.videoHeight || 720;
 
   const c   = document.createElement('canvas');
-  c.width   = w;
-  c.height  = h;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(vid, 0, 0, w, h);
+  let ctx;
+
+  if (h > w){
+    c.width = h;
+    c.height = w;
+    ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.translate(h/2, w/2);
+    ctx.rotate(-Math.PI/2);
+    ctx.drawImage(vid, -w/2, -h/2, w, h);
+    [w, h] = [h, w];
+  } else {
+    c.width = w;
+    c.height = h;
+    ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(vid, 0, 0, w, h);
+  }
 
   // Kompres gambar maksimal 800px pada sisi terpanjang
   const max = Math.max(w, h);
