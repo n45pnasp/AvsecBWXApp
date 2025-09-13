@@ -1,9 +1,7 @@
-// auth-guard.js — PATCH anti-loop & robust ?next= handling (Cloudflare/GitHub Pages friendly)
+// auth-guard.js — robust ?next= handling + single-device lock
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import {
-  getDatabase, ref, runTransaction, onValue, onDisconnect, update
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { getDatabase, ref, runTransaction, onValue, onDisconnect, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
@@ -16,9 +14,7 @@ const firebaseConfig = {
   databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
 };
 
-/* =========================
- * Firebase singleton
- * ========================= */
+/* ===== Firebase singleton ===== */
 function getFb() {
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   const auth = getAuth(app);
@@ -27,17 +23,11 @@ function getFb() {
 }
 export function getFirebase() { return getFb(); }
 
-/* =========================
- * Helpers: base & URL
- * ========================= */
-
-// Base prefix (untuk Pages dengan subpath, mis. /AvsecBWXApp/)
+/* ===== Helpers ===== */
 function getBasePrefix() {
   const parts = location.pathname.split("/").filter(Boolean);
   return parts.length > 0 ? `/${parts[0]}/` : "/";
 }
-
-/** Decode repeatedly until stable (maks 3x) */
 function safeMultiDecode(s) {
   if (s == null) return "";
   let prev = String(s);
@@ -46,48 +36,35 @@ function safeMultiDecode(s) {
       const dec = decodeURIComponent(prev);
       if (dec === prev) return dec;
       prev = dec;
-    } catch {
-      return prev;
-    }
+    } catch { return prev; }
   }
   return prev;
 }
-
-/** Pastikan URL tetap same-origin. Kembalikan pathname+search+hash atau null. */
 function normalizeSameOrigin(u) {
   try {
     const url = new URL(u, location.origin);
     if (url.origin !== location.origin) return null;
     return url.pathname + (url.search || "") + (url.hash || "");
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
-
-/** Resolve ke URL absolut berdasarkan base prefix. */
 function resolveToAbsolute(pathLike) {
   const base = location.origin + getBasePrefix();
   const decoded = safeMultiDecode(pathLike || "");
   try {
     const asURL = new URL(decoded);
     if (asURL.origin === location.origin) return asURL;
-  } catch { /* not absolute URL */ }
+  } catch {}
   if (decoded.startsWith("/")) return new URL(decoded, location.origin);
   return new URL(decoded, base);
 }
-
-// Apakah saat ini di halaman login (bandingkan pathname)
 function isOnLoginPage(loginPathAbsURL) {
   try { return location.pathname === loginPathAbsURL.pathname; }
   catch { return false; }
 }
 
-/* =========================
- * UI helpers
- * ========================= */
+/* ===== UI helpers ===== */
 function hideDoc() { document.documentElement.style.visibility = "hidden"; }
 function showDoc() { document.documentElement.style.visibility = "visible"; }
-
 function showSingleDeviceModal(msg) {
   let modal = document.getElementById("singleDeviceModal");
   if (!modal) {
@@ -109,17 +86,13 @@ function showSingleDeviceModal(msg) {
 #singleDeviceModal button:hover{background:var(--accent-2,#6B21A8);}
     `;
     document.head.appendChild(style);
-    modal.querySelector("#sdm-close").addEventListener("click", () => {
-      modal.style.display = "none";
-    });
+    modal.querySelector("#sdm-close").addEventListener("click", () => { modal.style.display = "none"; });
   }
   modal.querySelector("#sdm-text").textContent = msg;
   modal.style.display = "flex";
 }
 
-/* =========================
- * Device id (single-session)
- * ========================= */
+/* ===== Device ID (single-session) ===== */
 function getDeviceId(){
   let id = localStorage.getItem("deviceId");
   if(!id){
@@ -130,23 +103,14 @@ function getDeviceId(){
 }
 const DEVICE_ID = getDeviceId();
 
-/* =========================
- * Guards
- * ========================= */
-
-/**
- * Guard: panggil di halaman yang WAJIB login (home.html, dll.)
- * Contoh:
- *   requireAuth({ loginPath: "index.html", hideWhileChecking: true })
- */
+/* ===== Guards ===== */
 export function requireAuth({
   loginPath = "index.html",
   hideWhileChecking = true,
   requireEmailVerified = false
 } = {}) {
   const { auth, db } = getFb();
-
-  const loginAbs = resolveToAbsolute(loginPath); // URL absolut
+  const loginAbs = resolveToAbsolute(loginPath);
   let watchdog = null;
 
   if (hideWhileChecking) {
@@ -156,14 +120,12 @@ export function requireAuth({
 
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
     try {
-      console.log(user ? `✅ Auth OK, UID: ${user?.uid}` : "❌ Belum login Firebase");
-
       if (!user) {
         if (!isOnLoginPage(loginAbs)) {
           const here = location.pathname + location.search + location.hash;
           const loginURL = new URL(loginAbs.href);
           if (!loginURL.searchParams.has("next")) {
-            loginURL.searchParams.set("next", encodeURIComponent(here)); // encode SEKALI
+            loginURL.searchParams.set("next", encodeURIComponent(here)); // encode sekali
           }
           location.replace(loginURL.href);
         } else {
@@ -177,26 +139,21 @@ export function requireAuth({
         return;
       }
 
-      // ===== Single-session lock di sessions/$uid/current =====
       const currRef = ref(db, `sessions/${user.uid}/current`);
       try {
         const res = await runTransaction(currRef, (cur) => {
           if (cur === null || cur === DEVICE_ID) return DEVICE_ID;
-          return; // milik device lain → abort
+          return;
         });
         if (!res.committed) {
           await signOut(auth);
           showSingleDeviceModal("Akun digunakan di perangkat lain. Web ini dibatasi hanya bisa login 1 device saja");
           return;
         }
-      } catch(_) { /* abaikan error kecil */ }
+      } catch {}
 
       onDisconnect(currRef).remove().catch(()=>{});
-
-      update(ref(db, `sessions/${user.uid}/lastAttempt`), {
-        device: DEVICE_ID,
-        ts: Date.now()
-      }).catch(()=>{});
+      update(ref(db, `sessions/${user.uid}/lastAttempt`), { device: DEVICE_ID, ts: Date.now() }).catch(()=>{});
 
       const sessRef = ref(db, `sessions/${user.uid}`);
       let lastSeenAttemptTs = 0;
@@ -211,9 +168,8 @@ export function requireAuth({
         const att = data.lastAttempt;
         if (att && att.device !== DEVICE_ID) {
           const ts = att.ts || 0;
-          if (lastSeenAttemptTs === 0) {
-            lastSeenAttemptTs = ts;
-          } else if (ts > lastSeenAttemptTs) {
+          if (lastSeenAttemptTs === 0) lastSeenAttemptTs = ts;
+          else if (ts > lastSeenAttemptTs) {
             lastSeenAttemptTs = ts;
             showSingleDeviceModal("Ada perangkat lain mencoba masuk ke akun Anda, Web ini dibatasi hanya bisa login 1 device saja");
           }
@@ -228,11 +184,7 @@ export function requireAuth({
   });
 }
 
-/**
- * Pakai di index.html (login): jika user sudah login, langsung redirect.
- * - ?next=… diprioritaskan (multi-decode safe)
- * - fallback ke homePath (absolut)
- */
+/** Redirect dari halaman login jika sudah auth. */
 export function redirectIfAuthed({ homePath = "home.html" } = {}) {
   const { auth } = getFb();
   const homeAbs = resolveToAbsolute(homePath);
@@ -250,11 +202,8 @@ export function redirectIfAuthed({ homePath = "home.html" } = {}) {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       try {
         if (user) {
-          console.log(`↪️ Sudah login, redirect… UID: ${user.uid}`);
           const destHref = chooseDestination();
-          if (location.href !== destHref) {
-            location.replace(destHref);
-          }
+          if (location.href !== destHref) location.replace(destHref);
         }
       } finally {
         unsubscribe && unsubscribe();
@@ -262,11 +211,7 @@ export function redirectIfAuthed({ homePath = "home.html" } = {}) {
     });
   }
 
-  // Jalankan saat load pertama
   doRedirectIfNeeded();
-  // Jalankan saat halaman di-reaktifkan (Back/visibility)
   window.addEventListener("pageshow", () => { doRedirectIfNeeded(); });
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) doRedirectIfNeeded();
-  });
-}
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) doRedirectIfNeeded(); });
+                                  }
