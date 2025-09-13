@@ -169,7 +169,8 @@ async function sendToSheet(sheet, payload){
 }
 
 /* ================== SCAN (BarcodeDetector/jsQR) ================== */
-let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null, shutterBtn:null, mode:'scan', _orientationHandler:null };
+let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null, shutterBtn:null, mode:'scan', _orientationHandler:null, _deviceOrientationHandler:null };
+let deviceTilt = 0;
 if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan('scan'); });
 
 function injectScanStyles(){
@@ -249,6 +250,11 @@ async function stopScan(){
     }
     scanState._orientationHandler = null;
   }
+  if (scanState._deviceOrientationHandler){
+    window.removeEventListener('deviceorientation', scanState._deviceOrientationHandler);
+    scanState._deviceOrientationHandler = null;
+  }
+  deviceTilt = 0;
   document.body.classList.remove('scan-active');
 }
 function ensureVideo(){ if (scanState.video) return; const v=document.createElement('video'); v.setAttribute('playsinline',''); v.muted=true; v.autoplay=true; v.id='scan-video'; document.body.appendChild(v); scanState.video=v; }
@@ -307,12 +313,27 @@ function ensureOverlay(){
     if (screen.orientation && screen.orientation.addEventListener) {
       screen.orientation.addEventListener("change", update);
     }
+    if (window.DeviceOrientationEvent){
+      const handler = (e)=>{
+        if (typeof e.gamma === 'number') {
+          deviceTilt = e.gamma;
+          updateCaptureState();
+        }
+      };
+      // iOS 13+ requires permission
+      try { DeviceOrientationEvent.requestPermission && DeviceOrientationEvent.requestPermission().catch(()=>{}); } catch(_){ }
+      window.addEventListener('deviceorientation', handler);
+      scanState._deviceOrientationHandler = handler;
+    }
     updateCaptureState();
   }
 }
 
 
 function isLandscape(){
+  if (typeof deviceTilt === 'number' && Math.abs(deviceTilt) >= 60) {
+    return true;
+  }
   if (screen.orientation && typeof screen.orientation.type === "string") {
     return screen.orientation.type.startsWith("landscape");
   }
