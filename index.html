@@ -37,10 +37,14 @@
   <!-- 2) Auto-redirect kalau sudah login (skip saat logout) -->
   <script type="module">
     import { redirectIfAuthed } from "./auth-guard.js";
-    const params = new URLSearchParams(location.search);
-    if (params.get("logout") !== "1") {
-      redirectIfAuthed({ homePath: "home.html" });
-    }
+    const check = () => {
+      const params = new URLSearchParams(location.search);
+      if (params.get("logout") !== "1") {
+        redirectIfAuthed({ homePath: "home.html" });
+      }
+    };
+    check();
+    window.addEventListener("pageshow", check);
   </script>
 </head>
 <body class="blur-bg">
