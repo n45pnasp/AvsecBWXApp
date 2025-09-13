@@ -34,7 +34,6 @@ export function getFirebase() { return getFb(); }
 // Base prefix (untuk Pages dengan subpath, mis. /AvsecBWXApp/)
 function getBasePrefix() {
   const parts = location.pathname.split("/").filter(Boolean);
-  // Jika deployed di subfolder (GitHub Pages user/REPO), ambil segmen pertama sebagai base
   return parts.length > 0 ? `/${parts[0]}/` : "/";
 }
 
@@ -48,62 +47,39 @@ function safeMultiDecode(s) {
       if (dec === prev) return dec;
       prev = dec;
     } catch {
-      return prev; // kalau gagal decode, pakai apa adanya
+      return prev;
     }
   }
   return prev;
 }
 
-/** Pastikan URL tetap same-origin. Kembalikan pathname+search+hash. */
+/** Pastikan URL tetap same-origin. Kembalikan pathname+search+hash atau null. */
 function normalizeSameOrigin(u) {
   try {
     const url = new URL(u, location.origin);
-    if (url.origin !== location.origin) {
-      // blok open redirect — balik ke home saja (pemanggilnya tentukan fallback)
-      return null;
-    }
+    if (url.origin !== location.origin) return null;
     return url.pathname + (url.search || "") + (url.hash || "");
   } catch {
     return null;
   }
 }
 
-/** 
- * Resolve ke URL absolut berdasarkan base prefix.
- * - Menerima string yang mungkin masih mengandung %2F
- * - Boleh relatif ("home.html"), absolut path ("/AvsecBWXApp/home.html"), atau absolut same-origin
- */
+/** Resolve ke URL absolut berdasarkan base prefix. */
 function resolveToAbsolute(pathLike) {
   const base = location.origin + getBasePrefix();
-
-  // Jika input double-encoded, pecahkan dulu
   const decoded = safeMultiDecode(pathLike || "");
-
-  // Jika sudah URL absolut same-origin → normalize ke absolut href langsung
   try {
     const asURL = new URL(decoded);
     if (asURL.origin === location.origin) return asURL;
-    // kalau beda origin, lempar ke fallback (pemanggil yang putuskan)
-  } catch {
-    // bukan URL absolut, lanjut
-  }
-
-  // Jika diawali "/" → treat as root-path (tetap same-origin)
-  if (decoded.startsWith("/")) {
-    return new URL(decoded, location.origin);
-  }
-
-  // Relatif terhadap base prefix
+  } catch { /* not absolute URL */ }
+  if (decoded.startsWith("/")) return new URL(decoded, location.origin);
   return new URL(decoded, base);
 }
 
-// Cek apakah saat ini sedang di halaman login (bandingkan pathname saja)
+// Apakah saat ini di halaman login (bandingkan pathname)
 function isOnLoginPage(loginPathAbsURL) {
-  try {
-    return location.pathname === loginPathAbsURL.pathname;
-  } catch {
-    return false;
-  }
+  try { return location.pathname === loginPathAbsURL.pathname; }
+  catch { return false; }
 }
 
 /* =========================
@@ -183,13 +159,11 @@ export function requireAuth({
       console.log(user ? `✅ Auth OK, UID: ${user?.uid}` : "❌ Belum login Firebase");
 
       if (!user) {
-        // Sudah di halaman login → jangan redirect lagi
         if (!isOnLoginPage(loginAbs)) {
           const here = location.pathname + location.search + location.hash;
           const loginURL = new URL(loginAbs.href);
-          // Simpan tujuan (encode SEKALI)
           if (!loginURL.searchParams.has("next")) {
-            loginURL.searchParams.set("next", encodeURIComponent(here));
+            loginURL.searchParams.set("next", encodeURIComponent(here)); // encode SEKALI
           }
           location.replace(loginURL.href);
         } else {
@@ -203,7 +177,7 @@ export function requireAuth({
         return;
       }
 
-      // ===== Single-session lock di sessions/$uid/current (sesuai rules) =====
+      // ===== Single-session lock di sessions/$uid/current =====
       const currRef = ref(db, `sessions/${user.uid}/current`);
       try {
         const res = await runTransaction(currRef, (cur) => {
@@ -215,32 +189,25 @@ export function requireAuth({
           showSingleDeviceModal("Akun digunakan di perangkat lain. Web ini dibatasi hanya bisa login 1 device saja");
           return;
         }
-      } catch (_) {
-        // Abaikan error network kecil
-      }
+      } catch(_) { /* abaikan error kecil */ }
 
-      // Cleanup saat tab/perangkat putus
       onDisconnect(currRef).remove().catch(()=>{});
 
-      // (Opsional) catat lastAttempt
       update(ref(db, `sessions/${user.uid}/lastAttempt`), {
         device: DEVICE_ID,
         ts: Date.now()
       }).catch(()=>{});
 
-      // Monitor sesi & percobaan login dari device lain
       const sessRef = ref(db, `sessions/${user.uid}`);
       let lastSeenAttemptTs = 0;
       onValue(sessRef, (s) => {
         const data = s.val() || {};
-
         if (data.current && data.current !== DEVICE_ID) {
           signOut(auth).finally(() => {
             showSingleDeviceModal("Akun digunakan di perangkat lain. Web ini dibatasi hanya bisa login 1 device saja");
           });
           return;
         }
-
         const att = data.lastAttempt;
         if (att && att.device !== DEVICE_ID) {
           const ts = att.ts || 0;
@@ -272,15 +239,10 @@ export function redirectIfAuthed({ homePath = "home.html" } = {}) {
 
   function chooseDestination() {
     const params = new URLSearchParams(location.search);
-    const rawNext = params.get("next");              // mungkin null / encoded ganda
-    const nextDecoded = safeMultiDecode(rawNext);    // pecahkan sampai bersih
-    // Normalisasi dan pastikan same-origin
+    const rawNext = params.get("next");
+    const nextDecoded = safeMultiDecode(rawNext);
     let dest = normalizeSameOrigin(nextDecoded);
-    if (!dest) {
-      // Jika next kosong/invalid/beda origin → pakai home
-      return homeAbs.href;
-    }
-    // Ubah menjadi absolut href berbasis base prefix (kalau relatif)
+    if (!dest) return homeAbs.href;
     return resolveToAbsolute(dest).href;
   }
 
@@ -302,11 +264,8 @@ export function redirectIfAuthed({ homePath = "home.html" } = {}) {
 
   // Jalankan saat load pertama
   doRedirectIfNeeded();
-  // Jalankan kembali setiap kali halaman ditampilkan kembali (mis. tombol Back)
-  window.addEventListener("pageshow", () => {
-    doRedirectIfNeeded();
-  });
-  // Jalankan pula saat tab kembali aktif (mis. dari background)
+  // Jalankan saat halaman di-reaktifkan (Back/visibility)
+  window.addEventListener("pageshow", () => { doRedirectIfNeeded(); });
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) doRedirectIfNeeded();
   });
