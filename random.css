@@ -1,5 +1,10 @@
 @import url('./ACP.css');
 
+:root{
+  --accent:#6a5cff;
+  --accent-2:#8a7bff;
+}
+
 /* Noncopyable text */
 body{
   -webkit-user-select:none;
@@ -67,7 +72,7 @@ input,textarea,select{
   align-items:center;
   justify-content:center;
   gap:12px;
-  background:linear-gradient(135deg, var(--accent,#6a5cff), var(--accent-2,#8a7bff));
+  background:linear-gradient(135deg, var(--accent), var(--accent-2));
   border:1px solid rgba(255,255,255,.12);
   border-radius:16px;
   padding:14px 16px;
