@@ -53,7 +53,7 @@ onValue(ref(db, "roster/spvHbs"), (snap) => {
 
 // ====== Lookup QR ======
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";
-const SHARED_TOKEN = "N45p"; // untuk LOOKUP_URL, bukan untuk kirim ke sheet (token disuntik di Worker)
+const SHARED_TOKEN = "N45p"; // token sederhana untuk lookup & kirim ke sheet
 
 // ====== Overlay ======
 const overlay = document.getElementById("overlay");
@@ -171,14 +171,25 @@ submitBtn.addEventListener("click", async () => {
 });
 
 async function sendToSheet(sheet, payload){
-  const res = await fetch(`${SCRIPT_URL}?sheet=${encodeURIComponent(sheet)}`, {
+  const { auth } = getFirebase();
+  const user = auth.currentUser;
+  const headers = { 'Content-Type': 'application/json' };
+  if (user){
+    try {
+      const idToken = await user.getIdToken(true);
+      headers.Authorization = `Bearer ${idToken}`;
+    } catch { /* biarkan tanpa header jika gagal */ }
+  }
+  const body = { token: SHARED_TOKEN, ...payload };
+  const url = `${SCRIPT_URL}?sheet=${encodeURIComponent(sheet)}&token=${encodeURIComponent(SHARED_TOKEN)}`;
+  const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    headers,
+    body: JSON.stringify(body)
   });
-  const j = await res.json();
-  if (!j || (!j.success && !j.ok)) {
-    throw new Error(j?.error || 'Gagal mengirim');
+  const j = await res.json().catch(() => null);
+  if (!res.ok || !j || (!j.success && !j.ok)) {
+    throw new Error(j?.error || `Gagal mengirim (${res.status})`);
   }
 }
 
