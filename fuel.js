@@ -76,13 +76,15 @@ const quotaInfo = $("#quotaInfo");
 
 /* Buat dropdown ID untuk foto (disisipkan via JS agar HTML tetap ringkas) */
 let photoIdSel = null;
+const photoIdWrap = document.getElementById("photoIdWrap");
 (function injectPhotoIdSelect(){
+  if(!photoIdWrap) return;
   const label = document.createElement("label");
   label.textContent = "Pilih ID (untuk foto)";
   photoIdSel = document.createElement("select");
   photoIdSel.id = "photoId";
   label.appendChild(photoIdSel);
-  cardFoto.insertBefore(label, fileInput);
+  photoIdWrap.appendChild(label);
 })();
 
 /* ===== State ===== */
