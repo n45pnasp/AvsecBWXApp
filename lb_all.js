@@ -7,7 +7,7 @@ const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // 🔒 JANGAN UB
 const SHARED_TOKEN = "N45p";                                    // 🔒 JANGAN UBAH TANPA PERMINTAAN
 
 // ========= Cloud Functions download PDF (endpoint) =========
-const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
+const CFN_DOWNLOAD_PDF_URL = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
 
 // ======== Konfigurasi Firebase (samakan dgn auth-guard.js) ========
 const firebaseConfig = {
@@ -36,34 +36,6 @@ const TARGETS = {
   LB_MALAM:   { label: "LB Malam" },
 };
 
-/* ===== INFO SHEET UNTUK DOWNLOAD PDF ===== */
-const SHEET_INFO = {
-  LB_CCTV:    { id: "1HLLEyF6EiLOSkdB1t8hdiD9u4re1pKRbxr05lChhWuI", gid: "" },
-  LB_PSCP:    { id: "1NiOsO1FLYgSfQGoIm4-xZ5CqdbI92OphU8ENsR1NXOI", gid: "" },
-  LB_HBSCP:   { id: "1JT-Yzu91MqXBN-lIHkD68lVyBIaffuVW2CFu19gYoOc", gid: "" },
-  LB_ARRIVAL: { id: "1zSJjGHiZeJP7QYwoiW-TRvbqVCBgghDgwmJYaOG3EYA", gid: "" },
-  LB_POS1:    { id: "11J_ydWZGdG7jAVpVPWuMfluA3H7Z8pBIQLChZaS0BRg", gid: "" },
-  LB_CARGO:   { id: "1nfneesae64VWqcVbcgguMc2Gh2EceyLhbBr1LjOQ_2E", gid: "" },
-  LB_MALAM:   { id: "1zf_rqCFVoi3AaQU-9Gb3l91striiQ5dWrD1JTyhdnZk", gid: "" },
-};
-
-/* ===== UTIL DOWNLOAD PDF (Google Sheets) ===== */
-const USE_PUB = false;
-const PDF_DEFAULT_OPTS = {
-  format: "pdf", size: "A4", portrait: "true", scale: "2",
-  top_margin: "0.50", bottom_margin: "0.50", left_margin: "0.50", right_margin: "0.50",
-  sheetnames: "false", printtitle: "false", pagenumbers: "true", gridlines: "false", fzr: "true"
-};
-function buildSheetPdfUrl(sheetId, gid, opts = {}) {
-  const cacheBuster = { t: Date.now() };
-  if (USE_PUB) {
-    const params = new URLSearchParams({ gid, single: "true", output: "pdf", ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
-  } else {
-    const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
-  }
-}
 
 /* ===== UTIL TARGET ===== */
 function getTarget() {
@@ -151,12 +123,6 @@ function showOverlay(state, title, desc){
 
 /* ===== HANDLER DOWNLOAD PDF ===== */
 async function onDownloadPdf(){
-  const info = SHEET_INFO[TARGET];
-  if(!info?.id){
-    alert("PDF belum tersedia untuk target ini");
-    return;
-  }
-
   const user = auth.currentUser;
   if (!user) {
     alert("Harus login terlebih dulu.");
@@ -167,7 +133,7 @@ async function onDownloadPdf(){
 
   try {
     showOverlay("loading", "Menyiapkan PDF…", "Menghubungkan ke server");
-    const url = `${FN}?site=${encodeURIComponent(TARGET)}&token=${encodeURIComponent(SHARED_TOKEN)}`;
+    const url = `${CFN_DOWNLOAD_PDF_URL}?site=${encodeURIComponent(TARGET)}`;
     const resp = await fetch(url, {
       method: "GET",
       headers: {
@@ -185,8 +151,8 @@ async function onDownloadPdf(){
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     const now = new Date();
-    const dateStr = `${pad2(now.getDate())}-${pad2(now.getMonth() + 1)}-${now.getFullYear()}`;
-    a.download = `${TARGET}_${dateStr}.pdf`;
+    const tanggal = `${pad2(now.getDate())}${pad2(now.getMonth() + 1)}${now.getFullYear()}`;
+    a.download = `${TARGET}_${tanggal}.pdf`;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
