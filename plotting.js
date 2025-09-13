@@ -382,6 +382,19 @@ class SiteMachine {
     }
   }
 
+  speakAssignments(assignments){
+    if(typeof window === "undefined" || !window.speechSynthesis) return;
+    const phrases = this.cfg.positions.map(pos => {
+      const name = assignments[pos.id];
+      return name && name !== "-" ? `personil ${name} ke posisi ${pos.name}` : null;
+    }).filter(Boolean);
+    if(!phrases.length) return;
+    const utter = new SpeechSynthesisUtterance(`perindahan dinas dimulai, ${phrases.join(", ")}`);
+    utter.lang = "id-ID";
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+  }
+
   async computeAndWriteAssignments(useCooldown){
     const { pools, cooldown } = await this.buildPools(useCooldown);
     const { ok, result } = this.assignUnique(pools);
@@ -398,7 +411,7 @@ class SiteMachine {
         await set(this.assignmentsRef, finalAssign);
       }
     }catch(err){ showModal("Tulis assignments gagal: " + (err?.message||err)); }
-
+    this.speakAssignments(finalAssign);
     this.advanceRotIdx(pools);
   }
 
