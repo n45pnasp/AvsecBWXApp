@@ -1,5 +1,6 @@
 // gun.js (FINAL) — sheet: GUN_FILESPDF, download via CFN, auto-cleanup via Worker
 import { requireAuth, getFirebase } from "./auth-guard.js";
+import { capturePhoto } from "./camera.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
@@ -80,9 +81,20 @@ function showOverlay(state, title, desc, autoHide = true){
 
 /* ================== Evidence UI ================== */
 if (btnEvidence) {
-  btnEvidence.addEventListener("click", () => {
+  btnEvidence.addEventListener("click", async () => {
     if (scanState.running) return;
-    startScan('photo');
+    try {
+      const dataUrl = await capturePhoto();
+      if (!dataUrl) return;
+      evidenceDataUrl = dataUrl;
+      if (evidenceImg) evidenceImg.src = dataUrl;
+      if (evidencePreview) evidencePreview.classList.remove("hidden");
+      if (fotoNote) fotoNote.classList.add("hidden");
+      btnEvidence.textContent = "Ulangi Foto";
+    } catch (err) {
+      console.error('Gagal capture:', err);
+      alert('Gagal mengambil gambar.');
+    }
   });
 }
 
@@ -169,10 +181,8 @@ async function sendToSheet(sheet, payload){
 }
 
 /* ================== SCAN (BarcodeDetector/jsQR) ================== */
-let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null, shutterBtn:null, mode:'scan', _orientationHandler:null, _deviceOrientationHandler:null };
-// null menandakan belum ada pembacaan tilt dari DeviceOrientationEvent
-let deviceTilt = null;
-if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan('scan'); });
+let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
+if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan(); });
 
 function injectScanStyles(){
   if (document.getElementById('scan-style')) return;
@@ -196,38 +206,12 @@ function injectScanStyles(){
       linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat,
       linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat}
     .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px;letter-spacing:.2px;font-size:14px}
-    .scan-shutter{position:absolute;left:50%;bottom:max(24px,calc(18px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);width:74px;height:74px;border-radius:999px;background:#fff;border:4px solid rgba(255,255,255,.35);box-shadow:0 6px 22px rgba(0,0,0,.45), inset 0 0 0 4px #fff;pointer-events:auto;transition: transform .06s ease, opacity .15s ease, filter .15s ease}
-    .scan-shutter:active{transform:translateX(-50%) scale(.96)}
-    .scan-shutter.disabled,.scan-shutter:disabled{opacity:.45;filter:grayscale(60%);pointer-events:auto}
-    .scan-msg-portrait{
-      position:absolute;
-      left:50%;
-      bottom:max(110px,calc(96px + env(safe-area-inset-bottom,0)));
-      transform:translateX(-50%);
-      background:rgba(0,0,0,.55);
-      color:#fff;
-      font-weight:600;
-      padding:10px 14px;
-      border-radius:12px;
-      display:none;
-      flex-direction:column;
-      align-items:center;
-      gap:4px;
-      box-shadow:0 4px 12px rgba(0,0,0,.35);
-    }
-    .scan-msg-portrait .rotate-icon{width:40px;height:40px;display:block}
-    .scan-msg-portrait .rotate-icon path,
-    .scan-msg-portrait .rotate-icon polyline{stroke:#fff;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
-    .scan-msg-portrait .rotate-text{font-size:12px}
   `;
   const style = document.createElement('style'); style.id='scan-style'; style.textContent = css; document.head.appendChild(style);
 }
 injectScanStyles();
 
-async function startScan(mode = 'scan'){
-  scanState.mode = mode;
-  // reset tilt setiap kali scan dimulai
-  deviceTilt = null;
+async function startScan(){
   try{
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       showOverlay('err','Browser tidak mendukung kamera','');
@@ -243,7 +227,7 @@ async function startScan(mode = 'scan'){
     scanState.video.srcObject = stream;
     await scanState.video.play();
     scanState.usingDetector = false; scanState.detector = null;
-    if (mode === 'scan' && 'BarcodeDetector' in window){
+    if ('BarcodeDetector' in window){
       try{
         const supported = await window.BarcodeDetector.getSupportedFormats();
         const wanted = ['qr_code','pdf417','aztec','data_matrix'];
@@ -252,10 +236,8 @@ async function startScan(mode = 'scan'){
       }catch(_){}}
 
     scanState.running = true;
-    if (mode === 'scan'){
-      if (scanState.usingDetector) detectLoop_BarcodeDetector();
-      else { await ensureJsQR(); prepareCanvas(); detectLoop_jsQR(); }
-    }
+    if (scanState.usingDetector) detectLoop_BarcodeDetector();
+    else { await ensureJsQR(); prepareCanvas(); detectLoop_jsQR(); }
   }catch(_){
     showOverlay('err','Tidak bisa mengakses kamera','');
     await stopScan();
@@ -267,21 +249,7 @@ async function stopScan(){
   scanState.stream = null;
   if (scanState.video){ scanState.video.srcObject = null; scanState.video.remove(); scanState.video = null; }
   if (scanState.canvas){ scanState.canvas.remove(); scanState.canvas = null; scanState.ctx = null; }
-  if (scanState.overlay){ scanState.overlay.remove(); scanState.overlay = null; scanState.closeBtn = null; scanState.shutterBtn = null; }
-  if (scanState._orientationHandler){
-    window.removeEventListener('orientationchange', scanState._orientationHandler);
-    window.removeEventListener('resize', scanState._orientationHandler);
-    if (screen.orientation && screen.orientation.removeEventListener){
-      screen.orientation.removeEventListener('change', scanState._orientationHandler);
-    }
-    scanState._orientationHandler = null;
-  }
-  if (scanState._deviceOrientationHandler){
-    window.removeEventListener('deviceorientation', scanState._deviceOrientationHandler);
-    scanState._deviceOrientationHandler = null;
-  }
-  // reset nilai tilt agar isLandscape menggunakan fallback lain
-  deviceTilt = null;
+  if (scanState.overlay){ scanState.overlay.remove(); scanState.overlay = null; scanState.closeBtn = null; }
   document.body.classList.remove('scan-active');
 }
 function ensureVideo(){
@@ -299,153 +267,17 @@ function ensureOverlay(){
   if (scanState.overlay) return;
   const overlay = document.createElement("div");
   overlay.id = "scan-overlay";
-  if (scanState.mode === "photo"){
-    overlay.innerHTML = `
-      <div class="scan-topbar">
-        <button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button>
-      </div>
-      <div class="scan-msg-portrait" role="alert" aria-live="assertive" aria-label="Putar perangkat ke mode horizontal">
-        <svg class="rotate-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M21 12a9 9 0 1 1-3-6.7" />
-          <polyline points="21 3 21 9 15 9" />
-        </svg>
-        <div class="rotate-text">putar horizontal</div>
-      </div>
-      <button id="scan-shutter" class="scan-shutter" aria-label="Ambil gambar" title="Ambil gambar"></button>
-    `;
-  } else {
-    overlay.innerHTML = `
+  overlay.innerHTML = `
       <div class="scan-topbar"><button id="scan-close" class="scan-close" aria-label="Tutup">✕</button></div>
-    <div class="scan-reticle" aria-hidden="true"></div>
-    <div class="scan-hint">Scan Barcode / QR code</div>
+      <div class="scan-reticle" aria-hidden="true"></div>
+      <div class="scan-hint">Scan Barcode / QR code</div>
     `;
-  }
   document.body.appendChild(overlay);
   scanState.overlay = overlay;
   scanState.closeBtn = overlay.querySelector("#scan-close");
   if (scanState.closeBtn){
     scanState.closeBtn.addEventListener("click", async (e)=>{ e.preventDefault(); await stopScan(); });
   }
-  if (scanState.mode === "photo"){
-    const shutterBtn = overlay.querySelector("#scan-shutter");
-    scanState.shutterBtn = shutterBtn;
-    if (shutterBtn){
-      shutterBtn.addEventListener("click", async (e)=>{
-        e.preventDefault();
-        if (!isLandscape()) { alert("Perangkat masih portrait. Putar perangkat ke horizontal untuk memotret."); return; }
-        try {
-          const dataUrl = await captureFrame();
-          evidenceDataUrl = dataUrl;
-          if (evidenceImg) evidenceImg.src = dataUrl;
-          if (evidencePreview) evidencePreview.classList.remove("hidden");
-          if (fotoNote) fotoNote.classList.add("hidden");
-          if (btnEvidence) btnEvidence.textContent = "Ulangi Foto";
-          await stopScan();
-        } catch (err) {
-          console.error("Gagal capture:", err);
-          alert("Gagal mengambil gambar.");
-        }
-      });
-    }
-    const update = () => updateCaptureState();
-    scanState._orientationHandler = update;
-    window.addEventListener("orientationchange", update);
-    window.addEventListener("resize", update);
-    if (screen.orientation && screen.orientation.addEventListener) {
-      screen.orientation.addEventListener("change", update);
-    }
-    if (window.DeviceOrientationEvent){
-      const addHandler = () => {
-        const handler = (e)=>{
-          if (typeof e.gamma === 'number') {
-            deviceTilt = e.gamma;
-            updateCaptureState();
-          }
-        };
-        window.addEventListener('deviceorientation', handler);
-        scanState._deviceOrientationHandler = handler;
-      };
-      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission()
-          .then(res => { if (res === 'granted') addHandler(); })
-          .catch(()=>{});
-      } else {
-        addHandler();
-      }
-    }
-    updateCaptureState();
-  }
-}
-
-
-function isLandscape(){
-  // prioritaskan API orientasi layar bila tersedia
-  if (screen.orientation && typeof screen.orientation.type === "string") {
-    if (screen.orientation.type.startsWith("landscape")) return true;
-  }
-  if (typeof window.orientation === "number") {
-    if (Math.abs(window.orientation) === 90) return true;
-  }
-  // gunakan tilt perangkat sebagai fallback tambahan (>=60° dianggap landscape)
-  if (typeof deviceTilt === 'number' && !Number.isNaN(deviceTilt)) {
-    if (Math.abs(deviceTilt) >= 60) return true;
-  }
-  return (window.matchMedia && window.matchMedia('(orientation: landscape)').matches)
-         || (window.innerWidth > window.innerHeight);
-}
-
-function updateCaptureState(){
-  const btn   = document.getElementById('scan-shutter');
-  const msg   = document.querySelector('#scan-overlay .scan-msg-portrait');
-  const onLS  = isLandscape();
-
-  if (btn){
-    btn.disabled = !onLS;
-    btn.classList.toggle('disabled', !onLS);
-  }
-  if (msg){
-    msg.style.display = onLS ? 'none' : 'flex';
-  }
-}
-
-async function captureFrame(){
-  if (!scanState.video) throw new Error('Video belum siap');
-
-  const vid = scanState.video;
-  let w   = vid.videoWidth  || 1280;
-  let h   = vid.videoHeight || 720;
-
-  const c   = document.createElement('canvas');
-  let ctx;
-
-  if (h > w){
-    c.width = h;
-    c.height = w;
-    ctx = c.getContext('2d', { willReadFrequently: true });
-    ctx.translate(h/2, w/2);
-    ctx.rotate(-Math.PI/2);
-    ctx.drawImage(vid, -w/2, -h/2, w, h);
-    [w, h] = [h, w];
-  } else {
-    c.width = w;
-    c.height = h;
-    ctx = c.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(vid, 0, 0, w, h);
-  }
-
-  // Kompres gambar maksimal 800px pada sisi terpanjang
-  const max = Math.max(w, h);
-  let dataCanvas = c;
-  if (max > 800){
-    const scale = 800 / max;
-    const cw = Math.round(w * scale);
-    const ch = Math.round(h * scale);
-    const c2 = document.createElement('canvas');
-    c2.width = cw; c2.height = ch;
-    c2.getContext('2d').drawImage(c, 0, 0, cw, ch);
-    dataCanvas = c2;
-  }
-  return dataCanvas.toDataURL('image/jpeg', 0.8);
 }
 function prepareCanvas(){ if (scanState.canvas) return; const c=document.createElement('canvas'); c.id='scan-canvas'; c.width=640; c.height=480; document.body.appendChild(c); scanState.canvas=c; scanState.ctx=c.getContext("2d",{willReadFrequently:true}); }
 async function ensureJsQR(){
