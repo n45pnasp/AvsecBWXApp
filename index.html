@@ -34,11 +34,47 @@
   <!-- 1) Router untuk handle deep-link dari 404.html -->
   <script type="module" src="router.js"></script>
 
-  <!-- 2) Auto-redirect kalau sudah login (skip saat logout) -->
+  <!-- 2) Auto-redirect kalau sudah login (skip saat logout) + auto-fix ?next= -->
   <script type="module">
+    // --- Bersihkan parameter ?next= bila double-encoded, lalu encode SEKALI ---
+    function multiDecodeOnce(s, max = 3) {
+      if (!s) return s;
+      let prev = s;
+      for (let i = 0; i < max; i++) {
+        try {
+          const dec = decodeURIComponent(prev);
+          if (dec === prev) break;
+          prev = dec;
+        } catch {
+          break;
+        }
+      }
+      return prev;
+    }
+
+    (function normalizeNextParam() {
+      const url = new URL(location.href);
+      const rawNext = url.searchParams.get("next");
+      if (!rawNext) return;
+
+      const decoded = multiDecodeOnce(rawNext);
+      try {
+        const u = new URL(decoded, location.origin);
+        if (u.origin === location.origin) {
+          const cleanPath = u.pathname + (u.search || "") + (u.hash || "");
+          url.searchParams.set("next", encodeURIComponent(cleanPath)); // encode sekali
+          // Update address bar tanpa reload
+          window.history.replaceState({}, "", url.toString());
+        }
+      } catch {
+        // jika gagal parse, biarkan apa adanya
+      }
+    })();
+
     import { redirectIfAuthed } from "./auth-guard.js";
     const params = new URLSearchParams(location.search);
     if (params.get("logout") !== "1") {
+      // homePath boleh "home.html" agar fleksibel di Pages/Cloudflare
       redirectIfAuthed({ homePath: "home.html" });
     }
   </script>
@@ -111,4 +147,3 @@
   <script type="module" src="login.js"></script>
 </body>
 </html>
-
