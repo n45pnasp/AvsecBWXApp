@@ -170,7 +170,8 @@ async function sendToSheet(sheet, payload){
 
 /* ================== SCAN (BarcodeDetector/jsQR) ================== */
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null, shutterBtn:null, mode:'scan', _orientationHandler:null, _deviceOrientationHandler:null };
-let deviceTilt = 0;
+// null menandakan belum ada pembacaan tilt dari DeviceOrientationEvent
+let deviceTilt = null;
 if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan('scan'); });
 
 function injectScanStyles(){
@@ -209,6 +210,8 @@ injectScanStyles();
 
 async function startScan(mode = 'scan'){
   scanState.mode = mode;
+  // reset tilt setiap kali scan dimulai
+  deviceTilt = null;
   try{
     ensureVideo(); ensureOverlay();
     document.body.classList.add('scan-active');
@@ -257,7 +260,8 @@ async function stopScan(){
     window.removeEventListener('deviceorientation', scanState._deviceOrientationHandler);
     scanState._deviceOrientationHandler = null;
   }
-  deviceTilt = 0;
+  // reset nilai tilt agar isLandscape menggunakan fallback lain
+  deviceTilt = null;
   document.body.classList.remove('scan-active');
 }
 function ensureVideo(){ if (scanState.video) return; const v=document.createElement('video'); v.setAttribute('playsinline',''); v.muted=true; v.autoplay=true; v.id='scan-video'; document.body.appendChild(v); scanState.video=v; }
@@ -334,15 +338,16 @@ function ensureOverlay(){
 
 
 function isLandscape(){
-  if (typeof deviceTilt === 'number') {
-    const tilt = Math.abs(deviceTilt);
-    if (tilt >= 80 && tilt <= 120) return true;
-  }
+  // prioritaskan API orientasi layar bila tersedia
   if (screen.orientation && typeof screen.orientation.type === "string") {
-    return screen.orientation.type.startsWith("landscape");
+    if (screen.orientation.type.startsWith("landscape")) return true;
   }
   if (typeof window.orientation === "number") {
-    return Math.abs(window.orientation) === 90;
+    if (Math.abs(window.orientation) === 90) return true;
+  }
+  // gunakan tilt perangkat sebagai fallback tambahan (>=60° dianggap landscape)
+  if (typeof deviceTilt === 'number' && !Number.isNaN(deviceTilt)) {
+    if (Math.abs(deviceTilt) >= 60) return true;
   }
   return (window.matchMedia && window.matchMedia('(orientation: landscape)').matches)
          || (window.innerWidth > window.innerHeight);
