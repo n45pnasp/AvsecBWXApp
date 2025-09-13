@@ -1,4 +1,4 @@
-// auth-guard.js — PATCH anti-loop (Cloudflare/GitHub Pages friendly)
+// auth-guard.js — PATCH anti-loop & robust ?next= handling (Cloudflare/GitHub Pages friendly)
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
@@ -16,7 +16,9 @@ const firebaseConfig = {
   databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
 };
 
-// --- Firebase singleton ---
+/* =========================
+ * Firebase singleton
+ * ========================= */
 function getFb() {
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   const auth = getAuth(app);
@@ -25,16 +27,74 @@ function getFb() {
 }
 export function getFirebase() { return getFb(); }
 
-// --- Base prefix (untuk Pages dengan subpath, mis. /AvsecBWXApp/) ---
+/* =========================
+ * Helpers: base & URL
+ * ========================= */
+
+// Base prefix (untuk Pages dengan subpath, mis. /AvsecBWXApp/)
 function getBasePrefix() {
   const parts = location.pathname.split("/").filter(Boolean);
+  // Jika deployed di subfolder (GitHub Pages user/REPO), ambil segmen pertama sebagai base
   return parts.length > 0 ? `/${parts[0]}/` : "/";
 }
 
-// Pastikan loginPath/homePath selalu absolut terhadap base prefix
+/** Decode repeatedly until stable (maks 3x) */
+function safeMultiDecode(s) {
+  if (s == null) return "";
+  let prev = String(s);
+  for (let i = 0; i < 3; i++) {
+    try {
+      const dec = decodeURIComponent(prev);
+      if (dec === prev) return dec;
+      prev = dec;
+    } catch {
+      return prev; // kalau gagal decode, pakai apa adanya
+    }
+  }
+  return prev;
+}
+
+/** Pastikan URL tetap same-origin. Kembalikan pathname+search+hash. */
+function normalizeSameOrigin(u) {
+  try {
+    const url = new URL(u, location.origin);
+    if (url.origin !== location.origin) {
+      // blok open redirect — balik ke home saja (pemanggilnya tentukan fallback)
+      return null;
+    }
+    return url.pathname + (url.search || "") + (url.hash || "");
+  } catch {
+    return null;
+  }
+}
+
+/** 
+ * Resolve ke URL absolut berdasarkan base prefix.
+ * - Menerima string yang mungkin masih mengandung %2F
+ * - Boleh relatif ("home.html"), absolut path ("/AvsecBWXApp/home.html"), atau absolut same-origin
+ */
 function resolveToAbsolute(pathLike) {
   const base = location.origin + getBasePrefix();
-  return new URL(pathLike, base);
+
+  // Jika input double-encoded, pecahkan dulu
+  const decoded = safeMultiDecode(pathLike || "");
+
+  // Jika sudah URL absolut same-origin → normalize ke absolut href langsung
+  try {
+    const asURL = new URL(decoded);
+    if (asURL.origin === location.origin) return asURL;
+    // kalau beda origin, lempar ke fallback (pemanggil yang putuskan)
+  } catch {
+    // bukan URL absolut, lanjut
+  }
+
+  // Jika diawali "/" → treat as root-path (tetap same-origin)
+  if (decoded.startsWith("/")) {
+    return new URL(decoded, location.origin);
+  }
+
+  // Relatif terhadap base prefix
+  return new URL(decoded, base);
 }
 
 // Cek apakah saat ini sedang di halaman login (bandingkan pathname saja)
@@ -46,7 +106,9 @@ function isOnLoginPage(loginPathAbsURL) {
   }
 }
 
-// --- Helper tampil/sembunyi dokumen ---
+/* =========================
+ * UI helpers
+ * ========================= */
 function hideDoc() { document.documentElement.style.visibility = "hidden"; }
 function showDoc() { document.documentElement.style.visibility = "visible"; }
 
@@ -79,11 +141,9 @@ function showSingleDeviceModal(msg) {
   modal.style.display = "flex";
 }
 
-/**
- * Guard: panggil di halaman yang WAJIB login (home.html, dll.)
- * Contoh:
- *   requireAuth({ loginPath: "/index.html", hideWhileChecking: true })
- */
+/* =========================
+ * Device id (single-session)
+ * ========================= */
 function getDeviceId(){
   let id = localStorage.getItem("deviceId");
   if(!id){
@@ -94,8 +154,17 @@ function getDeviceId(){
 }
 const DEVICE_ID = getDeviceId();
 
+/* =========================
+ * Guards
+ * ========================= */
+
+/**
+ * Guard: panggil di halaman yang WAJIB login (home.html, dll.)
+ * Contoh:
+ *   requireAuth({ loginPath: "index.html", hideWhileChecking: true })
+ */
 export function requireAuth({
-  loginPath = "/index.html",
+  loginPath = "index.html",
   hideWhileChecking = true,
   requireEmailVerified = false
 } = {}) {
@@ -116,9 +185,12 @@ export function requireAuth({
       if (!user) {
         // Sudah di halaman login → jangan redirect lagi
         if (!isOnLoginPage(loginAbs)) {
-          const next = location.pathname + location.search;
+          const here = location.pathname + location.search + location.hash;
           const loginURL = new URL(loginAbs.href);
-          if (!loginURL.searchParams.has("next")) loginURL.searchParams.set("next", next);
+          // Simpan tujuan (encode SEKALI)
+          if (!loginURL.searchParams.has("next")) {
+            loginURL.searchParams.set("next", encodeURIComponent(here));
+          }
           location.replace(loginURL.href);
         } else {
           showDoc();
@@ -135,10 +207,8 @@ export function requireAuth({
       const currRef = ref(db, `sessions/${user.uid}/current`);
       try {
         const res = await runTransaction(currRef, (cur) => {
-          // Jika kosong atau sudah milik perangkat ini → ambil/pertahankan
           if (cur === null || cur === DEVICE_ID) return DEVICE_ID;
-          // Jika milik perangkat lain → abort (tidak committed)
-          return;
+          return; // milik device lain → abort
         });
         if (!res.committed) {
           await signOut(auth);
@@ -146,13 +216,13 @@ export function requireAuth({
           return;
         }
       } catch (_) {
-        // Abaikan error network kecil, dokumen tetap ditampilkan
+        // Abaikan error network kecil
       }
 
       // Cleanup saat tab/perangkat putus
       onDisconnect(currRef).remove().catch(()=>{});
 
-      // (Opsional) catat lastAttempt untuk audit/alert silang device
+      // (Opsional) catat lastAttempt
       update(ref(db, `sessions/${user.uid}/lastAttempt`), {
         device: DEVICE_ID,
         ts: Date.now()
@@ -164,7 +234,6 @@ export function requireAuth({
       onValue(sessRef, (s) => {
         const data = s.val() || {};
 
-        // Jika current berubah menjadi milik device lain → force signOut
         if (data.current && data.current !== DEVICE_ID) {
           signOut(auth).finally(() => {
             showSingleDeviceModal("Akun digunakan di perangkat lain. Web ini dibatasi hanya bisa login 1 device saja");
@@ -172,7 +241,6 @@ export function requireAuth({
           return;
         }
 
-        // Jika ada lastAttempt dari device lain yang lebih baru → beri tahu
         const att = data.lastAttempt;
         if (att && att.device !== DEVICE_ID) {
           const ts = att.ts || 0;
@@ -195,24 +263,35 @@ export function requireAuth({
 
 /**
  * Pakai di index.html (login): jika user sudah login, langsung redirect.
- * - ?next=… diprioritaskan
+ * - ?next=… diprioritaskan (multi-decode safe)
  * - fallback ke homePath (absolut)
  */
-export function redirectIfAuthed({ homePath = "/home/" } = {}) {
+export function redirectIfAuthed({ homePath = "home.html" } = {}) {
   const { auth } = getFb();
   const homeAbs = resolveToAbsolute(homePath);
 
-  function checkAndRedirect() {
+  function chooseDestination() {
+    const params = new URLSearchParams(location.search);
+    const rawNext = params.get("next");              // mungkin null / encoded ganda
+    const nextDecoded = safeMultiDecode(rawNext);    // pecahkan sampai bersih
+    // Normalisasi dan pastikan same-origin
+    let dest = normalizeSameOrigin(nextDecoded);
+    if (!dest) {
+      // Jika next kosong/invalid/beda origin → pakai home
+      return homeAbs.href;
+    }
+    // Ubah menjadi absolut href berbasis base prefix (kalau relatif)
+    return resolveToAbsolute(dest).href;
+  }
+
+  function doRedirectIfNeeded() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       try {
         if (user) {
           console.log(`↪️ Sudah login, redirect… UID: ${user.uid}`);
-          const params = new URLSearchParams(location.search);
-          const next = params.get("next");
-          let dest = next ? decodeURIComponent(next) : homeAbs.href;
-          dest = resolveToAbsolute(dest).href;
-          if (location.href !== dest) {
-            location.replace(dest);
+          const destHref = chooseDestination();
+          if (location.href !== destHref) {
+            location.replace(destHref);
           }
         }
       } finally {
@@ -222,14 +301,13 @@ export function redirectIfAuthed({ homePath = "/home/" } = {}) {
   }
 
   // Jalankan saat load pertama
-  checkAndRedirect();
+  doRedirectIfNeeded();
   // Jalankan kembali setiap kali halaman ditampilkan kembali (mis. tombol Back)
   window.addEventListener("pageshow", () => {
-    checkAndRedirect();
+    doRedirectIfNeeded();
   });
   // Jalankan pula saat tab kembali aktif (mis. dari background)
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) checkAndRedirect();
+    if (!document.hidden) doRedirectIfNeeded();
   });
 }
-
