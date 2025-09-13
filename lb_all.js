@@ -167,7 +167,8 @@ async function onDownloadPdf(){
 
   try {
     showOverlay("loading", "Menyiapkan PDF…", "Menghubungkan ke server");
-    const resp = await fetch(`${FN}?site=${encodeURIComponent(TARGET)}`, {
+    const url = `${FN}?site=${encodeURIComponent(TARGET)}&token=${encodeURIComponent(SHARED_TOKEN)}`;
+    const resp = await fetch(url, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${idToken}`,
