@@ -382,6 +382,76 @@ class SiteMachine {
     }
   }
 
+  async speakAssignments(assignments){
+    // Pastikan environment mendukung Web Speech API
+    if(typeof window === "undefined" ||
+       !('speechSynthesis' in window) ||
+       typeof window.SpeechSynthesisUtterance === "undefined"){
+      return;
+    }
+
+    const phrases = this.cfg.positions.map(pos => {
+      const name = assignments[pos.id];
+      return name && name !== "-" ? `personil ${name} ke posisi ${pos.name}` : null;
+    }).filter(Boolean);
+    if(!phrases.length) return;
+
+    const synth = window.speechSynthesis;
+
+    const femaleKeys = [
+      'female', 'wanita', 'perempuan', 'gadis', 'nadine', 'dita',
+      'id-id-standard-a', 'id-id-standard-c', 'id-id-standard-e',
+      'id-id-standard-g', 'id-id-standard-i',
+      'id-id-wavenet-a', 'id-id-wavenet-c', 'id-id-wavenet-e',
+      'id-id-wavenet-g', 'id-id-wavenet-i'
+    ];
+
+    const pickVoice = () => {
+      const voices = synth.getVoices();
+      const isFemale = v => {
+        const t = `${v.name} ${v.voiceURI || ''}`.toLowerCase();
+        return femaleKeys.some(k => t.includes(k));
+      };
+      return voices.find(v => v.lang.toLowerCase().startsWith('id') && isFemale(v))
+          || voices.find(v => v.lang.toLowerCase().startsWith('id'))
+          || voices[0];
+    };
+
+    // Beberapa platform (iOS/Android) memuat daftar voice secara async
+    let voice = pickVoice();
+    if(!voice){
+      voice = await new Promise(resolve => {
+        const handler = () => {
+          synth.removeEventListener('voiceschanged', handler);
+          resolve(pickVoice());
+        };
+        synth.addEventListener('voiceschanged', handler);
+      });
+    }
+
+    const utter = new SpeechSynthesisUtterance(`perindahan dinas dimulai, ${phrases.join(", ")}`);
+    let female = false;
+    if(voice){
+      utter.voice = voice;
+      utter.lang = voice.lang;
+      const t = `${voice.name} ${voice.voiceURI || ''}`.toLowerCase();
+      female = femaleKeys.some(k => t.includes(k));
+    } else {
+      utter.lang = "id-ID";
+    }
+    if(!female){
+      // Jika tidak ditemukan voice perempuan, naikkan pitch agar terdengar lebih tinggi
+      utter.pitch = 1.2;
+    }
+
+    try{
+      synth.cancel();
+      synth.speak(utter);
+    }catch(err){
+      console.warn('Speech synthesis gagal:', err);
+    }
+  }
+
   async computeAndWriteAssignments(useCooldown){
     const { pools, cooldown } = await this.buildPools(useCooldown);
     const { ok, result } = this.assignUnique(pools);
@@ -398,7 +468,7 @@ class SiteMachine {
         await set(this.assignmentsRef, finalAssign);
       }
     }catch(err){ showModal("Tulis assignments gagal: " + (err?.message||err)); }
-
+    this.speakAssignments(finalAssign);
     this.advanceRotIdx(pools);
   }
 

@@ -1,4 +1,5 @@
 import { requireAuth } from "./auth-guard.js";
+import { capturePhoto, dataUrlToFile, makePhotoName } from "./camera.js";
 
 // Lindungi halaman: user harus login
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
@@ -46,6 +47,7 @@ const cardFoto      = $("#cardFoto");
 const fileInput     = $("#file");
 const preview       = $("#preview");
 const msg3          = $("#msg3");
+const fotoBtn       = $("#fotoBtn");
 
 const tabInputBtn   = $("#tabInput");
 const tabKuponBtn   = $("#tabKupon");
@@ -74,13 +76,15 @@ const quotaInfo = $("#quotaInfo");
 
 /* Buat dropdown ID untuk foto (disisipkan via JS agar HTML tetap ringkas) */
 let photoIdSel = null;
+const photoIdWrap = document.getElementById("photoIdWrap");
 (function injectPhotoIdSelect(){
+  if(!photoIdWrap) return;
   const label = document.createElement("label");
   label.textContent = "Pilih ID (untuk foto)";
   photoIdSel = document.createElement("select");
   photoIdSel.id = "photoId";
   label.appendChild(photoIdSel);
-  cardFoto.insertBefore(label, fileInput);
+  photoIdWrap.appendChild(label);
 })();
 
 /* ===== State ===== */
@@ -124,6 +128,18 @@ function attachListeners() {
 
   photoIdSel.addEventListener("change", () => { preview.classList.add("hidden"); msg3.textContent = ""; });
   fileInput.addEventListener("change", onPickFile);
+  fotoBtn?.addEventListener("click", async ()=>{
+    try{
+      const dataUrl = await capturePhoto();
+      if(!dataUrl) return;
+      const file = dataUrlToFile(dataUrl);
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+      fileInput.dataset.filename = file.name;
+      fileInput.dispatchEvent(new Event("change", {bubbles:true}));
+    }catch(e){ console.error(e); }
+  });
 
   tabInputBtn.addEventListener("click", () => setTab('form'));
   tabKuponBtn.addEventListener("click", () => setTab('kupon'));
@@ -414,12 +430,14 @@ async function onPickFile(e) {
     msg3.textContent = "Mengunggah…";
     showOverlay("Mengunggah foto…");
 
+    const filename = fileInput.dataset.filename || makePhotoName();
     const res = await fetchJson(WORKER_URL, {
       method : "POST",
       headers: { "Content-Type": "application/json" },
       body   : JSON.stringify({
         action: "uploadphoto",
         id,
+        filename,
         dataUrl,
         token: SHARED_TOKEN
       })
@@ -432,6 +450,7 @@ async function onPickFile(e) {
   } finally {
     fileInput.value = "";
     hideOverlay();
+    fileInput.dataset.filename = "";
   }
 }
 

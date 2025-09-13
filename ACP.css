@@ -1,7 +1,7 @@
 :root{
   --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#94a3b8;
   --border:rgba(255,255,255,.12); --card:#0b1324;
-  --accent:#7c9bff; --accent-2:#60a5fa; --ok:#22c55e; --danger:#ef4444;
+  --accent:#6a5cff; --accent-2:#8a7bff; --ok:#22c55e; --danger:#ef4444;
   --fs-base: clamp(14px, 1.6vw, 16px);
   --fs-sm:   clamp(12px, 1.3vw, 14px);
   --fs-lg:   clamp(18px, 2vw, 22px);
@@ -84,7 +84,7 @@ input, textarea{
 }
 .qr-btn:hover{ filter:brightness(1.08) }
 .qr-btn:active{ transform:translateY(1px) }
-.qr-btn img{ width:28px; height:28px; filter:invert(1); }
+.qr-btn img{ width:28px; height:28px; display:block; filter:invert(1); }
 .qr-btn small{ color:rgba(255,255,255,.85); font-weight:400; display:block; }
 
 /* Scan button inside info card */

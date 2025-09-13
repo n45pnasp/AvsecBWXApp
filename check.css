@@ -40,14 +40,27 @@
 .check-table{
   width:100%;
   border-collapse:collapse;
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  table-layout:fixed;
   margin-bottom:12px;
 }
 
 .check-table th,
 .check-table td{
   border:1px solid var(--border);
-  padding:4px;
+  padding:10px 12px;
   text-align:center;
+}
+
+.check-table th{
+  background:#111827;
+  white-space:nowrap;
+}
+
+.check-table tbody tr:nth-child(odd){
+  background:rgba(255,255,255,.02);
 }
 
 .check-table:not(.hhmd-table) th:first-child,
@@ -66,12 +79,26 @@
   gap:4px;
 }
 
+.check-table label .row-num{
+  font-size:14px;
+}
+
+.check-table th .status-sample{
+  font-size:18px;
+  margin-right:4px;
+}
+
+.check-table th .col-test-title{
+  display:block;
+  font-size:14px;
+  margin-bottom:2px;
+}
+
 .hhmd-table td,
 .hhmd-table th{
   text-align:center;
   vertical-align:middle;
 }
-
 
 .label-text{
   font-weight:600;

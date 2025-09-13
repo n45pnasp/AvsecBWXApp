@@ -159,6 +159,7 @@ async function startScan(){
 
     ensureVideo();      // siapkan elemen <video>
     ensureOverlay();    // siapkan overlay (close + target box)
+    if(!navigator.mediaDevices?.getUserMedia) throw new Error('Kamera tidak didukung');
 
     // Tampilkan UI kamera lebih awal agar iOS nyaman play()
     document.body.classList.add('scan-active');
@@ -256,7 +257,7 @@ function ensureOverlay(){
       <button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button>
     </div>
     <div class="scan-reticle" aria-hidden="true"></div>
-    <div class="scan-hint">Arahkan ke barcode / QR</div>
+    <div class="scan-hint">Scan Barcode / QR code</div>
   `;
   document.body.appendChild(overlay);
   scanState.overlay = overlay;
@@ -463,7 +464,7 @@ function injectScanStyles(){
       transform:translateX(-50%);
       background:rgba(0,0,0,.55); color:#fff; font-weight:600;
       padding:8px 12px; border-radius:999px;
-      letter-spacing:.2px; pointer-events:none;
+      letter-spacing:.2px; font-size:14px; pointer-events:none;
       box-shadow:0 4px 12px rgba(0,0,0,.35);
     }
   `;

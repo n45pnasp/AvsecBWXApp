@@ -20,7 +20,7 @@
   <link rel="icon" type="image/png" sizes="256x256" href="icons/favicon-256.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icons/favicon-512.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="manifest" href="site.webmanifest">
+  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#000000">
 
   <!-- ====== OPEN GRAPH / SOCIAL ====== -->
@@ -109,5 +109,7 @@
   </div>
 
   <script type="module" src="login.js"></script>
+  <script type="module" src="offline.js"></script>
+  <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js"));}</script>
 </body>
 </html>

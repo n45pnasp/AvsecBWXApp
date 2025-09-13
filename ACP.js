@@ -286,7 +286,7 @@ function injectScanStyles(){
                   linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat; outline:2px dashed rgba(255,255,255,0); }
     .scan-hint{ position:absolute; left:50%; bottom:max(18px, calc(16px + env(safe-area-inset-bottom,0))); transform:translateX(-50%);
       background:rgba(0,0,0,.55); color:#fff; font-weight:600; padding:8px 12px; border-radius:999px; letter-spacing:.2px;
-      pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
+      font-size:14px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
   `;
   const style = document.createElement('style');
   style.id = 'scan-style';
@@ -298,6 +298,7 @@ injectScanStyles();
 async function startScan(){
   try{
     ensureVideo(); ensureOverlay();
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Kamera tidak didukung');
     document.body.classList.add('scan-active');
     const constraints = { video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}, advanced:[{focusMode:'continuous'}]}, audio:false };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -346,7 +347,7 @@ function ensureOverlay(){
   overlay.innerHTML = `
     <div class="scan-topbar"><button id="scan-close" class="scan-close" aria-label="Tutup">✕</button></div>
     <div class="scan-reticle" aria-hidden="true"></div>
-    <div class="scan-hint">Arahkan ke barcode / QR</div>`;
+    <div class="scan-hint">Scan Barcode / QR code</div>`;
   document.body.appendChild(overlay);
   scanState.overlay = overlay;
   scanState.closeBtn = overlay.querySelector('#scan-close');

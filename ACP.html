@@ -19,9 +19,9 @@
 
   <main class="container">
     <section id="infoCard" class="card info-card">
-      <button id="scanBtn" type="button" class="qr-btn">
+      <button id="scanBtn" type="button" class="qr-btn" aria-busy="false">
         <img src="icons/qrcode.png" alt="QR" />
-        <span>Scan Barcode<br><small>Kartu PAS</small></span>
+        <span>Scan / Aktifkan Kamera<br><small>Kartu PAS</small></span>
       </button>
       <div class="info-name">
         <span class="info-label">Nama Lengkap</span>
@@ -159,5 +159,6 @@
   </div>
 
   <script type="module" src="ACP.js"></script>
+  <script type="module" src="offline.js"></script>
 </body>
 </html>

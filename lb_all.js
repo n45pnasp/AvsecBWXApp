@@ -1,13 +1,14 @@
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { capturePhoto, dataUrlToFile, makePhotoName } from "./camera.js";
 
 /* ===== KONFIG ===== */
 const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // 🔒 JANGAN UBAH TANPA PERMINTAAN
 const SHARED_TOKEN = "N45p";                                    // 🔒 JANGAN UBAH TANPA PERMINTAAN
 
 // ========= Cloud Functions download PDF (endpoint) =========
-const FN = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
+const CFN_DOWNLOAD_PDF_URL = "https://us-central1-avsecbwx-4229c.cloudfunctions.net/downloadPdf";
 
 // ======== Konfigurasi Firebase (samakan dgn auth-guard.js) ========
 const firebaseConfig = {
@@ -36,34 +37,6 @@ const TARGETS = {
   LB_MALAM:   { label: "LB Malam" },
 };
 
-/* ===== INFO SHEET UNTUK DOWNLOAD PDF ===== */
-const SHEET_INFO = {
-  LB_CCTV:    { id: "1HLLEyF6EiLOSkdB1t8hdiD9u4re1pKRbxr05lChhWuI", gid: "" },
-  LB_PSCP:    { id: "1NiOsO1FLYgSfQGoIm4-xZ5CqdbI92OphU8ENsR1NXOI", gid: "" },
-  LB_HBSCP:   { id: "1JT-Yzu91MqXBN-lIHkD68lVyBIaffuVW2CFu19gYoOc", gid: "" },
-  LB_ARRIVAL: { id: "1zSJjGHiZeJP7QYwoiW-TRvbqVCBgghDgwmJYaOG3EYA", gid: "" },
-  LB_POS1:    { id: "11J_ydWZGdG7jAVpVPWuMfluA3H7Z8pBIQLChZaS0BRg", gid: "" },
-  LB_CARGO:   { id: "1nfneesae64VWqcVbcgguMc2Gh2EceyLhbBr1LjOQ_2E", gid: "" },
-  LB_MALAM:   { id: "1zf_rqCFVoi3AaQU-9Gb3l91striiQ5dWrD1JTyhdnZk", gid: "" },
-};
-
-/* ===== UTIL DOWNLOAD PDF (Google Sheets) ===== */
-const USE_PUB = false;
-const PDF_DEFAULT_OPTS = {
-  format: "pdf", size: "A4", portrait: "true", scale: "2",
-  top_margin: "0.50", bottom_margin: "0.50", left_margin: "0.50", right_margin: "0.50",
-  sheetnames: "false", printtitle: "false", pagenumbers: "true", gridlines: "false", fzr: "true"
-};
-function buildSheetPdfUrl(sheetId, gid, opts = {}) {
-  const cacheBuster = { t: Date.now() };
-  if (USE_PUB) {
-    const params = new URLSearchParams({ gid, single: "true", output: "pdf", ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/pub?${params.toString()}`;
-  } else {
-    const params = new URLSearchParams({ ...PDF_DEFAULT_OPTS, ...opts, gid, ...cacheBuster });
-    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?${params.toString()}`;
-  }
-}
 
 /* ===== UTIL TARGET ===== */
 function getTarget() {
@@ -151,12 +124,6 @@ function showOverlay(state, title, desc){
 
 /* ===== HANDLER DOWNLOAD PDF ===== */
 async function onDownloadPdf(){
-  const info = SHEET_INFO[TARGET];
-  if(!info?.id){
-    alert("PDF belum tersedia untuk target ini");
-    return;
-  }
-
   const user = auth.currentUser;
   if (!user) {
     alert("Harus login terlebih dulu.");
@@ -167,7 +134,8 @@ async function onDownloadPdf(){
 
   try {
     showOverlay("loading", "Menyiapkan PDF…", "Menghubungkan ke server");
-    const resp = await fetch(`${FN}?site=${encodeURIComponent(TARGET)}`, {
+    const url = `${CFN_DOWNLOAD_PDF_URL}?site=${encodeURIComponent(TARGET)}`;
+    const resp = await fetch(url, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${idToken}`,
@@ -184,8 +152,8 @@ async function onDownloadPdf(){
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     const now = new Date();
-    const dateStr = `${pad2(now.getDate())}-${pad2(now.getMonth() + 1)}-${now.getFullYear()}`;
-    a.download = `${TARGET}_${dateStr}.pdf`;
+    const tanggal = `${pad2(now.getDate())}${pad2(now.getMonth() + 1)}${now.getFullYear()}`;
+    a.download = `${TARGET}_${tanggal}.pdf`;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
@@ -267,7 +235,7 @@ function askConfirm(message="Yakin?", { okText="Hapus", cancelText="Batal" } = {
 
 /* ===== MODE (Tambah vs Edit) ===== */
 function setModeEdit(on){
-  submitBtn.textContent = on ? "✏️ Edit" : "✅ Kirim Data";
+  submitBtn.textContent = on ? "✏️ Edit" : "Kirim Data";
   pickPhoto.disabled = !!on;
   fileInput.disabled = !!on;
   if (on){
@@ -416,14 +384,6 @@ function disableNativeTimePicker(){
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave  .addEventListener("click", () => closeTimePicker(true));
 
-/* ===== GALERI MODE ===== */
-function forceGalleryPicker(){
-  try{
-    fileInput.setAttribute("accept","image/*");
-    fileInput.removeAttribute("capture");
-  }catch{}
-}
-
 /* ====== PNG + KOMPRES ====== */
 function stepDownScale(srcCanvas, targetW, targetH){
   let sCan = srcCanvas;
@@ -516,25 +476,18 @@ async function fileToBase64(file){
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
 pickPhoto.addEventListener("click", async () => {
   if (editingId) return;
-  forceGalleryPicker();
-
-  try{
-    if (window.showOpenFilePicker){
-      const [handle] = await window.showOpenFilePicker({
-        multiple: false,
-        excludeAcceptAllOption: true,
-        startIn: "pictures",
-        types: [{ description: "Foto", accept: { "image/*": [".jpg",".jpeg",".png",".gif",".webp",".heic"] } }]
-      });
-      const file = await handle.getFile();
-      const dt = new DataTransfer(); dt.items.add(file);
-      fileInput.files = dt.files;
-      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
-      return;
-    }
-  }catch{}
-
-  fileInput.click();
+  try {
+    const dataUrl = await capturePhoto();
+    if (!dataUrl) return;
+    const file = dataUrlToFile(dataUrl);
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    fileInput.dataset.filename = file.name;
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  } catch (err) {
+    console.error(err);
+  }
 });
 
 fileInput.addEventListener("change", async (ev) => {
@@ -550,10 +503,7 @@ fileInput.addEventListener("change", async (ev) => {
     showOverlay("loading", "Mengunggah foto…", `Target: ${getTargetLabel(TARGET)}`);
 
     const pngBlob = await normalizeToPNG(file);
-    const now     = new Date();
-    const dateStr = `${pad2(now.getDate())}-${pad2(now.getMonth()+1)}-${now.getFullYear()}`;
-    const timeStr = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
-    const pngName = `${TARGET}_${dateStr}_${timeStr}.png`;
+    const pngName = fileInput.dataset.filename || makePhotoName();
     uploadName.textContent = pngName;
 
     const objectUrl = URL.createObjectURL(pngBlob);
@@ -827,7 +777,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   timeLabel.textContent = "Pilih Waktu";
   setModeEdit(false);
   disableNativeTimePicker();
-  forceGalleryPicker();
   downloadBtn?.addEventListener("click", onDownloadPdf);
   await loadRows();
 });

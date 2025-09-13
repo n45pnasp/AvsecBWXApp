@@ -75,6 +75,16 @@ function resolveDisplayName(user){
   return "Pengguna";
 }
 
+function normalizeName(n) {
+  return String(n || "")
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z\s]/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
 // ===== URL helpers (Drive primary+fallback) =====
 function cleanURL(s) {
   if (!s) return "";
@@ -225,13 +235,98 @@ setInterval(tick, 60 * 1000);
 
 enableDockPressedEffect();
 
+// Aktif/nonaktif elemen yang butuh dinas
+function applyDutyAccess(enable){
+  document.querySelectorAll('.requires-duty').forEach(el=>{
+    const target = el.dataset.href;
+    if (enable && target){
+      el.href = target;
+      el.classList.remove('is-disabled');
+      el.removeAttribute('aria-disabled');
+    } else {
+      if (target) el.href = '#';
+      el.classList.add('is-disabled');
+      el.setAttribute('aria-disabled','true');
+    }
+  });
+}
+
 // Ambil profil user saat state Auth siap (redirect ditangani oleh auth-guard.js)
 onAuthStateChanged(auth, async (user) => {
   if (!user) return;
   try {
     const p = await fetchProfile(user);
     applyProfile({ name: p.name, photoURL: p.photoURL });
+    if (p.isAdmin){
+      applyDutyAccess(true);
+    } else {
+      lookupSchedule(p.name);
+    }
   } catch {
-    applyProfile({ name: resolveDisplayName(user), photoURL: DEFAULT_AVATAR });
+    const nm = resolveDisplayName(user);
+    applyProfile({ name: nm, photoURL: DEFAULT_AVATAR });
+    lookupSchedule(nm);
   }
 });
+
+// ===== Cek roster untuk akses fitur dinas =====
+  async function lookupSchedule(name){
+    const overlay = document.getElementById('lookupOverlay');
+    overlay?.classList.add('show');
+    try{
+      const url = new URL('https://sched.avsecbwx2018.workers.dev/');
+      url.searchParams.set('action','getRoster');
+      url.searchParams.set('token','N45p');
+      url.searchParams.set('_', Date.now());
+
+      const user = auth.currentUser;
+      const headers = { 'Accept': 'application/json' };
+      if (user) {
+        try {
+          headers.Authorization = `Bearer ${await user.getIdToken(true)}`;
+        } catch {}
+      }
+
+      const res = await fetch(url.toString(), {
+        method: 'GET',
+        cache: 'no-store',
+        headers
+      });
+
+    const ctype = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ctype.includes('application/json')) {
+      const text = await res.text().catch(() => '');
+      throw new Error(text || 'Respon tidak valid');
+    }
+
+    const payload = await res.json();
+      if (!payload || !payload.ok) {
+        throw new Error(payload?.error || `HTTP ${res.status}`);
+      }
+      const data = payload.data || payload;
+      const rosterNames = (data.rosters || []).map(r => normalizeName(r.nama));
+      const cfg = data.config || {};
+      const extra = [
+        cfg.chief,
+        cfg.assistant_chief,
+        cfg.chief2,
+        cfg.assistant_chief2,
+        cfg.supervisor_pscp,
+        cfg.supervisor_hbscp,
+        cfg.supervisor_cctv,
+        cfg.supervisor_patroli,
+        cfg.supervisor_pos1,
+        cfg.pic_malam,
+      ].map(normalizeName);
+      const names = new Set([...rosterNames, ...extra].filter(Boolean));
+      const isOn = names.has(normalizeName(name));
+      applyDutyAccess(isOn);
+  } catch (err) {
+    console.error('Roster lookup failed', err);
+      alert('Gagal mengambil data jadwal: ' + (err?.message || err));
+      applyDutyAccess(false);
+    } finally {
+      overlay?.classList.remove('show');
+    }
+  }
+

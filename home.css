@@ -235,3 +235,32 @@ body{
   outline-color: color-mix(in oklab, var(--accent) 40%, transparent);
   background: rgba(255,255,255,0.07);
 }
+
+/* Disabled app/dock */
+.app.is-disabled{
+  pointer-events:none;
+  opacity:.4;
+}
+
+.dock-btn.is-disabled{
+  pointer-events:none;
+  opacity:.4;
+}
+
+/* Overlay spinner for schedule lookup */
+#lookupOverlay{
+  position:fixed; inset:0; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(0,0,0,.45);
+  z-index:100;
+}
+#lookupOverlay.show{ display:flex; }
+#lookupOverlay .spinner{
+  width:48px; height:48px; border-radius:50%;
+  border:5px solid rgba(255,255,255,.15);
+  border-top-color:var(--accent);
+  animation:spin .9s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+/* Offline bottom sheet */

@@ -209,6 +209,7 @@
                 <div><h3>Terjadi kesalahan</h3><p>Status: ${res.status}</p>
                 <pre style="white-space:pre-wrap;text-align:left">${msg}</pre>
                 <p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>
+  <script type="module" src="offline.js"></script>
               </body>`;
             return;
           }
@@ -240,6 +241,7 @@
               <div><h3>PDF tidak tersedia</h3>
               <p>Param <code>key</code> kosong dan <code>src</code> tidak valid.</p>
               <p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>
+  <script type="module" src="offline.js"></script>
             </body>`;
         }
       } catch (e) {
@@ -249,6 +251,7 @@
             <div><h3>Terjadi kesalahan</h3>
             <pre style="white-space:pre-wrap;text-align:left">${String(e?.message||e)}</pre>
             <p><a href="chatbot.html" style="color:#06cf9c;text-decoration:none;">Kembali</a></p></div>
+  <script type="module" src="offline.js"></script>
           </body>`;
       }
     });
@@ -269,5 +272,6 @@
     }, { capture: true });
     document.addEventListener('selectstart', e => e.preventDefault(), { capture: true });
   </script>
+  <script type="module" src="offline.js"></script>
 </body>
 </html>

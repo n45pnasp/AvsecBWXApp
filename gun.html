@@ -23,9 +23,9 @@
     </section>
 
     <section id="infoCard" class="card avsec-card">
-      <button id="scanBtn" type="button" class="qr-btn">
+      <button id="scanBtn" type="button" class="qr-btn" aria-busy="false">
         <img src="icons/qrcode.png" alt="QR" />
-        <span>Scan Barcode PAS<br><small>Avsec Airlines</small></span>
+        <span>Scan / Aktifkan Kamera<br><small>Avsec Airlines</small></span>
       </button>
       <div class="avsec-info">
         <div class="avsec-texts">
@@ -43,7 +43,6 @@
 
     <section class="card">
       <button id="btnEvidence" type="button" class="btn full">Ambil Foto</button>
-      <input id="fotoEvidence" type="file" accept="image/*" capture="environment" class="hidden" />
       <div id="evidencePreview" class="upload-info hidden">
         <img id="evidenceImg" alt="Foto Evidence" />
       </div>
@@ -140,5 +139,6 @@
   </div>
 
   <script type="module" src="gun.js"></script>
+  <script type="module" src="offline.js"></script>
 </body>
 </html>

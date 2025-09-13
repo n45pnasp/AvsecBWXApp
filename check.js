@@ -1,5 +1,6 @@
 // check.js — terhubung ke Cloudflare Worker + code.gs (token diinjeksi di Worker)
 import { requireAuth, getFirebase } from "./auth-guard.js";
+import { capturePhoto, dataUrlToFile, makePhotoName } from "./camera.js";
 
 // Lindungi halaman: wajib login
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
@@ -248,7 +249,7 @@ function populateChecks(wrap) {
   }
 }
 
-function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId) {
+function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId, idx) {
   const btn = document.getElementById(btnId);
   const input = document.getElementById(inputId);
   const preview = document.getElementById(previewId);
@@ -256,14 +257,30 @@ function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId) {
   const status = document.getElementById(statusId);
   const name = document.getElementById(nameId);
 
-  btn.addEventListener("click", () => input.click());
-  input.addEventListener("change", () => {
-    const file = input.files[0];
-    if (!file) return;
-    preview.src = URL.createObjectURL(file);
-    status.textContent = "Foto siap diunggah";
-    name.textContent = file.name;
-    info.classList.remove("hidden");
+  btn.addEventListener("click", async () => {
+    try {
+      const dataUrl = await capturePhoto();
+      if (!dataUrl) return;
+      const fileName = makePhotoName(null, idx);
+      const file = dataUrlToFile(dataUrl, fileName);
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      input.dataset.filename = file.name;
+      preview.src = dataUrl;
+      status.textContent = "Foto siap diunggah";
+      name.textContent = file.name;
+      info.classList.remove("hidden");
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  input.addEventListener('change', () => {
+    const fname = makePhotoName(null, idx);
+    input.dataset.filename = fname;
+    const n = document.getElementById(nameId);
+    if (n) n.textContent = fname;
   });
 }
 
@@ -279,6 +296,11 @@ function fileToDataURL(inputId) {
   });
 }
 
+function getFileName(inputId){
+  const input = document.getElementById(inputId);
+  return input?.dataset.filename || (input?.files?.[0]?.name || "");
+}
+
 function resetForm() {
   const select = document.getElementById("faskampen");
   select.value = "";
@@ -292,7 +314,7 @@ function resetForm() {
 
   ["fileInput1", "fileInput2"].forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.value = "";
+    if (el){ el.value = ""; el.dataset.filename = ""; }
   });
   ["preview1", "preview2"].forEach((id) => {
     const img = document.getElementById(id);
@@ -376,18 +398,25 @@ function initTypeButtons() {
       "Pinggang Belakang<br/>Bagian Tengah",
       "Pergelangan Kaki<br/>Bagian Kanan"
     ];
-    let idx = 1;
-    const body = pos.map(p => `
-      <tr><td rowspan="2">${p}</td><td>IN</td><td><label><span>${idx++}</span><input type="checkbox" /></label></td></tr>
-      <tr><td>OUT</td><td><label><span>${idx++}</span><input type="checkbox" /></label></td></tr>
-    `).join("");
+    const body = pos.map((p, i) => {
+      const numIn = i * 2 + 1;
+      const numOut = i * 2 + 2;
+      return `
+      <tr><td rowspan="2">${p}</td><td>IN</td><td><label><input type="checkbox" /><span class="row-num">${numIn}</span></label></td></tr>
+      <tr><td>OUT</td><td><label><input type="checkbox" /><span class="row-num">${numOut}</span></label></td></tr>
+    `;
+    }).join("");
     const html = `
       <table class="check-table">
         <thead>
           <tr>
             <th>POSISI TEST</th>
             <th>TIPE<br/>KNIFE 304</th>
-            <th>HASIL TEST<br/>centang=Alarm<br/>Kosong=No Alarm</th>
+            <th>
+              <div class="col-test-title">HASIL TES</div>
+              <span class="status-sample">☑</span> Alarm<br/>
+              <span class="status-sample">☐</span> No Alarm
+            </th>
           </tr>
         </thead>
         <tbody>${body}</tbody>
@@ -592,11 +621,15 @@ function initSubmit() {
       const gbr1 = await fileToDataURL("fileInput1");
       const gbr2 = await fileToDataURL("fileInput2");
       const gbr = gbr1 || gbr2;
+      const gbr1Name = getFileName("fileInput1");
+      const gbr2Name = getFileName("fileInput2");
 
       const payload = {
         dropdown: key, petugas, date,
         pass: passBool, fail: failBool,
-        gbr1, gbr2, gbr
+        gbr1, gbr2, gbr,
+        ...(gbr1 ? { gbr1Name } : {}),
+        ...(gbr2 ? { gbr2Name } : {})
       };
 
       if (currentLookup) {
@@ -680,8 +713,8 @@ function initPdfDownload() {
 
 /* ================== STARTUP ================== */
 document.addEventListener("DOMContentLoaded", () => {
-  setupPhoto("photoBtn1", "fileInput1", "preview1", "uploadInfo1", "uploadStatus1", "uploadName1");
-  setupPhoto("photoBtn2", "fileInput2", "preview2", "uploadInfo2", "uploadStatus2", "uploadName2");
+  setupPhoto("photoBtn1", "fileInput1", "preview1", "uploadInfo1", "uploadStatus1", "uploadName1", 1);
+  setupPhoto("photoBtn2", "fileInput2", "preview2", "uploadInfo2", "uploadStatus2", "uploadName2", 2);
   initTypeButtons();
   initSubmit();
   initPdfDownload();

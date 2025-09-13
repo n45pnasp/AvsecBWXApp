@@ -69,8 +69,9 @@
     <!-- Card 3: Foto Struk (selalu tampil) -->
     <section class="card hidden" id="cardFoto">
 
-      <!-- Dropdown ID untuk foto akan disisipkan otomatis oleh fuel.js -->
-      <input id="file" type="file" accept="image/*" capture="environment" />
+      <div id="photoIdWrap"><!-- Select ID akan disisipkan di sini --></div>
+      <button id="fotoBtn" class="btn full">Ambil Foto</button>
+      <input id="file" type="file" accept="image/*" capture="environment" class="hidden" />
       <img id="preview" alt="" class="preview hidden" />
       <div id="msg3" class="msg"></div>
     </section>
@@ -88,6 +89,7 @@
   </div>
 
   <script type="module" src="fuel.js"></script>
+  <script type="module" src="offline.js"></script>
 </body>
 </html>
 
