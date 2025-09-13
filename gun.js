@@ -244,6 +244,9 @@ async function stopScan(){
   if (scanState._orientationHandler){
     window.removeEventListener('orientationchange', scanState._orientationHandler);
     window.removeEventListener('resize', scanState._orientationHandler);
+    if (screen.orientation && screen.orientation.removeEventListener){
+      screen.orientation.removeEventListener('change', scanState._orientationHandler);
+    }
     scanState._orientationHandler = null;
   }
   document.body.classList.remove('scan-active');
@@ -259,7 +262,7 @@ function ensureOverlay(){
         <button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button>
       </div>
       <div class="scan-reticle" aria-hidden="true"></div>
-      <div class="scan-hint">Arahkan kamera ke barcode / QR</div>
+      <div class="scan-hint">Bidik objek lalu tekan tombol</div>
       <div class="scan-msg-portrait" role="alert" aria-live="assertive">Putar perangkat ke <b>mode horizontal (landscape)</b> untuk memotret</div>
       <button id="scan-shutter" class="scan-shutter" aria-label="Ambil gambar" title="Ambil gambar"></button>
     `;
@@ -301,12 +304,21 @@ function ensureOverlay(){
     scanState._orientationHandler = update;
     window.addEventListener("orientationchange", update);
     window.addEventListener("resize", update);
+    if (screen.orientation && screen.orientation.addEventListener) {
+      screen.orientation.addEventListener("change", update);
+    }
     updateCaptureState();
   }
 }
 
 
 function isLandscape(){
+  if (screen.orientation && typeof screen.orientation.type === "string") {
+    return screen.orientation.type.startsWith("landscape");
+  }
+  if (typeof window.orientation === "number") {
+    return Math.abs(window.orientation) === 90;
+  }
   return (window.matchMedia && window.matchMedia('(orientation: landscape)').matches)
          || (window.innerWidth > window.innerHeight);
 }
