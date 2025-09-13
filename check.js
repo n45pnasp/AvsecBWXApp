@@ -384,10 +384,14 @@ function initTypeButtons() {
       "Pinggang Belakang<br/>Bagian Tengah",
       "Pergelangan Kaki<br/>Bagian Kanan"
     ];
-    const body = pos.map(p => `
-      <tr><td rowspan="2">${p}</td><td>IN</td><td><label><input type="checkbox" /></label></td></tr>
-      <tr><td>OUT</td><td><label><input type="checkbox" /></label></td></tr>
-    `).join("");
+    const body = pos.map((p, i) => {
+      const numIn = i * 2 + 1;
+      const numOut = i * 2 + 2;
+      return `
+      <tr><td rowspan="2">${p}</td><td>IN</td><td><label><input type="checkbox" /><span class="row-num">${numIn}</span></label></td></tr>
+      <tr><td>OUT</td><td><label><input type="checkbox" /><span class="row-num">${numOut}</span></label></td></tr>
+    `;
+    }).join("");
     const html = `
       <table class="check-table">
         <thead>

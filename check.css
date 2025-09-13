@@ -79,6 +79,10 @@
   gap:4px;
 }
 
+.check-table label .row-num{
+  font-size:14px;
+}
+
 .check-table th .status-sample{
   font-size:18px;
   margin-right:4px;
