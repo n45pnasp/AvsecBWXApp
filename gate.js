@@ -518,7 +518,11 @@ function initPdfDownload(){
       const blob = await res.blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "GateFiles.pdf";
+      const pad = (n)=> String(n).padStart(2,"0");
+      const now = new Date();
+      const tanggal = `${pad(now.getDate())}${pad(now.getMonth()+1)}${now.getFullYear()}`;
+      const nameVal = (authName || "GateFiles").trim().replace(/[\\/:*?"<>|]+/g, "");
+      a.download = `${nameVal}_${tanggal}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
