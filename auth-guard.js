@@ -209,8 +209,11 @@ export function redirectIfAuthed({ homePath = "/home/" } = {}) {
           console.log(`↪️ Sudah login, redirect… UID: ${user.uid}`);
           const params = new URLSearchParams(location.search);
           const next = params.get("next");
-          const dest = next ? next : homeAbs.href;
-          location.replace(dest);
+          let dest = next ? decodeURIComponent(next) : homeAbs.href;
+          dest = resolveToAbsolute(dest).href;
+          if (location.href !== dest) {
+            location.replace(dest);
+          }
         }
       } finally {
         unsubscribe && unsubscribe();
@@ -223,6 +226,10 @@ export function redirectIfAuthed({ homePath = "/home/" } = {}) {
   // Jalankan kembali setiap kali halaman ditampilkan kembali (mis. tombol Back)
   window.addEventListener("pageshow", () => {
     checkAndRedirect();
+  });
+  // Jalankan pula saat tab kembali aktif (mis. dari background)
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) checkAndRedirect();
   });
 }
 
