@@ -201,29 +201,18 @@ export function requireAuth({
 export function redirectIfAuthed({ homePath = "/home/" } = {}) {
   const { auth } = getFb();
   const homeAbs = resolveToAbsolute(homePath);
-
-  const checkAndRedirect = () => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      try {
-        if (user) {
-          console.log(`↪️ Sudah login, redirect… UID: ${user.uid}`);
-          const params = new URLSearchParams(location.search);
-          const next = params.get("next");
-          const dest = next ? decodeURIComponent(next) : homeAbs.href;
-          location.replace(dest);
-        }
-      } finally {
-        unsubscribe && unsubscribe();
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    try {
+      if (user) {
+        console.log(`↪️ Sudah login, redirect… UID: ${user.uid}`);
+        const params = new URLSearchParams(location.search);
+        const next = params.get("next");
+        const dest = next ? decodeURIComponent(next) : homeAbs.href;
+        location.replace(dest);
       }
-    });
-  };
-  // Jalankan segera dan ulangi setiap halaman ditampilkan kembali,
-  // termasuk saat halaman dipulihkan dari cache atau aplikasi kembali fokus.
-  const run = () => checkAndRedirect();
-  run();
-  window.addEventListener("pageshow", run);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") run();
+    } finally {
+      unsubscribe && unsubscribe();
+    }
   });
 }
 
