@@ -229,6 +229,10 @@ async function startScan(mode = 'scan'){
   // reset tilt setiap kali scan dimulai
   deviceTilt = null;
   try{
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      showOverlay('err','Browser tidak mendukung kamera','');
+      return;
+    }
     ensureVideo(); ensureOverlay();
     document.body.classList.add('scan-active');
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -280,7 +284,17 @@ async function stopScan(){
   deviceTilt = null;
   document.body.classList.remove('scan-active');
 }
-function ensureVideo(){ if (scanState.video) return; const v=document.createElement('video'); v.setAttribute('playsinline',''); v.muted=true; v.autoplay=true; v.id='scan-video'; document.body.appendChild(v); scanState.video=v; }
+function ensureVideo(){
+  if (scanState.video) return;
+  const v = document.createElement('video');
+  v.setAttribute('playsinline','');
+  v.setAttribute('muted','');
+  v.muted = true;
+  v.autoplay = true;
+  v.id = 'scan-video';
+  document.body.appendChild(v);
+  scanState.video = v;
+}
 function ensureOverlay(){
   if (scanState.overlay) return;
   const overlay = document.createElement("div");
@@ -341,16 +355,23 @@ function ensureOverlay(){
       screen.orientation.addEventListener("change", update);
     }
     if (window.DeviceOrientationEvent){
-      const handler = (e)=>{
-        if (typeof e.gamma === 'number') {
-          deviceTilt = e.gamma;
-          updateCaptureState();
-        }
+      const addHandler = () => {
+        const handler = (e)=>{
+          if (typeof e.gamma === 'number') {
+            deviceTilt = e.gamma;
+            updateCaptureState();
+          }
+        };
+        window.addEventListener('deviceorientation', handler);
+        scanState._deviceOrientationHandler = handler;
       };
-      // iOS 13+ requires permission
-      try { DeviceOrientationEvent.requestPermission && DeviceOrientationEvent.requestPermission().catch(()=>{}); } catch(_){ }
-      window.addEventListener('deviceorientation', handler);
-      scanState._deviceOrientationHandler = handler;
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+          .then(res => { if (res === 'granted') addHandler(); })
+          .catch(()=>{});
+      } else {
+        addHandler();
+      }
     }
     updateCaptureState();
   }
