@@ -398,10 +398,22 @@ class SiteMachine {
 
     const synth = window.speechSynthesis;
 
+    const femaleKeys = [
+      'female', 'wanita', 'perempuan', 'gadis', 'nadine', 'dita',
+      'id-id-standard-a', 'id-id-standard-c', 'id-id-standard-e',
+      'id-id-standard-g', 'id-id-standard-i',
+      'id-id-wavenet-a', 'id-id-wavenet-c', 'id-id-wavenet-e',
+      'id-id-wavenet-g', 'id-id-wavenet-i'
+    ];
+
     const pickVoice = () => {
       const voices = synth.getVoices();
-      return voices.find(v => v.lang.startsWith("id") && /female|wanita|perempuan|dita/i.test(v.name))
-          || voices.find(v => v.lang.startsWith("id"))
+      const isFemale = v => {
+        const t = `${v.name} ${v.voiceURI || ''}`.toLowerCase();
+        return femaleKeys.some(k => t.includes(k));
+      };
+      return voices.find(v => v.lang.toLowerCase().startsWith('id') && isFemale(v))
+          || voices.find(v => v.lang.toLowerCase().startsWith('id'))
           || voices[0];
     };
 
@@ -418,11 +430,18 @@ class SiteMachine {
     }
 
     const utter = new SpeechSynthesisUtterance(`perindahan dinas dimulai, ${phrases.join(", ")}`);
+    let female = false;
     if(voice){
       utter.voice = voice;
       utter.lang = voice.lang;
+      const t = `${voice.name} ${voice.voiceURI || ''}`.toLowerCase();
+      female = femaleKeys.some(k => t.includes(k));
     } else {
       utter.lang = "id-ID";
+    }
+    if(!female){
+      // Jika tidak ditemukan voice perempuan, naikkan pitch agar terdengar lebih tinggi
+      utter.pitch = 1.2;
     }
 
     try{
