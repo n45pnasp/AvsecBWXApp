@@ -389,10 +389,26 @@ class SiteMachine {
       return name && name !== "-" ? `personil ${name} ke posisi ${pos.name}` : null;
     }).filter(Boolean);
     if(!phrases.length) return;
+
+    const synth = window.speechSynthesis;
+    let voices = synth.getVoices();
+    if(!voices.length){
+      synth.onvoiceschanged = () => {
+        synth.onvoiceschanged = null;
+        this.speakAssignments(assignments);
+      };
+      return;
+    }
+
+    const voice = voices.find(v => v.lang.startsWith("id") && /female|wanita|perempuan|dita/i.test(v.name))
+                || voices.find(v => v.lang.startsWith("id"));
+
     const utter = new SpeechSynthesisUtterance(`perindahan dinas dimulai, ${phrases.join(", ")}`);
-    utter.lang = "id-ID";
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utter);
+    utter.lang = voice?.lang || "id-ID";
+    if(voice) utter.voice = voice;
+
+    synth.cancel();
+    synth.speak(utter);
   }
 
   async computeAndWriteAssignments(useCooldown){
