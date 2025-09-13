@@ -1,4 +1,5 @@
 import { requireAuth } from "./auth-guard.js";
+import { capturePhoto, dataUrlToFile } from "./camera.js";
 
 // Lindungi halaman: user harus login
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
@@ -46,6 +47,7 @@ const cardFoto      = $("#cardFoto");
 const fileInput     = $("#file");
 const preview       = $("#preview");
 const msg3          = $("#msg3");
+const fotoBtn       = $("#fotoBtn");
 
 const tabInputBtn   = $("#tabInput");
 const tabKuponBtn   = $("#tabKupon");
@@ -124,6 +126,17 @@ function attachListeners() {
 
   photoIdSel.addEventListener("change", () => { preview.classList.add("hidden"); msg3.textContent = ""; });
   fileInput.addEventListener("change", onPickFile);
+  fotoBtn?.addEventListener("click", async ()=>{
+    try{
+      const dataUrl = await capturePhoto();
+      if(!dataUrl) return;
+      const file = dataUrlToFile(dataUrl);
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+      fileInput.dispatchEvent(new Event("change", {bubbles:true}));
+    }catch(e){ console.error(e); }
+  });
 
   tabInputBtn.addEventListener("click", () => setTab('form'));
   tabKuponBtn.addEventListener("click", () => setTab('kupon'));

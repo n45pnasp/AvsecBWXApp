@@ -1,6 +1,7 @@
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { capturePhoto, dataUrlToFile } from "./camera.js";
 
 /* ===== KONFIG ===== */
 const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // 🔒 JANGAN UBAH TANPA PERMINTAAN
@@ -383,14 +384,6 @@ function disableNativeTimePicker(){
 btnCancel.addEventListener("click", () => closeTimePicker(false));
 btnSave  .addEventListener("click", () => closeTimePicker(true));
 
-/* ===== GALERI MODE ===== */
-function forceGalleryPicker(){
-  try{
-    fileInput.setAttribute("accept","image/*");
-    fileInput.removeAttribute("capture");
-  }catch{}
-}
-
 /* ====== PNG + KOMPRES ====== */
 function stepDownScale(srcCanvas, targetW, targetH){
   let sCan = srcCanvas;
@@ -483,25 +476,17 @@ async function fileToBase64(file){
 /* ===== UPLOAD FOTO (hanya saat TAMBAH) ===== */
 pickPhoto.addEventListener("click", async () => {
   if (editingId) return;
-  forceGalleryPicker();
-
-  try{
-    if (window.showOpenFilePicker){
-      const [handle] = await window.showOpenFilePicker({
-        multiple: false,
-        excludeAcceptAllOption: true,
-        startIn: "pictures",
-        types: [{ description: "Foto", accept: { "image/*": [".jpg",".jpeg",".png",".gif",".webp",".heic"] } }]
-      });
-      const file = await handle.getFile();
-      const dt = new DataTransfer(); dt.items.add(file);
-      fileInput.files = dt.files;
-      fileInput.dispatchEvent(new Event("change", { bubbles: true }));
-      return;
-    }
-  }catch{}
-
-  fileInput.click();
+  try {
+    const dataUrl = await capturePhoto();
+    if (!dataUrl) return;
+    const file = dataUrlToFile(dataUrl);
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  } catch (err) {
+    console.error(err);
+  }
 });
 
 fileInput.addEventListener("change", async (ev) => {
@@ -794,7 +779,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   timeLabel.textContent = "Pilih Waktu";
   setModeEdit(false);
   disableNativeTimePicker();
-  forceGalleryPicker();
   downloadBtn?.addEventListener("click", onDownloadPdf);
   await loadRows();
 });

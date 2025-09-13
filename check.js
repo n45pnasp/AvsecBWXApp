@@ -1,5 +1,6 @@
 // check.js — terhubung ke Cloudflare Worker + code.gs (token diinjeksi di Worker)
 import { requireAuth, getFirebase } from "./auth-guard.js";
+import { capturePhoto, dataUrlToFile } from "./camera.js";
 
 // Lindungi halaman: wajib login
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
@@ -256,14 +257,21 @@ function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId) {
   const status = document.getElementById(statusId);
   const name = document.getElementById(nameId);
 
-  btn.addEventListener("click", () => input.click());
-  input.addEventListener("change", () => {
-    const file = input.files[0];
-    if (!file) return;
-    preview.src = URL.createObjectURL(file);
-    status.textContent = "Foto siap diunggah";
-    name.textContent = file.name;
-    info.classList.remove("hidden");
+  btn.addEventListener("click", async () => {
+    try {
+      const dataUrl = await capturePhoto();
+      if (!dataUrl) return;
+      const file = dataUrlToFile(dataUrl);
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      preview.src = dataUrl;
+      status.textContent = "Foto siap diunggah";
+      name.textContent = file.name;
+      info.classList.remove("hidden");
+    } catch (e) {
+      console.error(e);
+    }
   });
 }
 

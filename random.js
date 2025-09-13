@@ -2,6 +2,7 @@
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { capturePhoto, dataUrlToFile } from "./camera.js";
 
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
@@ -23,16 +24,16 @@ const barangCard=$("#barangCard");
 const tindakanSel=$("#tindakanBarang"),tipePiSel=$("#tipePi");
 const tindakanField=tindakanSel?.parentElement,tipePiField=tipePiSel?.parentElement;
 const isiBarangInp=$("#isiBarang");
-const fotoBtn=$("#fotoBtn"),fotoInput=$("#fotoInput"),fotoPreview=$("#fotoPreview");
+const fotoBtn=$("#fotoBtn"),fotoPreview=$("#fotoPreview");
 
 // SUSPECT HBSCP
 const bagasiCard=$("#bagasiCard"),bagasiListCard=$("#bagasiListCard"),bagasiToggle=$("#bagasiToggle");
 const scanBagBtn=$("#scanBagBtn");
 const bagNoEl=$("#bagNo"),bagNamaEl=$("#bagNama"),bagFlightBagEl=$("#bagFlight"),
       bagDestEl=$("#bagDest"),bagDateEl=$("#bagDate");
-const bagFotoLayarBtn=$("#bagFotoLayarBtn"),bagFotoLayarInput=$("#bagFotoLayarInput"),
+const bagFotoLayarBtn=$("#bagFotoLayarBtn"),
       bagFotoLayarPreview=$("#bagFotoLayarPreview");
-const bagFotoBarangBtn=$("#bagFotoBarangBtn"),bagFotoBarangInput=$("#bagFotoBarangInput"),
+const bagFotoBarangBtn=$("#bagFotoBarangBtn"),
       bagFotoBarangPreview=$("#bagFotoBarangPreview");
 const bagSubmitBtn=$("#bagSubmitBtn");
 const bagSubmitAksiBtn=$("#bagSubmitAksiBtn");
@@ -100,40 +101,38 @@ async function compressImage(file,max=480,quality=0.7){
   c.getContext("2d").drawImage(img,0,0,c.width,c.height);
   return c.toDataURL("image/jpeg",quality);
 }
-function resetFoto(){ if(!fotoInput||!fotoPreview)return; fotoInput.value=""; fotoPreview.src=""; fotoPreview.classList.add("hidden"); fotoDataUrl=""; }
-fotoBtn?.addEventListener("click",()=>fotoInput?.click());
-fotoInput?.addEventListener("change",async()=>{
-  const f=fotoInput.files?.[0]; if(!f){resetFoto();return;}
-  fotoPreview.src=URL.createObjectURL(f); fotoPreview.classList.remove("hidden");
+function resetFoto(){ if(!fotoPreview)return; fotoPreview.src=""; fotoPreview.classList.add("hidden"); fotoDataUrl=""; }
+fotoBtn?.addEventListener("click",async()=>{
   try{
-    const d=await compressImage(f,480,0.7);
-    if(d.length>200_000){ showAlert("Foto terlalu besar, turunkan resolusi."); resetFoto(); }
-    else fotoDataUrl=d;
+    const dataUrl = await capturePhoto();
+    if(!dataUrl){ resetFoto(); return; }
+    fotoPreview.src = dataUrl;
+    fotoPreview.classList.remove("hidden");
+    if(dataUrl.length>200_000){ showAlert("Foto terlalu besar, turunkan resolusi."); resetFoto(); }
+    else { fotoDataUrl = dataUrl; }
   }catch{ resetFoto(); }
 });
 
 /* ===== FOTO suspect (dua foto) ===== */
 let bagFotoSuspectDataUrl="",bagFotoBarangDataUrl="";
-function resetBagFotoLayar(){ if(!bagFotoLayarInput||!bagFotoLayarPreview)return; bagFotoLayarInput.value=""; bagFotoLayarPreview.src=""; bagFotoLayarPreview.classList.add("hidden"); bagFotoSuspectDataUrl=""; }
-bagFotoLayarBtn?.addEventListener("click",()=>bagFotoLayarInput?.click());
-bagFotoLayarInput?.addEventListener("change",async()=>{
-  const f=bagFotoLayarInput.files?.[0]; if(!f){resetBagFotoLayar();return;}
-  bagFotoLayarPreview.src=URL.createObjectURL(f); bagFotoLayarPreview.classList.remove("hidden");
+function resetBagFotoLayar(){ if(!bagFotoLayarPreview)return; bagFotoLayarPreview.src=""; bagFotoLayarPreview.classList.add("hidden"); bagFotoSuspectDataUrl=""; }
+bagFotoLayarBtn?.addEventListener("click",async()=>{
   try{
-    const d=await compressImage(f,480,0.7);
-    if(d.length>200_000){ showAlert("Foto terlalu besar."); resetBagFotoLayar(); }
-    else bagFotoSuspectDataUrl=d;
+    const dataUrl = await capturePhoto();
+    if(!dataUrl){ resetBagFotoLayar(); return; }
+    bagFotoLayarPreview.src=dataUrl; bagFotoLayarPreview.classList.remove("hidden");
+    if(dataUrl.length>200_000){ showAlert("Foto terlalu besar."); resetBagFotoLayar(); }
+    else bagFotoSuspectDataUrl=dataUrl;
   }catch{ resetBagFotoLayar(); }
 });
-function resetBagFotoBarang(){ if(!bagFotoBarangInput||!bagFotoBarangPreview)return; bagFotoBarangInput.value=""; bagFotoBarangPreview.src=""; bagFotoBarangPreview.classList.add("hidden"); bagFotoBarangDataUrl=""; }
-bagFotoBarangBtn?.addEventListener("click",()=>bagFotoBarangInput?.click());
-bagFotoBarangInput?.addEventListener("change",async()=>{
-  const f=bagFotoBarangInput.files?.[0]; if(!f){resetBagFotoBarang();return;}
-  bagFotoBarangPreview.src=URL.createObjectURL(f); bagFotoBarangPreview.classList.remove("hidden");
+function resetBagFotoBarang(){ if(!bagFotoBarangPreview)return; bagFotoBarangPreview.src=""; bagFotoBarangPreview.classList.add("hidden"); bagFotoBarangDataUrl=""; }
+bagFotoBarangBtn?.addEventListener("click",async()=>{
   try{
-    const d=await compressImage(f,480,0.7);
-    if(d.length>200_000){ showAlert("Foto terlalu besar."); resetBagFotoBarang(); }
-    else bagFotoBarangDataUrl=d;
+    const dataUrl = await capturePhoto();
+    if(!dataUrl){ resetBagFotoBarang(); return; }
+    bagFotoBarangPreview.src=dataUrl; bagFotoBarangPreview.classList.remove("hidden");
+    if(dataUrl.length>200_000){ showAlert("Foto terlalu besar."); resetBagFotoBarang(); }
+    else bagFotoBarangDataUrl=dataUrl;
   }catch{ resetBagFotoBarang(); }
 });
 function resetBagasiCard(){
