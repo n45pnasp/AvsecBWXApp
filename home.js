@@ -279,11 +279,19 @@ onAuthStateChanged(auth, async (user) => {
       url.searchParams.set('token','N45p');
       url.searchParams.set('_', Date.now());
 
-    const res = await fetch(url.toString(), {
-      method: 'GET',
-      cache: 'no-store',
-      headers: { 'Accept': 'application/json' }
-    });
+      const user = auth.currentUser;
+      const headers = { 'Accept': 'application/json' };
+      if (user) {
+        try {
+          headers.Authorization = `Bearer ${await user.getIdToken(true)}`;
+        } catch {}
+      }
+
+      const res = await fetch(url.toString(), {
+        method: 'GET',
+        cache: 'no-store',
+        headers
+      });
 
     const ctype = (res.headers.get('content-type') || '').toLowerCase();
     if (!ctype.includes('application/json')) {
