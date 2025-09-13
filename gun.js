@@ -29,7 +29,6 @@ const instansiAvsec   = document.getElementById("instansiAvsec");
 const petugas         = document.getElementById("petugas");
 const supervisor      = document.getElementById("supervisor");
 const submitBtn       = document.getElementById("submitBtn");
-const fotoEvidenceInp = document.getElementById("fotoEvidence");
 const btnEvidence     = document.getElementById("btnEvidence");
 const evidencePreview = document.getElementById("evidencePreview");
 const evidenceImg     = document.getElementById("evidenceImg");
@@ -38,6 +37,8 @@ const imgAvsec        = document.getElementById("imgAvsec");
 const fotoIdInp       = document.getElementById("fotoId");
 const fotoNote        = document.querySelector(".foto-note");
 const downloadPdfBtn  = document.getElementById("downloadPdfBtn");
+
+let evidenceDataUrl = "";
 
 /* ================== Firebase ================== */
 const { app, auth } = getFirebase();
@@ -77,45 +78,12 @@ function showOverlay(state, title, desc, autoHide = true){
   if (autoHide && state !== "spinner") setTimeout(() => overlay.classList.add("hidden"), 1500);
 }
 
-/* ================== Evidence UI (guarded) ================== */
-if (btnEvidence && fotoEvidenceInp) {
-  btnEvidence.addEventListener("click", () => fotoEvidenceInp.click());
-  fotoEvidenceInp.addEventListener("change", () => {
-    const file = fotoEvidenceInp.files[0];
-    btnEvidence.textContent = "Ambil Foto";
-    if (file) {
-      if (evidenceImg) evidenceImg.src = URL.createObjectURL(file);
-      if (evidencePreview) evidencePreview.classList.remove("hidden");
-      if (fotoNote) fotoNote.classList.add("hidden");
-    } else {
-      if (evidenceImg) evidenceImg.removeAttribute("src");
-      if (evidencePreview) evidencePreview.classList.add("hidden");
-      if (fotoNote) fotoNote.classList.remove("hidden");
-    }
+/* ================== Evidence UI ================== */
+if (btnEvidence) {
+  btnEvidence.addEventListener("click", () => {
+    if (scanState.running) return;
+    startScan('photo');
   });
-}
-
-/* ================== Util Gambar ================== */
-async function getImageDataUrl(file){
-  if(!file) return "";
-  try { return await readAndCompressToDataUrl(file); } catch { return ""; }
-}
-async function readAndCompressToDataUrl(file){
-  const dataUrl = await new Promise((resolve, reject) => {
-    const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file);
-  });
-  const img = await new Promise((resolve, reject) => {
-    const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = dataUrl;
-  });
-  let { width, height } = img;
-  const max = Math.max(width, height);
-  const scale = max > 800 ? 800 / max : 1;
-  width = Math.round(width * scale); height = Math.round(height * scale);
-  const canvas = document.createElement("canvas");
-  canvas.width = width; canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0, width, height);
-  return canvas.toDataURL("image/jpeg", 0.8);
 }
 
 /* ================== Submit ke Sheet ================== */
@@ -152,7 +120,7 @@ if (submitBtn) submitBtn.addEventListener("click", async () => {
     supervisor:    supervisor.value.trim().toUpperCase(),
     fotoId:        (fotoIdInp?.value || "").trim(),
     fotoAvsec:     fotoAvsecCell || "",
-    fotoEvidence:  await getImageDataUrl(fotoEvidenceInp?.files?.[0])
+    fotoEvidence:  evidenceDataUrl
   };
 
   submitBtn.disabled = true;
@@ -172,7 +140,7 @@ if (submitBtn) submitBtn.addEventListener("click", async () => {
 
     fotoAvsecCell = "";
     if (imgAvsec){ imgAvsec.src=""; imgAvsec.classList.add("hidden"); }
-    if (fotoEvidenceInp) fotoEvidenceInp.value = "";
+    evidenceDataUrl = "";
     if (btnEvidence) btnEvidence.textContent = "Ambil Foto";
     if (evidenceImg) evidenceImg.removeAttribute("src");
     if (evidencePreview) evidencePreview.classList.add("hidden");
@@ -201,8 +169,8 @@ async function sendToSheet(sheet, payload){
 }
 
 /* ================== SCAN (BarcodeDetector/jsQR) ================== */
-let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
-if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan(); });
+let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null, shutterBtn:null, mode:'scan' };
+if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan('scan'); });
 
 function injectScanStyles(){
   if (document.getElementById('scan-style')) return;
@@ -235,7 +203,8 @@ function injectScanStyles(){
 }
 injectScanStyles();
 
-async function startScan(){
+async function startScan(mode = 'scan'){
+  scanState.mode = mode;
   try{
     ensureVideo(); ensureOverlay();
     document.body.classList.add('scan-active');
@@ -247,8 +216,12 @@ async function startScan(){
     scanState.video.srcObject = stream;
     await scanState.video.play();
 
+    if (scanState.shutterBtn){
+      scanState.shutterBtn.style.display = mode === 'photo' ? 'block' : 'none';
+    }
+
     scanState.usingDetector = false; scanState.detector = null;
-    if ('BarcodeDetector' in window){
+    if (mode === 'scan' && 'BarcodeDetector' in window){
       try{
         const supported = await window.BarcodeDetector.getSupportedFormats();
         const wanted = ['qr_code','pdf417','aztec','data_matrix'];
@@ -257,8 +230,10 @@ async function startScan(){
       }catch(_){}}
 
     scanState.running = true;
-    if (scanState.usingDetector) detectLoop_BarcodeDetector();
-    else { await ensureJsQR(); prepareCanvas(); detectLoop_jsQR(); }
+    if (mode === 'scan'){
+      if (scanState.usingDetector) detectLoop_BarcodeDetector();
+      else { await ensureJsQR(); prepareCanvas(); detectLoop_jsQR(); }
+    }
   }catch(_){
     showOverlay('err','Tidak bisa mengakses kamera','');
     await stopScan();
@@ -306,6 +281,7 @@ function ensureOverlay(){
   // Tombol
   scanState.closeBtn   = overlay.querySelector('#scan-close');
   const shutterBtn     = overlay.querySelector('#scan-shutter');
+  scanState.shutterBtn = shutterBtn;
 
   // Event close
   scanState.closeBtn.addEventListener('click', async (e)=>{
@@ -321,7 +297,13 @@ function ensureOverlay(){
       return;
     }
     try {
-      await captureFrameAndDownload();
+      const dataUrl = await captureFrame();
+      evidenceDataUrl = dataUrl;
+      if (evidenceImg) evidenceImg.src = dataUrl;
+      if (evidencePreview) evidencePreview.classList.remove('hidden');
+      if (fotoNote) fotoNote.classList.add('hidden');
+      if (btnEvidence) btnEvidence.textContent = 'Ulangi Foto';
+      await stopScan();
     } catch (err) {
       console.error('Gagal capture:', err);
       alert('Gagal mengambil gambar.');
@@ -355,7 +337,7 @@ function updateCaptureState(){
   }
 }
 
-async function captureFrameAndDownload(){
+async function captureFrame(){
   if (!scanState.video) throw new Error('Video belum siap');
 
   const vid = scanState.video;
@@ -368,18 +350,19 @@ async function captureFrameAndDownload(){
   const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.drawImage(vid, 0, 0, w, h);
 
-  const blob = await new Promise(res => c.toBlob(res, 'image/png'));
-  if (!blob) throw new Error('Canvas blob null');
-
-  const fileName = `capture_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  // Kompres gambar maksimal 800px pada sisi terpanjang
+  const max = Math.max(w, h);
+  let dataCanvas = c;
+  if (max > 800){
+    const scale = 800 / max;
+    const cw = Math.round(w * scale);
+    const ch = Math.round(h * scale);
+    const c2 = document.createElement('canvas');
+    c2.width = cw; c2.height = ch;
+    c2.getContext('2d').drawImage(c, 0, 0, cw, ch);
+    dataCanvas = c2;
+  }
+  return dataCanvas.toDataURL('image/jpeg', 0.8);
 }
 function prepareCanvas(){ if (scanState.canvas) return; const c=document.createElement('canvas'); c.id='scan-canvas'; c.width=640; c.height=480; document.body.appendChild(c); scanState.canvas=c; scanState.ctx=c.getContext("2d",{willReadFrequently:true}); }
 async function ensureJsQR(){
