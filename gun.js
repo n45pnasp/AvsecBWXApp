@@ -1,4 +1,9 @@
-// gun.js (FINAL)
+// gun.js (FINAL, fixed)
+// - Konsisten nama sheet: 'GunFilesPDF'
+// - Guard elemen tombol foto evidence agar tidak crash bila tidak ada
+// - PDF download: site=GunFilesPDF
+// - Overlay aman-null (fallback alert)
+
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -55,55 +60,67 @@ onValue(ref(db, "roster/spvHbs"), (snap) => {
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";
 const SHARED_TOKEN = "N45p"; // token sederhana untuk lookup & kirim ke sheet
 
-// ====== Overlay ======
+// ====== Overlay (aman-null) ======
 const overlay = document.getElementById("overlay");
 const ovIcon  = document.getElementById("ovIcon");
 const ovTitle = document.getElementById("ovTitle");
 const ovDesc  = document.getElementById("ovDesc");
 const ovClose = document.getElementById("ovClose");
-function hideOverlay(){ overlay.classList.add("hidden"); }
-ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
 
-btnEvidence.addEventListener("click", () => fotoEvidenceInp.click());
-fotoEvidenceInp.addEventListener("change", () => {
-  const file = fotoEvidenceInp.files[0];
-  btnEvidence.textContent = "Ambil Foto";
-  if (file) {
-    evidenceImg.src = URL.createObjectURL(file);
-    evidencePreview.classList.remove("hidden");
-    if (fotoNote) fotoNote.classList.add("hidden");
-  } else {
-    evidenceImg.removeAttribute("src");
-    evidencePreview.classList.add("hidden");
-    if (fotoNote) fotoNote.classList.remove("hidden");
-  }
-});
-
-if (scanBtn) scanBtn.addEventListener("click", () => {
-  if (scanState.running) stopScan(); else startScan();
-});
+function hideOverlay(){
+  if (overlay) overlay.classList.add("hidden");
+}
+if (ovClose) ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
 
 function showOverlay(state, title, desc, autoHide = true){
+  // Jika overlay tidak ada di DOM, fallback ke alert minimal
+  if (!overlay || !ovIcon || !ovTitle || !ovDesc) {
+    if (state === "spinner") return; // jangan spam alert
+    if (title) alert(title + (desc ? "\n" + desc : ""));
+    return;
+  }
   overlay.classList.remove("hidden");
   ovIcon.className = "icon " + state;
-  ovTitle.textContent = title;
+  ovTitle.textContent = title || "";
   ovDesc.textContent = desc || "";
-  ovClose.classList.toggle("hidden", state === "spinner");
+  if (ovClose) ovClose.classList.toggle("hidden", state === "spinner");
   if (autoHide && state !== "spinner") {
     setTimeout(() => overlay.classList.add("hidden"), 1500);
   }
 }
 
+// ====== Evidence UI (guarded) ======
+if (btnEvidence && fotoEvidenceInp) {
+  btnEvidence.addEventListener("click", () => fotoEvidenceInp.click());
+  fotoEvidenceInp.addEventListener("change", () => {
+    const file = fotoEvidenceInp.files[0];
+    btnEvidence.textContent = "Ambil Foto";
+    if (file) {
+      if (evidenceImg) evidenceImg.src = URL.createObjectURL(file);
+      if (evidencePreview) evidencePreview.classList.remove("hidden");
+      if (fotoNote) fotoNote.classList.add("hidden");
+    } else {
+      if (evidenceImg) evidenceImg.removeAttribute("src");
+      if (evidencePreview) evidencePreview.classList.add("hidden");
+      if (fotoNote) fotoNote.classList.remove("hidden");
+    }
+  });
+}
+
+if (scanBtn) scanBtn.addEventListener("click", () => {
+  if (scanState.running) stopScan(); else startScan();
+});
+
 // ====== State foto AVSEC (formula =IMAGE("URL")) ======
 let fotoAvsecCell = "";
 
 // ====== Submit ======
-submitBtn.addEventListener("click", async () => {
+if (submitBtn) submitBtn.addEventListener("click", async () => {
   // Validasi: semua field wajib terisi
   const requiredInputs = [nama, pekerjaan, flight, seat, kta, tipe, jenisPeluru, jumlahPeluru, petugas, supervisor];
-  const someEmpty = requiredInputs.some(el => !el.value.trim()) ||
-    ["", "-"].includes(namaAvsec.textContent.trim()) ||
-    ["", "-"].includes(instansiAvsec.textContent.trim());
+  const someEmpty = requiredInputs.some(el => !el || !el.value || !el.value.trim()) ||
+    ["", "-"].includes((namaAvsec?.textContent || "").trim()) ||
+    ["", "-"].includes((instansiAvsec?.textContent || "").trim());
   if (someEmpty) {
     showOverlay('stop', 'Data belum lengkap', 'Mohon lengkapi semua data sebelum mengirim.', false);
     return;
@@ -123,24 +140,25 @@ submitBtn.addEventListener("click", async () => {
     tipeSenjata:   tipe.value.trim().toUpperCase(),
     jenisPeluru:   jenisPeluru.value.trim().toUpperCase(),
     jumlahPeluru:  (jumlahPeluru.value || "").trim().toUpperCase(),
-    namaAvsec:     namaAvsec.textContent.trim().toUpperCase(),
-    instansiAvsec: instansiAvsec.textContent.trim().toUpperCase(),
+    namaAvsec:     (namaAvsec?.textContent || "").trim().toUpperCase(),
+    instansiAvsec: (instansiAvsec?.textContent || "").trim().toUpperCase(),
     petugas:       petugas.value.trim().toUpperCase(),
     supervisor:    supervisor.value.trim().toUpperCase(),
     // Foto:
     // - fotoId: bisa berisi fileId (tetap diteruskan apa adanya)
     // - fotoAvsec: kirim sebagai teks formula =IMAGE("URL")
     // - fotoEvidence: kirim data URL (nanti di-upload oleh code.gs)
-    fotoId:        fotoIdInp.value.trim(),
+    fotoId:        (fotoIdInp?.value || "").trim(),
     fotoAvsec:     fotoAvsecCell || "",
-    fotoEvidence:  await getImageDataUrl(fotoEvidenceInp.files[0]) // <— penting: data URL, bukan formula
+    fotoEvidence:  await getImageDataUrl(fotoEvidenceInp?.files?.[0]) // data URL, bukan hanya base64
   };
 
   submitBtn.disabled = true;
   showOverlay('spinner','Mengirim data…','');
 
   try {
-    await sendToSheet('GUN_FILESPDF', payload);
+    // FIX: konsisten ke 'GunFilesPDF'
+    await sendToSheet('GunFilesPDF', payload);
     await sendToSheet('Files', payload);
 
     showOverlay('ok','Data berhasil dikirim','');
@@ -151,16 +169,16 @@ submitBtn.addEventListener("click", async () => {
       jumlahPeluru, fotoIdInp
     ].forEach(el => { if (el) el.value = ""; });
 
-    namaAvsec.textContent = "-";
-    instansiAvsec.textContent = "-";
-    supervisor.value = supervisorVal;
+    if (namaAvsec) namaAvsec.textContent = "-";
+    if (instansiAvsec) instansiAvsec.textContent = "-";
+    if (supervisor) supervisor.value = supervisorVal;
 
     fotoAvsecCell = "";
     if (imgAvsec){ imgAvsec.src=""; imgAvsec.classList.add("hidden"); }
-    fotoEvidenceInp.value = "";
-    btnEvidence.textContent = "Ambil Foto";
-    evidenceImg.removeAttribute("src");
-    evidencePreview.classList.add("hidden");
+    if (fotoEvidenceInp) fotoEvidenceInp.value = "";
+    if (btnEvidence) btnEvidence.textContent = "Ambil Foto";
+    if (evidenceImg) evidenceImg.removeAttribute("src");
+    if (evidencePreview) evidencePreview.classList.add("hidden");
     if (fotoNote) fotoNote.classList.remove("hidden");
 
   } catch(err){
@@ -418,9 +436,9 @@ async function receiveBarcode(code){
     const j = await res.json();
     if (j && j.columns){
       const namaVal = (j.columns.B || '').toUpperCase();
-      namaAvsec.textContent = namaVal || '-';
+      if (namaAvsec) namaAvsec.textContent = namaVal || '-';
       const instansiVal = (j.columns.E || '').toUpperCase();
-      instansiAvsec.textContent = instansiVal || '-';
+      if (instansiAvsec) instansiAvsec.textContent = instansiVal || '-';
 
       const rawFoto = (j.columns.H || '').trim(); // kolom H berisi fileId atau URL thumbnail
       let fotoUrl = "";
@@ -469,7 +487,8 @@ function initPdfDownload(){
       if (!user) return alert("Silakan login ulang.");
 
       const idToken = await user.getIdToken(true);
-      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GUN_FILESPDF`;
+      // FIX: site konsisten 'GunFilesPDF'
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GunFilesPDF`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
       if (!res.ok){
         const txt = await res.text().catch(()=> "");
@@ -495,4 +514,3 @@ function initPdfDownload(){
 window.addEventListener("DOMContentLoaded", () => {
   initPdfDownload(); // aktifkan tombol download PDF (jika ada di halaman)
 });
-
