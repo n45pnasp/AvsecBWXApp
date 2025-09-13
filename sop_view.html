@@ -37,7 +37,7 @@
 </head>
 <body>
   <div class="viewer-header" role="banner">
-    <a href="chatbot.html" class="back-btn" aria-label="Kembali ke Chatbot">
+    <a class="back-btn" aria-label="Kembali ke Chatbot" href="#" onclick="safeBackTo('chatbot.html');return false;">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <polyline points="15 18 9 12 15 6"></polyline>
       </svg>
@@ -273,5 +273,6 @@
     document.addEventListener('selectstart', e => e.preventDefault(), { capture: true });
   </script>
   <script type="module" src="offline.js"></script>
+  <script src="back.js"></script>
 </body>
 </html>
