@@ -141,14 +141,13 @@
     <div class="spinner"></div>
   </div>
 
-  <!-- Auth Guard: wajib login -->
+  <!-- Auth guard dan script utama -->
   <script type="module">
-    import { requireAuth } from "./auth-guard.js";
+    const base = location.pathname.endsWith('/') ? '../' : './';
+    const { requireAuth } = await import(`${base}auth-guard.js`);
     requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+    await import(`${base}home.js`);
+    await import(`${base}offline.js`);
   </script>
-
-  <!-- Script utama halaman -->
-  <script type="module" src="home.js"></script>
-  <script type="module" src="offline.js"></script>
 </body>
 </html>
