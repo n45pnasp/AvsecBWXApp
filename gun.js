@@ -199,10 +199,26 @@ function injectScanStyles(){
     .scan-shutter{position:absolute;left:50%;bottom:max(24px,calc(18px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);width:74px;height:74px;border-radius:999px;background:#fff;border:4px solid rgba(255,255,255,.35);box-shadow:0 6px 22px rgba(0,0,0,.45), inset 0 0 0 4px #fff;pointer-events:auto;transition: transform .06s ease, opacity .15s ease, filter .15s ease}
     .scan-shutter:active{transform:translateX(-50%) scale(.96)}
     .scan-shutter.disabled,.scan-shutter:disabled{opacity:.45;filter:grayscale(60%);pointer-events:auto}
-    .scan-msg-portrait{position:absolute;left:50%;bottom:max(110px,calc(96px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);width:74px;height:74px;background:rgba(0,0,0,.55);border-radius:999px;display:none;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.35)}
+    .scan-msg-portrait{
+      position:absolute;
+      left:50%;
+      bottom:max(110px,calc(96px + env(safe-area-inset-bottom,0)));
+      transform:translateX(-50%);
+      background:rgba(0,0,0,.55);
+      color:#fff;
+      font-weight:600;
+      padding:10px 14px;
+      border-radius:12px;
+      display:none;
+      flex-direction:column;
+      align-items:center;
+      gap:4px;
+      box-shadow:0 4px 12px rgba(0,0,0,.35);
+    }
     .scan-msg-portrait .rotate-icon{width:40px;height:40px;display:block}
     .scan-msg-portrait .rotate-icon path,
     .scan-msg-portrait .rotate-icon polyline{stroke:#fff;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .scan-msg-portrait .rotate-text{font-size:12px}
   `;
   const style = document.createElement('style'); style.id='scan-style'; style.textContent = css; document.head.appendChild(style);
 }
@@ -279,6 +295,7 @@ function ensureOverlay(){
           <path d="M21 12a9 9 0 1 1-3-6.7" />
           <polyline points="21 3 21 9 15 9" />
         </svg>
+        <div class="rotate-text">putar horizontal</div>
       </div>
       <button id="scan-shutter" class="scan-shutter" aria-label="Ambil gambar" title="Ambil gambar"></button>
     `;
