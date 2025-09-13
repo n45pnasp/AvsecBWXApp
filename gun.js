@@ -169,7 +169,7 @@ async function sendToSheet(sheet, payload){
 }
 
 /* ================== SCAN (BarcodeDetector/jsQR) ================== */
-let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null, shutterBtn:null, mode:'scan' };
+let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null, shutterBtn:null, mode:'scan', _orientationHandler:null };
 if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan('scan'); });
 
 function injectScanStyles(){
@@ -215,11 +215,6 @@ async function startScan(mode = 'scan'){
     scanState.stream = stream;
     scanState.video.srcObject = stream;
     await scanState.video.play();
-
-    if (scanState.shutterBtn){
-      scanState.shutterBtn.style.display = mode === 'photo' ? 'block' : 'none';
-    }
-
     scanState.usingDetector = false; scanState.detector = null;
     if (mode === 'scan' && 'BarcodeDetector' in window){
       try{
@@ -245,78 +240,71 @@ async function stopScan(){
   scanState.stream = null;
   if (scanState.video){ scanState.video.srcObject = null; scanState.video.remove(); scanState.video = null; }
   if (scanState.canvas){ scanState.canvas.remove(); scanState.canvas = null; scanState.ctx = null; }
+  if (scanState.overlay){ scanState.overlay.remove(); scanState.overlay = null; scanState.closeBtn = null; scanState.shutterBtn = null; }
+  if (scanState._orientationHandler){
+    window.removeEventListener('orientationchange', scanState._orientationHandler);
+    window.removeEventListener('resize', scanState._orientationHandler);
+    scanState._orientationHandler = null;
+  }
   document.body.classList.remove('scan-active');
 }
 function ensureVideo(){ if (scanState.video) return; const v=document.createElement('video'); v.setAttribute('playsinline',''); v.muted=true; v.autoplay=true; v.id='scan-video'; document.body.appendChild(v); scanState.video=v; }
 function ensureOverlay(){
   if (scanState.overlay) return;
-
-  const overlay = document.createElement('div');
-  overlay.id = 'scan-overlay';
-  overlay.innerHTML = `
-    <div class="scan-topbar">
-      <button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button>
-    </div>
-
-    <!-- Bidik -->
-    <div class="scan-reticle" aria-hidden="true"></div>
-
-    <!-- Pesan bawah -->
-    <div class="scan-hint">
-      Arahkan kamera ke barcode / QR
-    </div>
-
-    <!-- Pesan khusus kalau portrait -->
-    <div class="scan-msg-portrait" role="alert" aria-live="assertive">
-      Putar perangkat ke <b>mode horizontal (landscape)</b> untuk memotret
-    </div>
-
-    <!-- Tombol shutter -->
-    <button id="scan-shutter" class="scan-shutter" aria-label="Ambil gambar" title="Ambil gambar"></button>
-  `;
-
+  const overlay = document.createElement("div");
+  overlay.id = "scan-overlay";
+  if (scanState.mode === "photo"){
+    overlay.innerHTML = `
+      <div class="scan-topbar">
+        <button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button>
+      </div>
+      <div class="scan-reticle" aria-hidden="true"></div>
+      <div class="scan-hint">Arahkan kamera ke barcode / QR</div>
+      <div class="scan-msg-portrait" role="alert" aria-live="assertive">Putar perangkat ke <b>mode horizontal (landscape)</b> untuk memotret</div>
+      <button id="scan-shutter" class="scan-shutter" aria-label="Ambil gambar" title="Ambil gambar"></button>
+    `;
+  } else {
+    overlay.innerHTML = `
+      <div class="scan-topbar"><button id="scan-close" class="scan-close" aria-label="Tutup">✕</button></div>
+      <div class="scan-reticle" aria-hidden="true"></div>
+      <div class="scan-hint">Arahkan ke barcode / QR</div>
+    `;
+  }
   document.body.appendChild(overlay);
   scanState.overlay = overlay;
-
-  // Tombol
-  scanState.closeBtn   = overlay.querySelector('#scan-close');
-  const shutterBtn     = overlay.querySelector('#scan-shutter');
-  scanState.shutterBtn = shutterBtn;
-
-  // Event close
-  scanState.closeBtn.addEventListener('click', async (e)=>{
-    e.preventDefault();
-    await stopScan();
-  });
-
-  // Event shutter
-  shutterBtn.addEventListener('click', async (e)=>{
-    e.preventDefault();
-    if (!isLandscape()) {
-      alert('Perangkat masih portrait. Putar ke horizontal untuk mengambil gambar.');
-      return;
+  scanState.closeBtn = overlay.querySelector("#scan-close");
+  if (scanState.closeBtn){
+    scanState.closeBtn.addEventListener("click", async (e)=>{ e.preventDefault(); await stopScan(); });
+  }
+  if (scanState.mode === "photo"){
+    const shutterBtn = overlay.querySelector("#scan-shutter");
+    scanState.shutterBtn = shutterBtn;
+    if (shutterBtn){
+      shutterBtn.addEventListener("click", async (e)=>{
+        e.preventDefault();
+        if (!isLandscape()) { alert("Perangkat masih portrait. Putar ke horizontal untuk mengambil gambar."); return; }
+        try {
+          const dataUrl = await captureFrame();
+          evidenceDataUrl = dataUrl;
+          if (evidenceImg) evidenceImg.src = dataUrl;
+          if (evidencePreview) evidencePreview.classList.remove("hidden");
+          if (fotoNote) fotoNote.classList.add("hidden");
+          if (btnEvidence) btnEvidence.textContent = "Ulangi Foto";
+          await stopScan();
+        } catch (err) {
+          console.error("Gagal capture:", err);
+          alert("Gagal mengambil gambar.");
+        }
+      });
     }
-    try {
-      const dataUrl = await captureFrame();
-      evidenceDataUrl = dataUrl;
-      if (evidenceImg) evidenceImg.src = dataUrl;
-      if (evidencePreview) evidencePreview.classList.remove('hidden');
-      if (fotoNote) fotoNote.classList.add('hidden');
-      if (btnEvidence) btnEvidence.textContent = 'Ulangi Foto';
-      await stopScan();
-    } catch (err) {
-      console.error('Gagal capture:', err);
-      alert('Gagal mengambil gambar.');
-    }
-  });
-
-  // Pantau orientasi agar tombol aktif/nonaktif
-  const update = () => updateCaptureState();
-  window.addEventListener('orientationchange', update);
-  window.addEventListener('resize', update);
-  // Set awal
-  updateCaptureState();
+    const update = () => updateCaptureState();
+    scanState._orientationHandler = update;
+    window.addEventListener("orientationchange", update);
+    window.addEventListener("resize", update);
+    updateCaptureState();
+  }
 }
+
 
 function isLandscape(){
   return (window.matchMedia && window.matchMedia('(orientation: landscape)').matches)
