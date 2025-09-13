@@ -217,12 +217,13 @@ export function redirectIfAuthed({ homePath = "/home/" } = {}) {
       }
     });
   };
-
-  checkAndRedirect();
-  window.addEventListener("pageshow", (e) => {
-    if (e.persisted) {
-      checkAndRedirect();
-    }
+  // Jalankan segera dan ulangi setiap halaman ditampilkan kembali,
+  // termasuk saat halaman dipulihkan dari cache atau aplikasi kembali fokus.
+  const run = () => checkAndRedirect();
+  run();
+  window.addEventListener("pageshow", run);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") run();
   });
 }
 
