@@ -200,9 +200,9 @@ function injectScanStyles(){
     .scan-shutter:active{transform:translateX(-50%) scale(.96)}
     .scan-shutter.disabled,.scan-shutter:disabled{opacity:.45;filter:grayscale(60%);pointer-events:auto}
     .scan-msg-portrait{position:absolute;left:50%;bottom:max(110px,calc(96px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);width:74px;height:74px;background:rgba(0,0,0,.55);border-radius:999px;display:none;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.35)}
-    .scan-msg-portrait .rotate-icon{width:36px;height:36px;border:3px solid #fff;border-radius:50%;position:relative}
-    .scan-msg-portrait .rotate-icon:before{content:"";position:absolute;top:6px;left:6px;width:20px;height:20px;border:3px solid #fff;border-left-color:transparent;border-bottom-color:transparent;border-radius:50%;transform:rotate(45deg)}
-    .scan-msg-portrait .rotate-icon:after{content:"";position:absolute;top:4px;right:2px;width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:8px solid #fff;transform:rotate(45deg)}
+    .scan-msg-portrait .rotate-icon{width:40px;height:40px;display:block}
+    .scan-msg-portrait .rotate-icon path,
+    .scan-msg-portrait .rotate-icon polyline{stroke:#fff;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
   `;
   const style = document.createElement('style'); style.id='scan-style'; style.textContent = css; document.head.appendChild(style);
 }
@@ -275,7 +275,10 @@ function ensureOverlay(){
         <button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button>
       </div>
       <div class="scan-msg-portrait" role="alert" aria-live="assertive" aria-label="Putar perangkat ke mode horizontal">
-        <div class="rotate-icon" aria-hidden="true"></div>
+        <svg class="rotate-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-3-6.7" />
+          <polyline points="21 3 21 9 15 9" />
+        </svg>
       </div>
       <button id="scan-shutter" class="scan-shutter" aria-label="Ambil gambar" title="Ambil gambar"></button>
     `;
