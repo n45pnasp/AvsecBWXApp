@@ -374,11 +374,14 @@ function initPdfDownload(){
         throw new Error(`Gagal export (${res.status}). ${txt}`);
       }
 
-      // Unduh PDF
+      // Unduh PDF dengan nama berformat GunFiles_<tglBlnTahun>.pdf
       const blob = await res.blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "GunFiles.pdf";
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const filename = `GunFiles_${pad(now.getDate())}${pad(now.getMonth() + 1)}${now.getFullYear()}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
