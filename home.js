@@ -235,13 +235,33 @@ setInterval(tick, 60 * 1000);
 
 enableDockPressedEffect();
 
+// Aktif/nonaktif elemen yang butuh dinas
+function applyDutyAccess(enable){
+  document.querySelectorAll('.requires-duty').forEach(el=>{
+    const target = el.dataset.href;
+    if (enable && target){
+      el.href = target;
+      el.classList.remove('is-disabled');
+      el.removeAttribute('aria-disabled');
+    } else {
+      if (target) el.href = '#';
+      el.classList.add('is-disabled');
+      el.setAttribute('aria-disabled','true');
+    }
+  });
+}
+
 // Ambil profil user saat state Auth siap (redirect ditangani oleh auth-guard.js)
 onAuthStateChanged(auth, async (user) => {
   if (!user) return;
   try {
     const p = await fetchProfile(user);
     applyProfile({ name: p.name, photoURL: p.photoURL });
-    lookupSchedule(p.name);
+    if (p.isAdmin){
+      applyDutyAccess(true);
+    } else {
+      lookupSchedule(p.name);
+    }
   } catch {
     const nm = resolveDisplayName(user);
     applyProfile({ name: nm, photoURL: DEFAULT_AVATAR });
@@ -292,22 +312,11 @@ onAuthStateChanged(auth, async (user) => {
       ].map(normalizeName);
       const names = new Set([...rosterNames, ...extra].filter(Boolean));
       const isOn = names.has(normalizeName(name));
-      const restricted = document.querySelectorAll('.requires-duty');
-      restricted.forEach(el => {
-        const target = el.dataset.href;
-        if (isOn && target) {
-          el.href = target;
-          el.classList.remove('is-disabled');
-          el.removeAttribute('aria-disabled');
-        } else {
-          if (target) el.href = '#';
-          el.classList.add('is-disabled');
-          el.setAttribute('aria-disabled', 'true');
-        }
-      });
+      applyDutyAccess(isOn);
   } catch (err) {
     console.error('Roster lookup failed', err);
       alert('Gagal mengambil data jadwal: ' + (err?.message || err));
+      applyDutyAccess(false);
     } finally {
       overlay?.classList.remove('show');
     }
