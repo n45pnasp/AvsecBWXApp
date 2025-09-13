@@ -116,7 +116,7 @@ export function requireAuth({
       if (!user) {
         // Sudah di halaman login → jangan redirect lagi
         if (!isOnLoginPage(loginAbs)) {
-          const next = encodeURIComponent(location.pathname + location.search);
+          const next = location.pathname + location.search;
           const loginURL = new URL(loginAbs.href);
           if (!loginURL.searchParams.has("next")) loginURL.searchParams.set("next", next);
           location.replace(loginURL.href);
@@ -201,18 +201,26 @@ export function requireAuth({
 export function redirectIfAuthed({ homePath = "/home/" } = {}) {
   const { auth } = getFb();
   const homeAbs = resolveToAbsolute(homePath);
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    try {
-      if (user) {
-        console.log(`↪️ Sudah login, redirect… UID: ${user.uid}`);
-        const params = new URLSearchParams(location.search);
-        const next = params.get("next");
-        const dest = next ? decodeURIComponent(next) : homeAbs.href;
-        location.replace(dest);
+
+  function checkAndRedirect() {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      try {
+        if (user) {
+          console.log(`↪️ Sudah login, redirect… UID: ${user.uid}`);
+          const params = new URLSearchParams(location.search);
+          const next = params.get("next");
+          const dest = next ? next : homeAbs.href;
+          location.replace(dest);
+        }
+      } finally {
+        unsubscribe && unsubscribe();
       }
-    } finally {
-      unsubscribe && unsubscribe();
-    }
+    });
+  }
+
+  checkAndRedirect();
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) checkAndRedirect();
   });
 }
 
