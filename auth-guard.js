@@ -218,9 +218,11 @@ export function redirectIfAuthed({ homePath = "/home/" } = {}) {
     });
   }
 
+  // Jalankan saat load pertama
   checkAndRedirect();
-  window.addEventListener("pageshow", (e) => {
-    if (e.persisted) checkAndRedirect();
+  // Jalankan kembali setiap kali halaman ditampilkan kembali (mis. tombol Back)
+  window.addEventListener("pageshow", () => {
+    checkAndRedirect();
   });
 }
 
