@@ -249,7 +249,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// ===== Cek roster untuk akses plotting =====
+// ===== Cek roster untuk akses fitur dinas =====
   async function lookupSchedule(name){
     const overlay = document.getElementById('lookupOverlay');
     overlay?.classList.add('show');
@@ -292,18 +292,19 @@ onAuthStateChanged(auth, async (user) => {
       ].map(normalizeName);
       const names = new Set([...rosterNames, ...extra].filter(Boolean));
       const isOn = names.has(normalizeName(name));
-      const btn = document.getElementById('plottingBtn');
-      if (btn) {
-        if (isOn) {
-          btn.href = 'plotting.html';
-          btn.classList.remove('is-disabled');
-        btn.removeAttribute('aria-disabled');
-      } else {
-        btn.href = '#';
-        btn.classList.add('is-disabled');
-        btn.setAttribute('aria-disabled', 'true');
-      }
-    }
+      const restricted = document.querySelectorAll('.requires-duty');
+      restricted.forEach(el => {
+        const target = el.dataset.href;
+        if (isOn && target) {
+          el.href = target;
+          el.classList.remove('is-disabled');
+          el.removeAttribute('aria-disabled');
+        } else {
+          if (target) el.href = '#';
+          el.classList.add('is-disabled');
+          el.setAttribute('aria-disabled', 'true');
+        }
+      });
   } catch (err) {
     console.error('Roster lookup failed', err);
       alert('Gagal mengambil data jadwal: ' + (err?.message || err));
