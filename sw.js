@@ -1,22 +1,29 @@
 // sw.js - simple offline cache for Avsec BWX App
-const CACHE_NAME = 'avsec-cache-v2';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/home.html',
-  '/home.css',
-  '/home.js',
-  '/offline.js',
-  '/camera.js',
-  '/manifest.json',
-  '/icons/favicon-192.png',
-  '/icons/favicon-512.png'
-];
+const CACHE_NAME = 'avsec-cache-v3';
 
-// install: cache core assets
+// gunakan scope sw untuk membuat daftar asset relatif
+const BASE = self.registration.scope;
+const ASSETS = [
+  './',
+  './index.html',
+  './home.html',
+  './home.css',
+  './home.js',
+  './offline.js',
+  './camera.js',
+  './manifest.json',
+  './icons/favicon-192.png',
+  './icons/favicon-512.png'
+].map(p => new URL(p, BASE).toString());
+
+// install: cache core assets (abaikan jika ada yang gagal)
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.all(
+        ASSETS.map(url => cache.add(url).catch(err => console.warn('SW: gagal cache', url, err)))
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -31,7 +38,7 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// fetch: cache-first with network fallback & dynamic caching
+// fetch: cache-first dengan fallback jaringan & simpan cache dinamis
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
@@ -41,7 +48,7 @@ self.addEventListener('fetch', event => {
         const copy = res.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
         return res;
-      }).catch(() => caches.match('/index.html'));
+      }).catch(() => caches.match(new URL('index.html', BASE).toString()));
     })
   );
 });
