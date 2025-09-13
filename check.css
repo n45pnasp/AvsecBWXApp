@@ -66,6 +66,11 @@
   gap:4px;
 }
 
+.check-table th .status-sample{
+  font-size:18px;
+  margin-right:4px;
+}
+
 .hhmd-table td,
 .hhmd-table th{
   text-align:center;

@@ -384,10 +384,9 @@ function initTypeButtons() {
       "Pinggang Belakang<br/>Bagian Tengah",
       "Pergelangan Kaki<br/>Bagian Kanan"
     ];
-    let idx = 1;
     const body = pos.map(p => `
-      <tr><td rowspan="2">${p}</td><td>IN</td><td><label><span>${idx++}</span><input type="checkbox" /></label></td></tr>
-      <tr><td>OUT</td><td><label><span>${idx++}</span><input type="checkbox" /></label></td></tr>
+      <tr><td rowspan="2">${p}</td><td>IN</td><td><label><input type="checkbox" /></label></td></tr>
+      <tr><td>OUT</td><td><label><input type="checkbox" /></label></td></tr>
     `).join("");
     const html = `
       <table class="check-table">
@@ -395,7 +394,7 @@ function initTypeButtons() {
           <tr>
             <th>POSISI TEST</th>
             <th>TIPE<br/>KNIFE 304</th>
-            <th>HASIL TEST<br/>centang=Alarm<br/>Kosong=No Alarm</th>
+            <th><span class="status-sample">☑</span> Alarm<br/><span class="status-sample">☐</span> No Alarm</th>
           </tr>
         </thead>
         <tbody>${body}</tbody>
