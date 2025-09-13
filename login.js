@@ -59,35 +59,20 @@ function resolveToAbsolute(pathLike) {
   if (decoded.startsWith("/")) return new URL(decoded, location.origin);
   return new URL(decoded, base);
 }
-function computeHomeCandidates(defaultHome = "home.html") {
-  const params = new URLSearchParams(location.search);
-  const rawNext = params.get("next");
-  const decoded = safeMultiDecode(rawNext);
-  const basePrefix = getBasePrefix();
-
-  const candidates = [];
-  const safeNext = normalizeSameOrigin(decoded);
-  if (safeNext) candidates.push(resolveToAbsolute(safeNext).href);
-
-  candidates.push(resolveToAbsolute(defaultHome).href);
-
-  if (basePrefix !== "/") {
-    const hp = defaultHome.replace(/^\/+/, "");
-    candidates.push(location.origin + basePrefix + hp);
-    candidates.push(location.origin + basePrefix + "home.html");
-    candidates.push(location.origin + basePrefix);
-  }
-
-  candidates.push(location.origin + "/home.html");
-  candidates.push(location.origin + "/");
-
-  return Array.from(new Set(candidates)).filter(Boolean);
-}
 function redirectToHomeNow(defaultHome = "home.html") {
-  const here = location.href;
-  const cands = computeHomeCandidates(defaultHome);
-  const target = cands.find(u => u !== here) || cands[0];
-  if (target && target !== here) location.replace(target);
+  const params = new URLSearchParams(location.search);
+  const next = params.get("next") || defaultHome;
+  const base = location.origin + getBasePrefix();
+  let target;
+  try {
+    target = new URL(next, base);
+    if (target.origin !== location.origin) throw new Error("cross-origin");
+  } catch {
+    target = new URL(defaultHome, base);
+  }
+  if (target.href !== location.href) {
+    location.href = target.href;
+  }
 }
 
 /* ===== Device / session ===== */
