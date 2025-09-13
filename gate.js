@@ -521,8 +521,8 @@ function initPdfDownload(){
       const pad = (n)=> String(n).padStart(2,"0");
       const now = new Date();
       const tanggal = `${pad(now.getDate())}${pad(now.getMonth()+1)}${now.getFullYear()}`;
-      const nameVal = (authName || "GateFiles").trim().replace(/[\\/:*?"<>|]+/g, "");
-      a.download = `${nameVal}_${tanggal}.pdf`;
+      // Nama berkas tetap "gate" disertai tanggal (ddmmyyyy)
+      a.download = `gate_${tanggal}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
