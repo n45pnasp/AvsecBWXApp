@@ -225,7 +225,7 @@ function injectScanStyles(){
     .scan-close:active{ transform:scale(.96); }
     .scan-close:focus-visible{ outline:2px solid rgba(255,255,255,.6); outline-offset:2px; }
     .scan-reticle{ position:absolute; top:50%; left:50%; width:min(68vw, 520px); aspect-ratio:1/1; transform:translate(-50%,-50%); border-radius:16px; box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset; pointer-events:none; background: linear-gradient(#fff,#fff) left top/28px 2px no-repeat, linear-gradient(#fff,#fff) left top/2px 28px no-repeat, linear-gradient(#fff,#fff) right top/28px 2px no-repeat, linear-gradient(#fff,#fff) right top/2px 28px no-repeat, linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat, linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat, linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat, linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat; outline:2px dashed rgba(255,255,255,0); }
-    .scan-hint{ position:absolute; left:50%; bottom:max(18px, calc(16px + env(safe-area-inset-bottom,0))); transform:translateX(-50%); background:rgba(0,0,0,.55); color:#fff; font-weight:600; padding:8px 12px; border-radius:999px; letter-spacing:.2px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
+    .scan-hint{ position:absolute; left:50%; bottom:max(18px, calc(16px + env(safe-area-inset-bottom,0))); transform:translateX(-50%); background:rgba(0,0,0,.55); color:#fff; font-weight:600; padding:8px 12px; border-radius:999px; letter-spacing:.2px; font-size:14px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
   `;
   const style = document.createElement('style');
   style.id = 'scan-style';
@@ -239,6 +239,7 @@ async function startScan(){
   try{
     ensureVideo();
     ensureOverlay();
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Kamera tidak didukung');
     document.body.classList.add('scan-active');
     const constraints = {
       video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}, advanced:[{focusMode:'continuous'}]},
@@ -312,7 +313,7 @@ function ensureOverlay(){
       <button id="scan-close" class="scan-close" aria-label="Tutup">✕</button>
     </div>
     <div class="scan-reticle" aria-hidden="true"></div>
-    <div class="scan-hint">Arahkan ke barcode / QR</div>`;
+    <div class="scan-hint">Scan Barcode / QR code</div>`;
   document.body.appendChild(overlay);
   scanState.overlay = overlay;
   scanState.closeBtn = overlay.querySelector('#scan-close');

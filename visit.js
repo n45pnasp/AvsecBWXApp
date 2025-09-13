@@ -110,7 +110,7 @@ function injectScanStyles(){
     .scan-topbar{ position:absolute; top:0; left:0; right:0; height:max(56px, calc(44px + env(safe-area-inset-top,0))); display:flex; align-items:flex-start; justify-content:flex-end; padding: calc(env(safe-area-inset-top,0) + 6px) 10px 8px; background:linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,0)); pointer-events:none; }
     .scan-close{ pointer-events:auto; width:42px; height:42px; border-radius:999px; background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,255,255,.25); font-size:22px; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,.35); }
     .scan-reticle{ position:absolute; top:50%; left:50%; width:min(68vw,520px); aspect-ratio:1/1; transform:translate(-50%,-50%); border-radius:16px; box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset; pointer-events:none; }
-    .scan-hint{ position:absolute; left:50%; bottom:max(18px, calc(16px + env(safe-area-inset-bottom,0))); transform:translateX(-50%); background:rgba(0,0,0,.55); color:#fff; font-weight:600; padding:8px 12px; border-radius:999px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
+    .scan-hint{ position:absolute; left:50%; bottom:max(18px, calc(16px + env(safe-area-inset-bottom,0))); transform:translateX(-50%); background:rgba(0,0,0,.55); color:#fff; font-weight:600; padding:8px 12px; border-radius:999px; font-size:14px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
   `;
   const style = document.createElement('style');
   style.id = 'scan-style';
@@ -123,6 +123,9 @@ function ensureVideo(){
   if (!scanState.video){
     scanState.video = document.createElement('video');
     scanState.video.id = 'scan-video';
+    scanState.video.setAttribute('playsinline','');
+    scanState.video.muted = true;
+    scanState.video.autoplay = true;
     document.body.appendChild(scanState.video);
   }
 }
@@ -142,7 +145,7 @@ function ensureOverlay(){
     close.addEventListener('click', stopScan);
     top.appendChild(close); ov.appendChild(top);
     const ret = document.createElement('div'); ret.className = 'scan-reticle'; ov.appendChild(ret);
-    const hint = document.createElement('div'); hint.className = 'scan-hint'; hint.textContent = 'Arahkan ke barcode'; ov.appendChild(hint);
+    const hint = document.createElement('div'); hint.className = 'scan-hint'; hint.textContent = 'Scan Barcode / QR code'; ov.appendChild(hint);
     document.body.appendChild(ov);
     scanState.overlay = ov; scanState.closeBtn = close;
   }
@@ -154,6 +157,7 @@ if (scanPassBtn) scanPassBtn.addEventListener('click', () => { if (scanState.run
 async function startScan(){
   try{
     ensureVideo(); ensureCanvas(); ensureOverlay();
+    if(!navigator.mediaDevices?.getUserMedia) throw new Error('Kamera tidak didukung');
     document.body.classList.add('scan-active');
     const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'} }, audio:false });
     scanState.stream = stream; scanState.video.srcObject = stream; await scanState.video.play();

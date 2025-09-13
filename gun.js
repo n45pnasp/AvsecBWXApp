@@ -195,7 +195,7 @@ function injectScanStyles(){
       linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat,
       linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat,
       linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat}
-    .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px;letter-spacing:.2px}
+    .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px;letter-spacing:.2px;font-size:14px}
     .scan-shutter{position:absolute;left:50%;bottom:max(24px,calc(18px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);width:74px;height:74px;border-radius:999px;background:#fff;border:4px solid rgba(255,255,255,.35);box-shadow:0 6px 22px rgba(0,0,0,.45), inset 0 0 0 4px #fff;pointer-events:auto;transition: transform .06s ease, opacity .15s ease, filter .15s ease}
     .scan-shutter:active{transform:translateX(-50%) scale(.96)}
     .scan-shutter.disabled,.scan-shutter:disabled{opacity:.45;filter:grayscale(60%);pointer-events:auto}
@@ -316,8 +316,8 @@ function ensureOverlay(){
   } else {
     overlay.innerHTML = `
       <div class="scan-topbar"><button id="scan-close" class="scan-close" aria-label="Tutup">✕</button></div>
-      <div class="scan-reticle" aria-hidden="true"></div>
-      <div class="scan-hint">Arahkan ke barcode / QR</div>
+    <div class="scan-reticle" aria-hidden="true"></div>
+    <div class="scan-hint">Scan Barcode / QR code</div>
     `;
   }
   document.body.appendChild(overlay);

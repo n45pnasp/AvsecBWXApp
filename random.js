@@ -599,7 +599,7 @@ function ensureOverlay(){
   if(scanState.overlay) return;
   const el=document.createElement("div"); el.id="scan-overlay";
   el.innerHTML=`<div class="scan-topbar"><button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button></div>
-  <div class="scan-reticle" aria-hidden="true"></div><div class="scan-hint">Arahkan ke barcode / QR</div>`;
+  <div class="scan-reticle" aria-hidden="true"></div><div class="scan-hint">Scan Barcode / QR code</div>`;
   document.body.appendChild(el); scanState.overlay=el;
   scanState.closeBtn=el.querySelector("#scan-close");
   scanState.closeBtn.addEventListener("click",async(e)=>{ e.preventDefault(); e.stopPropagation(); await stopScan();
@@ -719,7 +719,7 @@ function injectScanStyles(){
   .scan-close{pointer-events:auto;width:42px;height:42px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.25);font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.35)}
   .scan-reticle{position:absolute;top:50%;left:50%;width:min(68vw,520px);aspect-ratio:1/1;transform:translate(-50%,-50%);border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset;pointer-events:none;
   background:linear-gradient(#fff,#fff) left top/28px 2px no-repeat,linear-gradient(#fff,#fff) left top/2px 28px no-repeat,linear-gradient(#fff,#fff) right top/28px 2px no-repeat,linear-gradient(#fff,#fff) right top/2px 28px no-repeat,linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat,linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat,linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat}
-  .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px}`;
+  .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px;font-size:14px}`;
   const st=document.createElement("style"); st.id="scan-style"; st.textContent=css; document.head.appendChild(st);
 }
 injectScanStyles();
