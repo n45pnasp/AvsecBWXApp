@@ -394,7 +394,11 @@ function initTypeButtons() {
           <tr>
             <th>POSISI TEST</th>
             <th>TIPE<br/>KNIFE 304</th>
-            <th><span class="status-sample">☑</span> Alarm<br/><span class="status-sample">☐</span> No Alarm</th>
+            <th>
+              <div class="col-test-title">HASIL TES</div>
+              <span class="status-sample">☑</span> Alarm<br/>
+              <span class="status-sample">☐</span> No Alarm
+            </th>
           </tr>
         </thead>
         <tbody>${body}</tbody>

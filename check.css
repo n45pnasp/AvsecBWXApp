@@ -71,6 +71,12 @@
   margin-right:4px;
 }
 
+.check-table th .col-test-title{
+  display:block;
+  font-size:14px;
+  margin-bottom:2px;
+}
+
 .hhmd-table td,
 .hhmd-table th{
   text-align:center;
