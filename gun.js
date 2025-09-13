@@ -216,7 +216,7 @@ function injectScanStyles(){
     body.scan-active #scan-overlay{display:block}
     .scan-topbar{position:absolute;top:0;left:0;right:0;height:max(56px,calc(44px + env(safe-area-inset-top,0)));display:flex;align-items:flex-start;justify-content:flex-end;padding:calc(env(safe-area-inset-top,0) + 6px) 10px 8px;background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0));pointer-events:none}
     .scan-close{pointer-events:auto;width:42px;height:42px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.25);font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.35)}
-    .scan-reticle{position:absolute;top:50%;left:50%;width:min(68vw,520px);aspect-ratio:1/1;transform:translate(-50%,-50%);border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset;background:
+    .scan-reticle{position:absolute;top:50%;left:50%;width:min(76vw,560px);aspect-ratio:1/1;transform:translate(-50%,-50%);border-radius:20px;box-shadow:0 0 0 9999px rgba(0,0,0,.32) inset;background:
       linear-gradient(#fff,#fff) left top/28px 2px no-repeat,
       linear-gradient(#fff,#fff) left top/2px 28px no-repeat,
       linear-gradient(#fff,#fff) right top/28px 2px no-repeat,
@@ -226,6 +226,10 @@ function injectScanStyles(){
       linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat,
       linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat}
     .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px;letter-spacing:.2px}
+    .scan-shutter{position:absolute;left:50%;bottom:max(24px,calc(18px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);width:74px;height:74px;border-radius:999px;background:#fff;border:4px solid rgba(255,255,255,.35);box-shadow:0 6px 22px rgba(0,0,0,.45), inset 0 0 0 4px #fff;pointer-events:auto;transition: transform .06s ease, opacity .15s ease, filter .15s ease}
+    .scan-shutter:active{transform:translateX(-50%) scale(.96)}
+    .scan-shutter.disabled,.scan-shutter:disabled{opacity:.45;filter:grayscale(60%);pointer-events:auto}
+    .scan-msg-portrait{position:absolute;left:50%;bottom:max(110px,calc(96px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:10px 14px;border-radius:12px;letter-spacing:.2px;box-shadow:0 4px 12px rgba(0,0,0,.35);display:none}
   `;
   const style = document.createElement('style'); style.id='scan-style'; style.textContent = css; document.head.appendChild(style);
 }
@@ -271,17 +275,111 @@ async function stopScan(){
 function ensureVideo(){ if (scanState.video) return; const v=document.createElement('video'); v.setAttribute('playsinline',''); v.muted=true; v.autoplay=true; v.id='scan-video'; document.body.appendChild(v); scanState.video=v; }
 function ensureOverlay(){
   if (scanState.overlay) return;
+
   const overlay = document.createElement('div');
   overlay.id = 'scan-overlay';
   overlay.innerHTML = `
-    <div class="scan-topbar"><button id="scan-close" class="scan-close" aria-label="Tutup">✕</button></div>
+    <div class="scan-topbar">
+      <button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button>
+    </div>
+
+    <!-- Bidik -->
     <div class="scan-reticle" aria-hidden="true"></div>
-    <div class="scan-hint">Arahkan ke barcode / QR</div>
+
+    <!-- Pesan bawah -->
+    <div class="scan-hint">
+      Arahkan kamera ke barcode / QR
+    </div>
+
+    <!-- Pesan khusus kalau portrait -->
+    <div class="scan-msg-portrait" role="alert" aria-live="assertive">
+      Putar perangkat ke <b>mode horizontal (landscape)</b> untuk memotret
+    </div>
+
+    <!-- Tombol shutter -->
+    <button id="scan-shutter" class="scan-shutter" aria-label="Ambil gambar" title="Ambil gambar"></button>
   `;
+
   document.body.appendChild(overlay);
   scanState.overlay = overlay;
-  scanState.closeBtn = overlay.querySelector('#scan-close');
-  scanState.closeBtn.addEventListener('click', e => { e.preventDefault(); stopScan(); });
+
+  // Tombol
+  scanState.closeBtn   = overlay.querySelector('#scan-close');
+  const shutterBtn     = overlay.querySelector('#scan-shutter');
+
+  // Event close
+  scanState.closeBtn.addEventListener('click', async (e)=>{
+    e.preventDefault();
+    await stopScan();
+  });
+
+  // Event shutter
+  shutterBtn.addEventListener('click', async (e)=>{
+    e.preventDefault();
+    if (!isLandscape()) {
+      alert('Perangkat masih portrait. Putar ke horizontal untuk mengambil gambar.');
+      return;
+    }
+    try {
+      await captureFrameAndDownload();
+    } catch (err) {
+      console.error('Gagal capture:', err);
+      alert('Gagal mengambil gambar.');
+    }
+  });
+
+  // Pantau orientasi agar tombol aktif/nonaktif
+  const update = () => updateCaptureState();
+  window.addEventListener('orientationchange', update);
+  window.addEventListener('resize', update);
+  // Set awal
+  updateCaptureState();
+}
+
+function isLandscape(){
+  return (window.matchMedia && window.matchMedia('(orientation: landscape)').matches)
+         || (window.innerWidth > window.innerHeight);
+}
+
+function updateCaptureState(){
+  const btn   = document.getElementById('scan-shutter');
+  const msg   = document.querySelector('#scan-overlay .scan-msg-portrait');
+  const onLS  = isLandscape();
+
+  if (btn){
+    btn.disabled = !onLS;
+    btn.classList.toggle('disabled', !onLS);
+  }
+  if (msg){
+    msg.style.display = onLS ? 'none' : 'block';
+  }
+}
+
+async function captureFrameAndDownload(){
+  if (!scanState.video) throw new Error('Video belum siap');
+
+  const vid = scanState.video;
+  const w   = vid.videoWidth  || 1280;
+  const h   = vid.videoHeight || 720;
+
+  const c   = document.createElement('canvas');
+  c.width   = w;
+  c.height  = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(vid, 0, 0, w, h);
+
+  const blob = await new Promise(res => c.toBlob(res, 'image/png'));
+  if (!blob) throw new Error('Canvas blob null');
+
+  const fileName = `capture_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 function prepareCanvas(){ if (scanState.canvas) return; const c=document.createElement('canvas'); c.id='scan-canvas'; c.width=640; c.height=480; document.body.appendChild(c); scanState.canvas=c; scanState.ctx=c.getContext("2d",{willReadFrequently:true}); }
 async function ensureJsQR(){
