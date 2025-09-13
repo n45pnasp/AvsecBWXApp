@@ -1,5 +1,5 @@
 import { requireAuth } from "./auth-guard.js";
-import { capturePhoto, dataUrlToFile } from "./camera.js";
+import { capturePhoto, dataUrlToFile, makePhotoName } from "./camera.js";
 
 // Lindungi halaman: user harus login
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
@@ -136,6 +136,7 @@ function attachListeners() {
       const dt = new DataTransfer();
       dt.items.add(file);
       fileInput.files = dt.files;
+      fileInput.dataset.filename = file.name;
       fileInput.dispatchEvent(new Event("change", {bubbles:true}));
     }catch(e){ console.error(e); }
   });
@@ -429,12 +430,14 @@ async function onPickFile(e) {
     msg3.textContent = "Mengunggah…";
     showOverlay("Mengunggah foto…");
 
+    const filename = fileInput.dataset.filename || makePhotoName();
     const res = await fetchJson(WORKER_URL, {
       method : "POST",
       headers: { "Content-Type": "application/json" },
       body   : JSON.stringify({
         action: "uploadphoto",
         id,
+        filename,
         dataUrl,
         token: SHARED_TOKEN
       })
@@ -447,6 +450,7 @@ async function onPickFile(e) {
   } finally {
     fileInput.value = "";
     hideOverlay();
+    fileInput.dataset.filename = "";
   }
 }
 

@@ -8,12 +8,22 @@ export async function capturePhoto(){
   });
 }
 
-export function dataUrlToFile(dataUrl, fileName='photo.jpg'){
+export function makePhotoName(page = null, index = 0){
+  const base = page || location.pathname.split('/').pop().replace(/\.html$/, '') || 'photo';
+  const d    = new Date();
+  const hh   = String(d.getHours()).padStart(2, '0');
+  const mm   = String(d.getMinutes()).padStart(2, '0');
+  const idx  = index ? String(index) : '';
+  return `${base}${idx}_${hh}${mm}.png`;
+}
+
+export function dataUrlToFile(dataUrl, fileName){
   const arr = dataUrl.split(','), mime = arr[0].match(/:(.*?);/)[1];
   const bstr = atob(arr[1]);
   let n = bstr.length; const u8 = new Uint8Array(n);
   while(n--) u8[n] = bstr.charCodeAt(n);
-  return new File([u8], fileName, {type:mime});
+  const name = fileName || makePhotoName();
+  return new File([u8], name, {type:mime});
 }
 
 let camState = {stream:null, video:null, overlay:null, shutter:null, tilt:null, onStop:null};
@@ -122,8 +132,8 @@ async function captureFrame(){
   let ctx=c.getContext('2d',{willReadFrequently:true});
   if(h> w){ c.width=h; c.height=w; ctx.translate(h/2,w/2); ctx.rotate(-Math.PI/2); ctx.drawImage(vid,-w/2,-h/2,w,h); [w,h]=[h,w]; }
   else { c.width=w; c.height=h; ctx.drawImage(vid,0,0,w,h); }
-  const max=Math.max(w,h); if(max>800){ const scale=800/max; const cw=Math.round(w*scale), ch=Math.round(h*scale); const c2=document.createElement('canvas'); c2.width=cw; c2.height=ch; c2.getContext('2d').drawImage(c,0,0,cw,ch); return c2.toDataURL('image/jpeg',0.8);} 
-  return c.toDataURL('image/jpeg',0.8);
+  const max=Math.max(w,h); if(max>800){ const scale=800/max; const cw=Math.round(w*scale), ch=Math.round(h*scale); const c2=document.createElement('canvas'); c2.width=cw; c2.height=ch; c2.getContext('2d').drawImage(c,0,0,cw,ch); return c2.toDataURL('image/png');}
+  return c.toDataURL('image/png');
 }
 
 // Inject basic styles once

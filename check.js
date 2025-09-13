@@ -1,6 +1,6 @@
 // check.js — terhubung ke Cloudflare Worker + code.gs (token diinjeksi di Worker)
 import { requireAuth, getFirebase } from "./auth-guard.js";
-import { capturePhoto, dataUrlToFile } from "./camera.js";
+import { capturePhoto, dataUrlToFile, makePhotoName } from "./camera.js";
 
 // Lindungi halaman: wajib login
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
@@ -249,7 +249,7 @@ function populateChecks(wrap) {
   }
 }
 
-function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId) {
+function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId, idx) {
   const btn = document.getElementById(btnId);
   const input = document.getElementById(inputId);
   const preview = document.getElementById(previewId);
@@ -261,10 +261,12 @@ function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId) {
     try {
       const dataUrl = await capturePhoto();
       if (!dataUrl) return;
-      const file = dataUrlToFile(dataUrl);
+      const fileName = makePhotoName(null, idx);
+      const file = dataUrlToFile(dataUrl, fileName);
       const dt = new DataTransfer();
       dt.items.add(file);
       input.files = dt.files;
+      input.dataset.filename = file.name;
       preview.src = dataUrl;
       status.textContent = "Foto siap diunggah";
       name.textContent = file.name;
@@ -272,6 +274,13 @@ function setupPhoto(btnId, inputId, previewId, infoId, statusId, nameId) {
     } catch (e) {
       console.error(e);
     }
+  });
+
+  input.addEventListener('change', () => {
+    const fname = makePhotoName(null, idx);
+    input.dataset.filename = fname;
+    const n = document.getElementById(nameId);
+    if (n) n.textContent = fname;
   });
 }
 
@@ -287,6 +296,11 @@ function fileToDataURL(inputId) {
   });
 }
 
+function getFileName(inputId){
+  const input = document.getElementById(inputId);
+  return input?.dataset.filename || (input?.files?.[0]?.name || "");
+}
+
 function resetForm() {
   const select = document.getElementById("faskampen");
   select.value = "";
@@ -300,7 +314,7 @@ function resetForm() {
 
   ["fileInput1", "fileInput2"].forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.value = "";
+    if (el){ el.value = ""; el.dataset.filename = ""; }
   });
   ["preview1", "preview2"].forEach((id) => {
     const img = document.getElementById(id);
@@ -607,11 +621,15 @@ function initSubmit() {
       const gbr1 = await fileToDataURL("fileInput1");
       const gbr2 = await fileToDataURL("fileInput2");
       const gbr = gbr1 || gbr2;
+      const gbr1Name = getFileName("fileInput1");
+      const gbr2Name = getFileName("fileInput2");
 
       const payload = {
         dropdown: key, petugas, date,
         pass: passBool, fail: failBool,
-        gbr1, gbr2, gbr
+        gbr1, gbr2, gbr,
+        ...(gbr1 ? { gbr1Name } : {}),
+        ...(gbr2 ? { gbr2Name } : {})
       };
 
       if (currentLookup) {
@@ -695,8 +713,8 @@ function initPdfDownload() {
 
 /* ================== STARTUP ================== */
 document.addEventListener("DOMContentLoaded", () => {
-  setupPhoto("photoBtn1", "fileInput1", "preview1", "uploadInfo1", "uploadStatus1", "uploadName1");
-  setupPhoto("photoBtn2", "fileInput2", "preview2", "uploadInfo2", "uploadStatus2", "uploadName2");
+  setupPhoto("photoBtn1", "fileInput1", "preview1", "uploadInfo1", "uploadStatus1", "uploadName1", 1);
+  setupPhoto("photoBtn2", "fileInput2", "preview2", "uploadInfo2", "uploadStatus2", "uploadName2", 2);
   initTypeButtons();
   initSubmit();
   initPdfDownload();

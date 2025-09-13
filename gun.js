@@ -1,6 +1,6 @@
 // gun.js (FINAL) — sheet: GUN_FILESPDF, download via CFN, auto-cleanup via Worker
 import { requireAuth, getFirebase } from "./auth-guard.js";
-import { capturePhoto } from "./camera.js";
+import { capturePhoto, makePhotoName } from "./camera.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
@@ -40,6 +40,7 @@ const fotoNote        = document.querySelector(".foto-note");
 const downloadPdfBtn  = document.getElementById("downloadPdfBtn");
 
 let evidenceDataUrl = "";
+let evidenceName = "";
 
 /* ================== Firebase ================== */
 const { app, auth } = getFirebase();
@@ -87,6 +88,7 @@ if (btnEvidence) {
       const dataUrl = await capturePhoto();
       if (!dataUrl) return;
       evidenceDataUrl = dataUrl;
+      evidenceName = makePhotoName();
       if (evidenceImg) evidenceImg.src = dataUrl;
       if (evidencePreview) evidencePreview.classList.remove("hidden");
       if (fotoNote) fotoNote.classList.add("hidden");
@@ -132,7 +134,8 @@ if (submitBtn) submitBtn.addEventListener("click", async () => {
     supervisor:    supervisor.value.trim().toUpperCase(),
     fotoId:        (fotoIdInp?.value || "").trim(),
     fotoAvsec:     fotoAvsecCell || "",
-    fotoEvidence:  evidenceDataUrl
+    fotoEvidence:  evidenceDataUrl,
+    fotoEvidenceName: evidenceName
   };
 
   submitBtn.disabled = true;
@@ -153,6 +156,7 @@ if (submitBtn) submitBtn.addEventListener("click", async () => {
     fotoAvsecCell = "";
     if (imgAvsec){ imgAvsec.src=""; imgAvsec.classList.add("hidden"); }
     evidenceDataUrl = "";
+    evidenceName = "";
     if (btnEvidence) btnEvidence.textContent = "Ambil Foto";
     if (evidenceImg) evidenceImg.removeAttribute("src");
     if (evidencePreview) evidencePreview.classList.add("hidden");

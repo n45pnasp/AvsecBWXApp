@@ -1,6 +1,6 @@
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { capturePhoto, dataUrlToFile } from "./camera.js";
+import { capturePhoto, dataUrlToFile, makePhotoName } from "./camera.js";
 
 const SCRIPT_URL   = "https://pasvisit.avsecbwx2018.workers.dev/"; // POST add/delete + GET list
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";
@@ -47,6 +47,7 @@ ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
 
 let jenisPas = "";
 let photoData = "";
+let photoName = "";
 let scanMode = "pendamping";
 let submitting = false;
 
@@ -302,7 +303,8 @@ if (pickPhoto) pickPhoto.addEventListener('click', async () => {
     preview.src = dataUrl;
     uploadInfo.classList.remove('hidden');
     uploadStatus.textContent = 'Foto siap diunggah (terkompres)';
-    uploadName.textContent = file.name;
+    photoName = file.name;
+    uploadName.textContent = photoName;
     photoData = dataUrl;
     refreshSubmitState();
   } catch (e) {
@@ -320,7 +322,8 @@ fileInput.addEventListener('change', async () => {
     preview.src = photoData;
     uploadInfo.classList.remove('hidden');
     uploadStatus.textContent = 'Foto siap diunggah (terkompres)';
-    uploadName.textContent = file.name;
+    photoName = makePhotoName();
+    uploadName.textContent = photoName;
   }catch(e){
     showOverlay('err','Gagal memproses foto', e.message||e);
   }
@@ -409,7 +412,8 @@ async function onSubmit(){
     instansiPeminjam:instPinjam,
     jenisPas:jenis,
     pemberiPas:authName,
-    photo:photoData
+    photo:photoData,
+    photoName
   };
 
   submitting = true; refreshSubmitState();
@@ -425,7 +429,7 @@ async function onSubmit(){
 }
 
 function clearForm(){
-  timeInput.value=""; timeLabel.textContent="Pilih Waktu"; photoData=""; jenisPas="";
+  timeInput.value=""; timeLabel.textContent="Pilih Waktu"; photoData=""; photoName=""; jenisPas="";
   uploadInfo.classList.add('hidden'); uploadName.textContent=""; uploadStatus.textContent="Menunggu foto…";
   namaEl.value=""; instansiEl.value="";
   if (namaPeminjamEl) namaPeminjamEl.value="";

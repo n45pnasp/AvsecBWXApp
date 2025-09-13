@@ -2,7 +2,7 @@
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-import { capturePhoto, dataUrlToFile } from "./camera.js";
+import { capturePhoto, dataUrlToFile, makePhotoName } from "./camera.js";
 
 requireAuth({ loginPath: "index.html", hideWhileChecking: true });
 
@@ -93,7 +93,7 @@ const val=e=>(e?.value||"").trim();
 const txt=e=>(e?.textContent||"").trim();
 
 /* ===== FOTO utama ===== */
-let fotoDataUrl="";
+let fotoDataUrl="", fotoName="";
 async function compressImage(file,max=480,quality=0.7){
   const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(file);});
   const s=Math.min(1,max/Math.max(img.width,img.height));
@@ -101,7 +101,7 @@ async function compressImage(file,max=480,quality=0.7){
   c.getContext("2d").drawImage(img,0,0,c.width,c.height);
   return c.toDataURL("image/jpeg",quality);
 }
-function resetFoto(){ if(!fotoPreview)return; fotoPreview.src=""; fotoPreview.classList.add("hidden"); fotoDataUrl=""; }
+function resetFoto(){ if(!fotoPreview)return; fotoPreview.src=""; fotoPreview.classList.add("hidden"); fotoDataUrl=""; fotoName=""; }
 fotoBtn?.addEventListener("click",async()=>{
   try{
     const dataUrl = await capturePhoto();
@@ -109,30 +109,30 @@ fotoBtn?.addEventListener("click",async()=>{
     fotoPreview.src = dataUrl;
     fotoPreview.classList.remove("hidden");
     if(dataUrl.length>200_000){ showAlert("Foto terlalu besar, turunkan resolusi."); resetFoto(); }
-    else { fotoDataUrl = dataUrl; }
+    else { fotoDataUrl = dataUrl; fotoName = makePhotoName(null,1); }
   }catch{ resetFoto(); }
 });
 
 /* ===== FOTO suspect (dua foto) ===== */
-let bagFotoSuspectDataUrl="",bagFotoBarangDataUrl="";
-function resetBagFotoLayar(){ if(!bagFotoLayarPreview)return; bagFotoLayarPreview.src=""; bagFotoLayarPreview.classList.add("hidden"); bagFotoSuspectDataUrl=""; }
+let bagFotoSuspectDataUrl="",bagFotoBarangDataUrl="",bagFotoSuspectName="",bagFotoBarangName="";
+function resetBagFotoLayar(){ if(!bagFotoLayarPreview)return; bagFotoLayarPreview.src=""; bagFotoLayarPreview.classList.add("hidden"); bagFotoSuspectDataUrl=""; bagFotoSuspectName=""; }
 bagFotoLayarBtn?.addEventListener("click",async()=>{
   try{
     const dataUrl = await capturePhoto();
     if(!dataUrl){ resetBagFotoLayar(); return; }
     bagFotoLayarPreview.src=dataUrl; bagFotoLayarPreview.classList.remove("hidden");
     if(dataUrl.length>200_000){ showAlert("Foto terlalu besar."); resetBagFotoLayar(); }
-    else bagFotoSuspectDataUrl=dataUrl;
+    else { bagFotoSuspectDataUrl=dataUrl; bagFotoSuspectName = makePhotoName(null,2); }
   }catch{ resetBagFotoLayar(); }
 });
-function resetBagFotoBarang(){ if(!bagFotoBarangPreview)return; bagFotoBarangPreview.src=""; bagFotoBarangPreview.classList.add("hidden"); bagFotoBarangDataUrl=""; }
+function resetBagFotoBarang(){ if(!bagFotoBarangPreview)return; bagFotoBarangPreview.src=""; bagFotoBarangPreview.classList.add("hidden"); bagFotoBarangDataUrl=""; bagFotoBarangName=""; }
 bagFotoBarangBtn?.addEventListener("click",async()=>{
   try{
     const dataUrl = await capturePhoto();
     if(!dataUrl){ resetBagFotoBarang(); return; }
     bagFotoBarangPreview.src=dataUrl; bagFotoBarangPreview.classList.remove("hidden");
     if(dataUrl.length>200_000){ showAlert("Foto terlalu besar."); resetBagFotoBarang(); }
-    else bagFotoBarangDataUrl=dataUrl;
+    else { bagFotoBarangDataUrl=dataUrl; bagFotoBarangName = makePhotoName(null,3); }
   }catch{ resetBagFotoBarang(); }
 });
 function resetBagasiCard(){
@@ -493,11 +493,13 @@ async function submitRandom(){
     if(!metode) throw new Error("Metode pemeriksaan belum dipilih.");
 
     const payload={ action:"submit", token:SHARED_TOKEN, target:mode, data:{
-      nama, flight, ...(mode==="PSCP"?{objekPemeriksaan:objek||""}:{}) , jenisBarang, petugas, metode, supervisor, ...(fotoDataUrl?{fotoDataUrl}:{} )
+      nama, flight, ...(mode==="PSCP"?{objekPemeriksaan:objek||""}:{}) , jenisBarang, petugas, metode, supervisor,
+      ...(fotoDataUrl?{fotoPiDataUrl:fotoDataUrl, fotoPiName:fotoName}:{} ),
+      ...(bagFotoSuspectDataUrl?{fotoSuspectDataUrl:bagFotoSuspectDataUrl, fotoSuspectName:bagFotoSuspectName}:{} ),
+      ...(bagFotoBarangDataUrl?{fotoBarangDataUrl:bagFotoBarangDataUrl, fotoBarangName:bagFotoBarangName}:{} )
     }};
     if((mode==="PSCP"||mode==="HBSCP") && tindakan==="ditinggal"){
       payload.data.tindakanBarang="ditinggal"; payload.data.namaBarang=jenisBarang; payload.data.jenisDGDA=tipePi;
-      if(fotoDataUrl) payload.data.fotoPiDataUrl=fotoDataUrl;
     }else if(mode!=="CARGO"){ payload.data.tindakanBarang=tindakan; }
 
     const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
@@ -539,8 +541,8 @@ async function submitSuspectHBSCP(){
     showOverlay("spinner","Menyimpan suspect…","");
     const payload={ action:"submit", token:SHARED_TOKEN, target:"SUSPECT_HBSCP", data:{
       flight, petugas, nomorBagasi, namaPemilik, tujuan, indikasi,
-      ...(bagFotoSuspectDataUrl?{fotoSuspectDataUrl:bagFotoSuspectDataUrl}:{ }),
-      ...(bagFotoBarangDataUrl ?{fotoBarangDataUrl :bagFotoBarangDataUrl }:{ })
+      ...(bagFotoSuspectDataUrl?{fotoSuspectDataUrl:bagFotoSuspectDataUrl, fotoSuspectName:bagFotoSuspectName}:{ }),
+      ...(bagFotoBarangDataUrl ?{fotoBarangDataUrl :bagFotoBarangDataUrl, fotoBarangName:bagFotoBarangName }:{ })
     }};
     const j=await fetchJSON(PROXY_URL,{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(payload), credentials:"omit" });
     if(!j?.ok) throw new Error(j?.error||"Gagal menyimpan suspect");

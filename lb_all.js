@@ -1,7 +1,7 @@
 // ==== Firebase SDK v9 (modular) ====
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { capturePhoto, dataUrlToFile } from "./camera.js";
+import { capturePhoto, dataUrlToFile, makePhotoName } from "./camera.js";
 
 /* ===== KONFIG ===== */
 const SCRIPT_URL   = "https://logbk.avsecbwx2018.workers.dev"; // 🔒 JANGAN UBAH TANPA PERMINTAAN
@@ -483,6 +483,7 @@ pickPhoto.addEventListener("click", async () => {
     const dt = new DataTransfer();
     dt.items.add(file);
     fileInput.files = dt.files;
+    fileInput.dataset.filename = file.name;
     fileInput.dispatchEvent(new Event("change", { bubbles: true }));
   } catch (err) {
     console.error(err);
@@ -502,10 +503,7 @@ fileInput.addEventListener("change", async (ev) => {
     showOverlay("loading", "Mengunggah foto…", `Target: ${getTargetLabel(TARGET)}`);
 
     const pngBlob = await normalizeToPNG(file);
-    const now     = new Date();
-    const dateStr = `${pad2(now.getDate())}-${pad2(now.getMonth()+1)}-${now.getFullYear()}`;
-    const timeStr = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
-    const pngName = `${TARGET}_${dateStr}_${timeStr}.png`;
+    const pngName = fileInput.dataset.filename || makePhotoName();
     uploadName.textContent = pngName;
 
     const objectUrl = URL.createObjectURL(pngBlob);
