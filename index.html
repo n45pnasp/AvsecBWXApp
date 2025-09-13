@@ -31,10 +31,10 @@
   <meta property="og:url" content="https://avsecbwxapp.online/">
   <meta name="twitter:card" content="summary_large_image">
 
-  <!-- 1) Router untuk handle deep-link dari 404.html -->
-  <script type="module" src="router.js"></script>
+  <!-- 1) Router untuk handle deep-link dari 404.html (cache-busted) -->
+  <script type="module" src="router.js?v=20250913a"></script>
 
-  <!-- 2) Auto-redirect kalau sudah login (skip saat logout) + auto-fix ?next= -->
+  <!-- 2) Auto-fix ?next= (double-encoded -> encode sekali) + Auto-redirect -->
   <script type="module">
     // --- Bersihkan parameter ?next= bila double-encoded, lalu encode SEKALI ---
     function multiDecodeOnce(s, max = 3) {
@@ -45,9 +45,7 @@
           const dec = decodeURIComponent(prev);
           if (dec === prev) break;
           prev = dec;
-        } catch {
-          break;
-        }
+        } catch { break; }
       }
       return prev;
     }
@@ -61,21 +59,60 @@
       try {
         const u = new URL(decoded, location.origin);
         if (u.origin === location.origin) {
-          const cleanPath = u.pathname + (u.search || "") + (u.hash || "");
-          url.searchParams.set("next", encodeURIComponent(cleanPath)); // encode sekali
+          const clean = u.pathname + (u.search || "") + (u.hash || "");
+          url.searchParams.set("next", encodeURIComponent(clean)); // encode sekali
           // Update address bar tanpa reload
           window.history.replaceState({}, "", url.toString());
         }
       } catch {
-        // jika gagal parse, biarkan apa adanya
+        // biarkan apa adanya jika gagal parse
       }
     })();
 
-    import { redirectIfAuthed } from "./auth-guard.js";
+    // Import guard dengan cache-buster agar tak ketahan cache lama
+    import { redirectIfAuthed, getFirebase } from "./auth-guard.js?v=20250913a";
+
     const params = new URLSearchParams(location.search);
     if (params.get("logout") !== "1") {
-      // homePath boleh "home.html" agar fleksibel di Pages/Cloudflare
+      // 2a) Minta guard redirect normal
       redirectIfAuthed({ homePath: "home.html" });
+
+      // 2b) Fallback: kalau sudah login tapi belum pindah halaman dalam 1.5s, paksa redirect
+      const { auth } = getFirebase();
+      const fallbackTimer = setTimeout(async () => {
+        const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js");
+        const unsub = onAuthStateChanged(auth, (user) => {
+          try {
+            if (!user) return; // belum login di origin ini
+            // Hitung tujuan yang sama dengan guard (aman same-origin)
+            const url = new URL(location.href);
+            const rawNext = url.searchParams.get("next");
+            let dest = "home.html";
+            if (rawNext) {
+              // decode multi, normalisasi
+              let nextDecoded = multiDecodeOnce(rawNext);
+              try {
+                const u = new URL(nextDecoded, location.origin);
+                if (u.origin === location.origin) {
+                  dest = u.pathname + (u.search || "") + (u.hash || "");
+                }
+              } catch { /* ignore */ }
+            }
+            // Absolutkan terhadap base path GitHub Pages
+            const parts = location.pathname.split("/").filter(Boolean);
+            const basePrefix = parts.length > 0 ? `/${parts[0]}/` : "/";
+            const absolute = dest.startsWith("/") ? dest : basePrefix + dest.replace(/^\/+/, "");
+            if (location.pathname + location.search + location.hash !== absolute) {
+              location.replace(absolute);
+            }
+          } finally {
+            unsub && unsub();
+          }
+        });
+      }, 1500);
+
+      // Bersih-bersih kalau pindah halaman sebelum fallback nembak
+      window.addEventListener("beforeunload", () => clearTimeout(fallbackTimer));
     }
   </script>
 </head>
@@ -88,7 +125,6 @@
           <img id="appLogo" alt="Logo Aplikasi" />
         </div>
         <h1 class="title">Selamat Datang 👋</h1>
-
         <div class="cta">
           <button id="goLoginBtn" class="btn">Masuk</button>
         </div>
@@ -130,9 +166,6 @@
     </article>
   </main>
 
-  <!-- OPSIONAL: override logo default -->
-  <!-- <script>window.LOGO_URL = "https://avsecbwxapp.online/favicon-192.png";</script> -->
-
   <!-- Loading overlay -->
   <div id="loadingOverlay" style="display:flex">
     <div class="load-card">
@@ -144,6 +177,6 @@
     </div>
   </div>
 
-  <script type="module" src="login.js"></script>
+  <script type="module" src="login.js?v=20250913a"></script>
 </body>
 </html>
