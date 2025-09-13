@@ -267,9 +267,7 @@ function ensureOverlay(){
       <div class="scan-topbar">
         <button id="scan-close" class="scan-close" aria-label="Tutup pemindaian">✕</button>
       </div>
-      <div class="scan-reticle" aria-hidden="true"></div>
-      <div class="scan-hint">Bidik objek lalu tekan tombol</div>
-      <div class="scan-msg-portrait" role="alert" aria-live="assertive">Putar perangkat ke <b>mode horizontal (landscape)</b> untuk memotret</div>
+      <div class="scan-msg-portrait" role="alert" aria-live="assertive">Putar perangkat ke horizontal untuk memotret</div>
       <button id="scan-shutter" class="scan-shutter" aria-label="Ambil gambar" title="Ambil gambar"></button>
     `;
   } else {
@@ -291,7 +289,7 @@ function ensureOverlay(){
     if (shutterBtn){
       shutterBtn.addEventListener("click", async (e)=>{
         e.preventDefault();
-        if (!isLandscape()) { alert("Perangkat masih portrait. Putar ke horizontal untuk mengambil gambar."); return; }
+        if (!isLandscape()) { alert("Perangkat masih portrait. Putar perangkat ke horizontal untuk memotret."); return; }
         try {
           const dataUrl = await captureFrame();
           evidenceDataUrl = dataUrl;
