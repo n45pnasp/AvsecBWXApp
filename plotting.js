@@ -382,8 +382,14 @@ class SiteMachine {
     }
   }
 
-  speakAssignments(assignments){
-    if(typeof window === "undefined" || !window.speechSynthesis) return;
+  async speakAssignments(assignments){
+    // Pastikan environment mendukung Web Speech API
+    if(typeof window === "undefined" ||
+       !('speechSynthesis' in window) ||
+       typeof window.SpeechSynthesisUtterance === "undefined"){
+      return;
+    }
+
     const phrases = this.cfg.positions.map(pos => {
       const name = assignments[pos.id];
       return name && name !== "-" ? `personil ${name} ke posisi ${pos.name}` : null;
@@ -391,24 +397,40 @@ class SiteMachine {
     if(!phrases.length) return;
 
     const synth = window.speechSynthesis;
-    let voices = synth.getVoices();
-    if(!voices.length){
-      synth.onvoiceschanged = () => {
-        synth.onvoiceschanged = null;
-        this.speakAssignments(assignments);
-      };
-      return;
+
+    const pickVoice = () => {
+      const voices = synth.getVoices();
+      return voices.find(v => v.lang.startsWith("id") && /female|wanita|perempuan|dita/i.test(v.name))
+          || voices.find(v => v.lang.startsWith("id"))
+          || voices[0];
+    };
+
+    // Beberapa platform (iOS/Android) memuat daftar voice secara async
+    let voice = pickVoice();
+    if(!voice){
+      voice = await new Promise(resolve => {
+        const handler = () => {
+          synth.removeEventListener('voiceschanged', handler);
+          resolve(pickVoice());
+        };
+        synth.addEventListener('voiceschanged', handler);
+      });
     }
 
-    const voice = voices.find(v => v.lang.startsWith("id") && /female|wanita|perempuan|dita/i.test(v.name))
-                || voices.find(v => v.lang.startsWith("id"));
-
     const utter = new SpeechSynthesisUtterance(`perindahan dinas dimulai, ${phrases.join(", ")}`);
-    utter.lang = voice?.lang || "id-ID";
-    if(voice) utter.voice = voice;
+    if(voice){
+      utter.voice = voice;
+      utter.lang = voice.lang;
+    } else {
+      utter.lang = "id-ID";
+    }
 
-    synth.cancel();
-    synth.speak(utter);
+    try{
+      synth.cancel();
+      synth.speak(utter);
+    }catch(err){
+      console.warn('Speech synthesis gagal:', err);
+    }
   }
 
   async computeAndWriteAssignments(useCooldown){
