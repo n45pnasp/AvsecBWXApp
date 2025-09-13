@@ -1,7 +1,7 @@
 // gun.js (FINAL, fixed)
-// - Konsisten nama sheet: 'GunFilesPDF'
+// - Konsisten nama sheet: 'GUN_FILESPDF'
 // - Guard elemen tombol foto evidence agar tidak crash bila tidak ada
-// - PDF download: site=GunFilesPDF
+// - PDF download: site=GUN_FILESPDF
 // - Overlay aman-null (fallback alert)
 
 import { requireAuth, getFirebase } from "./auth-guard.js";
@@ -157,8 +157,8 @@ if (submitBtn) submitBtn.addEventListener("click", async () => {
   showOverlay('spinner','Mengirim data…','');
 
   try {
-    // FIX: konsisten ke 'GunFilesPDF'
-    await sendToSheet('GunFilesPDF', payload);
+    // FIX: konsisten ke 'GUN_FILESPDF'
+    await sendToSheet('GUN_FILESPDF', payload);
     await sendToSheet('Files', payload);
 
     showOverlay('ok','Data berhasil dikirim','');
@@ -487,8 +487,8 @@ function initPdfDownload(){
       if (!user) return alert("Silakan login ulang.");
 
       const idToken = await user.getIdToken(true);
-      // FIX: site konsisten 'GunFilesPDF'
-      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GunFilesPDF`;
+      // FIX: site konsisten 'GUN_FILESPDF'
+      const url = `${CFN_DOWNLOAD_PDF_URL}?site=GUN_FILESPDF`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
       if (!res.ok){
         const txt = await res.text().catch(()=> "");
