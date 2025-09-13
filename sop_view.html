@@ -5,8 +5,8 @@
   <!-- IZINKAN ZOOM BROWSER -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, user-scalable=yes" />
   <title>Viewer SOP</title>
-  <link rel="stylesheet" href="chatbot.css" />
-  <style>
+<link rel="stylesheet" href="chatbot.css" />
+<style>
     .viewer-header{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--panel,#111b21);border-bottom:1px solid var(--border,#2a3942);height:56px;display:flex;align-items:center;gap:10px;padding:0 12px;color:var(--text,#e9edef);font-weight:600}
     .viewer-header .back-btn{width:44px;height:44px;margin-right:2px}
     .viewer-header .back-btn svg{width:26px;height:26px;stroke:currentColor}
@@ -34,6 +34,7 @@
     body{-webkit-user-select:none;user-select:none}
     *{-webkit-touch-callout:none}
   </style>
+  <style>html{visibility:hidden}</style>
 </head>
 <body>
   <div class="viewer-header" role="banner">
@@ -66,22 +67,11 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+      import { requireAuth, getFirebase } from "./auth-guard.js";
+      import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-    // FIREBASE
-    const firebaseConfig = {
-      apiKey: "AIzaSyBc-kE-_q1yoENYECPTLC3EZf_GxBEwrWY",
-      authDomain: "avsecbwx-4229c.firebaseapp.com",
-      databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com",
-      projectId: "avsecbwx-4229c",
-      storageBucket: "avsecbwx-4229c.firebasestorage.app",
-      messagingSenderId: "1029406629258",
-      appId: "1:1029406629258:web:53e8f09585cd77823efc73",
-      measurementId: "G-P37F88HGFE"
-    };
-    initializeApp(firebaseConfig);
-    const auth = getAuth();
+      requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+      const { auth } = getFirebase();
 
     // PARAMS
     const params = new URLSearchParams(location.search);
@@ -191,8 +181,8 @@
     });
 
     // ====== Main flow ======
-    onAuthStateChanged(auth, async (u) => {
-      if (!u) { location.href = "./login.html"; return; }
+      onAuthStateChanged(auth, async (u) => {
+        if (!u) return;
 
       try {
         if (key) {

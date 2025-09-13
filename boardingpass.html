@@ -128,6 +128,7 @@
       button,.qr-btn{ padding:10px 12px }
     }
   </style>
+  <style>html{visibility:hidden}</style>
 </head>
 <body>
   <!-- App Bar -->
@@ -170,7 +171,10 @@
 
   <audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
-  <!-- JS eksternal yang sudah kamu terapkan sebelumnya -->
+  <script type="module">
+    import { requireAuth } from "./auth-guard.js";
+    requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+  </script>
   <script src="boardingpass.js"></script>
   <script type="module" src="offline.js"></script>
   <script src="back.js"></script>

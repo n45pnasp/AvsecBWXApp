@@ -6,6 +6,7 @@
   <title>PEMERIKSAAN BAGASI TERCATAT</title>
   <meta name="color-scheme" content="dark light" />
   <link rel="stylesheet" href="SIDS.css" />
+  <style>html{visibility:hidden}</style>
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -49,12 +50,16 @@
     </section>
 
     <!-- Ticker -->
-    <footer class="ticker" aria-live="polite">
+  <footer class="ticker" aria-live="polite">
       <div class="dot" aria-hidden="true"></div>
-      <div id="tickerText" class="msg">HAVE A NICE FLIGHT - SEE YOU SOON!</div>
-    </footer>
+  <div id="tickerText" class="msg">HAVE A NICE FLIGHT - SEE YOU SOON!</div>
+  </footer>
   </div>
 
+  <script type="module">
+    import { requireAuth } from "./auth-guard.js";
+    requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+  </script>
   <script src="SIDS.js"></script>
   <script type="module" src="offline.js"></script>
 </body>

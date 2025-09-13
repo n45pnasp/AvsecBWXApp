@@ -1,9 +1,14 @@
 <!DOCTYPE html>
 <html lang="id">
-<head>
-  <meta charset="utf-8">
-  <title>Lookup Kode Register (Bridge Kodular)</title>
-</head>
+  <head>
+    <meta charset="utf-8">
+    <title>Lookup Kode Register (Bridge Kodular)</title>
+    <style>html{visibility:hidden}</style>
+    <script type="module">
+      import { requireAuth } from "./auth-guard.js";
+      requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+    </script>
+  </head>
 <body>
   <h1>Lookup Kode Register</h1>
 
