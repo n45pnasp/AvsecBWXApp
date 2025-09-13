@@ -1,5 +1,6 @@
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { capturePhoto, dataUrlToFile } from "./camera.js";
 
 const SCRIPT_URL   = "https://pasvisit.avsecbwx2018.workers.dev/"; // POST add/delete + GET list
 const LOOKUP_URL   = "https://script.google.com/macros/s/AKfycbzgWQVOzC7cQVoc4TygW3nDJ_9iejZZ_4CBAWBFDrEXvjM5QxZvEiFr4FLKIu0bqs0Hfg/exec";
@@ -290,7 +291,26 @@ async function resizeImageFile(file, maxW=1200, maxH=1200, mime='image/jpeg', qu
   return dataUrl;
 }
 
-if (pickPhoto) pickPhoto.addEventListener('click', () => fileInput.click());
+if (pickPhoto) pickPhoto.addEventListener('click', async () => {
+  try {
+    const dataUrl = await capturePhoto();
+    if (!dataUrl) return;
+    const file = dataUrlToFile(dataUrl);
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    preview.src = dataUrl;
+    uploadInfo.classList.remove('hidden');
+    uploadStatus.textContent = 'Foto siap diunggah (terkompres)';
+    uploadName.textContent = file.name;
+    photoData = dataUrl;
+    refreshSubmitState();
+  } catch (e) {
+    console.error(e);
+    fileInput.click();
+  }
+});
+
 fileInput.addEventListener('change', async () => {
   const file = fileInput.files[0];
   if (!file){ return; }

@@ -235,7 +235,7 @@ function askConfirm(message="Yakin?", { okText="Hapus", cancelText="Batal" } = {
 
 /* ===== MODE (Tambah vs Edit) ===== */
 function setModeEdit(on){
-  submitBtn.textContent = on ? "✏️ Edit" : "✅ Kirim Data";
+  submitBtn.textContent = on ? "✏️ Edit" : "Kirim Data";
   pickPhoto.disabled = !!on;
   fileInput.disabled = !!on;
   if (on){
