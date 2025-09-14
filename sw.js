@@ -1,29 +1,32 @@
 // sw.js — FINAL+ (anti-stale auth/router, precache shell, nav-preload)
 const VERSION = "2025-09-14a";
 const STATIC_CACHE = `static-${VERSION}`;
+const BASE = new URL(self.registration.scope).pathname;
+const toBase = (p) => BASE + p.replace(/^\//, "");
+
 const PRECACHE = [
-  "/",                 // root (Cloudflare/GitHub Pages)
-  "/index.html",
-  "/home.html",
-  "/login.css",
-  "/login.js",
-  "/auth-guard.js",
-  "/router.js",
-  "/offline.js",
-  "/manifest.json",
-  "/icons/favicon-192.png",
-  "/icons/favicon-256.png",
-  "/icons/favicon-384.png",
-  "/icons/favicon-512.png",
-  "/icons/apple-touch-icon.png",
+  toBase(""),
+  toBase("index.html"),
+  toBase("home.html"),
+  toBase("login.css"),
+  toBase("login.js"),
+  toBase("auth-guard.js"),
+  toBase("router.js"),
+  toBase("offline.js"),
+  toBase("manifest.json"),
+  toBase("icons/favicon-192.png"),
+  toBase("icons/favicon-256.png"),
+  toBase("icons/favicon-384.png"),
+  toBase("icons/favicon-512.png"),
+  toBase("icons/apple-touch-icon.png"),
 ];
 
 // File yang harus selalu network-only (jangan pernah pakai cache)
 const NETWORK_ONLY = [
-  /\/index\.html(\?.*)?$/i,
-  /\/auth-guard\.js(\?.*)?$/i,
-  /\/login\.js(\?.*)?$/i,
-  /\/router\.js(\?.*)?$/i,
+  toBase("index.html"),
+  toBase("auth-guard.js"),
+  toBase("login.js"),
+  toBase("router.js"),
 ];
 
 // ===== Install: aktifkan cepat + precache minimal shell
@@ -49,7 +52,7 @@ self.addEventListener("activate", (event) => {
 });
 
 function shouldBypass(pathname) {
-  return NETWORK_ONLY.some(rx => rx.test(pathname));
+  return NETWORK_ONLY.some(p => pathname === p || pathname.startsWith(p + "?"));
 }
 
 self.addEventListener("fetch", (event) => {
