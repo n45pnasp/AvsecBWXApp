@@ -166,6 +166,12 @@ export function requireAuth({
           });
           return;
         }
+        const al = data.alert;
+        if (al && al.from !== DEVICE_ID) {
+          showSingleDeviceModal("Ada perangkat lain mencoba masuk ke akun Anda, Web ini dibatasi hanya bisa login 1 device saja");
+          update(sessRef, { alert: null }).catch(()=>{});
+          return;
+        }
         const att = data.lastAttempt;
         if (att && att.device !== DEVICE_ID) {
           const ts = att.ts || 0;
