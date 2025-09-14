@@ -21,6 +21,12 @@ const timeBtn      = document.getElementById("timeBtn");
 const scanBtn      = document.getElementById("scanBtn");
 const scanPassBtn  = document.getElementById("scanPassBtn");
 const scanPassText = scanPassBtn ? scanPassBtn.querySelector('span') : null;
+const manualPendCard   = document.getElementById("manualPendCard");
+const manualPendInput  = document.getElementById("manualPendInput");
+const manualPendSearch = document.getElementById("manualPendSearch");
+const manualPassCard   = document.getElementById("manualPassCard");
+const manualPassInput  = document.getElementById("manualPassInput");
+const manualPassSearch = document.getElementById("manualPassSearch");
 const namaEl       = document.getElementById("namaPendamping");
 const instansiEl   = document.getElementById("instansiPendamping");
 const pendampingInfo = document.getElementById("pendampingInfo");
@@ -144,7 +150,7 @@ function ensureOverlay(){
     const ov = document.createElement('div'); ov.id = 'scan-overlay';
     const top = document.createElement('div'); top.className = 'scan-topbar';
     const close = document.createElement('button'); close.className = 'scan-close'; close.textContent = '✕';
-    close.addEventListener('click', stopScan);
+    close.addEventListener('click', () => stopScan(true));
     top.appendChild(close); ov.appendChild(top);
     const ret = document.createElement('div'); ret.className = 'scan-reticle'; ov.appendChild(ret);
     const hint = document.createElement('div'); hint.className = 'scan-hint'; hint.textContent = 'Scan Barcode / QR code'; ov.appendChild(hint);
@@ -153,11 +159,21 @@ function ensureOverlay(){
   }
 }
 
-if (scanBtn) scanBtn.addEventListener('click', () => { if (scanState.running) stopScan(); else { scanMode='pendamping'; startScan(); } });
-if (scanPassBtn) scanPassBtn.addEventListener('click', () => { if (scanState.running) stopScan(); else { scanMode='pass'; startScan(); } });
+if (scanBtn) scanBtn.addEventListener('click', () => { if (scanState.running) stopScan(true); else { scanMode='pendamping'; startScan(); } });
+if (scanPassBtn) scanPassBtn.addEventListener('click', () => { if (scanState.running) stopScan(true); else { scanMode='pass'; startScan(); } });
+if (manualPendSearch) manualPendSearch.addEventListener('click', () => {
+  const code = manualPendInput.value.trim();
+  if(code) receiveBarcode(code);
+});
+if (manualPassSearch) manualPassSearch.addEventListener('click', () => {
+  const code = manualPassInput.value.trim();
+  if(code) receivePass(code);
+});
 
 async function startScan(){
   try{
+    if(manualPendCard) manualPendCard.classList.add('hidden');
+    if(manualPassCard) manualPassCard.classList.add('hidden');
     ensureVideo(); ensureCanvas(); ensureOverlay();
     if(!navigator.mediaDevices?.getUserMedia) throw new Error('Kamera tidak didukung');
     document.body.classList.add('scan-active');
@@ -177,11 +193,15 @@ async function startScan(){
   }catch(err){ showOverlay('err','Gagal membuka kamera', err.message||err); }
 }
 
-async function stopScan(){
+async function stopScan(showManual=false){
   scanState.running = false;
   if (scanState.stream){ scanState.stream.getTracks().forEach(t=>t.stop()); scanState.stream=null; }
   if (scanState.video){ scanState.video.pause(); scanState.video.removeAttribute('srcObject'); }
   document.body.classList.remove('scan-active');
+  if (showManual){
+    if (scanMode === 'pendamping' && manualPendCard) manualPendCard.classList.remove('hidden');
+    if (scanMode === 'pass' && manualPassCard) manualPassCard.classList.remove('hidden');
+  }
 }
 
 async function ensureJsQR(){

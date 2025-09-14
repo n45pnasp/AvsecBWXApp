@@ -34,6 +34,9 @@ const btnEvidence     = document.getElementById("btnEvidence");
 const evidencePreview = document.getElementById("evidencePreview");
 const evidenceImg     = document.getElementById("evidenceImg");
 const scanBtn         = document.getElementById("scanBtn");
+const manualCard      = document.getElementById("manualCard");
+const manualInput     = document.getElementById("manualInput");
+const manualSearch    = document.getElementById("manualSearch");
 const imgAvsec        = document.getElementById("imgAvsec");
 const fotoIdInp       = document.getElementById("fotoId");
 const fotoNote        = document.querySelector(".foto-note");
@@ -186,7 +189,11 @@ async function sendToSheet(sheet, payload){
 
 /* ================== SCAN (BarcodeDetector/jsQR) ================== */
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
-if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan(); });
+if (manualSearch) manualSearch.addEventListener('click', () => {
+  const code = manualInput.value.trim();
+  if(code) receiveBarcode(code);
+});
+if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(true); else startScan(); });
 
 function injectScanStyles(){
   if (document.getElementById('scan-style')) return;
@@ -217,6 +224,7 @@ injectScanStyles();
 
 async function startScan(){
   try{
+    if(manualCard) manualCard.classList.add('hidden');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       showOverlay('err','Browser tidak mendukung kamera','');
       return;
@@ -247,7 +255,7 @@ async function startScan(){
     await stopScan();
   }
 }
-async function stopScan(){
+async function stopScan(showManual=false){
   scanState.running = false;
   if (scanState.stream){ scanState.stream.getTracks().forEach(t=>{ try{t.stop();}catch(_){}}); }
   scanState.stream = null;
@@ -255,6 +263,7 @@ async function stopScan(){
   if (scanState.canvas){ scanState.canvas.remove(); scanState.canvas = null; scanState.ctx = null; }
   if (scanState.overlay){ scanState.overlay.remove(); scanState.overlay = null; scanState.closeBtn = null; }
   document.body.classList.remove('scan-active');
+  if (showManual && manualCard) manualCard.classList.remove('hidden');
 }
 function ensureVideo(){
   if (scanState.video) return;
@@ -280,7 +289,7 @@ function ensureOverlay(){
   scanState.overlay = overlay;
   scanState.closeBtn = overlay.querySelector("#scan-close");
   if (scanState.closeBtn){
-    scanState.closeBtn.addEventListener("click", async (e)=>{ e.preventDefault(); await stopScan(); });
+    scanState.closeBtn.addEventListener("click", async (e)=>{ e.preventDefault(); await stopScan(true); });
   }
 }
 function prepareCanvas(){ if (scanState.canvas) return; const c=document.createElement('canvas'); c.id='scan-canvas'; c.width=640; c.height=480; document.body.appendChild(c); scanState.canvas=c; scanState.ctx=c.getContext("2d",{willReadFrequently:true}); }

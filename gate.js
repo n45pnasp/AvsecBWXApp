@@ -17,6 +17,9 @@ const timeInput    = document.getElementById("timeInput");
 const timeLabel    = document.getElementById("timeLabel");
 const timeBtn      = document.getElementById("timeBtn");
 const scanBtn      = document.getElementById("scanBtn");
+const manualCard   = document.getElementById("manualCard");
+const manualInput  = document.getElementById("manualInput");
+const manualSearch = document.getElementById("manualSearch");
 const namaEl       = document.getElementById("namaPetugas");
 const instansiEl   = document.getElementById("instansiPetugas");
 const fotoEl       = document.getElementById("fotoPetugas");
@@ -66,9 +69,13 @@ timeInput.addEventListener("change", () => {
   timeLabel.textContent = timeInput.value || "Pilih Waktu";
 });
 
+if (manualSearch) manualSearch.addEventListener('click', () => {
+  const code = manualInput.value.trim();
+  if(code) receiveBarcode(code);
+});
 scanBtn.addEventListener("click", () => {
   if (scanState.running) {
-    stopScan();
+    stopScan(true);
   } else {
     startScan();
   }
@@ -237,6 +244,7 @@ injectScanStyles();
 
 async function startScan(){
   try{
+    if(manualCard) manualCard.classList.add('hidden');
     ensureVideo();
     ensureOverlay();
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('Kamera tidak didukung');
@@ -278,7 +286,7 @@ async function startScan(){
   }
 }
 
-async function stopScan(){
+async function stopScan(showManual=false){
   scanState.running = false;
   if (scanState.stream){
     scanState.stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(_){} });
@@ -295,6 +303,7 @@ async function stopScan(){
     scanState.ctx = null;
   }
   document.body.classList.remove('scan-active');
+  if (showManual && manualCard) manualCard.classList.remove('hidden');
 }
 
 function ensureVideo(){
@@ -317,7 +326,7 @@ function ensureOverlay(){
   document.body.appendChild(overlay);
   scanState.overlay = overlay;
   scanState.closeBtn = overlay.querySelector('#scan-close');
-  scanState.closeBtn.addEventListener('click', e => { e.preventDefault(); stopScan(); });
+  scanState.closeBtn.addEventListener('click', e => { e.preventDefault(); stopScan(true); });
 }
 function prepareCanvas(){
   if (scanState.canvas) return;

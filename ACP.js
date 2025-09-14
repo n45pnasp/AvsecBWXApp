@@ -21,6 +21,9 @@ const pemeriksa  = document.getElementById("pemeriksa");
 const supervisor = document.getElementById("supervisor");
 const submitBtn  = document.getElementById("submitBtn");
 const scanBtn    = document.getElementById("scanBtn");
+const manualCard = document.getElementById("manualCard");
+const manualInput= document.getElementById("manualInput");
+const manualSearch=document.getElementById("manualSearch");
 const imgModal   = document.getElementById("imgModal");
 const imgPreview = document.getElementById("imgPreview");
 const imgClose   = document.getElementById("imgClose");
@@ -155,7 +158,11 @@ function getInspectionState(){
 }
 
 submitBtn.addEventListener("click", onSubmit);
-if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan(); });
+if (manualSearch) manualSearch.addEventListener('click', () => {
+  const code = manualInput.value.trim();
+  if(code) receiveBarcode(code);
+});
+if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(true); else startScan(); });
 
 async function fetchRoster(){
   try{
@@ -297,6 +304,7 @@ injectScanStyles();
 
 async function startScan(){
   try{
+    if(manualCard) manualCard.classList.add('hidden');
     ensureVideo(); ensureOverlay();
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('Kamera tidak didukung');
     document.body.classList.add('scan-active');
@@ -325,13 +333,14 @@ async function startScan(){
   }
 }
 
-async function stopScan(){
+async function stopScan(showManual=false){
   scanState.running = false;
   if (scanState.stream){ scanState.stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(_){} }); }
   scanState.stream = null;
   if (scanState.video){ scanState.video.srcObject = null; scanState.video.remove(); scanState.video = null; }
   if (scanState.canvas){ scanState.canvas.remove(); scanState.canvas = null; scanState.ctx = null; }
   document.body.classList.remove('scan-active');
+  if (showManual && manualCard) manualCard.classList.remove('hidden');
 }
 
 function ensureVideo(){
@@ -351,7 +360,7 @@ function ensureOverlay(){
   document.body.appendChild(overlay);
   scanState.overlay = overlay;
   scanState.closeBtn = overlay.querySelector('#scan-close');
-  scanState.closeBtn.addEventListener('click', e => { e.preventDefault(); stopScan(); });
+  scanState.closeBtn.addEventListener('click', e => { e.preventDefault(); stopScan(true); });
 }
 function prepareCanvas(){
   if (scanState.canvas) return;
