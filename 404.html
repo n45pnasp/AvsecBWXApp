@@ -19,8 +19,9 @@
   </style>
   <script type="module">
     // Tentukan prefix direktori repo (mis. "/AvsecBWXApp/") langsung dari location.pathname
+    const repo  = 'AvsecBWXApp';
     const parts = location.pathname.split('/').filter(Boolean);
-    const base  = parts.length ? `/${parts[0]}/` : '/';
+    const base  = parts.length ? `/${parts[0]}/` : `/${repo}/`;
 
     const fallback = setTimeout(() => { location.replace(base + 'index.html'); }, 2000);
     try {
