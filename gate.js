@@ -303,7 +303,7 @@ async function stopScan(showManual=false){
     scanState.ctx = null;
   }
   document.body.classList.remove('scan-active');
-  if (showManual && manualCard) manualCard.classList.remove('hidden');
+  if (manualCard) manualCard.classList.toggle('hidden', !showManual);
 }
 
 function ensureVideo(){
