@@ -1,204 +1,203 @@
-// camera.js — FINAL (range gamma 5°..81° aktif + hysteresis)
-
-export async function capturePhoto(){
-  return new Promise(async (resolve, reject) => {
-    try{ await startCapture(resolve, reject); } catch(err){ reject(err); }
-  });
-}
-
-export function makePhotoName(page = null, index = 0){
-  const base = page || location.pathname.split('/').pop().replace(/\.html$/, '') || 'photo';
-  const d = new Date();
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  const idx = index ? String(index) : '';
-  return `${base}${idx}_${hh}${mm}.png`;
-}
-
-export function dataUrlToFile(dataUrl, fileName){
-  const arr = dataUrl.split(','), mime = arr[0].match(/:(.*?);/)[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length; const u8 = new Uint8Array(n);
-  while(n--) u8[n] = bstr.charCodeAt(n);
-  const name = fileName || makePhotoName();
-  return new File([u8], name, {type:mime});
-}
-
-/* ===== Konstanta & state orientasi ===== */
-// Ambang baru agar tombol aktif dari γ ≈ ±5° s/d ±90° (sesuai screenshot 2 → 1)
-const TILT_ON_DEG   = 8;   // aktif jika |gamma| >= 8°
-const TILT_OFF_DEG  = 5;   // nonaktif jika |gamma| < 5° (hysteresis supaya stabil)
-const PITCH_MAX_DEG = 40;  // batasi |beta| agar bukan telentang/tengkurap berlebihan
-const SMOOTH_ALPHA  = 0.25;
-
-let camState = {stream:null, video:null, overlay:null, shutter:null, tilt:null, pitch:null, onStop:null};
-let _gammaEMA = null;
-let _betaEMA  = null;
-let _landscapeLatch = false; // hysteresis latch
-
-async function startCapture(resolve, reject){
-  ensureVideo(); ensureOverlay(resolve, reject);
-  document.body.classList.add('scan-active');
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}},
-      audio:false
-    });
-    camState.stream = stream;
-    camState.video.srcObject = stream;
-    await camState.video.play();
-  }catch(err){
-    stopCapture(); reject(err); return;
-  }
-  camState.running = true;
-  updateCaptureState();
-}
-
-function ensureVideo(){
-  if (camState.video) return;
-  const v=document.createElement('video');
-  v.id='scan-video';
-  v.setAttribute('playsinline','');
-  v.muted=true; v.autoplay=true;
-  document.body.appendChild(v);
-  camState.video=v;
-}
-
-function ensureOverlay(resolve, reject){
-  if (camState.overlay) return;
-  const o=document.createElement('div');
-  o.id='scan-overlay';
-  o.innerHTML=`<div class="scan-topbar"><button id="scan-close" class="scan-close" aria-label="Tutup">✕</button></div>
-    <div class="scan-msg-portrait" role="alert" aria-live="assertive">
-      <svg class="rotate-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
-      <div class="rotate-text">putar horizontal</div>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo Orientasi HP (X-Y-Z / Roll-Pitch-Yaw)</title>
+  <style>
+    :root { --bg:#0b1020; --card:#111833; --text:#e6ecff; --muted:#9db1ff55; --accent:#82a0ff; }
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#1a2455,transparent),var(--bg);color:var(--text);font:500 16px/1.5 system-ui,Segoe UI,Roboto,Arial}
+    .wrap{max-width:980px;margin:32px auto;padding:0 16px}
+    h1{font-size:clamp(20px,3.2vw,30px);margin:0 0 12px}
+    p.hint{opacity:.8;margin:0 0 20px}
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+    .card{background:linear-gradient(180deg, #111833 0%, #0f1530 100%);border:1px solid var(--muted);border-radius:16px;padding:16px;box-shadow:0 10px 30px #0003}
+    .card h2{margin:0 0 8px;font-size:18px}
+    .kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;margin-top:6px}
+    .kv div{padding:6px 10px;border:1px dashed #9db1ff33;border-radius:10px;background:#0c1230}
+    .tag{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #9db1ff66;background:#0d1539;margin:10px 0 0;font-size:13px}
+    button{appearance:none;border:0;border-radius:12px;padding:12px 16px;background:#2643ff;color:#fff;font-weight:700;cursor:pointer;box-shadow:0 8px 20px #2740ff55}
+    button[hidden]{display:none}
+    .scene{height:260px;display:grid;place-items:center}
+    .phone{width:140px;height:260px;border-radius:24px;border:2px solid #5f79ff66;background:linear-gradient(160deg,#1a2b66,#0f1b4a);box-shadow:inset 0 0 40px #0008,0 20px 40px #0005;transform-style:preserve-3d;transition:box-shadow .2s}
+    .screen{position:absolute;inset:14px;border-radius:18px;background:linear-gradient(180deg,#0b122f,#0a0f25)}
+    .dot{position:absolute;width:10px;height:10px;border-radius:50%;background:#7aa2ff;top:10px;left:calc(50% - 5px)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+    code{background:#0e1431;padding:2px 6px;border-radius:6px;border:1px solid #9db1ff33}
+    footer{opacity:.6;margin-top:20px;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Demo Orientasi & Gerak HP — X/Y/Z · Roll/Pitch/Yaw</h1>
+    <p class="hint">Tekan <b>Izinkan Sensor</b> di iOS. Di Android/desktop yang mendukung, data muncul otomatis saat perangkat digerakkan/di-tilt.</p>
+    <div class="row">
+      <button id="btnPerm">Izinkan Sensor (iOS)</button>
+      <span id="status" class="tag">Status: belum aktif</span>
     </div>
-    <button id="scan-shutter" class="scan-shutter" aria-label="Ambil gambar" title="Ambil gambar"></button>`;
-  document.body.appendChild(o);
-  camState.overlay=o;
 
-  o.querySelector('#scan-close').addEventListener('click',()=>{ stopCapture(); resolve(null); });
+    <div class="grid">
+      <section class="card">
+        <h2>Orientasi (DeviceOrientation)</h2>
+        <div class="kv">
+          <div>Alpha (yaw, °)</div><div id="alpha">—</div>
+          <div>Beta (pitch, °)</div><div id="beta">—</div>
+          <div>Gamma (roll, °)</div><div id="gamma">—</div>
+          <div>Yaw (Z, °)</div><div id="yaw">—</div>
+          <div>Pitch (X, °)</div><div id="pitch">—</div>
+          <div>Roll (Y, °)</div><div id="roll">—</div>
+        </div>
+      </section>
 
-  const shutter=o.querySelector('#scan-shutter');
-  camState.shutter=shutter;
-  shutter.addEventListener('click', async ()=>{
-    if(!isLandscape()){ alert('Perangkat masih portrait. Putar perangkat ke horizontal untuk memotret.'); return; }
-    try{
-      const dataUrl = await captureFrame();
-      stopCapture(); resolve(dataUrl);
-    }catch(e){ console.error('Gagal capture',e); alert('Gagal mengambil gambar.'); }
-  });
+      <section class="card">
+        <h2>Gerak (DeviceMotion)</h2>
+        <div class="kv">
+          <div>Accel X (m/s²)</div><div id="ax">—</div>
+          <div>Accel Y (m/s²)</div><div id="ay">—</div>
+          <div>Accel Z (m/s²)</div><div id="az">—</div>
+          <div>Accel* X (no-gravity)</div><div id="axg">—</div>
+          <div>Accel* Y (no-gravity)</div><div id="ayg">—</div>
+          <div>Accel* Z (no-gravity)</div><div id="azg">—</div>
+          <div>Gyro α (°/s)</div><div id="gα">—</div>
+          <div>Gyro β (°/s)</div><div id="gβ">—</div>
+          <div>Gyro γ (°/s)</div><div id="gγ">—</div>
+        </div>
+      </section>
 
-  const update=()=>updateCaptureState();
-  camState._update=update;
-  window.addEventListener('orientationchange', update);
-  window.addEventListener('resize', update);
-  if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', update);
+      <section class="card scene">
+        <div class="phone" id="phone">
+          <div class="screen"></div>
+          <div class="dot"></div>
+        </div>
+      </section>
+    </div>
 
-  if (window.DeviceOrientationEvent){
-    const handler=(e)=>{
-      if (typeof e.gamma === 'number') {
-        _gammaEMA = ema(_gammaEMA, e.gamma, SMOOTH_ALPHA);
-        camState.tilt = _gammaEMA; // roll
-      }
-      if (typeof e.beta === 'number') {
-        _betaEMA = ema(_betaEMA, e.beta, SMOOTH_ALPHA);
-        camState.pitch = _betaEMA; // pitch
-      }
-      update();
-    };
-    camState._tiltHandler=handler;
-    if (typeof DeviceOrientationEvent.requestPermission==='function'){
-      DeviceOrientationEvent.requestPermission()
-        .then(p=>{ if(p==='granted') window.addEventListener('deviceorientation', handler, {passive:true}); })
-        .catch(()=>{});
-    } else {
-      window.addEventListener('deviceorientation', handler, {passive:true});
-    }
-  }
-}
+    <footer>Catatan: iOS butuh gesture pengguna untuk memberi izin sensor; beberapa browser desktop tidak menyediakan event sensor.</footer>
+  </div>
 
-function stopCapture(){
-  camState.running=false;
-  if(camState.stream){ camState.stream.getTracks().forEach(t=>{try{t.stop();}catch(_){}}); camState.stream=null; }
-  if(camState.video){ camState.video.srcObject=null; camState.video.remove(); camState.video=null; }
-  if(camState.overlay){ camState.overlay.remove(); camState.overlay=null; }
-  window.removeEventListener('orientationchange', camState._update);
-  window.removeEventListener('resize', camState._update);
-  if(screen.orientation && screen.orientation.removeEventListener) screen.orientation.removeEventListener('change', camState._update);
-  if(camState._tiltHandler){ window.removeEventListener('deviceorientation', camState._tiltHandler); camState._tiltHandler=null; }
-  document.body.classList.remove('scan-active');
-  _gammaEMA = _betaEMA = null;
-  _landscapeLatch = false;
-}
-
-/* ===== Orientasi & UI ===== */
-function isLandscape(){
-  // 1) Hint dari browser
-  if (window.matchMedia && window.matchMedia('(orientation: landscape)').matches) return true;
-  if (typeof window.orientation==='number' && Math.abs(window.orientation)===90) return true;
-
-  // 2) Sensor + hysteresis: aktif untuk |gamma| >= 8°, mati bila < 5°
-  if (camState.tilt != null) {
-    const g = Math.abs(camState.tilt);               // roll (0..~90)
-    const b = Math.abs(camState.pitch ?? 0);         // pitch
-    const pitchOk = b <= PITCH_MAX_DEG;
-
-    if (pitchOk) {
-      if (!_landscapeLatch && g >= TILT_ON_DEG) _landscapeLatch = true;
-      if (_landscapeLatch && g < TILT_OFF_DEG)  _landscapeLatch = false;
-    } else {
-      _landscapeLatch = false; // batalkan jika pitch terlalu ekstrim
-    }
-    return _landscapeLatch;
-  }
-
-  // 3) Fallback rasio viewport
-  return window.innerWidth > window.innerHeight;
-}
-
-function updateCaptureState(){
-  const btn=camState.shutter;
-  const msg=camState.overlay?.querySelector('.scan-msg-portrait');
-  const onLS=isLandscape();
-  if(btn){ btn.disabled=!onLS; btn.classList.toggle('disabled',!onLS); }
-  if(msg){ msg.style.display=onLS?'none':'flex'; }
-}
-
-/* ===== Frame capture ===== */
-async function captureFrame(){
-  const vid=camState.video; if(!vid) throw new Error('Video belum siap');
-  let w=vid.videoWidth||1280; let h=vid.videoHeight||720;
-  const c=document.createElement('canvas');
-  let ctx=c.getContext('2d',{willReadFrequently:true});
-
-  if(h> w){
-    c.width=h; c.height=w;
-    ctx.translate(h/2,w/2);
-    ctx.rotate(-Math.PI/2);
-    ctx.drawImage(vid,-w/2,-h/2,w,h);
-    [w,h]=[h,w];
-  } else {
-    c.width=w; c.height=h;
-    ctx.drawImage(vid,0,0,w,h);
-  }
-
-  const max=Math.max(w,h);
-  if(max>800){
-    const scale=800/max, cw=Math.round(w*scale), ch=Math.round(h*scale);
-    const c2=document.createElement('canvas'); c2.width=cw; c2.height=ch;
-    c2.getContext('2d').drawImage(c,0,0,cw,ch);
-    return c2.toDataURL('image/png');
-  }
-  return c.toDataURL('image/png');
-}
-
-/* ===== Utils ===== */
-function ema(prev, val, alpha){ return prev == null ? val : (alpha*val + (1-alpha)*prev); }
-
-// Inject basic styles once
+<script>
 (function(){
-  if(document.getElementById('scan-style')) return;
-  const css=`body.scan-active{background:#000;overscroll-behavior:contain}#scan-video,#scan-canvas{position:fixed;inset:0;width:100vw;height:100vh;display:none;background:#000;z-index:9998}body.scan-active #scan-video{display:block;object-fit:cover;touch-action:none}#scan-overlay{position:fixed;inset:0;display:none;z-index:10000;pointer-events:none}body.scan-active #scan-overlay{display:block}.scan-topbar{position:absolute;top:0;left:0;right:0;height:max(56px,calc(44px + env(safe-area-inset-top,0)));display:flex;align-items:flex-start;justify-content:flex-end;padding:calc(env(safe-area-inset-top,0) + 6px) 10px 8px;background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0));pointer-events:none}.scan-close{pointer-events:auto;width:42px;height:42px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.25);font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.35)}.scan-shutter{position:absolute;left:50%;bottom:max(24px,calc(18px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);width:74px;height:74px;border-radius:999px;background:#fff;border:4px solid rgba(255,255,255,.35);box-shadow:0 6px 22px rgba(0,0,0,.45), inset 0 0 0 4px #fff;pointer-events:auto;transition:transform .06s ease,opacity .15s ease,filter .15s ease}.scan-shutter:active{transform:translateX(-50%) scale(.96)}.scan-shutter.disabled,.scan-shutter:disabled{opacity:.45;filter:grayscale(60%);pointer-events:auto}.scan-msg-portrait{position:absolute;left:50%;bottom:max(110px,calc(96px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:10px 14px;border-radius:12px;letter-spacing:.2px;box-shadow:0 4px 12px rgba(0,0,0,.35);display:none;flex-direction:column;align-items:center;gap:4px}.rotate-icon{width:28px;height:28px;stroke:#fff;stroke-width:2;fill:none}.rotate-text{font-size:12px}`;
-  const style=document.createElement('style'); style.id='scan-style'; style.textContent=css; document.head.appendChild(style);
+  const $ = (id)=>document.getElementById(id);
+  const fmt = (v, f=1)=> (Number.isFinite(v)? v.toFixed(f): "—");
+
+  const el = {
+    status: $("status"),
+    alpha: $("alpha"), beta: $("beta"), gamma: $("gamma"),
+    yaw: $("yaw"), pitch: $("pitch"), roll: $("roll"),
+    ax: $("ax"), ay: $("ay"), az: $("az"),
+    axg: $("axg"), ayg: $("ayg"), azg: $("azg"),
+    gα: $("gα"), gβ: $("gβ"), gγ: $("gγ"),
+    phone: $("phone"), btnPerm: $("btnPerm")
+  };
+
+  let active = false;
+
+  function setStatus(text){ el.status.textContent = "Status: " + text; }
+
+  // iOS 13+ requires explicit permission
+  async function requestIOSPermission(){
+    try{
+      const hasOri = typeof DeviceOrientationEvent !== "undefined";
+      const hasMot = typeof DeviceMotionEvent !== "undefined";
+      if(!hasOri && !hasMot){ setStatus("sensor tak didukung"); return; }
+
+      let granted = true;
+      if (hasOri && typeof DeviceOrientationEvent.requestPermission === "function"){
+        const s = await DeviceOrientationEvent.requestPermission();
+        granted = granted && (s === "granted");
+      }
+      if (hasMot && typeof DeviceMotionEvent.requestPermission === "function"){
+        const s2 = await DeviceMotionEvent.requestPermission();
+        granted = granted && (s2 === "granted");
+      }
+      if (!granted){ setStatus("izin ditolak"); return; }
+
+      start();
+    }catch(e){
+      console.error(e);
+      setStatus("gagal minta izin");
+    }
+  }
+
+  function start(){
+    if(active) return;
+    active = true;
+    setStatus("aktif");
+    el.btnPerm.hidden = true;
+
+    // Orientation
+    window.addEventListener("deviceorientation", onOrientation, { passive:true });
+    // Motion (accel/gyro)
+    window.addEventListener("devicemotion", onMotion, { passive:true });
+
+    // Safari quirk: re-attach on visibility change
+    document.addEventListener("visibilitychange", ()=>{
+      if(document.visibilityState === "visible"){
+        window.removeEventListener("deviceorientation", onOrientation);
+        window.removeEventListener("devicemotion", onMotion);
+        window.addEventListener("deviceorientation", onOrientation, { passive:true });
+        window.addEventListener("devicemotion", onMotion, { passive:true });
+      }
+    });
+  }
+
+  function onOrientation(e){
+    // alpha: 0..360 (yaw around Z), beta: -180..180 (pitch around X), gamma: -90..90 (roll around Y)
+    const { alpha, beta, gamma } = e;
+
+    el.alpha.textContent = fmt(alpha,1);
+    el.beta.textContent  = fmt(beta,1);
+    el.gamma.textContent = fmt(gamma,1);
+
+    // Map to yaw/pitch/roll labels for clarity
+    el.yaw.textContent   = fmt(alpha,1);  // Z
+    el.pitch.textContent = fmt(beta,1);   // X
+    el.roll.textContent  = fmt(gamma,1);  // Y
+
+    // Simple 3D visualization (approx): rotate the mock phone
+    // CSS expects rotateX for pitch, rotateY for roll, rotateZ for yaw (signs may feel inverted; adjust if perlu)
+    const rX = clamp(beta, -90, 90) || 0;
+    const rY = clamp(gamma, -90, 90) || 0;
+    const rZ = (alpha || 0);
+    el.phone.style.transform =
+      `perspective(900px) rotateX(${rX}deg) rotateY(${rY}deg) rotateZ(${rZ}deg) translateZ(0)`;
+  }
+
+  function onMotion(e){
+    const a = e.accelerationIncludingGravity || {};
+    const ag = e.acceleration || {};
+    const r = e.rotationRate || {};
+
+    el.ax.textContent  = fmt(a.x,2);
+    el.ay.textContent  = fmt(a.y,2);
+    el.az.textContent  = fmt(a.z,2);
+
+    el.axg.textContent = fmt(ag.x,2);
+    el.ayg.textContent = fmt(ag.y,2);
+    el.azg.textContent = fmt(ag.z,2);
+
+    el["gα"].textContent = fmt(r.alpha,1);
+    el["gβ"].textContent = fmt(r.beta,1);
+    el["gγ"].textContent = fmt(r.gamma,1);
+  }
+
+  function clamp(v,min,max){ return Math.min(max, Math.max(min, v)); }
+
+  // Auto-start if permissions not required (Android/Chrome)
+  const needButton =
+    (typeof DeviceOrientationEvent !== "undefined" &&
+     typeof DeviceOrientationEvent.requestPermission === "function") ||
+    (typeof DeviceMotionEvent !== "undefined" &&
+     typeof DeviceMotionEvent.requestPermission === "function");
+
+  if(!needButton){
+    el.btnPerm.hidden = true;
+    // Small delay to allow page to settle before attaching listeners
+    setTimeout(start, 200);
+  }
+
+  el.btnPerm.addEventListener("click", requestIOSPermission);
 })();
+</script>
+</body>
+</html>
