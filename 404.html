@@ -17,16 +17,26 @@
       text-align: center;
     }
   </style>
-  <script>
-    (function () {
-      // Redirect semua permintaan 404 ke index.html
-      // sambil membawa kembali path asli melalui hash agar router bisa menangani.
-      const base = location.pathname.substring(0, location.pathname.lastIndexOf('/') + 1);
-      const path = location.pathname.substring(base.length);
-      const query = location.search + location.hash;
-      const target = base + 'index.html' + (path ? '#' + path + query : query);
-      location.replace(target);
-    })();
+  <script type="module">
+    function getBasePrefix(){
+      const parts = location.pathname.split('/').filter(Boolean);
+      return parts.length > 0 ? `/${parts[0]}/` : '/';
+    }
+    const base = getBasePrefix();
+    const fallback = setTimeout(() => { location.replace(base + 'index.html'); }, 2000);
+    try {
+      const { getFirebase } = await import(base + 'auth-guard.js');
+      const { onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js');
+      const { auth } = getFirebase();
+      onAuthStateChanged(auth, (user) => {
+        clearTimeout(fallback);
+        const dest = user ? 'home.html' : 'index.html';
+        location.replace(base + dest);
+      });
+    } catch (e) {
+      clearTimeout(fallback);
+      location.replace(base + 'index.html');
+    }
   </script>
 </head>
 <body>
