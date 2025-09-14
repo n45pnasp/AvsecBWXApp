@@ -709,13 +709,14 @@ function initPdfDownload() {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
 
-      const page = location.pathname.split("/").pop().replace(/\.html$/, "").toLowerCase();
-      const type = site.toUpperCase().includes("ETD") ? "etd" : currentType.toLowerCase();
+      const text = select.options[select.selectedIndex]?.text || "";
+      const words = text.trim().split(/\s+/);
+      const base = words.slice(0, 2).join("_").toUpperCase();
       const d = new Date();
       const dd = String(d.getDate()).padStart(2, "0");
       const mm = String(d.getMonth() + 1).padStart(2, "0");
       const yyyy = d.getFullYear();
-      const fname = `${page}_${type}_${dd}${mm}${yyyy}.pdf`;
+      const fname = `${base}_${dd}${mm}${yyyy}.pdf`;
       a.download = fname;
 
       document.body.appendChild(a);
