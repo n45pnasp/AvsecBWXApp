@@ -331,7 +331,10 @@ function resetForm() {
   updateResult();
 
   const pdfBtn = document.getElementById("downloadPdfBtn");
-  if (pdfBtn) pdfBtn.disabled = true;
+  if (pdfBtn){
+    pdfBtn.disabled = true;
+    pdfBtn.classList.add("hidden");
+  }
 }
 
 function renderHHMD(target, isETD = false) {
@@ -468,7 +471,10 @@ function initTypeButtons() {
     updateResult();
 
     const pdfBtn = document.getElementById("downloadPdfBtn");
-    if (pdfBtn) pdfBtn.disabled = true;
+    if (pdfBtn){
+      pdfBtn.disabled = true;
+      pdfBtn.classList.add("hidden");
+    }
   }
 
   buttons.forEach((btn) => btn.addEventListener("click", () => handle(btn)));
@@ -572,8 +578,12 @@ function initSubmit() {
   const pdfBtn = document.getElementById("downloadPdfBtn");
 
   select.addEventListener("change", async () => {
-    if (pdfBtn) pdfBtn.disabled = true;
     const key = select.value;
+    if (pdfBtn){
+      const hasKey = !!key;
+      pdfBtn.disabled = !hasKey;
+      pdfBtn.classList.toggle("hidden", !hasKey);
+    }
     if (key) {
       try {
         showOverlay("loading", "Mengambil data…", "");
@@ -661,8 +671,6 @@ function initSubmit() {
       await apiSubmit(payload);
       showOverlay("ok", "Data Berhasil di kirim", "");
       resetForm();
-
-      if (pdfBtn) pdfBtn.disabled = false; // aktifkan setelah data terkirim
     } catch (err) {
       showOverlay("err", "Gagal mengirim", err.message || "Coba lagi");
       console.error(err);
