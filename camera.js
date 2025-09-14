@@ -26,7 +26,7 @@ export function dataUrlToFile(dataUrl, fileName){
   return new File([u8], name, {type:mime});
 }
 
-let camState = {stream:null, video:null, overlay:null, shutter:null, tilt:null, tiltZ:null, onStop:null};
+let camState = {stream:null, video:null, overlay:null, shutter:null, tilt:null, tiltZ:null, tiltY:null, onStop:null};
 
 async function startCapture(resolve, reject){
   ensureVideo(); ensureOverlay(resolve, reject);
@@ -91,6 +91,7 @@ function ensureOverlay(resolve, reject){
     const handler=(e)=>{
       if(typeof e.gamma==='number') camState.tilt=e.gamma;
       if(typeof e.beta==='number') camState.tiltZ=e.beta;
+      if(typeof e.alpha==='number') camState.tiltY=e.alpha;
       update();
     };
     camState._tiltHandler=handler;
@@ -111,7 +112,7 @@ function stopCapture(){
   window.removeEventListener('resize', camState._update);
   if(screen.orientation && screen.orientation.removeEventListener) screen.orientation.removeEventListener('change', camState._update);
   if(camState._tiltHandler){ window.removeEventListener('deviceorientation', camState._tiltHandler); camState._tiltHandler=null; }
-  camState.tilt=null; camState.tiltZ=null;
+  camState.tilt=null; camState.tiltZ=null; camState.tiltY=null;
   document.body.classList.remove('scan-active');
 }
 
@@ -120,6 +121,9 @@ function isLandscape(){
   if (typeof window.orientation==='number' && Math.abs(window.orientation)===90) return true;
   if (camState.tilt!=null && Math.abs(camState.tilt)>=60) return true;
   if (camState.tiltZ!=null && Math.abs(camState.tiltZ)>=60) return true;
+  if (camState.tiltY!=null){
+    let a=((camState.tiltY%360)+360)%360; if(a>180) a=360-a; if(a>=60) return true;
+  }
   return window.innerWidth>window.innerHeight;
 }
 
