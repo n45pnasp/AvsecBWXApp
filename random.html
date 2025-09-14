@@ -9,7 +9,7 @@
 </head>
 <body>
   <div class="app-bar">
-    <a class="back-btn" aria-label="Kembali" href="index.html">
+    <a class="back-btn" aria-label="Kembali" href="#" onclick="safeBackTo('index.html');return false;">
       <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M15 6L9 12L15 18"></path>
       </svg>
@@ -215,5 +215,6 @@
 
   <script type="module" src="random.js"></script>
   <script type="module" src="offline.js"></script>
+  <script src="back.js"></script>
 </body>
 </html>

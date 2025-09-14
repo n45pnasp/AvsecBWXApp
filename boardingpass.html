@@ -128,11 +128,12 @@
       button,.qr-btn{ padding:10px 12px }
     }
   </style>
+  <style>html{visibility:hidden}</style>
 </head>
 <body>
   <!-- App Bar -->
   <div class="app-bar" role="banner">
-    <a class="back-btn" aria-label="Kembali" href="index.html">
+    <a class="back-btn" aria-label="Kembali" href="#" onclick="safeBackTo('index.html');return false;">
       <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none">
         <polyline points="15 18 9 12 15 6"></polyline>
       </svg>
@@ -170,8 +171,12 @@
 
   <audio id="beep-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
-  <!-- JS eksternal yang sudah kamu terapkan sebelumnya -->
+  <script type="module">
+    import { requireAuth } from "./auth-guard.js";
+    requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+  </script>
   <script src="boardingpass.js"></script>
   <script type="module" src="offline.js"></script>
+  <script src="back.js"></script>
 </body>
 </html>

@@ -122,6 +122,7 @@
 
   .msg{padding:18px;font:14px system-ui}
 </style>
+<style>html{visibility:hidden}</style>
 </head>
 <body>
   <div class="page" id="page">
@@ -258,7 +259,12 @@
     </div>
   </div>
 
-  <div id="status" class="msg" hidden></div>
+<div id="status" class="msg" hidden></div>
+
+<script type="module">
+import { requireAuth } from "./auth-guard.js";
+requireAuth({ loginPath: "index.html", hideWhileChecking: true });
+</script>
 
 <script>
 /* ===== Konfigurasi ===== */
