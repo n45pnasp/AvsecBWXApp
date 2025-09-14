@@ -18,8 +18,9 @@
     }
   </style>
   <script type="module">
-    let base = new URL('.', import.meta.url).pathname;
-    if (base === '/' || base === '/404.html/') base = '/AvsecBWXApp/';
+    // Tentukan prefix direktori repo (mis. "/AvsecBWXApp/") langsung dari location.pathname
+    const parts = location.pathname.split('/').filter(Boolean);
+    const base  = parts.length ? `/${parts[0]}/` : '/';
 
     const fallback = setTimeout(() => { location.replace(base + 'index.html'); }, 2000);
     try {
@@ -31,7 +32,7 @@
         const dest = user ? 'home.html' : 'index.html';
         location.replace(base + dest);
       });
-    } catch (e) {
+    } catch {
       clearTimeout(fallback);
       location.replace(base + 'index.html');
     }
