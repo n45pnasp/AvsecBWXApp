@@ -260,7 +260,6 @@ async function stopScan(showManual=false){
   scanState.stream = null;
   if (scanState.video){ scanState.video.srcObject = null; scanState.video.remove(); scanState.video = null; }
   if (scanState.canvas){ scanState.canvas.remove(); scanState.canvas = null; scanState.ctx = null; }
-  if (scanState.overlay){ scanState.overlay.remove(); scanState.overlay = null; scanState.closeBtn = null; }
   document.body.classList.remove('scan-active');
   if (manualCard) manualCard.classList.toggle('hidden', !showManual);
 }
