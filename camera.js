@@ -26,7 +26,7 @@ export function dataUrlToFile(dataUrl, fileName){
   return new File([u8], name, {type:mime});
 }
 
-let camState = {stream:null, video:null, overlay:null, shutter:null, tilt:null, onStop:null};
+let camState = {stream:null, video:null, overlay:null, shutter:null, tilt:null, tiltZ:null, onStop:null};
 
 async function startCapture(resolve, reject){
   ensureVideo(); ensureOverlay(resolve, reject);
@@ -88,7 +88,11 @@ function ensureOverlay(resolve, reject){
   window.addEventListener('resize', update);
   if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', update);
   if (window.DeviceOrientationEvent){
-    const handler=(e)=>{ if(typeof e.gamma==='number') camState.tilt=e.gamma; update(); };
+    const handler=(e)=>{
+      if(typeof e.gamma==='number') camState.tilt=e.gamma;
+      if(typeof e.beta==='number') camState.tiltZ=e.beta;
+      update();
+    };
     camState._tiltHandler=handler;
     if (typeof DeviceOrientationEvent.requestPermission==='function'){
       DeviceOrientationEvent.requestPermission().then(p=>{ if(p==='granted') window.addEventListener('deviceorientation', handler); }).catch(()=>{});
@@ -107,13 +111,15 @@ function stopCapture(){
   window.removeEventListener('resize', camState._update);
   if(screen.orientation && screen.orientation.removeEventListener) screen.orientation.removeEventListener('change', camState._update);
   if(camState._tiltHandler){ window.removeEventListener('deviceorientation', camState._tiltHandler); camState._tiltHandler=null; }
+  camState.tilt=null; camState.tiltZ=null;
   document.body.classList.remove('scan-active');
 }
 
 function isLandscape(){
   if (window.matchMedia && window.matchMedia('(orientation: landscape)').matches) return true;
   if (typeof window.orientation==='number' && Math.abs(window.orientation)===90) return true;
-  if (camState.tilt!=null) return Math.abs(camState.tilt)>=60;
+  if (camState.tilt!=null && Math.abs(camState.tilt)>=60) return true;
+  if (camState.tiltZ!=null && Math.abs(camState.tiltZ)>=60) return true;
   return window.innerWidth>window.innerHeight;
 }
 
