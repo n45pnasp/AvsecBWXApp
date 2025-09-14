@@ -1,4 +1,4 @@
-// camera.js — FINAL (range gamma 5°..81° aktif + hysteresis)
+// camera.js — cross-platform orientation with 60° threshold (Android/iOS/Windows)
 
 export async function capturePhoto(){
   return new Promise(async (resolve, reject) => {
@@ -25,21 +25,20 @@ export function dataUrlToFile(dataUrl, fileName){
 }
 
 /* ===== Konstanta & state orientasi ===== */
-// Ambang baru agar tombol aktif dari γ ≈ ±5° s/d ±90° (sesuai screenshot 2 → 1)
-const TILT_ON_DEG   = 8;   // aktif jika |gamma| >= 8°
-const TILT_OFF_DEG  = 5;   // nonaktif jika |gamma| < 5° (hysteresis supaya stabil)
-const PITCH_MAX_DEG = 40;  // batasi |beta| agar bukan telentang/tengkurap berlebihan
-const SMOOTH_ALPHA  = 0.25;
+const ORIENT_MIN_DEG = 60;   // aktif jika salah satu sumbu miring >=60°
+const PITCH_MAX_DEG  = 60;   // batasi pitch agar tidak telentang/tengkurap ekstrem
+const SMOOTH_ALPHA   = 0.25;
 
-let camState = {stream:null, video:null, overlay:null, shutter:null, tilt:null, pitch:null, onStop:null};
+let camState = {stream:null, video:null, overlay:null, shutter:null, tilt:null, pitch:null, yaw:null, onStop:null};
 let _gammaEMA = null;
 let _betaEMA  = null;
-let _landscapeLatch = false; // hysteresis latch
+let _alphaEMA = null;
 
 async function startCapture(resolve, reject){
   ensureVideo(); ensureOverlay(resolve, reject);
   document.body.classList.add('scan-active');
   try{
+    if(!navigator.mediaDevices?.getUserMedia) throw new Error('Kamera tidak didukung');
     const stream = await navigator.mediaDevices.getUserMedia({
       video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}},
       audio:false
@@ -105,9 +104,13 @@ function ensureOverlay(resolve, reject){
         _betaEMA = ema(_betaEMA, e.beta, SMOOTH_ALPHA);
         camState.pitch = _betaEMA; // pitch
       }
+      if (typeof e.alpha === 'number') {
+        _alphaEMA = ema(_alphaEMA, e.alpha, SMOOTH_ALPHA);
+        camState.yaw = _alphaEMA; // yaw (kompas)
+      }
       update();
     };
-    camState._tiltHandler=handler;
+    camState._oriHandler=handler;
     if (typeof DeviceOrientationEvent.requestPermission==='function'){
       DeviceOrientationEvent.requestPermission()
         .then(p=>{ if(p==='granted') window.addEventListener('deviceorientation', handler, {passive:true}); })
@@ -126,10 +129,10 @@ function stopCapture(){
   window.removeEventListener('orientationchange', camState._update);
   window.removeEventListener('resize', camState._update);
   if(screen.orientation && screen.orientation.removeEventListener) screen.orientation.removeEventListener('change', camState._update);
-  if(camState._tiltHandler){ window.removeEventListener('deviceorientation', camState._tiltHandler); camState._tiltHandler=null; }
+  if(camState._oriHandler){ window.removeEventListener('deviceorientation', camState._oriHandler); camState._oriHandler=null; }
   document.body.classList.remove('scan-active');
-  _gammaEMA = _betaEMA = null;
-  _landscapeLatch = false;
+  _gammaEMA = _betaEMA = _alphaEMA = null;
+  camState.tilt = camState.pitch = camState.yaw = null;
 }
 
 /* ===== Orientasi & UI ===== */
@@ -138,19 +141,16 @@ function isLandscape(){
   if (window.matchMedia && window.matchMedia('(orientation: landscape)').matches) return true;
   if (typeof window.orientation==='number' && Math.abs(window.orientation)===90) return true;
 
-  // 2) Sensor + hysteresis: aktif untuk |gamma| >= 8°, mati bila < 5°
-  if (camState.tilt != null) {
-    const g = Math.abs(camState.tilt);               // roll (0..~90)
-    const b = Math.abs(camState.pitch ?? 0);         // pitch
-    const pitchOk = b <= PITCH_MAX_DEG;
-
-    if (pitchOk) {
-      if (!_landscapeLatch && g >= TILT_ON_DEG) _landscapeLatch = true;
-      if (_landscapeLatch && g < TILT_OFF_DEG)  _landscapeLatch = false;
-    } else {
-      _landscapeLatch = false; // batalkan jika pitch terlalu ekstrim
-    }
-    return _landscapeLatch;
+  // 2) Sensor: aktif bila roll atau yaw >= ORIENT_MIN_DEG dan pitch masih wajar
+  if (camState.tilt != null || camState.yaw != null) {
+    const roll = Math.abs(camState.tilt ?? 0);   // gamma (Y)
+    const pitch = Math.abs(camState.pitch ?? 0); // beta (X)
+    let yaw = Math.abs(camState.yaw ?? 0);       // alpha (Z)
+    yaw = yaw % 180; if (yaw > 90) yaw = 180 - yaw; // 0..90 simetris
+    const rollOk = roll >= ORIENT_MIN_DEG;
+    const yawOk  = yaw  >= ORIENT_MIN_DEG;
+    const pitchOk = pitch <= PITCH_MAX_DEG;
+    return pitchOk && (rollOk || yawOk);
   }
 
   // 3) Fallback rasio viewport
