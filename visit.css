@@ -1,6 +1,17 @@
 @import url('./ACP.css');
 
-/* Tombol waktu mirip gate/lb_all */
+/* ===== Field & Select (selaras dengan gate) ===== */
+.field select{
+  width:100%;
+  background:#0b1324;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  font-size:var(--fs-base);
+}
+
+/* ===== Tombol waktu mirip gate/lb_all ===== */
 .btn-like{
   position:relative;
   display:inline-flex;
@@ -18,19 +29,24 @@
 }
 .btn-like:hover{ filter:brightness(1.05); }
 .btn-like:active{ transform:translateY(1px); }
+.btn-like.full{ display:flex; width:100%; } /* tambahan agar sama dengan gate */
 .btn-like input[type="time"]{ position:absolute; inset:0; opacity:0; pointer-events:none; }
 #timeLabel{ pointer-events:none; }
+
+/* ===== Grid kecil ===== */
+.row-2{ gap:12px; }
 .row-2 > *{ width:100%; }
 .row-2 .btn{ width:100%; }
-.row-2{ gap:12px; }
 
+/* ===== Info pendamping ===== */
 #pendampingInfo{ margin-top:12px; }
 #pendampingInfo .info-name{ margin-top:0; }
 
+/* ===== Spasi tombol ===== */
 #scanPassBtn{ margin-bottom:12px; }
 #submitBtn{ margin-top:12px; }
 
-/* Preview upload seperti lb_all */
+/* ===== Upload preview (selaras dengan lb_all/gate) ===== */
 .upload-info{
   display:flex;
   gap:12px;
@@ -49,12 +65,21 @@
 }
 .muted{ color:var(--muted); font-size:var(--fs-sm); }
 
-/* List view */
+/* ===== Label/Value utility (selaras gate) ===== */
+.label{ font-size:var(--fs-sm); color:var(--muted); }
+.value{ font-weight:600; margin-bottom:8px; }
+
+/* ===== List view (selaras gate) ===== */
 .log-list{ list-style:none; margin:0; padding:0; display:grid; gap:8px; }
-.log-item{ background:#1f2937; border:1px solid var(--border); border-radius:12px; padding:8px; }
+.log-item{
+  background:#1f2937;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:8px;
+}
 .log-item .label{ font-weight:600; }
 
-/* Time picker wheel */
+/* ===== Time picker wheel (selaras gate) ===== */
 .time-sheet{
   background:var(--card);
   border:1px solid var(--border);
@@ -63,7 +88,13 @@
   padding:10px 12px 14px;
   box-shadow:0 16px 40px rgba(0,0,0,.45);
 }
-.time-header{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.time-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:8px;
+}
 .t-title{ font-weight:700; }
 .t-btn{
   background:#1f2937;
@@ -74,6 +105,7 @@
   cursor:pointer;
 }
 .t-btn:hover{ filter:brightness(1.05); }
+
 .wheels{
   position:relative;
   display:grid;
@@ -117,4 +149,5 @@
   border-radius:10px;
 }
 
+/* ===== Utilities ===== */
 .hidden{ display:none !important; }

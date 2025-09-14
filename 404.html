@@ -17,28 +17,37 @@
       text-align: center;
     }
   </style>
-  <script>
-    (function(){
-      // Base path project di GitHub Pages
-      var parts = location.pathname.split("/").filter(Boolean);
-      var base = parts.length ? "/" + parts[0] + "/" : "/";
+  <script type="module">
+    // Tentukan prefix direktori repo (mis. "/AvsecBWXApp/") langsung dari location.pathname
+    const repo  = 'AvsecBWXApp';
+    const parts = location.pathname.split('/').filter(Boolean);
+    const base  = parts.length ? `/${parts[0]}/` : `/${repo}/`;
 
-      // Ambil path asli
-      var fullPath = location.pathname + location.search + location.hash;
-
-      // Kalau URL berakhir .html → langsung ke index.html (tidak pakai hash)
-      if (fullPath.toLowerCase().endsWith(".html")) {
-        location.replace(base + "index.html");
-        return;
-      }
-
-      // Kalau bukan .html, kirim ke index.html#path-asli (biar router handle)
-      if (fullPath.startsWith(base)) {
-        fullPath = fullPath.substring(base.length);
-      }
-      location.replace(base + "index.html#" + fullPath);
-    })();
+    const fallback = setTimeout(() => { location.replace(base + 'index.html'); }, 2000);
+    try {
+      const { getFirebase } = await import(base + 'auth-guard.js');
+      const { onAuthStateChanged } = await import('https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js');
+      const { auth } = getFirebase();
+      onAuthStateChanged(auth, (user) => {
+        clearTimeout(fallback);
+        const dest = user ? 'home.html' : 'index.html';
+        location.replace(base + dest);
+      });
+    } catch {
+      clearTimeout(fallback);
+      location.replace(base + 'index.html');
+    }
   </script>
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="icons/favicon-128.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/favicon-192.png">
+  <link rel="icon" type="image/png" sizes="256x256" href="icons/favicon-256.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/favicon-512.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json" type="application/manifest+json">
 </head>
 <body>
   <div>

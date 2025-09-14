@@ -1,3 +1,6 @@
+// visit.js — FINAL (layout scanner ala gate.js)
+
+// ===== Auth & Setup =====
 import { requireAuth, getFirebase } from "./auth-guard.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { capturePhoto, dataUrlToFile, makePhotoName } from "./camera.js";
@@ -15,29 +18,45 @@ onAuthStateChanged(auth, u => {
   if (pemberiPasInput) pemberiPasInput.value = authName;
 });
 
+// ===== DOM refs =====
 const timeInput    = document.getElementById("timeInput");
 const timeLabel    = document.getElementById("timeLabel");
 const timeBtn      = document.getElementById("timeBtn");
-const scanBtn      = document.getElementById("scanBtn");
-const scanPassBtn  = document.getElementById("scanPassBtn");
+
+const scanBtn      = document.getElementById("scanBtn");       // scan pendamping
+const scanPassBtn  = document.getElementById("scanPassBtn");   // scan pass
 const scanPassText = scanPassBtn ? scanPassBtn.querySelector('span') : null;
+
+const manualPendCard   = document.getElementById("manualPendCard");
+const manualPendInput  = document.getElementById("manualPendInput");
+const manualPendSearch = document.getElementById("manualPendSearch");
+
+const manualPassCard   = document.getElementById("manualPassCard");
+const manualPassInput  = document.getElementById("manualPassInput");
+const manualPassSearch = document.getElementById("manualPassSearch");
+
 const namaEl       = document.getElementById("namaPendamping");
 const instansiEl   = document.getElementById("instansiPendamping");
 const pendampingInfo = document.getElementById("pendampingInfo");
 const namaPendampingText = document.getElementById("namaPendampingText");
 const instansiPendampingText = document.getElementById("instansiPendampingText");
+
 const jenisPasInput  = document.getElementById("jenisPas");
+
 const pickPhoto    = document.getElementById("pickPhotoBtn");
 const fileInput    = document.getElementById("fileInput");
 const preview      = document.getElementById("preview");
 const uploadInfo   = document.getElementById("uploadInfo");
 const uploadName   = document.getElementById("uploadName");
 const uploadStatus = document.getElementById("uploadStatus");
+
 const submitBtn    = document.getElementById("submitBtn");
 const logList      = document.getElementById("logList");
+
 const namaPeminjamEl     = document.getElementById("namaPeminjam");
 const instansiPeminjamEl = document.getElementById("instansiPeminjam");
 
+// Overlay umum
 const overlay = document.getElementById("overlay");
 const ovIcon  = document.getElementById("ovIcon");
 const ovTitle = document.getElementById("ovTitle");
@@ -45,24 +64,35 @@ const ovDesc  = document.getElementById("ovDesc");
 const ovClose = document.getElementById("ovClose");
 ovClose.addEventListener("click", () => overlay.classList.add("hidden"));
 
+// ===== State =====
 let jenisPas = "";
 let photoData = "";
 let photoName = "";
-let scanMode = "pendamping";
+let scanMode = "pendamping"; // 'pendamping' | 'pass'
 let submitting = false;
 
-/* ====== Helpers ====== */
+// ===== Helpers umum =====
 function showOverlay(state, title, desc){
   overlay.classList.remove("hidden");
-  ovIcon.className = "icon " + state;
+  ovIcon.className = "icon " + (state === "spinner" ? "spinner" : state);
   ovTitle.textContent = title;
   ovDesc.textContent = desc || "";
   ovClose.classList.toggle("hidden", state === "spinner");
+  // Auto-hide lebih lama untuk 'stop', lainnya 1.5s
   if (state !== "spinner") {
-    setTimeout(() => overlay.classList.add("hidden"), 1500);
+    const delay = state === "stop" ? 3500 : 1500;
+    setTimeout(() => overlay.classList.add("hidden"), delay);
   }
 }
 function hideOverlay(){ overlay.classList.add("hidden"); }
+
+overlay.addEventListener("click", e => {
+  // Saat spinner, jangan tutup overlay saat klik backdrop
+  if (e.target === overlay && ovClose.classList.contains("hidden")) e.preventDefault();
+});
+overlay.addEventListener("click", e => {
+  if (e.target === ovClose) overlay.classList.add("hidden");
+});
 
 async function fetchJSON(url, opts={}, timeoutMs=15000, retries=1){
   for(let attempt=0; attempt<=retries; attempt++){
@@ -96,23 +126,31 @@ function refreshSubmitState(){
   submitBtn.disabled = !formReady() || submitting;
 }
 
-/* ====== Scan Barcode ====== */
-let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
+// ====== SCAN BARCODE (layout & flow ala gate.js) ======
+let scanState = {
+  stream:null, video:null, canvas:null, ctx:null,
+  running:false, usingDetector:false, detector:null, jsQRReady:false,
+  overlay:null, closeBtn:null
+};
 
 function injectScanStyles(){
   if (document.getElementById('scan-style')) return;
   const css = `
+    .is-waiting { opacity:.7; pointer-events:none }
     body.scan-active{ background:#000; overscroll-behavior:contain; }
-    body.scan-active .app-bar, body.scan-active .container{ display:none !important; }
+    body.scan-active .app-bar,
+    body.scan-active .container { display:none !important; }
     #scan-video,#scan-canvas{ position:fixed; inset:0; width:100vw; height:100vh; display:none; background:#000; z-index:9998; }
     body.scan-active #scan-video{ display:block; object-fit:cover; transform:none; touch-action:none; }
     body.scan-active #scan-canvas{ display:none; }
     #scan-overlay{ position:fixed; inset:0; display:none; z-index:10000; pointer-events:none; }
     body.scan-active #scan-overlay{ display:block; }
     .scan-topbar{ position:absolute; top:0; left:0; right:0; height:max(56px, calc(44px + env(safe-area-inset-top,0))); display:flex; align-items:flex-start; justify-content:flex-end; padding: calc(env(safe-area-inset-top,0) + 6px) 10px 8px; background:linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,0)); pointer-events:none; }
-    .scan-close{ pointer-events:auto; width:42px; height:42px; border-radius:999px; background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,255,255,.25); font-size:22px; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,.35); }
-    .scan-reticle{ position:absolute; top:50%; left:50%; width:min(68vw,520px); aspect-ratio:1/1; transform:translate(-50%,-50%); border-radius:16px; box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset; pointer-events:none; }
-    .scan-hint{ position:absolute; left:50%; bottom:max(18px, calc(16px + env(safe-area-inset-bottom,0))); transform:translateX(-50%); background:rgba(0,0,0,.55); color:#fff; font-weight:600; padding:8px 12px; border-radius:999px; font-size:14px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
+    .scan-close{ pointer-events:auto; width:42px; height:42px; border-radius:999px; background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,255,255,.25); font-size:22px; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,.35); transition: transform .08s ease, filter .15s ease; }
+    .scan-close:active{ transform:scale(.96); }
+    .scan-close:focus-visible{ outline:2px solid rgba(255,255,255,.6); outline-offset:2px; }
+    .scan-reticle{ position:absolute; top:50%; left:50%; width:min(68vw, 520px); aspect-ratio:1/1; transform:translate(-50%,-50%); border-radius:16px; box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset; pointer-events:none; background: linear-gradient(#fff,#fff) left top/28px 2px no-repeat, linear-gradient(#fff,#fff) left top/2px 28px no-repeat, linear-gradient(#fff,#fff) right top/28px 2px no-repeat, linear-gradient(#fff,#fff) right top/2px 28px no-repeat, linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat, linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat, linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat, linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat; outline:2px dashed rgba(255,255,255,0); }
+    .scan-hint{ position:absolute; left:50%; bottom:max(18px, calc(16px + env(safe-area-inset-bottom,0))); transform:translateX(-50%); background:rgba(0,0,0,.55); color:#fff; font-weight:600; padding:8px 12px; border-radius:999px; letter-spacing:.2px; font-size:14px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
   `;
   const style = document.createElement('style');
   style.id = 'scan-style';
@@ -122,78 +160,120 @@ function injectScanStyles(){
 injectScanStyles();
 
 function ensureVideo(){
-  if (!scanState.video){
-    scanState.video = document.createElement('video');
-    scanState.video.id = 'scan-video';
-    scanState.video.setAttribute('playsinline','');
-    scanState.video.muted = true;
-    scanState.video.autoplay = true;
-    document.body.appendChild(scanState.video);
-  }
-}
-function ensureCanvas(){
-  if (!scanState.canvas){
-    scanState.canvas = document.createElement('canvas');
-    scanState.canvas.id = 'scan-canvas';
-    document.body.appendChild(scanState.canvas);
-    scanState.ctx = scanState.canvas.getContext('2d', { willReadFrequently:true });
-  }
+  if (scanState.video) return;
+  const v = document.createElement('video');
+  v.id = 'scan-video';
+  v.muted = true;
+  v.autoplay = true;
+  v.setAttribute('playsinline','');
+  document.body.appendChild(v);
+  scanState.video = v;
 }
 function ensureOverlay(){
-  if (!scanState.overlay){
-    const ov = document.createElement('div'); ov.id = 'scan-overlay';
-    const top = document.createElement('div'); top.className = 'scan-topbar';
-    const close = document.createElement('button'); close.className = 'scan-close'; close.textContent = '✕';
-    close.addEventListener('click', stopScan);
-    top.appendChild(close); ov.appendChild(top);
-    const ret = document.createElement('div'); ret.className = 'scan-reticle'; ov.appendChild(ret);
-    const hint = document.createElement('div'); hint.className = 'scan-hint'; hint.textContent = 'Scan Barcode / QR code'; ov.appendChild(hint);
-    document.body.appendChild(ov);
-    scanState.overlay = ov; scanState.closeBtn = close;
-  }
+  if (scanState.overlay) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'scan-overlay';
+  overlay.innerHTML = `
+    <div class="scan-topbar">
+      <button id="scan-close" class="scan-close" aria-label="Tutup">✕</button>
+    </div>
+    <div class="scan-reticle" aria-hidden="true"></div>
+    <div class="scan-hint">Scan Barcode / QR code</div>`;
+  document.body.appendChild(overlay);
+  scanState.overlay = overlay;
+  scanState.closeBtn = overlay.querySelector('#scan-close');
+  scanState.closeBtn.addEventListener('click', e => { e.preventDefault(); stopScan(true); });
 }
-
-if (scanBtn) scanBtn.addEventListener('click', () => { if (scanState.running) stopScan(); else { scanMode='pendamping'; startScan(); } });
-if (scanPassBtn) scanPassBtn.addEventListener('click', () => { if (scanState.running) stopScan(); else { scanMode='pass'; startScan(); } });
+function prepareCanvas(){
+  if (scanState.canvas) return;
+  const c = document.createElement('canvas');
+  c.id = 'scan-canvas';
+  document.body.appendChild(c);
+  scanState.canvas = c;
+  scanState.ctx = c.getContext('2d', { willReadFrequently:true });
+}
+async function ensureJsQR(){
+  if (scanState.jsQRReady) return;
+  await import('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js');
+  scanState.jsQRReady = true;
+}
 
 async function startScan(){
   try{
-    ensureVideo(); ensureCanvas(); ensureOverlay();
-    if(!navigator.mediaDevices?.getUserMedia) throw new Error('Kamera tidak didukung');
+    // Sembunyikan manual card sesuai mode
+    if (scanMode === 'pendamping' && manualPendCard) manualPendCard.classList.add('hidden');
+    if (scanMode === 'pass'       && manualPassCard) manualPassCard.classList.add('hidden');
+
+    ensureVideo();
+    ensureOverlay();
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Kamera tidak didukung');
+
     document.body.classList.add('scan-active');
-    const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'} }, audio:false });
-    scanState.stream = stream; scanState.video.srcObject = stream; await scanState.video.play();
-    scanState.usingDetector = false; scanState.detector = null;
+
+    const constraints = {
+      video:{
+        facingMode:{ideal:'environment'},
+        width:{ideal:1280}, height:{ideal:720},
+        advanced:[{ focusMode:'continuous' }]
+      },
+      audio:false
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    scanState.stream = stream;
+    scanState.video.srcObject = stream;
+    await scanState.video.play();
+
+    scanState.usingDetector = false;
+    scanState.detector = null;
+
     if ('BarcodeDetector' in window){
       try{
         const supported = await window.BarcodeDetector.getSupportedFormats();
-        const formats = ['qr_code','pdf417','aztec','data_matrix'].filter(f=>supported.includes(f));
-        if (formats.length){ scanState.detector = new window.BarcodeDetector({ formats }); scanState.usingDetector = true; }
-      }catch(_){ }
+        const wanted = ['qr_code','pdf417','aztec','data_matrix'];
+        const formats = wanted.filter(f=>supported.includes(f));
+        if (formats.length){
+          scanState.detector = new window.BarcodeDetector({ formats });
+          scanState.usingDetector = true;
+        }
+      }catch(_){ /* ignore */ }
     }
+
     scanState.running = true;
-    if (scanState.usingDetector){ detectLoop_BarcodeDetector(); }
-    else { await ensureJsQR(); detectLoop_jsQR(); }
-  }catch(err){ showOverlay('err','Gagal membuka kamera', err.message||err); }
+    if (scanState.usingDetector){
+      detectLoop_BarcodeDetector();
+    } else {
+      await ensureJsQR();
+      prepareCanvas();
+      detectLoop_jsQR();
+    }
+  }catch(err){
+    showOverlay('err','Tidak bisa mengakses kamera', err?.message || '');
+    await stopScan(true);
+  }
 }
 
-async function stopScan(){
+async function stopScan(showManual=false){
   scanState.running = false;
-  if (scanState.stream){ scanState.stream.getTracks().forEach(t=>t.stop()); scanState.stream=null; }
-  if (scanState.video){ scanState.video.pause(); scanState.video.removeAttribute('srcObject'); }
+  if (scanState.stream){
+    scanState.stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(_){} });
+  }
+  scanState.stream = null;
+  if (scanState.video){
+    scanState.video.srcObject = null;
+    scanState.video.remove();
+    scanState.video = null;
+  }
+  if (scanState.canvas){
+    scanState.canvas.remove();
+    scanState.canvas = null;
+    scanState.ctx = null;
+  }
   document.body.classList.remove('scan-active');
-}
 
-async function ensureJsQR(){
-  if (scanState.jsQRReady) return;
-  await new Promise((resolve,reject)=>{
-    const s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
-    s.onload=()=>resolve();
-    s.onerror=()=>reject(new Error('Gagal memuat jsQR'));
-    document.head.appendChild(s);
-  });
-  scanState.jsQRReady = true;
+  if (showManual){
+    if (scanMode === 'pendamping' && manualPendCard) manualPendCard.classList.remove('hidden');
+    if (scanMode === 'pass'       && manualPassCard) manualPassCard.classList.remove('hidden');
+  }
 }
 
 function detectLoop_BarcodeDetector(){
@@ -205,7 +285,13 @@ function detectLoop_BarcodeDetector(){
         const value = (barcodes[0].rawValue || '').trim();
         if (value){ handleScanSuccess(value); return; }
       }
-    }catch(e){ console.warn('detector error', e); }
+    }catch(e){
+      console.warn('detector error', e);
+      // fallback ke jsQR bila belum siap canvas
+      if (!scanState.canvas){
+        try{ await ensureJsQR(); prepareCanvas(); scanState.usingDetector=false; detectLoop_jsQR(); return; }catch(_){ }
+      }
+    }
     if (scanState.running) requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
@@ -218,7 +304,7 @@ function detectLoop_jsQR(){
     const ch = scanState.canvas.height = vid.videoHeight || 480;
     scanState.ctx.drawImage(vid,0,0,cw,ch);
     const img = scanState.ctx.getImageData(0,0,cw,ch);
-    const res = window.jsQR ? window.jsQR(img.data,cw,ch,{inversionAttempts:'dontInvert'}) : null;
+    const res = window.jsQR ? window.jsQR(img.data,cw,ch,{ inversionAttempts:'dontInvert' }) : null;
     if (res && res.data){ handleScanSuccess(res.data); return; }
     if (scanState.running) requestAnimationFrame(loop);
   };
@@ -231,7 +317,25 @@ async function handleScanSuccess(code){
   else receivePass(code);
 }
 
-/* ====== Lookup ====== */
+// Triggers
+if (scanBtn) scanBtn.addEventListener('click', () => {
+  if (scanState.running) stopScan(true);
+  else { scanMode = 'pendamping'; startScan(); }
+});
+if (scanPassBtn) scanPassBtn.addEventListener('click', () => {
+  if (scanState.running) stopScan(true);
+  else { scanMode = 'pass'; startScan(); }
+});
+if (manualPendSearch) manualPendSearch.addEventListener('click', () => {
+  const code = manualPendInput.value.trim();
+  if(code) receiveBarcode(code);
+});
+if (manualPassSearch) manualPassSearch.addEventListener('click', () => {
+  const code = manualPassInput.value.trim();
+  if(code) receivePass(code);
+});
+
+// ====== Lookup ======
 async function receiveBarcode(code){
   try{
     showOverlay('spinner','Mengambil data…','');
@@ -272,7 +376,7 @@ async function receivePass(code){
   }
 }
 
-/* ====== Photo Upload (resize + compress) ====== */
+// ====== Photo Upload (resize + compress) ======
 async function resizeImageFile(file, maxW=1200, maxH=1200, mime='image/jpeg', quality=0.8){
   const imgUrl = URL.createObjectURL(file);
   const img = new Image();
@@ -330,7 +434,7 @@ fileInput.addEventListener('change', async () => {
   refreshSubmitState();
 });
 
-/* ====== Time Picker ====== */
+// ====== Time Picker (wheel) ======
 const timeModal = document.getElementById('timeModal');
 const wheelHour = document.getElementById('wheelHour');
 const wheelMin  = document.getElementById('wheelMin');
@@ -381,11 +485,10 @@ btnCancel.addEventListener('click',()=>closeTimePicker(false));
 btnSave.addEventListener('click',()=>closeTimePicker(true));
 disableNativeTimePicker();
 
-/* ====== Submit ====== */
+// ====== Submit ======
 [namaEl, instansiEl, namaPeminjamEl, instansiPeminjamEl].forEach(el => {
   el.addEventListener('input', refreshSubmitState);
 });
-
 submitBtn.addEventListener('click', onSubmit);
 
 async function onSubmit(){
@@ -403,7 +506,7 @@ async function onSubmit(){
   }
 
   const payload = {
-    action:"ADD", // eksplisit
+    action:"ADD",
     token:SHARED_TOKEN,
     waktu,
     namaPendamping:nama,
@@ -442,7 +545,7 @@ function clearForm(){
   refreshSubmitState();
 }
 
-/* ====== Load list ====== */
+// ====== Load list ======
 function formatTime(val){
   const d = new Date(val);
   if(!isNaN(d)){
@@ -463,7 +566,7 @@ async function loadLogs(){
     if(!j.rows || !j.rows.length){ logList.innerHTML='<li class="muted">Belum ada data</li>'; return; }
     for(const r of j.rows){
       const li=document.createElement('li'); li.className='log-item';
-      const timeStr = r.waktu ? formatTime(r.waktu) + ' WIB' : '-';
+      const timeStr = r.waktu ? (formatTime(r.waktu) + ' WIB') : '-';
       li.innerHTML = `\
         <div><span class="label">Jam Peminjaman :</span> ${timeStr}</div>\
         <div><span class="label">Jenis PAS :</span> ${(r.jenisPas || '-').toUpperCase()}</div>\
@@ -475,3 +578,7 @@ async function loadLogs(){
 
 loadLogs();
 refreshSubmitState();
+
+// Ekspor fungsi jika perlu dipanggil global (opsional)
+window.receiveBarcode = receiveBarcode;
+window.receivePass    = receivePass;

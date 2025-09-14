@@ -24,10 +24,8 @@ function getFb() {
 export function getFirebase() { return getFb(); }
 
 /* ===== Helpers ===== */
-function getBasePrefix() {
-  const parts = location.pathname.split("/").filter(Boolean);
-  return parts.length > 0 ? `/${parts[0]}/` : "/";
-}
+const BASE_PREFIX = new URL('.', import.meta.url).pathname;
+export function getBasePrefix(){ return BASE_PREFIX; }
 function safeMultiDecode(s) {
   if (s == null) return "";
   let prev = String(s);
@@ -164,6 +162,12 @@ export function requireAuth({
           signOut(auth).finally(() => {
             showSingleDeviceModal("Akun digunakan di perangkat lain. Web ini dibatasi hanya bisa login 1 device saja");
           });
+          return;
+        }
+        const al = data.alert;
+        if (al && al.from !== DEVICE_ID) {
+          showSingleDeviceModal("Ada perangkat lain mencoba masuk ke akun Anda, Web ini dibatasi hanya bisa login 1 device saja");
+          update(sessRef, { alert: null }).catch(()=>{});
           return;
         }
         const att = data.lastAttempt;

@@ -34,6 +34,9 @@ const btnEvidence     = document.getElementById("btnEvidence");
 const evidencePreview = document.getElementById("evidencePreview");
 const evidenceImg     = document.getElementById("evidenceImg");
 const scanBtn         = document.getElementById("scanBtn");
+const manualCard      = document.getElementById("manualCard");
+const manualInput     = document.getElementById("manualInput");
+const manualSearch    = document.getElementById("manualSearch");
 const imgAvsec        = document.getElementById("imgAvsec");
 const fotoIdInp       = document.getElementById("fotoId");
 const fotoNote        = document.querySelector(".foto-note");
@@ -186,37 +189,41 @@ async function sendToSheet(sheet, payload){
 
 /* ================== SCAN (BarcodeDetector/jsQR) ================== */
 let scanState = { stream:null, video:null, canvas:null, ctx:null, running:false, usingDetector:false, detector:null, jsQRReady:false, overlay:null, closeBtn:null };
-if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(); else startScan(); });
+if (manualSearch) manualSearch.addEventListener('click', () => {
+  const code = manualInput.value.trim();
+  if(code) receiveBarcode(code);
+});
+if (scanBtn) scanBtn.addEventListener("click", () => { if (scanState.running) stopScan(true); else startScan(); });
 
 function injectScanStyles(){
   if (document.getElementById('scan-style')) return;
   const css = `
-    .is-waiting{opacity:.7;pointer-events:none}
-    body.scan-active{background:#000;overscroll-behavior:contain}
-    body.scan-active .app-bar, body.scan-active .container{display:none!important}
-    #scan-video,#scan-canvas{position:fixed;inset:0;width:100vw;height:100vh;display:none;background:#000;z-index:9998}
-    body.scan-active #scan-video{display:block;object-fit:cover;touch-action:none}
-    #scan-overlay{position:fixed;inset:0;display:none;z-index:10000;pointer-events:none}
-    body.scan-active #scan-overlay{display:block}
-    .scan-topbar{position:absolute;top:0;left:0;right:0;height:max(56px,calc(44px + env(safe-area-inset-top,0)));display:flex;align-items:flex-start;justify-content:flex-end;padding:calc(env(safe-area-inset-top,0) + 6px) 10px 8px;background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0));pointer-events:none}
-    .scan-close{pointer-events:auto;width:42px;height:42px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.25);font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.35)}
-    .scan-reticle{position:absolute;top:50%;left:50%;width:min(76vw,560px);aspect-ratio:1/1;transform:translate(-50%,-50%);border-radius:20px;box-shadow:0 0 0 9999px rgba(0,0,0,.32) inset;background:
-      linear-gradient(#fff,#fff) left top/28px 2px no-repeat,
-      linear-gradient(#fff,#fff) left top/2px 28px no-repeat,
-      linear-gradient(#fff,#fff) right top/28px 2px no-repeat,
-      linear-gradient(#fff,#fff) right top/2px 28px no-repeat,
-      linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat,
-      linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat,
-      linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat,
-      linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat}
-    .scan-hint{position:absolute;left:50%;bottom:max(18px,calc(16px + env(safe-area-inset-bottom,0)));transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:8px 12px;border-radius:999px;letter-spacing:.2px;font-size:14px}
+    .is-waiting { opacity:.7; pointer-events:none }
+    body.scan-active{ background:#000; overscroll-behavior:contain; }
+    body.scan-active .app-bar,
+    body.scan-active .container { display:none !important; }
+    #scan-video,#scan-canvas{ position:fixed; inset:0; width:100vw; height:100vh; display:none; background:#000; z-index:9998; }
+    body.scan-active #scan-video{ display:block; object-fit:cover; transform:none; touch-action:none; }
+    body.scan-active #scan-canvas{ display:none; }
+    #scan-overlay{ position:fixed; inset:0; display:none; z-index:10000; pointer-events:none; }
+    body.scan-active #scan-overlay{ display:block; }
+    .scan-topbar{ position:absolute; top:0; left:0; right:0; height:max(56px, calc(44px + env(safe-area-inset-top,0))); display:flex; align-items:flex-start; justify-content:flex-end; padding: calc(env(safe-area-inset-top,0) + 6px) 10px 8px; background:linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,0)); pointer-events:none; }
+    .scan-close{ pointer-events:auto; width:42px; height:42px; border-radius:999px; background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,255,255,.25); font-size:22px; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,.35); transition: transform .08s ease, filter .15s ease; }
+    .scan-close:active{ transform:scale(.96); }
+    .scan-close:focus-visible{ outline:2px solid rgba(255,255,255,.6); outline-offset:2px; }
+    .scan-reticle{ position:absolute; top:50%; left:50%; width:min(68vw, 520px); aspect-ratio:1/1; transform:translate(-50%,-50%); border-radius:16px; box-shadow:0 0 0 9999px rgba(0,0,0,.28) inset; pointer-events:none; background: linear-gradient(#fff,#fff) left top/28px 2px no-repeat, linear-gradient(#fff,#fff) left top/2px 28px no-repeat, linear-gradient(#fff,#fff) right top/28px 2px no-repeat, linear-gradient(#fff,#fff) right top/2px 28px no-repeat, linear-gradient(#fff,#fff) left bottom/28px 2px no-repeat, linear-gradient(#fff,#fff) left bottom/2px 28px no-repeat, linear-gradient(#fff,#fff) right bottom/28px 2px no-repeat, linear-gradient(#fff,#fff) right bottom/2px 28px no-repeat; outline:2px dashed rgba(255,255,255,0); }
+    .scan-hint{ position:absolute; left:50%; bottom:max(18px, calc(16px + env(safe-area-inset-bottom,0))); transform:translateX(-50%); background:rgba(0,0,0,.55); color:#fff; font-weight:600; padding:8px 12px; border-radius:999px; letter-spacing:.2px; font-size:14px; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,.35); }
   `;
-  const style = document.createElement('style'); style.id='scan-style'; style.textContent = css; document.head.appendChild(style);
+  const style = document.createElement('style');
+  style.id = 'scan-style';
+  style.textContent = css;
+  document.head.appendChild(style);
 }
 injectScanStyles();
 
 async function startScan(){
   try{
+    if(manualCard) manualCard.classList.add('hidden');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       showOverlay('err','Browser tidak mendukung kamera','');
       return;
@@ -247,14 +254,14 @@ async function startScan(){
     await stopScan();
   }
 }
-async function stopScan(){
+async function stopScan(showManual=false){
   scanState.running = false;
   if (scanState.stream){ scanState.stream.getTracks().forEach(t=>{ try{t.stop();}catch(_){}}); }
   scanState.stream = null;
   if (scanState.video){ scanState.video.srcObject = null; scanState.video.remove(); scanState.video = null; }
   if (scanState.canvas){ scanState.canvas.remove(); scanState.canvas = null; scanState.ctx = null; }
-  if (scanState.overlay){ scanState.overlay.remove(); scanState.overlay = null; scanState.closeBtn = null; }
   document.body.classList.remove('scan-active');
+  if (manualCard) manualCard.classList.toggle('hidden', !showManual);
 }
 function ensureVideo(){
   if (scanState.video) return;
@@ -280,7 +287,7 @@ function ensureOverlay(){
   scanState.overlay = overlay;
   scanState.closeBtn = overlay.querySelector("#scan-close");
   if (scanState.closeBtn){
-    scanState.closeBtn.addEventListener("click", async (e)=>{ e.preventDefault(); await stopScan(); });
+    scanState.closeBtn.addEventListener("click", async (e)=>{ e.preventDefault(); await stopScan(true); });
   }
 }
 function prepareCanvas(){ if (scanState.canvas) return; const c=document.createElement('canvas'); c.id='scan-canvas'; c.width=640; c.height=480; document.body.appendChild(c); scanState.canvas=c; scanState.ctx=c.getContext("2d",{willReadFrequently:true}); }

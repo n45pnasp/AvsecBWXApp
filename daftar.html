@@ -49,6 +49,16 @@
     .spinner { width:54px; height:54px; border:5px solid rgba(255,255,255,.25); border-top-color:#22c55e; border-radius:50%; animation:spin 1s linear infinite; }
     @keyframes spin { to{ transform:rotate(360deg) } }
   </style>
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+  <link rel="icon" type="image/png" sizes="128x128" href="icons/favicon-128.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/favicon-192.png">
+  <link rel="icon" type="image/png" sizes="256x256" href="icons/favicon-256.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/favicon-512.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json" type="application/manifest+json">
 </head>
 <body>
   <div class="card">
@@ -130,7 +140,7 @@
     import {
       getAuth, createUserWithEmailAndPassword, updateProfile
     } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
     // Firebase (Auth + RTDB)
     const firebaseConfig = {
@@ -143,16 +153,40 @@
       databaseURL: "https://avsecbwx-4229c-default-rtdb.firebaseio.com"
     };
 
-    // GAS & Folder Drive (punyamu)
+    // GAS & Folder Drive
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbye3DxrOPeCS58sWdKQdEFXm9xfrTzLXIYAG0v5wFKwaqfSSyQXq_32RXszqJJOdRXgKQ/exec";
     const FOLDER_ID  = "1_bk5jcyq_3xkzWw69D64qPGHMd6yNba5";
-
-    const REGISTER_CODE = "BWX-REGISTER";
-    const ADMIN_CODE = "BWX-ADMIN";
 
     const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getDatabase(app);
+
+    // ==== NEW: helper SHA-256 → hex ====
+    async function sha256Hex(str){
+      const enc = new TextEncoder().encode(str);
+      const buf = await crypto.subtle.digest("SHA-256", enc);
+      const arr = Array.from(new Uint8Array(buf));
+      return arr.map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    // ==== NEW: load register hashes from RTDB ====
+    let REGISTER_HASH = null;
+    let ADMIN_HASH = null;
+
+    async function loadRegisterConfig(){
+      try{
+        const snap = await get(child(ref(db), "publicConfig/register"));
+        if (snap.exists()){
+          const v = snap.val();
+          REGISTER_HASH = v.registerHash || null;
+          ADMIN_HASH    = v.adminHash || null;
+        }
+      }catch(e){
+        console.warn("Gagal load publicConfig/register:", e);
+      }
+    }
+
+    await loadRegisterConfig();
 
     // EL
     const $ = (q)=>document.querySelector(q);
@@ -191,10 +225,7 @@
     const showMsg=(t,type="error")=>{ msgBox.textContent=t; msgBox.className="msg "+type; msgBox.style.display="block"; };
     const showModalMsg=(t,type="error")=>{ modalMsg.textContent=t; modalMsg.className="msg "+type; modalMsg.style.display="block"; };
     const formatNama=(s)=>s.trim().split(/\s+/).map(k=>k[0]?.toUpperCase()+k.slice(1).toLowerCase()).join(" ");
-
-    // normalisasi nameLower yang stabil
-    const normalizeNameLower = (s)=>
-      s.trim().toLowerCase().replace(/\s+/g,' ');
+    const normalizeNameLower=(s)=> s.trim().toLowerCase().replace(/\s+/g,' ');
 
     roleEl.addEventListener("change", ()=>{
       const wantAdmin = roleEl.value === "admin";
@@ -297,7 +328,7 @@
     });
 
     // simpan pilihan → tampil chip + aktifkan daftar
-    saveFile.addEventListener("click", ()=>{
+    document.getElementById("saveFile").addEventListener("click", ()=>{
       if (!uploadedPhotoURL){ showModalMsg("Belum ada foto yang berhasil diupload.", "error"); return; }
       try { fileNameEl.textContent = lastFileId || (new URL(uploadedPhotoURL).searchParams.get("id") || "foto"); }
       catch { fileNameEl.textContent = lastFileId || "foto"; }
@@ -309,15 +340,19 @@
       modalBack.setAttribute("aria-hidden","true");
     });
 
-    clearFileBtn.addEventListener("click", ()=>{
+    document.getElementById("clearFile").addEventListener("click", ()=>{
       uploadedPhotoURL = null; lastFileId = null;
       fileChip.style.display = "none"; fileChip.classList.remove("has-thumb");
       submitBtn.disabled = true;
     });
 
-    // submit daftar → buat akun langsung (Auth), lalu tulis profil + indeks nameToUid
+    // submit daftar → buat akun (Auth), lalu tulis profil + indeks nameToUid
     form.addEventListener("submit", async (e)=>{
       e.preventDefault(); msgBox.style.display="none";
+
+      if (!REGISTER_HASH){
+        return showMsg("Konfigurasi pendaftaran tidak tersedia. Hubungi admin.");
+      }
 
       const regCode = regCodeEl.value.trim();
       let nama = namaEl.value.trim();
@@ -328,7 +363,16 @@
       const pass  = passEl.value;
 
       if (!regCode) return showMsg("Kode mendaftar wajib diisi.");
-      if (regCode !== REGISTER_CODE) return showMsg("Kode mendaftar salah.");
+
+      // ==== validasi hash register ====
+      try{
+        const regHash = await sha256Hex(regCode);
+        if (regHash !== REGISTER_HASH){
+          return showMsg("Kode mendaftar salah.");
+        }
+      }catch(err){
+        return showMsg("Gagal memproses kode. Coba lagi.");
+      }
 
       const onlyLetters = /^[\p{L}\s.'-]+$/u.test(nama);
       const words = nama.split(/\s+/).filter(Boolean);
@@ -340,9 +384,18 @@
 
       let isAdmin = false;
       if (roleReq === "admin") {
-        if (!adminCode) return showMsg("Kode Admin wajib diisi untuk membuat akun Admin.");
-        if (adminCode !== ADMIN_CODE) showMsg("Kode Admin salah. Akun akan dibuat sebagai Non-Admin.");
-        else isAdmin = true;
+        if (!ADMIN_HASH) return showMsg("Konfigurasi admin tidak tersedia. Hubungi admin.");
+        if (!adminCode)  return showMsg("Kode Admin wajib diisi untuk membuat akun Admin.");
+        try{
+          const adminHash = await sha256Hex(adminCode);
+          if (adminHash !== ADMIN_HASH){
+            showMsg("Kode Admin salah. Akun akan dibuat sebagai Non-Admin.");
+          } else {
+            isAdmin = true;
+          }
+        }catch(err){
+          return showMsg("Gagal memproses kode admin. Coba lagi.");
+        }
       }
 
       nama = formatNama(nama);
@@ -354,14 +407,14 @@
         // 1) Buat akun Auth
         const cred = await createUserWithEmailAndPassword(auth, email, pass);
 
-        // 2) Update profile di Auth (optional, untuk display di app)
+        // 2) Update profile di Auth (optional)
         await updateProfile(cred.user, { displayName: nama, photoURL: uploadedPhotoURL });
 
-        // 3) Tulis profil ke RTDB (sesuai rule: hanya users/<uid> sendiri)
+        // 3) Tulis profil ke RTDB
         await set(ref(db, `users/${cred.user.uid}`), {
           name: nama,
-          nameLower,              // diperlukan untuk index/pencarian
-          spec,                   // "BASIC" | "JUNIOR" | "SENIOR"
+          nameLower,
+          spec,
           role: isAdmin ? "admin" : "user",
           isAdmin,
           email: cred.user.email,
@@ -369,11 +422,10 @@
           createdAt: Date.now()
         });
 
-        // 4) Tulis indeks nameToUid → membutuhkan rule yang mengizinkan user menulis daunnya sendiri
+        // 4) Buat indeks nameToUid (best effort)
         try{
           await set(ref(db, `nameToUid/${nameLower}/${cred.user.uid}`), true);
         } catch (idxErr){
-          // Jika rule tidak mengizinkan, jangan blokir pendaftaran.
           console.warn("Gagal tulis nameToUid:", idxErr);
         }
 

@@ -23,8 +23,9 @@
   <link rel="manifest" href="manifest.json" type="application/manifest+json">
   <meta name="theme-color" content="#000000">
 
-  <!-- iOS PWA Support -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <!-- PWA Support -->
+  <meta name="mobile-web-app-capable" content="yes"> <!-- standar baru -->
+  <meta name="apple-mobile-web-app-capable" content="yes"> <!-- untuk Safari lama -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <!-- Safari pinned tab -->
@@ -117,6 +118,7 @@
 
   <script type="module" src="login.js"></script>
   <script type="module" src="offline.js"></script>
+  <script src="back.js"></script>
   <script>
     if("serviceWorker" in navigator){
       window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js"));

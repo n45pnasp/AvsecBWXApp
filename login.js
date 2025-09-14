@@ -5,7 +5,7 @@ import {
   setPersistence, browserLocalPersistence, signOut, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
-  getDatabase, ref, get, child, set, remove, onDisconnect, runTransaction
+  getDatabase, ref, get, child, set, remove, onDisconnect, runTransaction, update
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 /* ===== Firebase config ===== */
@@ -341,7 +341,11 @@ async function claimSession(user){
       return;
     });
     if (!res.committed){
-      await set(ref(db, `sessions/${user.uid}/lastAttempt`), { device: DEVICE_ID, ts: Date.now() });
+      const now = Date.now();
+      await update(ref(db, `sessions/${user.uid}`), {
+        lastAttempt: { device: DEVICE_ID, ts: now },
+        alert: { from: DEVICE_ID, ts: now }
+      });
       return false;
     }
     onDisconnect(currRef).remove().catch(()=>{});

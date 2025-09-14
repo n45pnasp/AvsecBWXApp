@@ -331,7 +331,10 @@ function resetForm() {
   updateResult();
 
   const pdfBtn = document.getElementById("downloadPdfBtn");
-  if (pdfBtn) pdfBtn.disabled = true;
+  if (pdfBtn){
+    pdfBtn.disabled = true;
+    pdfBtn.classList.add("hidden");
+  }
 }
 
 function renderHHMD(target, isETD = false) {
@@ -468,7 +471,10 @@ function initTypeButtons() {
     updateResult();
 
     const pdfBtn = document.getElementById("downloadPdfBtn");
-    if (pdfBtn) pdfBtn.disabled = true;
+    if (pdfBtn){
+      pdfBtn.disabled = true;
+      pdfBtn.classList.add("hidden");
+    }
   }
 
   buttons.forEach((btn) => btn.addEventListener("click", () => handle(btn)));
@@ -572,8 +578,12 @@ function initSubmit() {
   const pdfBtn = document.getElementById("downloadPdfBtn");
 
   select.addEventListener("change", async () => {
-    if (pdfBtn) pdfBtn.disabled = true;
     const key = select.value;
+    if (pdfBtn){
+      const hasKey = !!key;
+      pdfBtn.disabled = !hasKey;
+      pdfBtn.classList.toggle("hidden", !hasKey);
+    }
     if (key) {
       try {
         showOverlay("loading", "Mengambil data…", "");
@@ -661,8 +671,6 @@ function initSubmit() {
       await apiSubmit(payload);
       showOverlay("ok", "Data Berhasil di kirim", "");
       resetForm();
-
-      if (pdfBtn) pdfBtn.disabled = false; // aktifkan setelah data terkirim
     } catch (err) {
       showOverlay("err", "Gagal mengirim", err.message || "Coba lagi");
       console.error(err);
@@ -688,6 +696,7 @@ function initPdfDownload() {
       const user = auth.currentUser;
       if (!user) return alert("Silakan login ulang.");
       const idToken = await user.getIdToken(true);
+      showOverlay("loading", "Mengunduh PDF…", "");
 
       const url = `${CFN_DOWNLOAD_PDF_URL}?site=${encodeURIComponent(site)}`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
@@ -699,11 +708,22 @@ function initPdfDownload() {
       const blob = await res.blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `${site}.pdf`;
+
+      const text = select.options[select.selectedIndex]?.text || "";
+      const words = text.trim().split(/\s+/);
+      const base = words.slice(0, 2).join("_").toUpperCase();
+      const d = new Date();
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      const fname = `${base}_${dd}${mm}${yyyy}.pdf`;
+      a.download = fname;
+
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(a.href);
+      showOverlay("ok", "Download dimulai", "");
     } catch (err) {
       console.error(err);
       showOverlay("err", "Download gagal", err.message || "Coba lagi");
