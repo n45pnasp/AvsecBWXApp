@@ -1,23 +1,17 @@
-// camera.js — FINAL (orientasi disetel sesuai hasil uji)
-// - Shutter aktif bila benar2 landscape: |gamma| >= 68° (dengan smoothing)
-// - Tetap hormati media query & window.orientation jika tersedia
+// camera.js — FINAL (range gamma 5°..81° aktif + hysteresis)
 
 export async function capturePhoto(){
   return new Promise(async (resolve, reject) => {
-    try{
-      await startCapture(resolve, reject);
-    }catch(err){
-      reject(err);
-    }
+    try{ await startCapture(resolve, reject); } catch(err){ reject(err); }
   });
 }
 
 export function makePhotoName(page = null, index = 0){
   const base = page || location.pathname.split('/').pop().replace(/\.html$/, '') || 'photo';
-  const d    = new Date();
-  const hh   = String(d.getHours()).padStart(2, '0');
-  const mm   = String(d.getMinutes()).padStart(2, '0');
-  const idx  = index ? String(index) : '';
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const idx = index ? String(index) : '';
   return `${base}${idx}_${hh}${mm}.png`;
 }
 
@@ -31,15 +25,17 @@ export function dataUrlToFile(dataUrl, fileName){
 }
 
 /* ===== Konstanta & state orientasi ===== */
-const TILT_LANDSCAPE_DEG = 68;   // aktifkan shutter mulai ~±70° (selaras screenshot 2 & 3)
-const PITCH_MAX_DEG      = 40;   // batasi pitch agar "landscape murni" (opsional)
-const SMOOTH_ALPHA       = 0.25; // smoothing EMA untuk gamma/beta
+// Ambang baru agar tombol aktif dari γ ≈ ±5° s/d ±90° (sesuai screenshot 2 → 1)
+const TILT_ON_DEG   = 8;   // aktif jika |gamma| >= 8°
+const TILT_OFF_DEG  = 5;   // nonaktif jika |gamma| < 5° (hysteresis supaya stabil)
+const PITCH_MAX_DEG = 40;  // batasi |beta| agar bukan telentang/tengkurap berlebihan
+const SMOOTH_ALPHA  = 0.25;
 
 let camState = {stream:null, video:null, overlay:null, shutter:null, tilt:null, pitch:null, onStop:null};
 let _gammaEMA = null;
 let _betaEMA  = null;
+let _landscapeLatch = false; // hysteresis latch
 
-/* ====== Start / Stop ====== */
 async function startCapture(resolve, reject){
   ensureVideo(); ensureOverlay(resolve, reject);
   document.body.classList.add('scan-active');
@@ -52,9 +48,7 @@ async function startCapture(resolve, reject){
     camState.video.srcObject = stream;
     await camState.video.play();
   }catch(err){
-    stopCapture();
-    reject(err);
-    return;
+    stopCapture(); reject(err); return;
   }
   camState.running = true;
   updateCaptureState();
@@ -83,8 +77,7 @@ function ensureOverlay(resolve, reject){
   document.body.appendChild(o);
   camState.overlay=o;
 
-  const close=o.querySelector('#scan-close');
-  close.addEventListener('click',()=>{ stopCapture(); resolve(null); });
+  o.querySelector('#scan-close').addEventListener('click',()=>{ stopCapture(); resolve(null); });
 
   const shutter=o.querySelector('#scan-shutter');
   camState.shutter=shutter;
@@ -92,8 +85,7 @@ function ensureOverlay(resolve, reject){
     if(!isLandscape()){ alert('Perangkat masih portrait. Putar perangkat ke horizontal untuk memotret.'); return; }
     try{
       const dataUrl = await captureFrame();
-      stopCapture();
-      resolve(dataUrl);
+      stopCapture(); resolve(dataUrl);
     }catch(e){ console.error('Gagal capture',e); alert('Gagal mengambil gambar.'); }
   });
 
@@ -103,27 +95,23 @@ function ensureOverlay(resolve, reject){
   window.addEventListener('resize', update);
   if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', update);
 
-  // === DeviceOrientation (pakai gamma & beta + smoothing) ===
   if (window.DeviceOrientationEvent){
     const handler=(e)=>{
-      // e.gamma: roll (±90), e.beta: pitch (±180)
       if (typeof e.gamma === 'number') {
         _gammaEMA = ema(_gammaEMA, e.gamma, SMOOTH_ALPHA);
-        camState.tilt = _gammaEMA;
+        camState.tilt = _gammaEMA; // roll
       }
       if (typeof e.beta === 'number') {
         _betaEMA = ema(_betaEMA, e.beta, SMOOTH_ALPHA);
-        camState.pitch = _betaEMA;
+        camState.pitch = _betaEMA; // pitch
       }
       update();
     };
     camState._tiltHandler=handler;
-
-    // iOS permission
     if (typeof DeviceOrientationEvent.requestPermission==='function'){
       DeviceOrientationEvent.requestPermission()
         .then(p=>{ if(p==='granted') window.addEventListener('deviceorientation', handler, {passive:true}); })
-        .catch(()=>{ /* diamkan */});
+        .catch(()=>{});
     } else {
       window.addEventListener('deviceorientation', handler, {passive:true});
     }
@@ -141,22 +129,28 @@ function stopCapture(){
   if(camState._tiltHandler){ window.removeEventListener('deviceorientation', camState._tiltHandler); camState._tiltHandler=null; }
   document.body.classList.remove('scan-active');
   _gammaEMA = _betaEMA = null;
+  _landscapeLatch = false;
 }
 
 /* ===== Orientasi & UI ===== */
 function isLandscape(){
-  // 1) Browser hints
+  // 1) Hint dari browser
   if (window.matchMedia && window.matchMedia('(orientation: landscape)').matches) return true;
   if (typeof window.orientation==='number' && Math.abs(window.orientation)===90) return true;
 
-  // 2) Sensor-based (selaras screenshot):
-  //    - gamma (roll) besar => landscape
-  //    - batasi beta (pitch) supaya bukan posisi "menghadap langit/lantai" ekstrem
+  // 2) Sensor + hysteresis: aktif untuk |gamma| >= 8°, mati bila < 5°
   if (camState.tilt != null) {
-    const g = Math.abs(camState.tilt);               // ~0 (portrait) -> ~90 (landscape)
-    const b = Math.abs(camState.pitch ?? 0);
-    if (g >= TILT_LANDSCAPE_DEG && b <= PITCH_MAX_DEG) return true;
-    return false;
+    const g = Math.abs(camState.tilt);               // roll (0..~90)
+    const b = Math.abs(camState.pitch ?? 0);         // pitch
+    const pitchOk = b <= PITCH_MAX_DEG;
+
+    if (pitchOk) {
+      if (!_landscapeLatch && g >= TILT_ON_DEG) _landscapeLatch = true;
+      if (_landscapeLatch && g < TILT_OFF_DEG)  _landscapeLatch = false;
+    } else {
+      _landscapeLatch = false; // batalkan jika pitch terlalu ekstrim
+    }
+    return _landscapeLatch;
   }
 
   // 3) Fallback rasio viewport
@@ -178,22 +172,20 @@ async function captureFrame(){
   const c=document.createElement('canvas');
   let ctx=c.getContext('2d',{willReadFrequently:true});
 
-  // Jika sensor/video masih portrait, putar -90° agar hasil tetap landscape
-  if(h > w){
+  if(h> w){
     c.width=h; c.height=w;
-    ctx.translate(h/2, w/2);
+    ctx.translate(h/2,w/2);
     ctx.rotate(-Math.PI/2);
-    ctx.drawImage(vid, -w/2, -h/2, w, h);
+    ctx.drawImage(vid,-w/2,-h/2,w,h);
     [w,h]=[h,w];
   } else {
     c.width=w; c.height=h;
-    ctx.drawImage(vid, 0, 0, w, h);
+    ctx.drawImage(vid,0,0,w,h);
   }
 
-  // Resize lembut ke sisi terpanjang 800 px agar file ringan
   const max=Math.max(w,h);
   if(max>800){
-    const scale=800/max; const cw=Math.round(w*scale), ch=Math.round(h*scale);
+    const scale=800/max, cw=Math.round(w*scale), ch=Math.round(h*scale);
     const c2=document.createElement('canvas'); c2.width=cw; c2.height=ch;
     c2.getContext('2d').drawImage(c,0,0,cw,ch);
     return c2.toDataURL('image/png');
@@ -202,9 +194,7 @@ async function captureFrame(){
 }
 
 /* ===== Utils ===== */
-function ema(prev, val, alpha){
-  return prev == null ? val : (alpha*val + (1-alpha)*prev);
-}
+function ema(prev, val, alpha){ return prev == null ? val : (alpha*val + (1-alpha)*prev); }
 
 // Inject basic styles once
 (function(){
