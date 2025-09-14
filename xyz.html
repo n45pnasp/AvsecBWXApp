@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo Orientasi HP (X-Y-Z / Roll-Pitch-Yaw)</title>
+  <style>
+    :root { --bg:#0b1020; --card:#111833; --text:#e6ecff; --muted:#9db1ff55; --accent:#82a0ff; }
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#1a2455,transparent),var(--bg);color:var(--text);font:500 16px/1.5 system-ui,Segoe UI,Roboto,Arial}
+    .wrap{max-width:980px;margin:32px auto;padding:0 16px}
+    h1{font-size:clamp(20px,3.2vw,30px);margin:0 0 12px}
+    p.hint{opacity:.8;margin:0 0 20px}
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+    .card{background:linear-gradient(180deg, #111833 0%, #0f1530 100%);border:1px solid var(--muted);border-radius:16px;padding:16px;box-shadow:0 10px 30px #0003}
+    .card h2{margin:0 0 8px;font-size:18px}
+    .kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;margin-top:6px}
+    .kv div{padding:6px 10px;border:1px dashed #9db1ff33;border-radius:10px;background:#0c1230}
+    .tag{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #9db1ff66;background:#0d1539;margin:10px 0 0;font-size:13px}
+    button{appearance:none;border:0;border-radius:12px;padding:12px 16px;background:#2643ff;color:#fff;font-weight:700;cursor:pointer;box-shadow:0 8px 20px #2740ff55}
+    button[hidden]{display:none}
+    .scene{height:260px;display:grid;place-items:center}
+    .phone{width:140px;height:260px;border-radius:24px;border:2px solid #5f79ff66;background:linear-gradient(160deg,#1a2b66,#0f1b4a);box-shadow:inset 0 0 40px #0008,0 20px 40px #0005;transform-style:preserve-3d;transition:box-shadow .2s}
+    .screen{position:absolute;inset:14px;border-radius:18px;background:linear-gradient(180deg,#0b122f,#0a0f25)}
+    .dot{position:absolute;width:10px;height:10px;border-radius:50%;background:#7aa2ff;top:10px;left:calc(50% - 5px)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+    code{background:#0e1431;padding:2px 6px;border-radius:6px;border:1px solid #9db1ff33}
+    footer{opacity:.6;margin-top:20px;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Demo Orientasi & Gerak HP — X/Y/Z · Roll/Pitch/Yaw</h1>
+    <p class="hint">Tekan <b>Izinkan Sensor</b> di iOS. Di Android/desktop yang mendukung, data muncul otomatis saat perangkat digerakkan/di-tilt.</p>
+    <div class="row">
+      <button id="btnPerm">Izinkan Sensor (iOS)</button>
+      <span id="status" class="tag">Status: belum aktif</span>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Orientasi (DeviceOrientation)</h2>
+        <div class="kv">
+          <div>Alpha (yaw, °)</div><div id="alpha">—</div>
+          <div>Beta (pitch, °)</div><div id="beta">—</div>
+          <div>Gamma (roll, °)</div><div id="gamma">—</div>
+          <div>Yaw (Z, °)</div><div id="yaw">—</div>
+          <div>Pitch (X, °)</div><div id="pitch">—</div>
+          <div>Roll (Y, °)</div><div id="roll">—</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Gerak (DeviceMotion)</h2>
+        <div class="kv">
+          <div>Accel X (m/s²)</div><div id="ax">—</div>
+          <div>Accel Y (m/s²)</div><div id="ay">—</div>
+          <div>Accel Z (m/s²)</div><div id="az">—</div>
+          <div>Accel* X (no-gravity)</div><div id="axg">—</div>
+          <div>Accel* Y (no-gravity)</div><div id="ayg">—</div>
+          <div>Accel* Z (no-gravity)</div><div id="azg">—</div>
+          <div>Gyro α (°/s)</div><div id="gα">—</div>
+          <div>Gyro β (°/s)</div><div id="gβ">—</div>
+          <div>Gyro γ (°/s)</div><div id="gγ">—</div>
+        </div>
+      </section>
+
+      <section class="card scene">
+        <div class="phone" id="phone">
+          <div class="screen"></div>
+          <div class="dot"></div>
+        </div>
+      </section>
+    </div>
+
+    <footer>Catatan: iOS butuh gesture pengguna untuk memberi izin sensor; beberapa browser desktop tidak menyediakan event sensor.</footer>
+  </div>
+
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const fmt = (v, f=1)=> (Number.isFinite(v)? v.toFixed(f): "—");
+
+  const el = {
+    status: $("status"),
+    alpha: $("alpha"), beta: $("beta"), gamma: $("gamma"),
+    yaw: $("yaw"), pitch: $("pitch"), roll: $("roll"),
+    ax: $("ax"), ay: $("ay"), az: $("az"),
+    axg: $("axg"), ayg: $("ayg"), azg: $("azg"),
+    gα: $("gα"), gβ: $("gβ"), gγ: $("gγ"),
+    phone: $("phone"), btnPerm: $("btnPerm")
+  };
+
+  let active = false;
+
+  function setStatus(text){ el.status.textContent = "Status: " + text; }
+
+  // iOS 13+ requires explicit permission
+  async function requestIOSPermission(){
+    try{
+      const hasOri = typeof DeviceOrientationEvent !== "undefined";
+      const hasMot = typeof DeviceMotionEvent !== "undefined";
+      if(!hasOri && !hasMot){ setStatus("sensor tak didukung"); return; }
+
+      let granted = true;
+      if (hasOri && typeof DeviceOrientationEvent.requestPermission === "function"){
+        const s = await DeviceOrientationEvent.requestPermission();
+        granted = granted && (s === "granted");
+      }
+      if (hasMot && typeof DeviceMotionEvent.requestPermission === "function"){
+        const s2 = await DeviceMotionEvent.requestPermission();
+        granted = granted && (s2 === "granted");
+      }
+      if (!granted){ setStatus("izin ditolak"); return; }
+
+      start();
+    }catch(e){
+      console.error(e);
+      setStatus("gagal minta izin");
+    }
+  }
+
+  function start(){
+    if(active) return;
+    active = true;
+    setStatus("aktif");
+    el.btnPerm.hidden = true;
+
+    // Orientation
+    window.addEventListener("deviceorientation", onOrientation, { passive:true });
+    // Motion (accel/gyro)
+    window.addEventListener("devicemotion", onMotion, { passive:true });
+
+    // Safari quirk: re-attach on visibility change
+    document.addEventListener("visibilitychange", ()=>{
+      if(document.visibilityState === "visible"){
+        window.removeEventListener("deviceorientation", onOrientation);
+        window.removeEventListener("devicemotion", onMotion);
+        window.addEventListener("deviceorientation", onOrientation, { passive:true });
+        window.addEventListener("devicemotion", onMotion, { passive:true });
+      }
+    });
+  }
+
+  function onOrientation(e){
+    // alpha: 0..360 (yaw around Z), beta: -180..180 (pitch around X), gamma: -90..90 (roll around Y)
+    const { alpha, beta, gamma } = e;
+
+    el.alpha.textContent = fmt(alpha,1);
+    el.beta.textContent  = fmt(beta,1);
+    el.gamma.textContent = fmt(gamma,1);
+
+    // Map to yaw/pitch/roll labels for clarity
+    el.yaw.textContent   = fmt(alpha,1);  // Z
+    el.pitch.textContent = fmt(beta,1);   // X
+    el.roll.textContent  = fmt(gamma,1);  // Y
+
+    // Simple 3D visualization (approx): rotate the mock phone
+    // CSS expects rotateX for pitch, rotateY for roll, rotateZ for yaw (signs may feel inverted; adjust if perlu)
+    const rX = clamp(beta, -90, 90) || 0;
+    const rY = clamp(gamma, -90, 90) || 0;
+    const rZ = (alpha || 0);
+    el.phone.style.transform =
+      `perspective(900px) rotateX(${rX}deg) rotateY(${rY}deg) rotateZ(${rZ}deg) translateZ(0)`;
+  }
+
+  function onMotion(e){
+    const a = e.accelerationIncludingGravity || {};
+    const ag = e.acceleration || {};
+    const r = e.rotationRate || {};
+
+    el.ax.textContent  = fmt(a.x,2);
+    el.ay.textContent  = fmt(a.y,2);
+    el.az.textContent  = fmt(a.z,2);
+
+    el.axg.textContent = fmt(ag.x,2);
+    el.ayg.textContent = fmt(ag.y,2);
+    el.azg.textContent = fmt(ag.z,2);
+
+    el["gα"].textContent = fmt(r.alpha,1);
+    el["gβ"].textContent = fmt(r.beta,1);
+    el["gγ"].textContent = fmt(r.gamma,1);
+  }
+
+  function clamp(v,min,max){ return Math.min(max, Math.max(min, v)); }
+
+  // Auto-start if permissions not required (Android/Chrome)
+  const needButton =
+    (typeof DeviceOrientationEvent !== "undefined" &&
+     typeof DeviceOrientationEvent.requestPermission === "function") ||
+    (typeof DeviceMotionEvent !== "undefined" &&
+     typeof DeviceMotionEvent.requestPermission === "function");
+
+  if(!needButton){
+    el.btnPerm.hidden = true;
+    // Small delay to allow page to settle before attaching listeners
+    setTimeout(start, 200);
+  }
+
+  el.btnPerm.addEventListener("click", requestIOSPermission);
+})();
+</script>
+</body>
+</html>
