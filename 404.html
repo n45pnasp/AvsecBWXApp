@@ -18,25 +18,14 @@
     }
   </style>
   <script>
-    (function(){
-      // Base path project di GitHub Pages
-      var parts = location.pathname.split("/").filter(Boolean);
-      var base = parts.length ? "/" + parts[0] + "/" : "/";
-
-      // Ambil path asli
-      var fullPath = location.pathname + location.search + location.hash;
-
-      // Kalau URL berakhir .html → langsung ke index.html (tidak pakai hash)
-      if (fullPath.toLowerCase().endsWith(".html")) {
-        location.replace(base + "index.html");
-        return;
-      }
-
-      // Kalau bukan .html, kirim ke index.html#path-asli (biar router handle)
-      if (fullPath.startsWith(base)) {
-        fullPath = fullPath.substring(base.length);
-      }
-      location.replace(base + "index.html#" + fullPath);
+    (function () {
+      // Redirect semua permintaan 404 ke index.html
+      // sambil membawa kembali path asli melalui hash agar router bisa menangani.
+      const base = location.pathname.substring(0, location.pathname.lastIndexOf('/') + 1);
+      const path = location.pathname.substring(base.length);
+      const query = location.search + location.hash;
+      const target = base + 'index.html' + (path ? '#' + path + query : query);
+      location.replace(target);
     })();
   </script>
 </head>
