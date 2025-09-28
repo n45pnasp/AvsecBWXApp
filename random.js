@@ -92,15 +92,128 @@ function setSupervisor(){ if(supervisorInp) supervisorInp.value=supervisors[mode
 const val=e=>(e?.value||"").trim();
 const txt=e=>(e?.textContent||"").trim();
 
+/* ===== Helper Gambar ===== */
+function loadImageElement(src){
+  return new Promise((resolve, reject) => {
+    if (!src) { reject(new Error("Sumber gambar tidak valid")); return; }
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = (err) => reject(err || new Error("Gagal memuat gambar"));
+    img.src = src;
+  });
+}
+
+/* ====== KOMpresi Foto (rotate ➜ resize ➜ quality) ====== */
+const PHOTO_LIMIT = {
+  maxW: 1600,       // lebar maksimum
+  maxH: 1200,       // tinggi maksimum
+  targetKB: 320,    // target ukuran akhir (≈320 KB)
+  quality: 0.82,    // kualitas awal JPEG/WebP
+  minQuality: 0.60  // kualitas minimum
+};
+
+function pickOutputMime(typeHint=""){
+  const hinted = String(typeHint||"").toLowerCase();
+  // Semua foto dari kamera biasanya tak butuh transparansi → pakai JPEG agar kecil
+  if (hinted.includes("png")) return "image/jpeg";
+  if (hinted.includes("webp")) return "image/webp";
+  return "image/jpeg";
+}
+
+function needRotateToLandscape(img){
+  const w = img.naturalWidth || img.width || 0;
+  const h = img.naturalHeight || img.height || 0;
+  return w > 0 && h > 0 && h > w; // portrait → rotate 90°
+}
+
+function makeCanvas(w,h){ const c=document.createElement("canvas"); c.width=w; c.height=h; return c; }
+
+function computeTargetSize(w,h,maxW,maxH){
+  let rw = w, rh = h;
+  if (w > maxW || h > maxH){
+    const r = Math.min(maxW / w, maxH / h);
+    rw = Math.max(1, Math.round(w * r));
+    rh = Math.max(1, Math.round(h * r));
+  }
+  return { w: rw, h: rh };
+}
+
+/** Normalisasi + kompres dataURL foto.
+ * - Rotate ke landscape jika perlu
+ * - Resize ke maxW x maxH
+ * - Turunkan kualitas bertahap sampai <= targetKB
+ */
+async function normalizePhoto(dataUrl, {maxW, maxH, targetKB, quality, minQuality} = PHOTO_LIMIT, typeHint=""){
+  if (!/^data:image\//i.test(String(dataUrl||""))) return dataUrl;
+
+  const img = await loadImageElement(dataUrl);
+  let w = img.naturalWidth || img.width || 0;
+  let h = img.naturalHeight || img.height || 0;
+  if (!w || !h) return dataUrl;
+
+  const rotate = needRotateToLandscape(img);
+  // jika rotate, tukar w/h untuk kanvas akhir
+  const { w: tw0, h: th0 } = computeTargetSize(rotate ? h : w, rotate ? w : h, maxW, maxH);
+  const canvas = makeCanvas(tw0, th0);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+
+  if (rotate){
+    // rotate 90° CW
+    ctx.translate(tw0/2, th0/2);
+    ctx.rotate(Math.PI/2);
+    ctx.drawImage(img, -th0/2, -tw0/2, th0, tw0);
+  } else {
+    ctx.drawImage(img, 0, 0, tw0, th0);
+  }
+
+  // Kompres bertahap
+  const outMime = pickOutputMime(typeHint);
+  let q = quality, out = canvas.toDataURL(outMime, q);
+  const toKB = (s)=> Math.ceil((s.length * 3) / 4 / 1024); // estimasi Base64 → bytes → KB
+
+  // Jika masih besar, kurangi kualitas beberapa kali
+  let guard = 0;
+  while (toKB(out) > targetKB && q > minQuality && guard < 8){
+    q = Math.max(minQuality, q - 0.06);
+    out = canvas.toDataURL(outMime, q);
+    guard++;
+  }
+  return out;
+}
+
+async function preparePickedPhoto(result, { fallback="", limitMessage="Foto terlalu besar.", resetFn } = {}){
+  if (!result?.dataUrl){ resetFn?.(); return null; }
+  try{
+    // Normalisasi (rotate → resize → kompres)
+    const normalized = await normalizePhoto(
+      result.dataUrl,
+      PHOTO_LIMIT,
+      result.file?.type || ""
+    );
+
+    // Validasi akhir (optional hard cap)
+    const approxKB = Math.ceil((normalized.length * 3) / 4 / 1024);
+    if (approxKB > 600){ // hard cap ~600KB untuk jaga-jaga
+      showAlert(limitMessage + ` (≈${approxKB} KB)`);
+      resetFn?.();
+      return null;
+    }
+
+    const hinted = (result.fileName||"").trim();
+    const safeFallback = fallback || makePhotoName(null, 0);
+    const fileName = result.source === "file" ? (hinted || safeFallback) : safeFallback;
+
+    return { dataUrl: normalized, fileName };
+  }catch(err){
+    console.error("Foto gagal diproses:", err);
+    resetFn?.();
+    return null;
+  }
+}
+
 /* ===== FOTO utama ===== */
 let fotoDataUrl="", fotoName="";
-async function compressImage(file,max=480,quality=0.7){
-  const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(file);});
-  const s=Math.min(1,max/Math.max(img.width,img.height));
-  const c=document.createElement("canvas"); c.width=Math.max(1,Math.round(img.width*s)); c.height=Math.max(1,Math.round(img.height*s));
-  c.getContext("2d").drawImage(img,0,0,c.width,c.height);
-  return c.toDataURL("image/jpeg",quality);
-}
 function resetFoto(){ if(!fotoPreview)return; fotoPreview.src=""; fotoPreview.classList.add("hidden"); fotoDataUrl=""; fotoName=""; }
 fotoBtn?.addEventListener("click",async()=>{
   try{
