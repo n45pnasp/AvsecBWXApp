@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Grup Chat Avsec BWX</title>
+  <link rel="stylesheet" href="groupchat.css">
+  <script type="module">
+    import { requireAuth } from "./auth-guard.js";
+    requireAuth({ loginPath: "index.html" });
+  </script>
+</head>
+<body class="chat-body">
+  <header class="chat-header">
+    <button id="backBtn" class="icon-btn">←</button>
+    <div class="header-info">
+      <h2>Ruang Obrolan Anggota</h2>
+      <span id="onlineCount">Memuat...</span>
+    </div>
+  </header>
+
+  <main id="chatWindow" class="chat-window">
+    <div id="messageList" class="message-list">
+      </div>
+  </main>
+
+  <footer class="chat-input-area">
+    <form id="chatForm">
+      <input type="text" id="msgInput" placeholder="Ketik pesan..." autocomplete="off" required>
+      <button type="submit" id="sendBtn">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+        </svg>
+      </button>
+    </form>
+  </footer>
+
+  <script type="module" src="groupchat.js"></script>
+</body>
+</html>
