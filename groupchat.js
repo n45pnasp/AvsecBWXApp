@@ -9,19 +9,20 @@ const chatForm = document.getElementById("chatForm");
 const msgInput = document.getElementById("messageInput");
 const imageInput = document.getElementById("imageInput");
 
-// URL Script Google Apps Script Terbaru Anda
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwHbVE_oYYjYJlKuPzRJXJoq2EtdJDSbXGO9laCF_VBiHrh4e0Q3_yyWrU-zU7deVsf/exec";
+// URL Script Google Apps Script Anda
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyFcP2Kr-iJuANSxa7JJAhF1UmMcRctbYF1gvXUu54o4WAPBDIabqok3GgTqlt7s1ta/exec";
 const DEFAULT_AVATAR = "icons/idperson.png";
 
 let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
 
 /**
- * FUNGSI OPTIMASI: Mengubah URL Drive/Auth menjadi versi bit kecil (Thumbnail)
+ * FUNGSI OPTIMASI: Mengubah URL Drive/Auth menjadi resolusi rendah (Bit Kecil)
+ * Digunakan baik untuk Avatar maupun Foto Pesan
  */
-function getOptimizedPhotoURL(url, size = 128) {
+function getOptimizedURL(url, size = 128) {
   if (!url || typeof url !== 'string') return DEFAULT_AVATAR;
   
-  // Jika URL dari Google Auth
+  // Jika URL dari Google Auth (googleusercontent)
   if (url.includes("googleusercontent.com")) {
     return url.split('=')[0] + `=s${size}-c`;
   }
@@ -30,7 +31,7 @@ function getOptimizedPhotoURL(url, size = 128) {
   if (url.includes("drive.google.com") || url.includes("drive.usercontent.google.com")) {
     const fileIdMatch = url.match(/id=([-\w]+)/) || url.match(/\/d\/([-\w]+)/);
     if (fileIdMatch) {
-      // Menggunakan Thumbnail API Google Drive agar file sangat ringan
+      // Menggunakan link thumbnail resmi Google Drive agar sangat ringan
       return `https://drive.google.com/thumbnail?id=${fileIdMatch[1]}&sz=w${size}`;
     }
   }
@@ -38,7 +39,7 @@ function getOptimizedPhotoURL(url, size = 128) {
 }
 
 /**
- * Resize Gambar sebelum upload (Kualitas 0.7 agar hemat kuota)
+ * Kompres Gambar sebelum upload agar proses kirim cepat (Bit Kecil)
  */
 async function resizeImage(file, maxWidth = 800) {
   return new Promise((resolve) => {
@@ -62,13 +63,14 @@ async function resizeImage(file, maxWidth = 800) {
 }
 
 /**
- * Fungsi Upload: Bypass CORS & Mengembalikan link asli
+ * Upload ke Drive: Bypass CORS dengan membaca respon sebagai teks
  */
 async function uploadToDrive(file) {
   const resized = await resizeImage(file);
   try {
     const response = await fetch(GAS_URL, {
       method: "POST",
+      // Content-Type text/plain menghindari CORS pre-flight yang bikin error
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ 
         name: `chat_${Date.now()}.jpg`, 
@@ -77,8 +79,7 @@ async function uploadToDrive(file) {
       })
     });
     const resultText = await response.text();
-    const result = JSON.parse(resultText);
-    return result.status === "success" ? result.url : null;
+    return JSON.parse(resultText);
   } catch (err) {
     console.error("Gagal Upload:", err);
     return null;
@@ -92,9 +93,9 @@ function appendMessage(data, isMe) {
   const div = document.createElement("div");
   div.className = `msg ${isMe ? 'me' : 'other'}`;
   
-  const avatar = getOptimizedPhotoURL(data.photoURL, 128);
+  const avatar = getOptimizedURL(data.photoURL, 128);
   
-  // Jika pesan mengandung imageURL, tampilkan gambar
+  // Cek apakah data pesan adalah gambar
   let contentHTML = data.imageURL 
     ? `<img src="${data.imageURL}" class="chat-img" onclick="window.open('${data.imageURL}')">`
     : `<div class="bubble">${data.text}</div>`;
@@ -113,29 +114,25 @@ imageInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  msgInput.placeholder = "⌛ Mengirim gambar...";
+  msgInput.placeholder = "⌛ Sedang mengirim...";
   msgInput.disabled = true;
 
-  try {
-    const rawDriveUrl = await uploadToDrive(file);
-    
-    if (rawDriveUrl) {
-      // PENTING: Ubah link asli Drive menjadi link THUMBNAIL sebelum disimpan ke Firebase
-      const smallImageUrl = getOptimizedPhotoURL(rawDriveUrl, 400);
+  const res = await uploadToDrive(file);
+  
+  if (res && res.url) {
+    // OPTIMASI: Simpan URL Thumbnail (400px) ke RTDB agar hemat data
+    const optimizedImageUrl = getOptimizedURL(res.url, 400);
 
-      const newMsgRef = push(ref(db, 'group_messages'));
-      await set(newMsgRef, {
-        uid: auth.currentUser.uid,
-        name: myProfile.name,
-        photoURL: myProfile.photoURL,
-        imageURL: smallImageUrl, // URL Ringan yang masuk ke RTDB
-        timestamp: serverTimestamp()
-      });
-    } else {
-      alert("Gagal mengunggah gambar ke Drive.");
-    }
-  } catch (err) {
-    alert("Error: " + err.message);
+    const newMsgRef = push(ref(db, 'group_messages'));
+    await set(newMsgRef, {
+      uid: auth.currentUser.uid,
+      name: myProfile.name,
+      photoURL: myProfile.photoURL, // Sudah versi kecil
+      imageURL: optimizedImageUrl,  // Simpan versi thumbnail ke RTDB
+      timestamp: serverTimestamp()
+    });
+  } else {
+    alert("Gagal mengunggah foto. Pastikan Apps Script di-deploy ulang sebagai 'New Version'.");
   }
 
   msgInput.placeholder = "Ketik pesan...";
@@ -148,13 +145,13 @@ auth.onAuthStateChanged(async (user) => {
   if (!user) return;
 
   myProfile.name = user.displayName || user.email.split('@')[0];
-  myProfile.photoURL = getOptimizedPhotoURL(user.photoURL);
+  myProfile.photoURL = getOptimizedURL(user.photoURL);
   
   const snap = await get(child(ref(db), `users/${user.uid}`));
   if (snap.exists()) {
     const d = snap.val();
     if (d.name) myProfile.name = d.name;
-    if (d.photoURL) myProfile.photoURL = getOptimizedPhotoURL(d.photoURL);
+    if (d.photoURL) myProfile.photoURL = getOptimizedURL(d.photoURL);
   }
 
   onValue(query(ref(db, 'group_messages'), limitToLast(50)), (snapshot) => {
