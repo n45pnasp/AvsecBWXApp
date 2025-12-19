@@ -13,12 +13,11 @@ const DEFAULT_AVATAR = "icons/idperson.png";
 let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
 
 /**
- * Optimasi URL Foto:
- * Mengubah resolusi menjadi kecil (s128) dan melakukan crop kotak (-c)
+ * Optimasi URL: Mengubah resolusi menjadi s128 dan mode crop kotak (-c)
+ * agar hemat data (bit kecil)
  */
 function getOptimizedPhotoURL(url, size = 128) {
   if (!url || typeof url !== 'string') return DEFAULT_AVATAR;
-  // Jika dari Google, gunakan parameter sXXX-c untuk gambar kecil & kotak
   if (url.includes("googleusercontent.com")) {
     return url.split('=')[0] + `=s${size}-c`;
   }
@@ -26,46 +25,45 @@ function getOptimizedPhotoURL(url, size = 128) {
 }
 
 /**
- * Memuat Profil User aktif dengan optimasi URL
+ * Memuat Profil: Gabungan Auth (Online) dan RTDB
  */
 async function loadMyProfile(user) {
-  try {
-    // Prioritas 1: Firebase Auth Profile
-    myProfile.name = user.displayName || user.email.split('@')[0];
-    myProfile.photoURL = getOptimizedPhotoURL(user.photoURL);
+  // 1. Ambil data dasar dari Firebase Auth (Foto Online)
+  myProfile.name = user.displayName || user.email.split('@')[0];
+  myProfile.photoURL = user.photoURL || DEFAULT_AVATAR;
 
-    // Prioritas 2: Cek Database (Overriding)
+  try {
+    // 2. Cek apakah ada data foto custom di RTDB (Overriding)
     const snap = await get(child(ref(db), `users/${user.uid}`));
     if (snap.exists()) {
       const data = snap.val();
       if (data.name) myProfile.name = data.name;
-      if (data.photoURL) myProfile.photoURL = getOptimizedPhotoURL(data.photoURL);
+      // Gunakan URL dari DB jika tersedia, jika tidak tetap gunakan Auth
+      if (data.photoURL) myProfile.photoURL = data.photoURL;
     }
-  } catch (e) { console.error("Profil error:", e); }
+  } catch (e) { console.error("Database error:", e); }
+  
+  // 3. Aplikasikan optimasi resolusi rendah
+  myProfile.photoURL = getOptimizedPhotoURL(myProfile.photoURL);
 }
 
-/**
- * Menampilkan pesan ke layar
- */
 function appendMessage(data, isMe) {
   const div = document.createElement("div");
   div.className = `msg ${isMe ? 'me' : 'other'}`;
   
-  // Gunakan URL yang sudah dioptimasi
+  // Pastikan URL pesan juga dioptimasi saat tampil
   const photo = getOptimizedPhotoURL(data.photoURL);
   
   div.innerHTML = `
-    <img src="${photo}" class="avatar" onerror="this.src='${DEFAULT_AVATAR}'" alt="avatar">
+    <img src="${photo}" class="avatar" onerror="this.src='${DEFAULT_AVATAR}'">
     <div class="content">
       <div class="bubble">${data.text}</div>
     </div>
   `;
-  
   chatBox.appendChild(div);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Pantau status login
 auth.onAuthStateChanged(async (user) => {
   if (!user) return;
   await loadMyProfile(user);
@@ -80,7 +78,6 @@ auth.onAuthStateChanged(async (user) => {
   });
 });
 
-// Event Kirim Pesan
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = msgInput.value.trim();
@@ -91,13 +88,13 @@ chatForm.addEventListener("submit", async (e) => {
     await set(newMsgRef, {
       uid: auth.currentUser.uid,
       name: myProfile.name,
-      photoURL: myProfile.photoURL, // Menyimpan versi URL bit kecil
+      photoURL: myProfile.photoURL, // Menyimpan foto profil yang sudah dioptimasi
       text: text,
       timestamp: serverTimestamp()
     });
     msgInput.value = "";
     msgInput.focus();
-  } catch (e) { console.error("Kirim gagal:", e); }
+  } catch (e) { console.error("Gagal kirim:", e); }
 });
 
 document.getElementById("backBtn").onclick = () => window.location.href = "home.html";
