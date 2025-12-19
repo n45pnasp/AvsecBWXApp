@@ -1,7 +1,5 @@
 import { getFirebase } from "./auth-guard.js";
-import { 
-  ref, push, set, onValue, serverTimestamp, query, limitToLast, get, child 
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { ref, push, set, onValue, serverTimestamp, query, limitToLast, get, child } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const { auth, db } = getFirebase();
 const chatBox = document.getElementById("chatBox");
@@ -9,50 +7,60 @@ const chatForm = document.getElementById("chatForm");
 const msgInput = document.getElementById("messageInput");
 const imageInput = document.getElementById("imageInput");
 
+// URL Apps Script Anda
+const GAS_URL = "https://script.google.com/macros/s/AKfycby2c7DhfswDR7t8k65YRkQ3EZwWx5VpDGkwzBHw46Y1vXbBwxTueRglQVlVbQJIQ4xS/exec";
 const DEFAULT_AVATAR = "icons/idperson.png";
-const DRIVE_FOLDER_ID = "1VrdNc_f-fFIIGGjNIfm9DrVyOnnZQFLX";
 
 let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
 
 /**
- * Optimasi Foto: Bit kecil, resolusi pas (s128/sz=128), dan kotak (-c)
+ * Optimasi URL agar resolusi rendah (bit kecil) & kotak simetris
  */
 function getOptimizedPhotoURL(url, size = 128) {
   if (!url || typeof url !== 'string') return DEFAULT_AVATAR;
-  
-  // Link Google Drive
-  if (url.includes("drive.google.com") || url.includes("drive.usercontent.google.com")) {
-    const fileIdMatch = url.match(/id=([-\w]+)/) || url.match(/\/d\/([-\w]+)/);
-    if (fileIdMatch) return `https://drive.google.com/thumbnail?id=${fileIdMatch[1]}&sz=w${size}-h${size}`;
-  }
-
-  // Link Google Auth
-  if (url.includes("googleusercontent.com")) {
-    return url.split('=')[0] + `=s${size}-c`;
+  if (url.includes("googleusercontent.com")) return url.split('=')[0] + `=s${size}-c`;
+  if (url.includes("drive.google.com")) {
+    const fileId = url.match(/id=([-\w]+)/) || url.match(/\/d\/([-\w]+)/);
+    if (fileId) return `https://drive.google.com/thumbnail?id=${fileId[1]}&sz=w${size}-h${size}`;
   }
   return url;
 }
 
 /**
- * Upload ke Google Drive (Pastikan folder diset Public Editor agar bisa upload tanpa token rumit)
+ * Mengecilkan ukuran gambar sebelum di-upload ke Drive (Bit Kecil)
  */
-async function uploadToGoogleDrive(file) {
-  const metadata = { name: `chat_${Date.now()}.jpg`, parents: [DRIVE_FOLDER_ID] };
-  const formData = new FormData();
-  formData.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-  formData.append("file", file);
+async function resizeImage(file, maxWidth = 800) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width, height = img.height;
+        if (width > height) { if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; } }
+        else { if (height > maxWidth) { width *= maxWidth / height; height = maxWidth; } }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        // Simpan sebagai JPEG kualitas 0.7 agar ukuran file kecil
+        resolve({ base64: canvas.toDataURL('image/jpeg', 0.7).split(',')[1], type: 'image/jpeg' });
+      };
+    };
+  });
+}
 
-  try {
-    const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", {
-      method: "POST",
-      body: formData
-    });
-    const result = await response.json();
-    return result.id ? `https://drive.google.com/uc?export=view&id=${result.id}` : null;
-  } catch (error) {
-    console.error("Gagal upload Drive:", error);
-    return null;
-  }
+/**
+ * Fungsi Upload ke Google Drive via Apps Script
+ */
+async function uploadToDrive(file) {
+  const resized = await resizeImage(file);
+  const response = await fetch(GAS_URL, {
+    method: "POST",
+    body: JSON.stringify({ name: `chat_${Date.now()}.jpg`, type: resized.type, base64: resized.base64 })
+  });
+  return await response.json();
 }
 
 function appendMessage(data, isMe) {
@@ -60,56 +68,49 @@ function appendMessage(data, isMe) {
   div.className = `msg ${isMe ? 'me' : 'other'}`;
   const photo = getOptimizedPhotoURL(data.photoURL);
   
-  // Jika pesan berupa gambar, gunakan img. Jika teks, gunakan bubble.
-  let content = data.imageURL 
+  // Render gambar jika ada imageURL, jika tidak render teks bubble
+  let contentHTML = data.imageURL 
     ? `<img src="${getOptimizedPhotoURL(data.imageURL, 400)}" class="chat-img" onclick="window.open('${data.imageURL}')">`
     : `<div class="bubble">${data.text}</div>`;
 
   div.innerHTML = `
     <img src="${photo}" class="avatar" onerror="this.src='${DEFAULT_AVATAR}'">
-    <div class="content">${content}</div>
+    <div class="content">${contentHTML}</div>
   `;
   chatBox.appendChild(div);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Handler Pilih Gambar
+// Handler Upload Gambar (+)
 imageInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  msgInput.placeholder = "Mengunggah...";
+  msgInput.placeholder = "Mengirim gambar...";
   msgInput.disabled = true;
 
-  const driveUrl = await uploadToGoogleDrive(file);
-  if (driveUrl) {
-    const newMsgRef = push(ref(db, 'group_messages'));
-    await set(newMsgRef, {
-      uid: auth.currentUser.uid,
-      photoURL: myProfile.photoURL,
-      imageURL: driveUrl,
-      timestamp: serverTimestamp()
-    });
-  }
-  msgInput.placeholder = "Ketik pesan Anda...";
+  try {
+    const res = await uploadToDrive(file);
+    if (res.url) {
+      await set(push(ref(db, 'group_messages')), {
+        uid: auth.currentUser.uid,
+        photoURL: myProfile.photoURL,
+        imageURL: res.url, // URL dari Google Drive
+        timestamp: serverTimestamp()
+      });
+    }
+  } catch (err) { alert("Upload Gagal. Pastikan Apps Script sudah di-deploy dengan benar."); }
+
+  msgInput.placeholder = "Ketik pesan...";
   msgInput.disabled = false;
   imageInput.value = "";
 });
 
-// Load Chat & Profil
+// Load Profil & Chat Realtime
 auth.onAuthStateChanged(async (user) => {
   if (!user) return;
-  
-  // Ambil data dari Auth Online & RTDB
   myProfile.name = user.displayName || user.email.split('@')[0];
   myProfile.photoURL = getOptimizedPhotoURL(user.photoURL);
-  
-  const snap = await get(child(ref(db), `users/${user.uid}`));
-  if (snap.exists()) {
-    const d = snap.val();
-    if (d.name) myProfile.name = d.name;
-    if (d.photoURL) myProfile.photoURL = getOptimizedPhotoURL(d.photoURL);
-  }
 
   onValue(query(ref(db, 'group_messages'), limitToLast(50)), (snapshot) => {
     chatBox.innerHTML = "";
@@ -117,14 +118,11 @@ auth.onAuthStateChanged(async (user) => {
   });
 });
 
-// Kirim Teks
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = msgInput.value.trim();
   if (!text) return;
-
-  const newMsgRef = push(ref(db, 'group_messages'));
-  await set(newMsgRef, {
+  await set(push(ref(db, 'group_messages')), {
     uid: auth.currentUser.uid,
     name: myProfile.name,
     photoURL: myProfile.photoURL,
