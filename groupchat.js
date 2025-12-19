@@ -10,7 +10,7 @@ const msgInput = document.getElementById("messageInput");
 const imageInput = document.getElementById("imageInput");
 
 // URL SCRIPT GOOGLE APPS SCRIPT ANDA
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyDQ1v1HceTmUf-aqyfIlN00csDMeptO879Zb58jTdR64GWN2rpEzhSiKYHULtOMXzd/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxvhabtQ9MpGFZzOkIJaOpYoCh36CWxV1r3Jn_nOu3lW_YPHb1cnEOdLUlyv_jxWUqI/exec";
 const DEFAULT_AVATAR = "icons/idperson.png";
 
 let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
