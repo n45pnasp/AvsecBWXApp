@@ -9,28 +9,28 @@ const chatForm = document.getElementById("chatForm");
 const msgInput = document.getElementById("messageInput");
 const imageInput = document.getElementById("imageInput");
 
-// URL Script Google Apps Script Anda
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxvhabtQ9MpGFZzOkIJaOpYoCh36CWxV1r3Jn_nOu3lW_YPHb1cnEOdLUlyv_jxWUqI/exec";
+// URL Script Google Apps Script Terbaru Anda
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwHbVE_oYYjYJlKuPzRJXJoq2EtdJDSbXGO9laCF_VBiHrh4e0Q3_yyWrU-zU7deVsf/exec";
 const DEFAULT_AVATAR = "icons/idperson.png";
 
 let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
 
 /**
- * FUNGSI KRUSIAL: Mengubah URL Google Drive/Auth menjadi resolusi rendah (Bit Kecil)
+ * FUNGSI OPTIMASI: Mengubah URL Drive/Auth menjadi versi bit kecil (Thumbnail)
  */
 function getOptimizedPhotoURL(url, size = 128) {
   if (!url || typeof url !== 'string') return DEFAULT_AVATAR;
   
-  // Jika URL dari Google Auth (googleusercontent)
+  // Jika URL dari Google Auth
   if (url.includes("googleusercontent.com")) {
     return url.split('=')[0] + `=s${size}-c`;
   }
   
-  // Jika URL dari Google Drive (Mengubah ke format Thumbnail API agar ringan)
+  // Jika URL dari Google Drive
   if (url.includes("drive.google.com") || url.includes("drive.usercontent.google.com")) {
     const fileIdMatch = url.match(/id=([-\w]+)/) || url.match(/\/d\/([-\w]+)/);
     if (fileIdMatch) {
-      // Menggunakan parameter sz agar Google mengirim file dalam ukuran kecil (misal: w400)
+      // Menggunakan Thumbnail API Google Drive agar file sangat ringan
       return `https://drive.google.com/thumbnail?id=${fileIdMatch[1]}&sz=w${size}`;
     }
   }
@@ -38,7 +38,7 @@ function getOptimizedPhotoURL(url, size = 128) {
 }
 
 /**
- * Kompres Gambar di Sisi Klien (Canvas) agar proses upload ke Drive juga ringan
+ * Resize Gambar sebelum upload (Kualitas 0.7 agar hemat kuota)
  */
 async function resizeImage(file, maxWidth = 800) {
   return new Promise((resolve) => {
@@ -62,7 +62,7 @@ async function resizeImage(file, maxWidth = 800) {
 }
 
 /**
- * Upload ke Drive: Fix CORS dengan membaca respon sebagai teks
+ * Fungsi Upload: Bypass CORS & Mengembalikan link asli
  */
 async function uploadToDrive(file) {
   const resized = await resizeImage(file);
@@ -77,7 +77,8 @@ async function uploadToDrive(file) {
       })
     });
     const resultText = await response.text();
-    return JSON.parse(resultText);
+    const result = JSON.parse(resultText);
+    return result.status === "success" ? result.url : null;
   } catch (err) {
     console.error("Gagal Upload:", err);
     return null;
@@ -85,18 +86,17 @@ async function uploadToDrive(file) {
 }
 
 /**
- * Menampilkan pesan ke UI (Teks atau Gambar)
+ * Render Pesan ke Layar
  */
 function appendMessage(data, isMe) {
   const div = document.createElement("div");
   div.className = `msg ${isMe ? 'me' : 'other'}`;
   
-  // Ambil foto profil user (sudah versi kecil)
   const avatar = getOptimizedPhotoURL(data.photoURL, 128);
   
-  // Cek apakah data pesan adalah gambar
+  // Jika pesan mengandung imageURL, tampilkan gambar
   let contentHTML = data.imageURL 
-    ? `<img src="${data.imageURL}" class="chat-img" onclick="window.open('${data.imageURL}')" title="Klik untuk memperbesar">`
+    ? `<img src="${data.imageURL}" class="chat-img" onclick="window.open('${data.imageURL}')">`
     : `<div class="bubble">${data.text}</div>`;
 
   div.innerHTML = `
@@ -108,33 +108,34 @@ function appendMessage(data, isMe) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-/**
- * Handler Upload Gambar (+)
- */
+// Handler Upload Gambar (+)
 imageInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  msgInput.placeholder = "⌛ Sedang mengunggah...";
+  msgInput.placeholder = "⌛ Mengirim gambar...";
   msgInput.disabled = true;
 
-  const res = await uploadToDrive(file);
-  
-  if (res && res.url) {
-    // PENTING: Ubah URL asli menjadi URL Thumbnail (resolusi 400px) 
-    // agar data yang disimpan di Firebase sangat kecil ("Bit Kecil")
-    const optimizedImageUrl = getOptimizedPhotoURL(res.url, 400);
+  try {
+    const rawDriveUrl = await uploadToDrive(file);
+    
+    if (rawDriveUrl) {
+      // PENTING: Ubah link asli Drive menjadi link THUMBNAIL sebelum disimpan ke Firebase
+      const smallImageUrl = getOptimizedPhotoURL(rawDriveUrl, 400);
 
-    const newMsgRef = push(ref(db, 'group_messages'));
-    await set(newMsgRef, {
-      uid: auth.currentUser.uid,
-      name: myProfile.name,
-      photoURL: myProfile.photoURL, // Foto Profil (Kecil)
-      imageURL: optimizedImageUrl,  // Foto Pesan (Kecil)
-      timestamp: serverTimestamp()
-    });
-  } else {
-    alert("Gagal mengunggah foto ke Drive. Cek Apps Script Anda.");
+      const newMsgRef = push(ref(db, 'group_messages'));
+      await set(newMsgRef, {
+        uid: auth.currentUser.uid,
+        name: myProfile.name,
+        photoURL: myProfile.photoURL,
+        imageURL: smallImageUrl, // URL Ringan yang masuk ke RTDB
+        timestamp: serverTimestamp()
+      });
+    } else {
+      alert("Gagal mengunggah gambar ke Drive.");
+    }
+  } catch (err) {
+    alert("Error: " + err.message);
   }
 
   msgInput.placeholder = "Ketik pesan...";
@@ -142,13 +143,10 @@ imageInput.addEventListener("change", async (e) => {
   imageInput.value = "";
 });
 
-/**
- * Listener Auth & Chat Realtime
- */
+// Listener Auth & Chat Realtime
 auth.onAuthStateChanged(async (user) => {
   if (!user) return;
 
-  // Sinkronisasi Profil
   myProfile.name = user.displayName || user.email.split('@')[0];
   myProfile.photoURL = getOptimizedPhotoURL(user.photoURL);
   
@@ -159,16 +157,13 @@ auth.onAuthStateChanged(async (user) => {
     if (d.photoURL) myProfile.photoURL = getOptimizedPhotoURL(d.photoURL);
   }
 
-  // Load Pesan
   onValue(query(ref(db, 'group_messages'), limitToLast(50)), (snapshot) => {
     chatBox.innerHTML = "";
     snapshot.forEach((s) => appendMessage(s.val(), s.val().uid === user.uid));
   });
 });
 
-/**
- * Kirim Pesan Teks
- */
+// Kirim Pesan Teks
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = msgInput.value.trim();
@@ -185,6 +180,4 @@ chatForm.addEventListener("submit", async (e) => {
   msgInput.value = "";
 });
 
-// Tombol Kembali
-const backBtn = document.getElementById("backBtn");
-if (backBtn) backBtn.onclick = () => window.location.href = "home.html";
+document.getElementById("backBtn").onclick = () => window.location.href = "home.html";
