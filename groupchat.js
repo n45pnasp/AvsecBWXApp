@@ -7,12 +7,15 @@ const chatForm = document.getElementById("chatForm");
 const msgInput = document.getElementById("messageInput");
 const imageInput = document.getElementById("imageInput");
 
-// URL Apps Script Anda
-const GAS_URL = "https://script.google.com/macros/s/AKfycbw4t_TfGSb5VVoQ0lVprxiBBvpPCUvmjsPjNtAZ7_1y0k1kGQkVOod1shXOcMfXtqd3/exec";
+// URL Script Baru Anda
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxRjOuE3xC80sTdKH7z3ML2NflLLH2U8HjiflgeCy3nB0QTzSufWDceZVZ88mbry9G_/exec";
 const DEFAULT_AVATAR = "icons/idperson.png";
 
 let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
 
+/**
+ * Optimasi URL Foto agar resolusi rendah (s128) dan kotak (-c).
+ */
 function getOptimizedPhotoURL(url, size = 128) {
   if (!url || typeof url !== 'string') return DEFAULT_AVATAR;
   if (url.includes("googleusercontent.com")) return url.split('=')[0] + `=s${size}-c`;
@@ -23,7 +26,9 @@ function getOptimizedPhotoURL(url, size = 128) {
   return url;
 }
 
-// Kompres Gambar (Bit Kecil)
+/**
+ * Mengecilkan ukuran file gambar sebelum dikirim (Bit Kecil)
+ */
 async function resizeImage(file, maxWidth = 800) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -46,29 +51,25 @@ async function resizeImage(file, maxWidth = 800) {
 }
 
 /**
- * FIX: Upload ke Drive menggunakan trick text/plain untuk bypass CORS
+ * Fungsi Upload ke Drive: Membaca respon sebagai teks untuk mencegah CORS Error
  */
 async function uploadToDrive(file) {
   const resized = await resizeImage(file);
   try {
     const response = await fetch(GAS_URL, {
       method: "POST",
-      // Bypass Preflight OPTIONS request dengan text/plain
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ 
         name: `chat_${Date.now()}.jpg`, 
         type: resized.type, 
         base64: resized.base64 
-      }),
-      redirect: "follow"
+      })
     });
-    
-    // Ambil respon sebagai text lalu parse manual
-    const resultText = await response.text();
-    return JSON.parse(resultText);
+    const resultText = await response.text(); 
+    return JSON.parse(resultText); 
   } catch (err) {
     console.error("Gagal Upload:", err);
-    return { error: true };
+    return null;
   }
 }
 
@@ -90,21 +91,21 @@ imageInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  msgInput.placeholder = "Mengirim...";
+  msgInput.placeholder = "Mengirim gambar...";
   msgInput.disabled = true;
 
   const res = await uploadToDrive(file);
-  // Cek apakah respon memiliki URL
+  // Jika upload berhasil dan mendapatkan URL
   if (res && res.url) {
-    await set(push(ref(db, 'group_messages')), {
+    const newMsgRef = push(ref(db, 'group_messages'));
+    await set(newMsgRef, {
       uid: auth.currentUser.uid,
       photoURL: myProfile.photoURL,
       imageURL: res.url,
       timestamp: serverTimestamp()
     });
   } else {
-    // Jika foto terupload tapi JSON tidak terbaca, alert ini muncul
-    console.warn("Upload sukses di Drive, tapi UI tidak menerima respon URL.");
+    console.warn("Upload sukses di Drive, namun sinkronisasi UI terhambat.");
   }
 
   msgInput.placeholder = "Ketik pesan Anda...";
