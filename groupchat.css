@@ -17,7 +17,7 @@ body, html {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  height: 100dvh; /* Kunci agar input tetap di atas keyboard mobile */
+  height: 100dvh; /* Kunci agar input tidak terdorong keyboard */
   max-width: 600px;
   margin: 0 auto;
   background: var(--bg-dark);
@@ -47,7 +47,7 @@ body, html {
   gap: 12px;
 }
 
-/* Optimasi Avatar: Kotak Sama Sisi & Crop Tengah */
+/* Avatar Kotak Sama Sisi */
 .avatar {
   width: 38px;
   height: 38px;
@@ -83,7 +83,6 @@ body, html {
   margin-top: 5px;
 }
 
-/* Footer & Tombol + */
 .chat-input-bar {
   flex-shrink: 0;
   padding: 12px 15px;
