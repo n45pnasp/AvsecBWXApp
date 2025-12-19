@@ -8,7 +8,7 @@ const msgInput = document.getElementById("messageInput");
 const imageInput = document.getElementById("imageInput");
 
 // URL Google Apps Script Anda
-const GAS_URL = "https://script.google.com/macros/s/AKfycby2c7DhfswDR7t8k65YRkQ3EZwWx5VpDGkwzBHw46Y1vXbBwxTueRglQVlVbQJIQ4xS/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw4t_TfGSb5VVoQ0lVprxiBBvpPCUvmjsPjNtAZ7_1y0k1kGQkVOod1shXOcMfXtqd3/exec";
 const DEFAULT_AVATAR = "icons/idperson.png";
 
 let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
