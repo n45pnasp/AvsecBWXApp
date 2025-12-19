@@ -9,14 +9,14 @@ const chatForm = document.getElementById("chatForm");
 const msgInput = document.getElementById("messageInput");
 const imageInput = document.getElementById("imageInput");
 
-// URL SCRIPT GOOGLE APPS SCRIPT ANDA
+// URL Script Google Apps Script Anda
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxvhabtQ9MpGFZzOkIJaOpYoCh36CWxV1r3Jn_nOu3lW_YPHb1cnEOdLUlyv_jxWUqI/exec";
 const DEFAULT_AVATAR = "icons/idperson.png";
 
 let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
 
 /**
- * Optimasi URL Foto: Mengubah link Google Drive/Auth menjadi thumbnail ringan
+ * FUNGSI KRUSIAL: Mengubah URL Google Drive/Auth menjadi resolusi rendah (Bit Kecil)
  */
 function getOptimizedPhotoURL(url, size = 128) {
   if (!url || typeof url !== 'string') return DEFAULT_AVATAR;
@@ -26,19 +26,19 @@ function getOptimizedPhotoURL(url, size = 128) {
     return url.split('=')[0] + `=s${size}-c`;
   }
   
-  // Jika URL dari Google Drive
+  // Jika URL dari Google Drive (Mengubah ke format Thumbnail API agar ringan)
   if (url.includes("drive.google.com") || url.includes("drive.usercontent.google.com")) {
     const fileIdMatch = url.match(/id=([-\w]+)/) || url.match(/\/d\/([-\w]+)/);
     if (fileIdMatch) {
-      // Menggunakan format thumbnail dengan parameter sz agar bit file sangat kecil
-      return `https://drive.google.com/thumbnail?id=${fileIdMatch[1]}&sz=w${size}-h${size}`;
+      // Menggunakan parameter sz agar Google mengirim file dalam ukuran kecil (misal: w400)
+      return `https://drive.google.com/thumbnail?id=${fileIdMatch[1]}&sz=w${size}`;
     }
   }
   return url;
 }
 
 /**
- * Kompres Gambar (Canvas Resize) sebelum upload ke Drive
+ * Kompres Gambar di Sisi Klien (Canvas) agar proses upload ke Drive juga ringan
  */
 async function resizeImage(file, maxWidth = 800) {
   return new Promise((resolve) => {
@@ -55,61 +55,52 @@ async function resizeImage(file, maxWidth = 800) {
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        resolve({ 
-          base64: canvas.toDataURL('image/jpeg', 0.7).split(',')[1], 
-          type: 'image/jpeg' 
-        });
+        resolve({ base64: canvas.toDataURL('image/jpeg', 0.7).split(',')[1], type: 'image/jpeg' });
       };
     };
   });
 }
 
 /**
- * Upload ke Drive: Bypass CORS dengan membaca respon sebagai teks
+ * Upload ke Drive: Fix CORS dengan membaca respon sebagai teks
  */
 async function uploadToDrive(file) {
   const resized = await resizeImage(file);
   try {
     const response = await fetch(GAS_URL, {
       method: "POST",
-      mode: "cors", 
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Menghindari Pre-flight CORS
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ 
         name: `chat_${Date.now()}.jpg`, 
         type: resized.type, 
         base64: resized.base64 
       })
     });
-
     const resultText = await response.text();
-    const result = JSON.parse(resultText);
-    
-    if (result && result.status === "success") {
-      return result.url;
-    } else {
-      console.error("Server Error:", result.message);
-      return null;
-    }
+    return JSON.parse(resultText);
   } catch (err) {
-    console.error("Network/CORS Error:", err);
+    console.error("Gagal Upload:", err);
     return null;
   }
 }
 
+/**
+ * Menampilkan pesan ke UI (Teks atau Gambar)
+ */
 function appendMessage(data, isMe) {
   const div = document.createElement("div");
   div.className = `msg ${isMe ? 'me' : 'other'}`;
   
-  // Gunakan foto profil yang sudah dioptimasi
-  const photo = getOptimizedPhotoURL(data.photoURL);
+  // Ambil foto profil user (sudah versi kecil)
+  const avatar = getOptimizedPhotoURL(data.photoURL, 128);
   
-  // Render: Jika ada imageURL tampilkan gambar, jika tidak tampilkan bubble teks
+  // Cek apakah data pesan adalah gambar
   let contentHTML = data.imageURL 
-    ? `<img src="${data.imageURL}" class="chat-img" onclick="window.open('${data.imageURL}')">`
+    ? `<img src="${data.imageURL}" class="chat-img" onclick="window.open('${data.imageURL}')" title="Klik untuk memperbesar">`
     : `<div class="bubble">${data.text}</div>`;
 
   div.innerHTML = `
-    <img src="${photo}" class="avatar" onerror="this.src='${DEFAULT_AVATAR}'">
+    <img src="${avatar}" class="avatar" onerror="this.src='${DEFAULT_AVATAR}'">
     <div class="content">${contentHTML}</div>
   `;
   
@@ -117,42 +108,47 @@ function appendMessage(data, isMe) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Handler Tombol + (Unggah Gambar)
+/**
+ * Handler Upload Gambar (+)
+ */
 imageInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  const oldPlaceholder = msgInput.placeholder;
-  msgInput.placeholder = "⌛ Sedang mengunggah gambar...";
+  msgInput.placeholder = "⌛ Sedang mengunggah...";
   msgInput.disabled = true;
 
-  const driveUrl = await uploadToDrive(file);
+  const res = await uploadToDrive(file);
   
-  if (driveUrl) {
-    // OPTIMASI: Kecilkan URL gambar sebelum dikirim ke Firebase
-    const smallImageUrl = getOptimizedPhotoURL(driveUrl, 400); 
+  if (res && res.url) {
+    // PENTING: Ubah URL asli menjadi URL Thumbnail (resolusi 400px) 
+    // agar data yang disimpan di Firebase sangat kecil ("Bit Kecil")
+    const optimizedImageUrl = getOptimizedPhotoURL(res.url, 400);
 
     const newMsgRef = push(ref(db, 'group_messages'));
     await set(newMsgRef, {
       uid: auth.currentUser.uid,
       name: myProfile.name,
-      photoURL: myProfile.photoURL,
-      imageURL: smallImageUrl, // Menyimpan URL thumbnail ke database
+      photoURL: myProfile.photoURL, // Foto Profil (Kecil)
+      imageURL: optimizedImageUrl,  // Foto Pesan (Kecil)
       timestamp: serverTimestamp()
     });
   } else {
-    alert("Gagal mengunggah gambar. Pastikan Apps Script sudah di-deploy dengan benar.");
+    alert("Gagal mengunggah foto ke Drive. Cek Apps Script Anda.");
   }
 
-  msgInput.placeholder = oldPlaceholder;
+  msgInput.placeholder = "Ketik pesan...";
   msgInput.disabled = false;
   imageInput.value = "";
 });
 
-// Listener Login & Realtime Chat
+/**
+ * Listener Auth & Chat Realtime
+ */
 auth.onAuthStateChanged(async (user) => {
   if (!user) return;
 
+  // Sinkronisasi Profil
   myProfile.name = user.displayName || user.email.split('@')[0];
   myProfile.photoURL = getOptimizedPhotoURL(user.photoURL);
   
@@ -163,13 +159,16 @@ auth.onAuthStateChanged(async (user) => {
     if (d.photoURL) myProfile.photoURL = getOptimizedPhotoURL(d.photoURL);
   }
 
+  // Load Pesan
   onValue(query(ref(db, 'group_messages'), limitToLast(50)), (snapshot) => {
     chatBox.innerHTML = "";
     snapshot.forEach((s) => appendMessage(s.val(), s.val().uid === user.uid));
   });
 });
 
-// Kirim Teks
+/**
+ * Kirim Pesan Teks
+ */
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = msgInput.value.trim();
@@ -186,5 +185,6 @@ chatForm.addEventListener("submit", async (e) => {
   msgInput.value = "";
 });
 
+// Tombol Kembali
 const backBtn = document.getElementById("backBtn");
 if (backBtn) backBtn.onclick = () => window.location.href = "home.html";
