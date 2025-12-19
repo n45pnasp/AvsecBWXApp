@@ -8,14 +8,11 @@ const msgInput = document.getElementById("messageInput");
 const imageInput = document.getElementById("imageInput");
 
 // URL Script Baru Anda
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxRjOuE3xC80sTdKH7z3ML2NflLLH2U8HjiflgeCy3nB0QTzSufWDceZVZ88mbry9G_/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyDQ1v1HceTmUf-aqyfIlN00csDMeptO879Zb58jTdR64GWN2rpEzhSiKYHULtOMXzd/exec";
 const DEFAULT_AVATAR = "icons/idperson.png";
 
 let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
 
-/**
- * Optimasi URL Foto agar resolusi rendah (s128) dan kotak (-c).
- */
 function getOptimizedPhotoURL(url, size = 128) {
   if (!url || typeof url !== 'string') return DEFAULT_AVATAR;
   if (url.includes("googleusercontent.com")) return url.split('=')[0] + `=s${size}-c`;
@@ -26,9 +23,6 @@ function getOptimizedPhotoURL(url, size = 128) {
   return url;
 }
 
-/**
- * Mengecilkan ukuran file gambar sebelum dikirim (Bit Kecil)
- */
 async function resizeImage(file, maxWidth = 800) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -51,20 +45,23 @@ async function resizeImage(file, maxWidth = 800) {
 }
 
 /**
- * Fungsi Upload ke Drive: Membaca respon sebagai teks untuk mencegah CORS Error
+ * Upload ke Drive: Membaca respon sebagai teks untuk mencegah CORS Error
  */
 async function uploadToDrive(file) {
   const resized = await resizeImage(file);
   try {
     const response = await fetch(GAS_URL, {
       method: "POST",
+      mode: "cors",
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ 
         name: `chat_${Date.now()}.jpg`, 
         type: resized.type, 
         base64: resized.base64 
-      })
+      }),
+      redirect: "follow"
     });
+    
     const resultText = await response.text(); 
     return JSON.parse(resultText); 
   } catch (err) {
@@ -95,17 +92,13 @@ imageInput.addEventListener("change", async (e) => {
   msgInput.disabled = true;
 
   const res = await uploadToDrive(file);
-  // Jika upload berhasil dan mendapatkan URL
   if (res && res.url) {
-    const newMsgRef = push(ref(db, 'group_messages'));
-    await set(newMsgRef, {
+    await set(push(ref(db, 'group_messages')), {
       uid: auth.currentUser.uid,
       photoURL: myProfile.photoURL,
       imageURL: res.url,
       timestamp: serverTimestamp()
     });
-  } else {
-    console.warn("Upload sukses di Drive, namun sinkronisasi UI terhambat.");
   }
 
   msgInput.placeholder = "Ketik pesan Anda...";
