@@ -9,14 +9,14 @@ const chatForm = document.getElementById("chatForm");
 const msgInput = document.getElementById("messageInput");
 const imageInput = document.getElementById("imageInput");
 
-// URL SCRIPT BARU ANDA (PASTIKAN SUDAH DEPLOY ULANG SEBAGAI NEW VERSION)
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxvhabtQ9MpGFZzOkIJaOpYoCh36CWxV1r3Jn_nOu3lW_YPHb1cnEOdLUlyv_jxWUqI/exec";
+// URL SCRIPT GOOGLE APPS SCRIPT ANDA
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyDQ1v1HceTmUf-aqyfIlN00csDMeptO879Zb58jTdR64GWN2rpEzhSiKYHULtOMXzd/exec";
 const DEFAULT_AVATAR = "icons/idperson.png";
 
 let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
 
 /**
- * Optimasi URL agar resolusi rendah (bit kecil) & kotak simetris
+ * Optimasi URL Foto: Mengubah link Google Drive/Auth menjadi thumbnail ringan
  */
 function getOptimizedPhotoURL(url, size = 128) {
   if (!url || typeof url !== 'string') return DEFAULT_AVATAR;
@@ -30,6 +30,7 @@ function getOptimizedPhotoURL(url, size = 128) {
   if (url.includes("drive.google.com") || url.includes("drive.usercontent.google.com")) {
     const fileIdMatch = url.match(/id=([-\w]+)/) || url.match(/\/d\/([-\w]+)/);
     if (fileIdMatch) {
+      // Menggunakan format thumbnail dengan parameter sz agar bit file sangat kecil
       return `https://drive.google.com/thumbnail?id=${fileIdMatch[1]}&sz=w${size}-h${size}`;
     }
   }
@@ -37,7 +38,7 @@ function getOptimizedPhotoURL(url, size = 128) {
 }
 
 /**
- * Kompres Gambar sebelum upload agar ukuran file sangat kecil (Bit Kecil)
+ * Kompres Gambar (Canvas Resize) sebelum upload ke Drive
  */
 async function resizeImage(file, maxWidth = 800) {
   return new Promise((resolve) => {
@@ -48,21 +49,12 @@ async function resizeImage(file, maxWidth = 800) {
       img.src = e.target.result;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
-        } else {
-          if (height > maxWidth) { width *= maxWidth / height; height = maxWidth; }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
+        let width = img.width, height = img.height;
+        if (width > height) { if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; } }
+        else { if (height > maxWidth) { width *= maxWidth / height; height = maxWidth; } }
+        canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        
-        // Simpan sebagai JPEG kualitas 0.7 agar hemat data
         resolve({ 
           base64: canvas.toDataURL('image/jpeg', 0.7).split(',')[1], 
           type: 'image/jpeg' 
@@ -73,8 +65,7 @@ async function resizeImage(file, maxWidth = 800) {
 }
 
 /**
- * Upload ke Drive: Menggunakan mode 'cors' dan pembacaan respon sebagai teks 
- * untuk menghindari kegagalan pembacaan JSON (Zero Error Flow)
+ * Upload ke Drive: Bypass CORS dengan membaca respon sebagai teks
  */
 async function uploadToDrive(file) {
   const resized = await resizeImage(file);
@@ -82,7 +73,7 @@ async function uploadToDrive(file) {
     const response = await fetch(GAS_URL, {
       method: "POST",
       mode: "cors", 
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Menghindari Pre-flight CORS
       body: JSON.stringify({ 
         name: `chat_${Date.now()}.jpg`, 
         type: resized.type, 
@@ -90,7 +81,6 @@ async function uploadToDrive(file) {
       })
     });
 
-    // Baca respon sebagai teks dulu baru diparse ke JSON
     const resultText = await response.text();
     const result = JSON.parse(resultText);
     
@@ -101,23 +91,21 @@ async function uploadToDrive(file) {
       return null;
     }
   } catch (err) {
-    console.error("CORS / Network Error:", err);
+    console.error("Network/CORS Error:", err);
     return null;
   }
 }
 
-/**
- * Merender pesan ke layar (Teks atau Gambar)
- */
 function appendMessage(data, isMe) {
   const div = document.createElement("div");
   div.className = `msg ${isMe ? 'me' : 'other'}`;
   
+  // Gunakan foto profil yang sudah dioptimasi
   const photo = getOptimizedPhotoURL(data.photoURL);
   
-  // Jika ada imageURL, tampilkan tag IMG. Jika tidak, tampilkan bubble TEXT.
+  // Render: Jika ada imageURL tampilkan gambar, jika tidak tampilkan bubble teks
   let contentHTML = data.imageURL 
-    ? `<img src="${getOptimizedPhotoURL(data.imageURL, 400)}" class="chat-img" onclick="window.open('${data.imageURL}')" title="Klik untuk memperbesar">`
+    ? `<img src="${data.imageURL}" class="chat-img" onclick="window.open('${data.imageURL}')">`
     : `<div class="bubble">${data.text}</div>`;
 
   div.innerHTML = `
@@ -129,7 +117,7 @@ function appendMessage(data, isMe) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Handler Upload Gambar (+)
+// Handler Tombol + (Unggah Gambar)
 imageInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -141,16 +129,19 @@ imageInput.addEventListener("change", async (e) => {
   const driveUrl = await uploadToDrive(file);
   
   if (driveUrl) {
+    // OPTIMASI: Kecilkan URL gambar sebelum dikirim ke Firebase
+    const smallImageUrl = getOptimizedPhotoURL(driveUrl, 400); 
+
     const newMsgRef = push(ref(db, 'group_messages'));
     await set(newMsgRef, {
       uid: auth.currentUser.uid,
       name: myProfile.name,
       photoURL: myProfile.photoURL,
-      imageURL: driveUrl,
+      imageURL: smallImageUrl, // Menyimpan URL thumbnail ke database
       timestamp: serverTimestamp()
     });
   } else {
-    alert("Upload gagal dibaca oleh browser. Pastikan Anda sudah me-redeploy Apps Script sebagai 'Version: New'.");
+    alert("Gagal mengunggah gambar. Pastikan Apps Script sudah di-deploy dengan benar.");
   }
 
   msgInput.placeholder = oldPlaceholder;
@@ -158,11 +149,10 @@ imageInput.addEventListener("change", async (e) => {
   imageInput.value = "";
 });
 
-// Listener Login & Sinkronisasi Realtime
+// Listener Login & Realtime Chat
 auth.onAuthStateChanged(async (user) => {
   if (!user) return;
 
-  // 1. Load Profil
   myProfile.name = user.displayName || user.email.split('@')[0];
   myProfile.photoURL = getOptimizedPhotoURL(user.photoURL);
   
@@ -173,17 +163,13 @@ auth.onAuthStateChanged(async (user) => {
     if (d.photoURL) myProfile.photoURL = getOptimizedPhotoURL(d.photoURL);
   }
 
-  // 2. Load Chat
   onValue(query(ref(db, 'group_messages'), limitToLast(50)), (snapshot) => {
     chatBox.innerHTML = "";
-    snapshot.forEach((s) => {
-      const msgData = s.val();
-      appendMessage(msgData, msgData.uid === user.uid);
-    });
+    snapshot.forEach((s) => appendMessage(s.val(), s.val().uid === user.uid));
   });
 });
 
-// Kirim Pesan Teks
+// Kirim Teks
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = msgInput.value.trim();
@@ -200,6 +186,5 @@ chatForm.addEventListener("submit", async (e) => {
   msgInput.value = "";
 });
 
-// Navigasi Kembali
 const backBtn = document.getElementById("backBtn");
 if (backBtn) backBtn.onclick = () => window.location.href = "home.html";
