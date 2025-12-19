@@ -1,4 +1,3 @@
-// groupchat.js — FINAL & INTEGRATED
 import { getFirebase } from "./auth-guard.js";
 import { 
   ref, push, set, onValue, serverTimestamp, query, limitToLast, get, child 
@@ -10,7 +9,7 @@ const chatForm = document.getElementById("chatForm");
 const msgInput = document.getElementById("messageInput");
 const statusInfo = document.getElementById("statusInfo");
 
-// Default Avatar SVG sesuai login.js
+// Default Avatar SVG dari login.js
 const DEFAULT_AVATAR = "data:image/svg+xml;base64," + btoa(
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
     <rect width='128' height='128' rx='18' fill='#0b1220'/>
@@ -21,35 +20,22 @@ const DEFAULT_AVATAR = "data:image/svg+xml;base64," + btoa(
 
 let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
 
-/**
- * MENGAMBIL PROFIL DARI RTDB
- */
+// Memuat data dari users/[uid] di RTDB
 async function loadMyProfile(user) {
   try {
-    const userRef = ref(db, `users/${user.uid}`);
-    const snap = await get(userRef);
-    
+    const snap = await get(child(ref(db), `users/${user.uid}`));
     if (snap.exists()) {
       const data = snap.val();
       myProfile.name = data.name || user.displayName || user.email.split('@')[0];
-      // Ambil field photoURL dari RTDB
+      // Ambil foto dari field photoURL di database
       myProfile.photoURL = data.photoURL || user.photoURL || DEFAULT_AVATAR;
-    } else {
-      myProfile.name = user.displayName || user.email.split('@')[0];
-      myProfile.photoURL = user.photoURL || DEFAULT_AVATAR;
     }
-  } catch (e) {
-    console.error("Gagal sinkronisasi profil:", e);
-  }
+  } catch (e) { console.error("Gagal sinkron profil:", e); }
 }
 
-/**
- * MENAMPILKAN PESAN
- */
 function appendMessage(data, isMe) {
   const div = document.createElement("div");
   div.className = `msg ${isMe ? 'me' : 'other'}`;
-  
   const photo = data.photoURL || DEFAULT_AVATAR;
   
   div.innerHTML = `
@@ -59,22 +45,18 @@ function appendMessage(data, isMe) {
       <div class="bubble">${data.text}</div>
     </div>
   `;
-  
   chatBox.appendChild(div);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Listener Status Auth
 auth.onAuthStateChanged(async (user) => {
   if (!user) return;
-  
-  if (statusInfo) statusInfo.textContent = "Sinkronisasi Profil...";
   await loadMyProfile(user);
-  if (statusInfo) statusInfo.textContent = "Online";
+  statusInfo.textContent = "Online";
 
   const chatRef = query(ref(db, 'group_messages'), limitToLast(50));
   onValue(chatRef, (snapshot) => {
-    chatBox.innerHTML = ""; 
+    chatBox.innerHTML = "";
     snapshot.forEach((childSnap) => {
       const msgData = childSnap.val();
       appendMessage(msgData, msgData.uid === user.uid);
@@ -82,7 +64,6 @@ auth.onAuthStateChanged(async (user) => {
   });
 });
 
-// Listener Kirim Pesan
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = msgInput.value.trim();
@@ -93,16 +74,12 @@ chatForm.addEventListener("submit", async (e) => {
     await set(newMsgRef, {
       uid: auth.currentUser.uid,
       name: myProfile.name,
-      photoURL: myProfile.photoURL, // Menyimpan URL foto saat ini ke pesan
+      photoURL: myProfile.photoURL, // Simpan URL foto agar terlihat user lain
       text: text,
       timestamp: serverTimestamp()
     });
     msgInput.value = "";
-  } catch (e) {
-    console.error("Gagal mengirim:", e);
-  }
+  } catch (e) { console.error("Gagal kirim:", e); }
 });
 
-// Tombol Kembali
-const backBtn = document.getElementById("backBtn");
-if (backBtn) backBtn.onclick = () => window.location.href = "home.html";
+document.getElementById("backBtn").onclick = () => window.location.href = "home.html";
