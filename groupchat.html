@@ -16,16 +16,21 @@
       <button id="backBtn" class="back-btn" aria-label="Kembali">⬅</button>
       <div class="header-info">
         <h1>Grup Chat Anggota</h1>
-        <p id="statusInfo">Menghubungkan...</p>
+        <p id="statusInfo">Terhubung</p>
       </div>
     </header>
 
-    <section id="chatBox" class="chat-messages">
-      </section>
+    <section id="chatBox" class="chat-messages"></section>
 
     <footer class="chat-input-bar">
       <form id="chatForm">
+        <label for="imageInput" class="add-img-btn">
+          <span>+</span>
+        </label>
+        <input type="file" id="imageInput" accept="image/*" hidden />
+
         <input type="text" id="messageInput" placeholder="Ketik pesan Anda..." autocomplete="off" required />
+        
         <button type="submit" id="sendBtn">
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
