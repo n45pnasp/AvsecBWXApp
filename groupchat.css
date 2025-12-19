@@ -5,24 +5,30 @@
   --text-main: #e5e7eb;
 }
 
+/* 1. Pastikan Body & HTML memenuhi layar tanpa scroll luar */
 body, html {
-  margin: 0; padding: 0;
-  height: 100%; width: 100%;
+  margin: 0; 
+  padding: 0;
+  height: 100%; 
+  width: 100%;
   background: var(--bg-dark);
-  overflow: hidden; /* Mencegah body scroll ganda */
+  overflow: hidden; /* Mencegah scroll pada level body */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.chat-app-container {
+/* 2. Perbaikan: Nama class disesuaikan dengan HTML (.chat-wrapper) */
+.chat-wrapper {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* Tinggi penuh layar */
-  height: 100dvh; /* Untuk browser mobile modern */
+  height: 100vh; /* Standar layar */
+  height: 100dvh; /* Support dynamic viewport untuk mobile modern */
   max-width: 600px;
   margin: 0 auto;
   background: var(--bg-dark);
+  position: relative;
 }
 
-/* Header tetap di atas */
+/* 3. Header: flex-shrink 0 agar tidak gepeng saat chat banyak */
 .chat-header {
   flex-shrink: 0;
   background: var(--card-bg);
@@ -32,21 +38,28 @@ body, html {
   gap: 15px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.1);
   backdrop-filter: blur(10px);
+  z-index: 10;
 }
 
 .header-info h1 { font-size: 16px; margin: 0; color: #fff; }
 .header-info p { font-size: 11px; margin: 0; color: #10b981; }
 .back-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
 
-/* Area Pesan: Mengambil ruang tengah dan bisa scroll */
+/* 4. Area Pesan: flex 1 akan mengambil sisa ruang yang tersedia */
 .chat-messages {
-  flex: 1; /* Mendorong footer ke paling bawah */
-  overflow-y: auto;
+  flex: 1; 
+  overflow-y: auto; /* Scroll hanya terjadi di dalam area ini */
   padding: 20px 15px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  scrollbar-width: thin; /* Untuk Firefox */
+  scrollbar-color: var(--primary) transparent;
 }
+
+/* Custom Scrollbar untuk Chrome/Safari */
+.chat-messages::-webkit-scrollbar { width: 5px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
 
 /* Style Bubble Chat */
 .msg { display: flex; align-items: flex-end; gap: 8px; max-width: 85%; }
@@ -55,11 +68,13 @@ body, html {
 .avatar {
   width: 32px; height: 32px; border-radius: 8px;
   object-fit: cover; border: 1px solid var(--primary);
+  flex-shrink: 0;
 }
 
 .bubble {
   padding: 10px 14px; border-radius: 15px;
   font-size: 14px; line-height: 1.4;
+  word-wrap: break-word; /* Mencegah teks panjang merusak layout */
 }
 
 .me .bubble {
@@ -72,13 +87,14 @@ body, html {
   border-bottom-left-radius: 2px;
 }
 
-/* Footer: Selalu di paling bawah */
+/* 5. Footer: flex-shrink 0 agar tetap di bawah dan tidak terdorong keluar */
 .chat-input-bar {
   flex-shrink: 0;
   padding: 12px 15px;
   background: var(--card-bg);
   border-top: 1px solid rgba(148, 163, 184, 0.1);
-  padding-bottom: max(12px, env(safe-area-inset-bottom)); /* Support iPhone Notch */
+  /* Proteksi untuk area Notch iPhone */
+  padding-bottom: max(12px, env(safe-area-inset-bottom)); 
 }
 
 #chatForm { display: flex; gap: 10px; align-items: center; }
@@ -91,6 +107,7 @@ body, html {
   padding: 10px 15px;
   color: white;
   outline: none;
+  font-size: 14px;
 }
 
 #sendBtn {
@@ -99,4 +116,7 @@ body, html {
   width: 40px; height: 40px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
+  transition: transform 0.2s;
 }
+
+#sendBtn:active { transform: scale(0.9); }
