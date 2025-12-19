@@ -4,78 +4,106 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const { auth, db } = getFirebase();
-const msgList = document.getElementById("messageList");
+const chatBox = document.getElementById("chatBox");
 const chatForm = document.getElementById("chatForm");
-const msgInput = document.getElementById("msgInput");
-const chatWindow = document.getElementById("chatWindow");
+const msgInput = document.getElementById("messageInput");
+const statusInfo = document.getElementById("statusInfo");
 
-let currentUserProfile = null;
+// Default Avatar SVG yang sama dengan login.js
+const DEFAULT_AVATAR = "data:image/svg+xml;base64," + btoa(
+  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
+    <rect width='128' height='128' rx='18' fill='#0b1220'/>
+    <circle cx='64' cy='52' r='22' fill='#9C27B0'/>
+    <rect x='26' y='84' width='76' height='26' rx='13' fill='#6A1B9A'/>
+  </svg>`
+);
 
-// 1. Ambil profil pengguna (mirip di login.js)
-async function getMyProfile(user) {
-  const snapshot = await get(child(ref(db), `users/${user.uid}`));
-  if (snapshot.exists()) {
-    return snapshot.val();
+let myProfile = { name: "User", photoURL: DEFAULT_AVATAR };
+
+/**
+ * Mengambil profil lengkap pengguna dari RTDB atau Firebase Auth
+ */
+async function loadMyProfile(user) {
+  try {
+    const snap = await get(child(ref(db), `users/${user.uid}`));
+    if (snap.exists()) {
+      const data = snap.val();
+      myProfile.name = data.name || user.displayName || user.email.split('@')[0];
+      // Prioritas: RTDB > Auth Profile > Default
+      myProfile.photoURL = data.photoURL || user.photoURL || DEFAULT_AVATAR;
+    } else {
+      myProfile.name = user.displayName || user.email.split('@')[0];
+      myProfile.photoURL = user.photoURL || DEFAULT_AVATAR;
+    }
+  } catch (e) {
+    console.warn("Gagal memuat profil, menggunakan default:", e);
   }
-  return { name: user.email.split('@')[0], photoURL: "" };
 }
 
-// 2. Tampilkan pesan di UI
-function renderMessage(data, isMe) {
+/**
+ * Menambahkan elemen pesan ke dalam UI
+ */
+function appendMessage(data, isMe) {
   const div = document.createElement("div");
-  div.className = `msg-item ${isMe ? 'me' : 'other'}`;
+  div.className = `msg ${isMe ? 'me' : 'other'}`;
   
-  const photo = data.photoURL || 'icons/favicon-32.png';
+  // Gunakan URL foto dari data pesan, jika error balik ke default
+  const photo = data.photoURL || DEFAULT_AVATAR;
   
   div.innerHTML = `
-    <img src="${photo}" class="avatar" alt="av">
-    <div class="msg-content">
+    <img src="${photo}" class="avatar" onerror="this.src='${DEFAULT_AVATAR}'" alt="pfp">
+    <div class="content">
       <span class="sender-name">${isMe ? 'Anda' : (data.name || 'User')}</span>
       <div class="bubble">${data.text}</div>
     </div>
   `;
   
-  msgList.appendChild(div);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+  chatBox.appendChild(div);
+  // Auto scroll ke bawah setiap ada pesan baru
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// 3. Inisialisasi Chat
+// Inisialisasi Auth & Listener Chat
 auth.onAuthStateChanged(async (user) => {
   if (!user) return;
   
-  currentUserProfile = await getMyProfile(user);
-  
-  // Ambil 50 pesan terakhir
-  const messagesRef = query(ref(db, 'group_messages'), limitToLast(50));
-  
-  onValue(messagesRef, (snapshot) => {
-    msgList.innerHTML = ""; // Reset list
-    snapshot.forEach((childSnapshot) => {
-      const data = childSnapshot.val();
-      renderMessage(data, data.uid === user.uid);
+  statusInfo.textContent = "Memuat pesan...";
+  await loadMyProfile(user);
+  statusInfo.textContent = "Online";
+
+  // Ambil 50 pesan terakhir secara Real-time
+  const chatRef = query(ref(db, 'group_messages'), limitToLast(50));
+  onValue(chatRef, (snapshot) => {
+    chatBox.innerHTML = ""; // Bersihkan box sebelum render ulang
+    snapshot.forEach((childSnap) => {
+      const msgData = childSnap.val();
+      appendMessage(msgData, msgData.uid === user.uid);
     });
   });
 });
 
-// 4. Kirim Pesan
+// Event Kirim Pesan
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = msgInput.value.trim();
   if (!text || !auth.currentUser) return;
 
-  const newMessageRef = push(ref(db, 'group_messages'));
-  await set(newMessageRef, {
-    uid: auth.currentUser.uid,
-    name: currentUserProfile.name || "Anonim",
-    photoURL: currentUserProfile.photoURL || "",
-    text: text,
-    timestamp: serverTimestamp()
-  });
-
-  msgInput.value = "";
+  try {
+    const newMsgRef = push(ref(db, 'group_messages'));
+    await set(newMsgRef, {
+      uid: auth.currentUser.uid,
+      name: myProfile.name,
+      photoURL: myProfile.photoURL, // Simpan URL foto agar terlihat oleh user lain
+      text: text,
+      timestamp: serverTimestamp()
+    });
+    msgInput.value = ""; // Kosongkan input
+  } catch (e) {
+    console.error("Gagal kirim pesan:", e);
+    alert("Gagal mengirim pesan. Cek koneksi atau izin database.");
+  }
 });
 
-// Tombol Kembali
-document.getElementById("backBtn").addEventListener("click", () => {
-  window.location.href = "home.html";
-});
+// Tombol Kembali ke Home
+const backBtn = document.getElementById("backBtn");
+if(backBtn) backBtn.onclick = () => window.location.href = "home.html";
