@@ -5,30 +5,30 @@
   --text-main: #e5e7eb;
 }
 
-/* 1. Kunci layar agar tidak ada scroll di luar kontainer chat */
+/* 1. Pastikan Body & HTML memenuhi layar tanpa scroll luar */
 body, html {
   margin: 0; 
   padding: 0;
   height: 100%; 
   width: 100%;
   background: var(--bg-dark);
-  overflow: hidden; 
+  overflow: hidden; /* Mencegah scroll pada level body */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* 2. Kontainer Utama: Menggunakan flex column untuk mengunci header & footer */
+/* 2. Nama class sesuai HTML (.chat-wrapper) */
 .chat-wrapper {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  height: 100dvh; /* Dynamic viewport untuk mobile agar textbox tidak tertutup keyboard */
+  height: 100vh; 
+  height: 100dvh; /* Support untuk mobile modern */
   max-width: 600px;
   margin: 0 auto;
   background: var(--bg-dark);
   position: relative;
 }
 
-/* 3. Header: flex-shrink 0 memastikan header tetap di atas */
+/* 3. Header: flex-shrink 0 agar tidak terdorong */
 .chat-header {
   flex-shrink: 0;
   background: var(--card-bg);
@@ -45,7 +45,7 @@ body, html {
 .header-info p { font-size: 11px; margin: 0; color: #10b981; }
 .back-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
 
-/* 4. Area Pesan: flex 1 mengambil sisa ruang dan menyediakan scroll internal */
+/* 4. Area Pesan: Scroll internal */
 .chat-messages {
   flex: 1; 
   overflow-y: auto; 
@@ -60,19 +60,20 @@ body, html {
 .chat-messages::-webkit-scrollbar { width: 5px; }
 .chat-messages::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
 
-/* 5. Style Foto Profil: Kotak sama sisi & optimal */
+/* 5. Perbaikan Avatar: Kotak Sama Sisi & Tidak Gepeng */
 .avatar {
-  width: 36px;            /* Ukuran standar */
-  height: 36px;
-  aspect-ratio: 1 / 1;    /* Paksa kotak sempurna */
-  object-fit: cover;      /* Potong bagian tengah agar tidak gepeng */
+  width: 36px; 
+  height: 36px; 
+  aspect-ratio: 1 / 1; /* Paksa kotak 1:1 */
+  border-radius: 8px;
+  object-fit: cover;   /* Crop otomatis jika gambar tidak kotak */
   object-position: center;
-  border-radius: 8px;     /* Sudut sedikit membulat */
   border: 1px solid var(--primary);
   flex-shrink: 0;
   background: #1f2937;
 }
 
+/* Style Bubble Chat */
 .msg { display: flex; align-items: flex-end; gap: 8px; max-width: 85%; }
 .msg.me { align-self: flex-end; flex-direction: row-reverse; }
 
@@ -85,7 +86,7 @@ body, html {
 .me .bubble { background: var(--primary); color: white; border-bottom-right-radius: 2px; }
 .other .bubble { background: #1f2937; color: var(--text-main); border-bottom-left-radius: 2px; }
 
-/* 6. Footer: flex-shrink 0 mengunci textbox agar tidak terdorong keluar layar */
+/* 6. Footer: flex-shrink 0 agar tetap di bawah */
 .chat-input-bar {
   flex-shrink: 0;
   padding: 12px 15px;
