@@ -56,24 +56,16 @@
 
   // --- Pemetaan alias → file HTML
   // Tambah/ubah sesuai halaman kamu.
-  const ROUTE_MAP = {
+const ROUTE_MAP = {
     "": "home.html",
     "home": "home.html",
-
     "login": "index.html",
-
     "chatbot": "chatbot.html",
-    "bot": "chatbot.html",           // alias singkat opsional
-
+    "chat": "groupchat.html",      // Tambahkan ini
+    "groupchat": "groupchat.html", // Tambahkan ini
     "plotting": "plotting.html",
-    "rotation": "plotting.html",     // alias opsional
-
     "sop": "sop-view.html",
-    "viewer": "sop-view.html",
-    "pdf": "sop-view.html",
-
     "fuel": "fuel.html",
-    "bbm": "fuel.html",             // alias opsional
   };
 
   // Jika route sudah ".html", langsung pakai (mis. "#chatbot.html")
